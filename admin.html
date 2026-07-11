@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>NordBygg — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css?v=5" />
+</head>
+<body>
+  <!-- ===== Login ===== -->
+  <div class="login-screen" id="loginScreen">
+    <form class="login-card" id="loginForm">
+      <div class="login-logo">
+        <span class="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>
+        </span>
+        <span>Nord<strong>Bygg</strong> Admin</span>
+      </div>
+      <h1>Logga in</h1>
+      <p class="muted">Ange ditt adminlösenord för att redigera webbplatsen.</p>
+      <div class="field">
+        <label for="loginPassword">Lösenord</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required />
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Logga in</button>
+      <p class="msg" id="loginMsg" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+
+  <!-- ===== App ===== -->
+  <div class="admin-app" id="adminApp" hidden>
+    <header class="admin-header">
+      <div class="admin-header-inner">
+        <div class="login-logo small">
+          <span class="logo-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>
+          </span>
+          <span>Nord<strong>Bygg</strong> Admin</span>
+        </div>
+        <div class="admin-header-actions">
+          <a href="/" target="_blank" class="btn btn-ghost btn-sm">Visa webbplats ↗</a>
+          <button class="btn btn-ghost btn-sm" id="logoutBtn">Logga ut</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="admin-tabs" id="adminTabs">
+      <button class="tab active" data-tab="general">Allmänt</button>
+      <button class="tab" data-tab="hero">Startsida</button>
+      <button class="tab" data-tab="services">Tjänster</button>
+      <button class="tab" data-tab="contact">Kontakt</button>
+      <button class="tab" data-tab="gallery">Galleri</button>
+    </nav>
+
+    <main class="admin-main">
+      <!-- General -->
+      <section class="panel active" data-panel="general">
+        <h2>Allmänt</h2>
+        <div class="field">
+          <label for="f-brand">Företagsnamn</label>
+          <input type="text" id="f-brand" />
+        </div>
+      </section>
+
+      <!-- Hero -->
+      <section class="panel" data-panel="hero">
+        <h2>Startsida (hero)</h2>
+        <div class="field">
+          <label for="f-hero-eyebrow">Liten rubrik (ovanför titeln)</label>
+          <input type="text" id="f-hero-eyebrow" />
+        </div>
+        <div class="field">
+          <label for="f-hero-title">Huvudrubrik</label>
+          <input type="text" id="f-hero-title" />
+          <small class="hint">Tips: omge ett ord med <code>&lt;span class="hl"&gt;ord&lt;/span&gt;</code> för gul markering.</small>
+        </div>
+        <div class="field">
+          <label for="f-hero-lead">Ingress</label>
+          <textarea id="f-hero-lead" rows="3"></textarea>
+        </div>
+        <h3>Statistik (3 st)</h3>
+        <div class="stat-grid">
+          <div class="field"><label>Värde 1</label><input type="text" id="f-stat-0-value" /></div>
+          <div class="field"><label>Text 1</label><input type="text" id="f-stat-0-label" /></div>
+          <div class="field"><label>Värde 2</label><input type="text" id="f-stat-1-value" /></div>
+          <div class="field"><label>Text 2</label><input type="text" id="f-stat-1-label" /></div>
+          <div class="field"><label>Värde 3</label><input type="text" id="f-stat-2-value" /></div>
+          <div class="field"><label>Text 3</label><input type="text" id="f-stat-2-label" /></div>
+        </div>
+      </section>
+
+      <!-- Services -->
+      <section class="panel" data-panel="services">
+        <h2>Tjänster</h2>
+        <p class="muted">Lägg till, redigera eller ta bort tjänster som visas på startsidan.</p>
+        <div id="servicesList" class="service-rows"></div>
+        <button class="btn btn-ghost" id="addServiceBtn">+ Lägg till tjänst</button>
+      </section>
+
+      <!-- Contact -->
+      <section class="panel" data-panel="contact">
+        <h2>Kontaktuppgifter</h2>
+        <div class="form-row">
+          <div class="field"><label for="f-person">Kontaktperson</label><input type="text" id="f-person" /></div>
+          <div class="field"><label for="f-hours">Öppettider</label><input type="text" id="f-hours" /></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label for="f-phone">Telefon (för länk, t.ex. +46793049737)</label><input type="text" id="f-phone" /></div>
+          <div class="field"><label for="f-phoneDisplay">Telefon (visad text)</label><input type="text" id="f-phoneDisplay" /></div>
+        </div>
+        <div class="field"><label for="f-email">E-post</label><input type="email" id="f-email" /></div>
+        <div class="field"><label for="f-address">Adress</label><input type="text" id="f-address" /></div>
+        <p class="hint">Obs: e-post här ändrar bara visningen på sidan. Adressen dit formulär skickas (haboub.m@hotmail.com) ställs in i serverns .env-fil.</p>
+      </section>
+
+      <!-- Gallery -->
+      <section class="panel" data-panel="gallery">
+        <h2>Galleri</h2>
+        <p class="muted">Ladda upp bilder på utförda arbeten. De visas direkt för alla besökare.</p>
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="photoInput" accept="image/*" multiple hidden />
+          <strong>Klicka eller dra hit bilder</strong>
+          <span class="hint">JPG, PNG · max 5 MB per bild</span>
+        </label>
+        <p class="msg" id="uploadMsg" aria-live="polite"></p>
+        <div id="galleryAdmin" class="gallery-admin"></div>
+      </section>
+    </main>
+
+    <!-- Sticky save bar (for content panels) -->
+    <div class="save-bar" id="saveBar" hidden>
+      <span class="save-status" id="saveStatus"></span>
+      <button class="btn btn-primary" id="saveBtn">Spara ändringar</button>
+    </div>
+  </div>
+
+  <script src="admin.js?v=5"></script>
+</body>
+</html>
