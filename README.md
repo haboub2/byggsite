@@ -97,5 +97,21 @@ Code alone won't put you at #1 — these do the heavy lifting for a local contra
 > time are what move you up the results.
 
 ## Deploying
+Repository: **https://github.com/haboub2/byggsite**
+
 Any Node host works (Render, Railway, Fly.io, a VPS, etc.). Set the same
 environment variables there and run `npm start`.
+
+**Render (easiest from GitHub):**
+1. Go to [render.com](https://render.com) → New → Blueprint → connect `haboub2/byggsite`
+2. Set `ADMIN_PASSWORD`, `SMTP_*`, and `SITE_URL` in the dashboard
+3. Deploy — the included `render.yaml` handles the rest
+
+**Manual deploy:**
+```bash
+git clone https://github.com/haboub2/byggsite.git
+cd byggsite
+cp .env.example .env   # fill in SMTP + admin password
+npm install
+npm start
+```

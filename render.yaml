@@ -1,0 +1,29 @@
+# Render.com — connect this repo and deploy with one click.
+# Set env vars in the Render dashboard (never commit .env).
+services:
+  - type: web
+    name: byggsite
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: MAIL_TO
+        value: haboub.m@hotmail.com
+      - key: SITE_URL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false

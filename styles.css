@@ -24,7 +24,7 @@
 /* ===== Reset ===== */
 *, *::before, *::after { box-sizing: border-box; }
 * { margin: 0; }
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; scroll-padding-top: 80px; }
 body {
   font-family: var(--font-body);
   color: var(--ink);
@@ -69,6 +69,7 @@ h1, h2, h3, h4 { font-family: var(--font-head); line-height: 1.12; letter-spacin
   border-radius: 999px;
   transition: transform .15s ease, box-shadow .2s ease, background .2s ease, color .2s ease;
   white-space: nowrap;
+  will-change: transform;
 }
 .btn:active { transform: translateY(1px); }
 .btn-primary { background: var(--accent); color: var(--ink); box-shadow: 0 6px 18px rgba(255, 193, 7, .4); }
