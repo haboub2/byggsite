@@ -148,7 +148,7 @@ export const combinedWork: WorkItem[] = [
   })),
   {
     slug: "byggly01-site",
-    href: "/01/case",
+    href: "/01/case/byggly-01-sajten",
     division: "01" as const,
     image: images.dashboardScreen,
     tag: "Webb",
