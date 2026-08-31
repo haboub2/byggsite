@@ -33,7 +33,8 @@ export default function WorkFilter({ items }: { items: WorkItem[] }) {
       <div className="projects-grid">
         {shown.map((item) => (
           <Link key={item.slug} href={item.href} className="project-card">
-            <div className={`project-thumb ${item.thumb}`}>
+            <div className="project-thumb">
+              <img src={item.image} alt={item.title} loading="lazy" />
               <span className={`work-badge work-badge--${item.division}`}>
                 {item.division === "bygg" ? "Bygg" : "01"}
               </span>

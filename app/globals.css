@@ -176,10 +176,17 @@ h1, h2, h3, h4 { font-family: var(--font-head); line-height: 1.12; letter-spacin
   inset: 10px 30px 60px 10px;
   display: flex; flex-direction: column; justify-content: flex-end; gap: 14px;
   padding: 30px;
-  background: radial-gradient(120% 120% at 20% 0%, #2a2e36, #15171c);
+  background: radial-gradient(120% 120% at 20% 0%, #2a2e36, #15171c) center / cover no-repeat;
   color: #fff; border-color: #2a2e36;
+  position: relative;
+  overflow: hidden;
 }
-.hero-card--main svg { width: 64px; height: 64px; color: var(--accent-on-dark); }
+.hero-card--main::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(0deg, rgba(10,12,16,.82) 0%, rgba(10,12,16,.15) 55%, rgba(10,12,16,.35) 100%);
+}
+.hero-card--main > * { position: relative; z-index: 1; }
+.hero-card--main svg { width: 44px; height: 44px; color: var(--accent-on-dark); }
 .hero-card--main span { font-family: var(--font-head); font-weight: 600; font-size: 1.15rem; }
 .hero-card--badge {
   right: 0; top: 0; width: 190px; padding: 16px 18px;
@@ -299,14 +306,13 @@ body.has-cursor-glow .cursor-glow {
   display: block;
 }
 .project-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); }
-.project-thumb { height: 210px; position: relative; }
+.project-thumb { height: 210px; position: relative; overflow: hidden; background: var(--bg-alt); }
+.project-thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
+.project-card:hover .project-thumb img { transform: scale(1.05); }
 .project-thumb::after {
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,.25));
 }
-.project-thumb--1 { background: linear-gradient(135deg, #2e7a5f, #1c4c3b); }
-.project-thumb--2 { background: linear-gradient(135deg, #2a2e36, #444b57); }
-.project-thumb--3 { background: linear-gradient(135deg, #c99a5b, #8c6a3c); }
 .project-body { padding: 22px; }
 .tag {
   display: inline-block; font-size: .74rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;

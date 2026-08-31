@@ -20,7 +20,9 @@ export default function ProjektIndex() {
         <div className="projects-grid reveal-group">
           {featuredProjects.map((p) => (
             <Reveal key={p.slug} className="project-card" href={`/projekt/${p.slug}`}>
-              <div className={`project-thumb ${p.thumb}`} />
+              <div className="project-thumb">
+                <img src={p.image} alt={p.title} loading="lazy" />
+              </div>
               <div className="project-body">
                 <span className="tag">{p.tag}</span>
                 <h3>{p.title}</h3>

@@ -3,7 +3,23 @@
 import { useEffect, useRef } from "react";
 import { Icon } from "./Icons";
 
-export default function HeroVisual() {
+type Props = {
+  image: string;
+  mainIcon?: string;
+  mainLabel?: string;
+  badgeTitle?: string;
+  badgeBody?: string;
+  toolsLabel?: string;
+};
+
+export default function HeroVisual({
+  image,
+  mainIcon = "house",
+  mainLabel = "Kvalitetshantverk",
+  badgeTitle = "I tid",
+  badgeBody = "98 % av projekten i tid",
+  toolsLabel = "Licensierad & försäkrad",
+}: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -50,17 +66,21 @@ export default function HeroVisual() {
 
   return (
     <div className="hero-visual" aria-hidden="true" ref={ref}>
-      <div className="hero-card hero-card--main float" data-depth="18">
-        <Icon name="house" strokeWidth={1.6} />
-        <span>Kvalitetshantverk</span>
+      <div
+        className="hero-card hero-card--main float"
+        data-depth="18"
+        style={{ backgroundImage: `url(${image})` }}
+      >
+        <Icon name={mainIcon} strokeWidth={1.6} />
+        <span>{mainLabel}</span>
       </div>
       <div className="hero-card hero-card--badge float float-delay-1" data-depth="30">
-        <strong>I tid</strong>
-        <span>98 % av projekten i tid</span>
+        <strong>{badgeTitle}</strong>
+        <span>{badgeBody}</span>
       </div>
       <div className="hero-card hero-card--tools float float-delay-2" data-depth="24">
         <Icon name="tools" strokeWidth={1.6} />
-        <span>Licensierad &amp; försäkrad</span>
+        <span>{toolsLabel}</span>
       </div>
     </div>
   );

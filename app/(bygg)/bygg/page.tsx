@@ -7,6 +7,7 @@ import LeadForm from "@/components/LeadForm";
 import JsonLd from "@/components/JsonLd";
 import { Icon } from "@/components/Icons";
 import { businessJsonLd } from "@/lib/seo";
+import { images } from "@/lib/images";
 import {
   site,
   heroBygg,
@@ -62,7 +63,7 @@ export default function ByggHome() {
             </ul>
           </Reveal>
           <Reveal variant="right">
-            <HeroVisual />
+            <HeroVisual image={images.byggHeroKitchen} />
           </Reveal>
         </div>
       </section>
@@ -132,7 +133,9 @@ export default function ByggHome() {
           <div className="projects-grid reveal-group">
             {featuredProjects.map((p) => (
               <Reveal key={p.slug} className="project-card" href={`/projekt/${p.slug}`}>
-                <div className={`project-thumb ${p.thumb}`} />
+                <div className="project-thumb">
+                  <img src={p.image} alt={p.title} loading="lazy" />
+                </div>
                 <div className="project-body">
                   <span className="tag">{p.tag}</span>
                   <h3>{p.title}</h3>

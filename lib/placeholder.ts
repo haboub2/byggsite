@@ -1,6 +1,8 @@
 /* Phase 1 hardcoded content. Replaced by Supabase reads in Phase 2.
    Values mirror data/content.json + the legacy index.html copy. */
 
+import { images } from "./images";
+
 export const site = {
   brand: "Byggly 01",
   bygg: "Byggly",
@@ -55,9 +57,9 @@ export const processSteps = [
 ];
 
 export const featuredProjects = [
-  { slug: "villa-soder", thumb: "project-thumb--1", tag: "Totalrenovering", title: "Villa i Söndrum", desc: "Genomgående renovering av 1970-talsvilla — nytt kök, två badrum och öppen planlösning." },
-  { slug: "radhus-vallas", thumb: "project-thumb--2", tag: "Badrum", title: "Radhus på Vallås", desc: "Två våtrum med tätskikt enligt Säker Vatten, helkaklat och med golvvärme." },
-  { slug: "tillbyggnad-fyllinge", thumb: "project-thumb--3", tag: "Tillbyggnad", title: "Tillbyggnad i Fyllinge", desc: "24 m² tillbyggnad med sadeltak, matplats och stora skjutpartier mot trädgården." },
+  { slug: "villa-soder", image: images.projectKitchen, tag: "Totalrenovering", title: "Villa i Söndrum", desc: "Genomgående renovering av 1970-talsvilla — nytt kök, två badrum och öppen planlösning." },
+  { slug: "radhus-vallas", image: images.projectBathroom, tag: "Badrum", title: "Radhus på Vallås", desc: "Två våtrum med tätskikt enligt Säker Vatten, helkaklat och med golvvärme." },
+  { slug: "tillbyggnad-fyllinge", image: images.projectLivingRoom, tag: "Tillbyggnad", title: "Tillbyggnad i Fyllinge", desc: "24 m² tillbyggnad med sadeltak, matplats och stora skjutpartier mot trädgården." },
 ];
 
 export const faq = [
@@ -128,7 +130,7 @@ export type WorkItem = {
   slug: string;
   href: string;
   division: "bygg" | "01";
-  thumb: string;
+  image: string;
   tag: string;
   title: string;
   desc: string;
@@ -139,7 +141,7 @@ export const combinedWork: WorkItem[] = [
     slug: p.slug,
     href: `/projekt/${p.slug}`,
     division: "bygg" as const,
-    thumb: p.thumb,
+    image: p.image,
     tag: p.tag,
     title: p.title,
     desc: p.desc,
@@ -148,7 +150,7 @@ export const combinedWork: WorkItem[] = [
     slug: "byggly01-site",
     href: "/01/case",
     division: "01" as const,
-    thumb: "project-thumb--2",
+    image: images.dashboardScreen,
     tag: "Webb",
     title: "Byggly 01 — den här sajten",
     desc: "Byggd av 01: Next.js, Supabase och ett gränssnitt de själva kan redigera.",

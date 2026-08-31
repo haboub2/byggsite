@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
+import HeroVisual from "@/components/HeroVisual";
 import JsonLd from "@/components/JsonLd";
 import { softwareJsonLd } from "@/lib/seo";
 import { software01 } from "@/lib/placeholder";
+import { images } from "@/lib/images";
 
 export const metadata: Metadata = {
   title: "Mjukvara, system & automation",
@@ -39,6 +41,16 @@ export default function SoftwareHome() {
                 </li>
               ))}
             </ul>
+          </Reveal>
+          <Reveal variant="right">
+            <HeroVisual
+              image={images.softwareHeroWorkspace}
+              mainIcon="code"
+              mainLabel="Ren kod, tydlig arkitektur"
+              badgeTitle="Levererat"
+              badgeBody="I produktion, inte bara demo"
+              toolsLabel="Byggt av 01"
+            />
           </Reveal>
         </div>
       </section>
