@@ -502,6 +502,29 @@ body.has-cursor-glow .cursor-glow {
   .dept-grid, .stats-strip, .values-grid { grid-template-columns: 1fr; }
 }
 
+/* ===== Service detail article ===== */
+.service-hero { padding: 60px 0 20px; }
+.service-hero .container { max-width: 780px; }
+.service-hero h1 { font-size: clamp(2rem, 4.2vw, 3rem); margin-top: 16px; }
+.service-hero .lead { font-size: 1.1rem; color: var(--ink-soft); margin-top: 16px; max-width: none; }
+.service-crumbs { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: .88rem; margin-bottom: 4px; }
+.service-crumbs a:hover { color: var(--accent-strong); }
+.service-article { max-width: 780px; margin: 0 auto; }
+.service-article section + section { margin-top: 34px; }
+.service-article h2 { font-size: 1.4rem; margin-bottom: 12px; }
+.service-article p { color: var(--ink-soft); line-height: 1.75; }
+.service-cta-row { margin-top: 40px; display: flex; gap: 14px; flex-wrap: wrap; }
+
+/* ===== Trust badges (om-oss, offert) ===== */
+.trust-badges { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+.trust-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-head); font-weight: 600; font-size: .9rem;
+  padding: 10px 16px; border-radius: 999px; border: 1px solid var(--accent-line);
+  background: var(--accent-soft); color: var(--accent-strong);
+}
+.trust-badge svg { width: 18px; height: 18px; }
+
 /* ===== CTA banner ===== */
 .cta-banner { background: var(--accent); }
 .cta-inner { text-align: center; padding: 64px 22px; }

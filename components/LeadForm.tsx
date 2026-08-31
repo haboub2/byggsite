@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { services } from "@/lib/placeholder";
 
 type Variant = "offert" | "kontakt" | "brief";
 
@@ -115,14 +117,9 @@ export default function LeadForm({
             <label htmlFor="lf-service">Typ av projekt *</label>
             <select id="lf-service" name="service" defaultValue={defaultService} required>
               <option value="">Välj en tjänst…</option>
-              <option>Totalrenovering</option>
-              <option>Kök</option>
-              <option>Badrum</option>
-              <option>Tillbyggnad</option>
-              <option>Takarbeten</option>
-              <option>Golvläggning</option>
-              <option>Måleri</option>
-              <option>El / VVS</option>
+              {services.map((s) => (
+                <option key={s.slug}>{s.title}</option>
+              ))}
               <option>Annat</option>
             </select>
           </div>
@@ -182,7 +179,10 @@ export default function LeadForm({
 
       <label className="checkbox">
         <input type="checkbox" name="consent" required />
-        <span>Jag godkänner att bli kontaktad angående min förfrågan. *</span>
+        <span>
+          Jag godkänner att bli kontaktad angående min förfrågan och har läst{" "}
+          <Link href="/integritetspolicy">integritetspolicyn</Link>. *
+        </span>
       </label>
 
       <button type="submit" className="btn btn-primary btn-block" disabled={busy}>

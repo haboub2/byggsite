@@ -10,7 +10,12 @@ export const metadata: Metadata = {
   alternates: { canonical: "/offert" },
 };
 
-export default function OffertPage() {
+export default async function OffertPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tjanst?: string }>;
+}) {
+  const { tjanst } = await searchParams;
   return (
     <section className="section">
       <div className="container offer-layout">
@@ -35,7 +40,7 @@ export default function OffertPage() {
           </div>
         </Reveal>
         <Reveal variant="right">
-          <LeadForm variant="offert" />
+          <LeadForm variant="offert" defaultService={tjanst ?? ""} />
         </Reveal>
       </div>
     </section>

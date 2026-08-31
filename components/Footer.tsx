@@ -54,7 +54,9 @@ export default function Footer({ division }: { division: Division }) {
       </div>
       <div className="container footer-bottom">
         <span>© {year} Byggly 01. Alla rättigheter förbehållna.</span>
-        <span>Licensierad &amp; försäkrad</span>
+        <span>
+          Licensierad &amp; försäkrad · <Link href="/integritetspolicy">Integritetspolicy</Link>
+        </span>
       </div>
     </footer>
   );
