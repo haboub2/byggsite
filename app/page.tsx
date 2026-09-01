@@ -35,11 +35,7 @@ export default function HubHome() {
               <img src={images.hubHeroVilla} alt="" />
             </div>
           </div>
-          <div className="hub-seam-glow" aria-hidden="true" />
           <div className="hub-seam-line" aria-hidden="true" />
-          <div className="hub-hero-badge" aria-hidden="true">
-            <Icon name="house" strokeWidth={2} />
-          </div>
 
           <div className="hub-hero-inner container">
             <span className="eyebrow">{hub.eyebrow}</span>
