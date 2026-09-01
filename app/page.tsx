@@ -8,6 +8,7 @@ import JsonLd from "@/components/JsonLd";
 import { Icon } from "@/components/Icons";
 import { websiteJsonLd } from "@/lib/seo";
 import { hub, combinedWork } from "@/lib/placeholder";
+import { images } from "@/lib/images";
 
 export const metadata: Metadata = {
   title: "Byggly 01 — bygg & mjukvara i Halmstad",
@@ -16,61 +17,106 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
+const STAT_ICONS = ["house", "tools", "grid", "check"];
+
 export default function HubHome() {
   return (
     <div className="division-root" data-division="hub">
       <JsonLd data={websiteJsonLd()} />
-      <Header division="hub" />
+      <Header division="hub" dark />
 
       <main>
-        {/* Hero */}
-        <section className="hero">
-          <div className="container hero-inner" style={{ gridTemplateColumns: "1fr" }}>
-            <Reveal className="hero-content" variant="hero" style={{ textAlign: "center", margin: "0 auto" }}>
-              <span className="eyebrow">{hub.eyebrow}</span>
-              <h1>{hub.title}</h1>
-              <p className="lead" style={{ margin: "20px auto 0" }}>
-                {hub.lead}
-              </p>
-            </Reveal>
+        {/* Hero — diagonal photo split, department chooser */}
+        <section className="hub-hero">
+          <div className="hub-hero-panes">
+            <div className="hub-pane hub-pane--left">
+              <img src={images.hubHeroCode} alt="" />
+            </div>
+            <div className="hub-pane hub-pane--right">
+              <img src={images.hubHeroVilla} alt="" />
+            </div>
+          </div>
+          <div className="hub-seam-glow" aria-hidden="true" />
+          <div className="hub-seam-line" aria-hidden="true" />
+          <div className="hub-hero-badge" aria-hidden="true">
+            <Icon name="house" strokeWidth={2} />
           </div>
 
-          <div className="container" style={{ marginTop: 48 }}>
-            <div className="dept-grid reveal-group">
-              {hub.departments.map((d) => (
-                <Reveal
-                  key={d.slug}
-                  href={d.href}
-                  className={`dept-card dept-card--${d.division}`}
-                >
-                  <span className="dept-card-icon">
-                    <Icon name={d.icon} strokeWidth={1.8} />
-                  </span>
-                  <h3>{d.title}</h3>
-                  <p>{d.body}</p>
-                  <span className="dept-card-cta">{d.cta} →</span>
-                </Reveal>
-              ))}
-            </div>
+          <div className="hub-hero-inner container">
+            <span className="eyebrow">{hub.eyebrow}</span>
+            <h1 className="hub-headline">
+              Två discipliner.
+              <br />
+              <span className="g">En vision.</span>
+            </h1>
+            <p className="lead">{hub.lead}</p>
+            <Link href="#arbete" className="btn-ghost-dark">
+              Utforska vårt arbete
+              <Icon name="arrow" strokeWidth={2.4} />
+            </Link>
+          </div>
+
+          <p className="hub-dept-label">Välj en avdelning att utforska</p>
+          <div className="hub-dept-row">
+            {hub.departments.map((d) => (
+              <Link key={d.slug} href={d.href} className={`hub-dept-btn hub-dept-btn--${d.division}`}>
+                <span className="ic">
+                  <Icon name={d.icon} strokeWidth={1.8} />
+                </span>
+                <span className="tx">
+                  <strong>{d.title}</strong>
+                  <span>{d.body.split(" — ")[0].split(".")[0]}</span>
+                </span>
+                <Icon name="arrow" strokeWidth={2.2} className="arrow" />
+              </Link>
+            ))}
           </div>
         </section>
 
-        {/* Stats */}
-        <Reveal as="section" className="section section--alt" variant="scale">
-          <div className="container">
-            <div className="stats-strip">
-              {hub.stats.map((s) => (
-                <div key={s.label}>
-                  <strong>{s.value}</strong>
-                  <span>{s.label}</span>
-                </div>
-              ))}
-            </div>
+        {/* About */}
+        <section className="hub-about">
+          <div className="container hub-about-grid">
+            <Reveal variant="left">
+              <span className="eyebrow">Om Byggly 01</span>
+              <h2>
+                Vi bygger lösningar.
+                <br />
+                Vi bygger <span className="g">förtroende</span>.
+              </h2>
+              <p className="body">{hub.lead}</p>
+              <Link href="/om-oss" className="btn-dark" style={{ display: "inline-flex", alignItems: "center", gap: 9, marginTop: 28 }}>
+                Läs mer om oss
+                <Icon name="arrow" strokeWidth={2.4} />
+              </Link>
+            </Reveal>
+            <Reveal variant="right">
+              <div className="hub-stat-icons">
+                {hub.stats.map((s, i) => (
+                  <div className="s" key={s.label}>
+                    <span className="ic">
+                      <Icon name={STAT_ICONS[i]} strokeWidth={1.9} />
+                    </span>
+                    <div>
+                      <strong>{s.value}</strong>
+                      <span>{s.label}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hub-video-card">
+                <img src={images.projectKitchen} alt="" />
+                <span className="hub-play" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </span>
+              </div>
+            </Reveal>
           </div>
-        </Reveal>
+        </section>
 
         {/* Combined work */}
-        <section className="section" id="arbete">
+        <section className="section section--alt" id="arbete">
           <div className="container">
             <Reveal className="section-head">
               <span className="eyebrow">Vårt arbete</span>
@@ -81,37 +127,35 @@ export default function HubHome() {
           </div>
         </section>
 
-        {/* Values */}
-        <section className="section section--alt">
-          <div className="container">
-            <Reveal className="section-head">
-              <span className="eyebrow">Varför Byggly 01</span>
-              <h2>Samma värderingar, två discipliner</h2>
-            </Reveal>
-            <div className="values-grid reveal-group">
-              {hub.values.map((v) => (
-                <Reveal key={v.title} className="value-card">
-                  <span className="value-card-icon">
-                    <Icon name="check" strokeWidth={2} />
-                  </span>
+        {/* Trust band */}
+        <section className="hub-trust">
+          <div className="container hub-trust-grid">
+            {hub.values.map((v) => (
+              <div className="t" key={v.title}>
+                <span className="ic">
+                  <Icon name="check" strokeWidth={2} />
+                </span>
+                <div>
                   <h3>{v.title}</h3>
                   <p>{v.body}</p>
-                </Reveal>
-              ))}
-            </div>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
-        {/* CTA */}
-        <Reveal as="section" className="cta-banner">
-          <div className="container cta-inner">
-            <h2>Har du ett projekt i åtanke?</h2>
-            <p>Oavsett om det gäller ett hus eller ett system — vi hör gärna av oss.</p>
-            <Link href="/kontakt" className="btn btn-dark">
+        {/* CTA bar */}
+        <div className="hub-cta-bar">
+          <div className="hub-cta-bar-inner">
+            <div>
+              <h2>Har du ett projekt i åtanke?</h2>
+              <p>Oavsett om det gäller ett hus eller ett system — vi hör gärna av oss.</p>
+            </div>
+            <Link href="/kontakt" className="btn btn-primary">
               Kom i kontakt
             </Link>
           </div>
-        </Reveal>
+        </div>
       </main>
 
       <Footer division="hub" />

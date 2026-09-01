@@ -34,7 +34,14 @@ const CTA: Record<Division, { href: string; label: string }> = {
   hub: { href: "/kontakt", label: "Kom i kontakt" },
 };
 
-export default function Header({ division }: { division: Division }) {
+export default function Header({
+  division,
+  dark = false,
+}: {
+  division: Division;
+  /** Force dark/translucent chrome regardless of the division's tokens — for pages with a dark photo hero under the nav (e.g. the hub landing page). */
+  dark?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -49,7 +56,10 @@ export default function Header({ division }: { division: Division }) {
   const cta = CTA[division];
 
   return (
-    <header className={`site-header${scrolled ? " scrolled" : ""}`} id="top">
+    <header
+      className={`site-header${scrolled ? " scrolled" : ""}${dark ? " site-header--dark" : ""}`}
+      id="top"
+    >
       <div className="container header-inner">
         <Link href={home} className="logo" aria-label="Byggly 01 hem">
           <span className="logo-mark" aria-hidden="true">

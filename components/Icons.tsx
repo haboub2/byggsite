@@ -27,6 +27,8 @@ export const iconPaths: Record<string, string> = {
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   code: '<path d="m8 6-6 6 6 6"/><path d="m16 6 6 6-6 6"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
 };
 
 export function Icon({

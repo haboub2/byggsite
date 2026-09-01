@@ -16,4 +16,6 @@ export const images = {
   projectLivingRoom: unsplash("1583847268964-b28dc8f51f92", 900),
   softwareHeroWorkspace: unsplash("1623479322729-28b25c16b011", 1200),
   dashboardScreen: unsplash("1551288049-bebda4e38f71", 900),
+  hubHeroVilla: unsplash("1622015663381-d2e05ae91b72", 1100),
+  hubHeroCode: unsplash("1517134191118-9d595e4c8c2b", 1100),
 };
