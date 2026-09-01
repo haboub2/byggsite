@@ -15,7 +15,7 @@ export default function Footer({ division }: { division: Division }) {
         <div className="footer-brand">
           <Link href={HOME[division]} className="logo" aria-label="Byggly 01 hem">
             <span className="logo-badge">
-              <img src="/brand/logo.png" alt="" />
+              <img src="/brand/logo.svg" alt="" />
             </span>
           </Link>
           <p>

@@ -62,7 +62,7 @@ export default function Header({
       <div className="container header-inner">
         <Link href={home} className="logo" aria-label="Byggly 01 hem">
           <span className="logo-badge">
-            <img src="/brand/logo.png" alt="" />
+            <img src="/brand/logo.svg" alt="" />
           </span>
         </Link>
 
