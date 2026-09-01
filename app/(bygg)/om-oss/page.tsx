@@ -4,6 +4,12 @@ import Reveal from "@/components/Reveal";
 import JsonLd from "@/components/JsonLd";
 import TrustBadges from "@/components/TrustBadges";
 import { SITE_URL } from "@/lib/env";
+import { team } from "@/lib/placeholder";
+
+function initials(name: string) {
+  const parts = name.split(" ");
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`;
+}
 
 export const metadata: Metadata = {
   title: "Om oss",
@@ -47,7 +53,28 @@ export default function OmOss() {
         </div>
       </section>
 
-      <section className="section service-article">
+      <section className="section" id="teamet">
+        <div className="container">
+          <Reveal className="section-head">
+            <span className="eyebrow">Teamet</span>
+            <h2>Vilka vi är</h2>
+            <p>Tre personer, en standard — oavsett om det gäller ett hus eller ett system.</p>
+          </Reveal>
+          <div className="team-grid reveal-group">
+            {team.map((p) => (
+              <Reveal as="div" key={p.name} className="team-card">
+                <span className={`team-avatar team-avatar--${p.division}`} aria-hidden="true">
+                  {initials(p.name)}
+                </span>
+                <h3>{p.name}</h3>
+                <span className="team-role">{p.role}</span>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section section--alt service-article">
         <div className="container service-article">
           <Reveal as="section">
             <h2>Varför två avdelningar</h2>

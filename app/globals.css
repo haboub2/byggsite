@@ -484,6 +484,23 @@ body.has-cursor-glow .cursor-glow {
 .contact-list span { color: var(--muted); font-size: .95rem; }
 .contact-list a:hover { color: var(--accent-strong); }
 
+/* ===== Team ===== */
+.team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+.team-card {
+  text-align: center; padding: 36px 24px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); box-shadow: var(--shadow-sm);
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.team-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); border-color: var(--accent-line); }
+.team-avatar {
+  display: grid; place-items: center; width: 88px; height: 88px; margin: 0 auto 20px;
+  border-radius: 50%; font-family: var(--font-head); font-weight: 700; font-size: 1.6rem; color: #fff;
+}
+.team-avatar--bygg { background: linear-gradient(155deg, var(--bygg), var(--bygg-strong)); box-shadow: 0 10px 26px color-mix(in srgb, var(--bygg) 35%, transparent); }
+.team-avatar--01 { background: linear-gradient(155deg, var(--code), var(--code-strong)); box-shadow: 0 10px 26px color-mix(in srgb, var(--code) 35%, transparent); }
+.team-card h3 { font-size: 1.1rem; }
+.team-role { display: block; color: var(--muted); font-size: .88rem; margin-top: 4px; }
+
 /* ===== Hub: department cards ===== */
 .dept-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
 .dept-card {
@@ -950,7 +967,7 @@ h1.hub-headline .g { color: var(--bygg-on-dark); }
   .hero { padding: 50px 0 60px; }
 }
 @media (max-width: 560px) {
-  .services-grid, .projects-grid, .process-grid, .gallery-grid { grid-template-columns: 1fr; }
+  .services-grid, .projects-grid, .process-grid, .gallery-grid, .team-grid { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
   .form { padding: 22px; }
   .hero-stats { gap: 24px; }

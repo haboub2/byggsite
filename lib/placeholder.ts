@@ -17,6 +17,12 @@ export const site = {
   areasServed: ["Halmstad", "Laholm", "Falkenberg", "Hallands län"],
 };
 
+export const team = [
+  { name: "Ibrahim Al Haboub", role: "Data ingenjör", division: "01" as const },
+  { name: "Abdulmalek Alnajjar", role: "Byggingenjör", division: "bygg" as const },
+  { name: "Mohamed Al Haboub", role: "Byggingenjör", division: "bygg" as const },
+];
+
 export const heroBygg = {
   eyebrow: "Experter på bygg & renovering",
   titleLead: "Vi bygger, renoverar & ",
