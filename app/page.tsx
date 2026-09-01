@@ -18,8 +18,6 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-const STAT_ICONS = ["house", "tools", "grid", "check"];
-
 export default function HubHome() {
   return (
     <div className="division-root" data-division="hub">
@@ -74,46 +72,93 @@ export default function HubHome() {
           </div>
         </section>
 
-        {/* About */}
-        <section className="hub-about">
-          <div className="container hub-about-grid">
-            <Reveal variant="left">
+        {/* Bento: intro, photo, both divisions, stats, featured work, promises — one grid */}
+        <section className="bento-section">
+          <div className="container">
+            <Reveal className="bento-head">
               <span className="eyebrow">Om Byggly 01</span>
-              <h2>
-                Vi bygger lösningar.
-                <br />
-                Vi bygger <span className="g">förtroende</span>.
-              </h2>
-              <p className="body">{hub.lead}</p>
-              <Link href="/om-oss" className="btn-dark" style={{ display: "inline-flex", alignItems: "center", gap: 9, marginTop: 28 }}>
-                Läs mer om oss
-                <Icon name="arrow" strokeWidth={2.4} />
-              </Link>
-              <TrustBadges />
+              <h2>Ett företag, sett från alla vinklar</h2>
+              <p>Två discipliner, samma standard — här är helheten i ett svep.</p>
             </Reveal>
-            <Reveal variant="right">
-              <div className="hub-stat-icons">
-                {hub.stats.map((s, i) => (
-                  <div className="s" key={s.label}>
-                    <span className="ic">
-                      <Icon name={STAT_ICONS[i]} strokeWidth={1.9} />
-                    </span>
-                    <div>
-                      <strong>{s.value}</strong>
-                      <span>{s.label}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="hub-video-card">
+
+            <div className="bento reveal-group">
+              <Reveal as="div" className="tile tile--intro">
+                <div>
+                  <span className="eyebrow" style={{ marginBottom: 0 }}>
+                    Vår historia
+                  </span>
+                  <h3>
+                    Vi bygger lösningar.
+                    <br />
+                    Vi bygger <span className="g">förtroende</span>.
+                  </h3>
+                  <p>{hub.lead}</p>
+                </div>
+                <Link href="/om-oss" className="go">
+                  Läs mer om oss
+                  <Icon name="arrow" strokeWidth={2.4} />
+                </Link>
+              </Reveal>
+
+              <Reveal as="div" className="tile tile--photo">
                 <img src={images.projectKitchen} alt="" />
-                <span className="hub-play" aria-hidden="true">
+                <span className="play" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="currentColor">
                     <path d="M8 5v14l11-7z" />
                   </svg>
                 </span>
-              </div>
-            </Reveal>
+              </Reveal>
+
+              {hub.departments.map((d) => (
+                <Reveal
+                  key={d.slug}
+                  href={d.href}
+                  className={`tile tile--${d.division === "bygg" ? "bygg" : "software"}`}
+                >
+                  <Icon name="arrow-diagonal" strokeWidth={2.4} className="arr" />
+                  <span className="ic">
+                    <Icon name={d.icon} strokeWidth={1.8} />
+                  </span>
+                  <h3>{d.title}</h3>
+                  <p>{d.body.split(" — ")[0].split(".")[0]}</p>
+                </Reveal>
+              ))}
+
+              {hub.stats.map((s) => (
+                <Reveal as="div" key={s.label} className="tile tile--stat">
+                  <strong>{s.value}</strong>
+                  <span>{s.label}</span>
+                </Reveal>
+              ))}
+
+              {combinedWork
+                .filter((w) => w.slug === "radhus-vallas" || w.slug === "byggly01-site")
+                .map((w) => (
+                  <Reveal key={w.slug} href={w.href} className="tile tile--proj">
+                    <img src={w.image} alt="" />
+                    <div className="cap">
+                      <span>{w.division === "bygg" ? "Bygg" : "01"}</span>
+                      <strong>{w.title}</strong>
+                    </div>
+                  </Reveal>
+                ))}
+
+              <Reveal as="div" className="tile tile--values">
+                <span className="eyebrow" style={{ color: "var(--bygg-on-dark)" }}>
+                  Vi lovar
+                </span>
+                <div className="vlist">
+                  {hub.values.map((v) => (
+                    <span className="v" key={v.title}>
+                      <Icon name="check" strokeWidth={2.4} />
+                      {v.body}
+                    </span>
+                  ))}
+                </div>
+              </Reveal>
+            </div>
+
+            <TrustBadges />
           </div>
         </section>
 
@@ -129,29 +174,17 @@ export default function HubHome() {
           </div>
         </section>
 
-        {/* Trust band */}
-        <section className="hub-trust">
-          <div className="container hub-trust-grid">
-            {hub.values.map((v) => (
-              <div className="t" key={v.title}>
-                <span className="ic">
-                  <Icon name="check" strokeWidth={2} />
-                </span>
-                <div>
-                  <h3>{v.title}</h3>
-                  <p>{v.body}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* CTA bar */}
         <div className="hub-cta-bar">
           <div className="hub-cta-bar-inner">
-            <div>
-              <h2>Har du ett projekt i åtanke?</h2>
-              <p>Oavsett om det gäller ett hus eller ett system — vi hör gärna av oss.</p>
+            <div className="l">
+              <span className="ic" aria-hidden="true">
+                <Icon name="house" strokeWidth={1.8} />
+              </span>
+              <div>
+                <h2>Har du ett projekt i åtanke?</h2>
+                <p>Oavsett om det gäller ett hus eller ett system — vi hör gärna av oss.</p>
+              </div>
             </div>
             <Link href="/kontakt" className="btn btn-primary">
               Kom i kontakt

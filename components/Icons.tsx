@@ -29,6 +29,7 @@ export const iconPaths: Record<string, string> = {
   check: '<path d="M20 6 9 17l-5-5"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
+  "arrow-diagonal": '<path d="M7 17 17 7M8 7h9v9"/>',
 };
 
 export function Icon({
