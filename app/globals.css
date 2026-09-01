@@ -600,10 +600,18 @@ body.has-cursor-glow .cursor-glow {
 .hub-pane--right { clip-path: polygon(58% 0, 100% 0, 100% 100%, 42% 100%); }
 .hub-pane--left::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, rgba(6,8,16,.88) 20%, rgba(6,8,16,.55) 70%, transparent 100%); }
 .hub-pane--right::after { content: ""; position: absolute; inset: 0; background: linear-gradient(260deg, rgba(6,8,16,.88) 20%, rgba(6,8,16,.5) 68%, transparent 100%); }
-.hub-seam-line {
-  position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; transform: skewX(-11deg); z-index: 2;
+/* Both bands are clipped with the exact same 58%/42% points as the panes above,
+   so they track the seam exactly at any viewport width — no fixed-angle skew to drift out of sync. */
+.hub-seam-glow {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background: linear-gradient(180deg, var(--code-on-dark), var(--bygg-on-dark));
-  box-shadow: 0 0 24px rgba(143, 176, 255, .5);
+  clip-path: polygon(56.8% 0, 59.2% 0, 43.2% 100%, 40.8% 100%);
+  filter: blur(14px); opacity: .55;
+}
+.hub-seam-line {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(180deg, var(--code-on-dark), var(--bygg-on-dark));
+  clip-path: polygon(57.85% 0, 58.15% 0, 42.15% 100%, 41.85% 100%);
 }
 
 .hub-hero-inner { position: relative; z-index: 3; padding: 96px 22px 0; }
@@ -719,7 +727,7 @@ h1.hub-headline .g { color: var(--bygg-on-dark); }
   .bento > .tile { grid-column: 1 !important; }
   .hub-pane { width: 100%; clip-path: none !important; }
   .hub-pane--left { opacity: .5; }
-  .hub-seam-line { display: none; }
+  .hub-seam-line, .hub-seam-glow { display: none; }
   .hub-dept-row { grid-template-columns: 1fr; }
 }
 

@@ -35,6 +35,7 @@ export default function HubHome() {
               <img src={images.hubHeroVilla} alt="" />
             </div>
           </div>
+          <div className="hub-seam-glow" aria-hidden="true" />
           <div className="hub-seam-line" aria-hidden="true" />
 
           <div className="hub-hero-inner container">
