@@ -30,6 +30,7 @@ export const iconPaths: Record<string, string> = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
   "arrow-diagonal": '<path d="M7 17 17 7M8 7h9v9"/>',
+  sync: '<path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.7-3M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.7 3"/><path d="M21 3v6h-6"/><path d="M3 21v-6h6"/>',
 };
 
 export function Icon({

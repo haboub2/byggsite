@@ -54,6 +54,15 @@ export const softwareAreas: SoftwareArea[] = [
   },
 ];
 
+export const softwareProcess = [
+  { n: "01", title: "Skicka en brief", body: "Berätta kort om läget — vad som kostar tid idag." },
+  { n: "02", title: "Kartläggning & förslag", body: "Vi går igenom flödet och föreslår den smalaste lösningen som faktiskt löser det." },
+  { n: "03", title: "Vi bygger", body: "Kort iterationscykel, tidiga demos, ingen överraskning vid leverans." },
+  { n: "04", title: "Lansering & support", body: "Vi står kvar efter lansering — samma team, inte ett supportkö-nummer." },
+];
+
+export const techStack = ["Next.js", "TypeScript", "Supabase", "PostgreSQL", "Vercel", "Resend"];
+
 export const softwareCases = [
   {
     slug: "byggly-01-sajten",
