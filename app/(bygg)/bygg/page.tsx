@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
-import HeroVisual from "@/components/HeroVisual";
 import CursorGlow from "@/components/CursorGlow";
 import LeadForm from "@/components/LeadForm";
 import JsonLd from "@/components/JsonLd";
@@ -11,7 +10,6 @@ import { images } from "@/lib/images";
 import {
   site,
   heroBygg,
-  trustPoints,
   services,
   processSteps,
   featuredProjects,
@@ -25,6 +23,25 @@ export const metadata: Metadata = {
   alternates: { canonical: "/bygg" },
 };
 
+const featuredSlugs = ["totalrenovering", "badrumsrenovering", "koksrenovering", "tillbyggnad", "golv", "maleri"];
+const highlightServices = featuredSlugs
+  .map((slug) => services.find((s) => s.slug === slug))
+  .filter((s): s is (typeof services)[number] => Boolean(s));
+
+const featureStrip = [
+  { icon: "house", title: "Renovering", body: "Kärnkompetens" },
+  { icon: "tools", title: "Material", body: "Håller länge" },
+  { icon: "clock", title: "I tid", body: "Alltid punktligt" },
+  { icon: "check", title: "Transparent", body: "Alltid tydligt" },
+];
+
+const byggStats = [
+  { icon: "house", value: heroBygg.stats[1].value, label: heroBygg.stats[1].label },
+  { icon: "clock", value: heroBygg.stats[0].value, label: heroBygg.stats[0].label },
+  { icon: "check", value: heroBygg.stats[2].value, label: heroBygg.stats[2].label },
+  { icon: "grid", value: `${services.length}`, label: "Tjänsteområden" },
+];
+
 export default function ByggHome() {
   const tel = `tel:${site.contact.phone}`;
   const mail = `mailto:${site.contact.email}`;
@@ -35,117 +52,159 @@ export default function ByggHome() {
       <CursorGlow />
 
       {/* Hero */}
-      <section className="hero">
-        <div className="container hero-inner">
-          <Reveal className="hero-content" variant="left">
+      <section className="bygg-hero">
+        <div className="container bygg-hero-grid">
+          <Reveal variant="left">
             <span className="eyebrow">{heroBygg.eyebrow}</span>
-            <h1>
+            <h1 className="bygg-hh">
               {heroBygg.titleLead}
-              <span className="hl">{heroBygg.titleHl}</span>
+              <span className="g">{heroBygg.titleHl}</span>
               {heroBygg.titleTail}
             </h1>
-            <p className="lead">{heroBygg.lead}</p>
+            <p className="bygg-hero-lead">{heroBygg.lead}</p>
             <div className="hero-actions">
               <Link href="/offert" className="btn btn-primary">
-                Begär en kostnadsfri offert
-              </Link>
-              <Link href="/tjanster" className="btn btn-ghost">
                 Se våra tjänster
+                <Icon name="arrow" strokeWidth={2.4} />
+              </Link>
+              <Link href="/projekt" className="btn btn-ghost">
+                Se vårt arbete
               </Link>
             </div>
-            <ul className="hero-stats">
-              {heroBygg.stats.map((s) => (
-                <li key={s.label}>
-                  <strong>{s.value}</strong>
-                  <span>{s.label}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="bygg-op-by">
+              <span className="ic">
+                <Icon name="tools" strokeWidth={1.8} />
+              </span>
+              <div>
+                <strong>Certifierat &amp; försäkrat team</strong>
+                <span>F-skatt · ID06 · Ansvarsförsäkring</span>
+              </div>
+            </div>
           </Reveal>
           <Reveal variant="right">
-            <HeroVisual image={images.byggHeroKitchen} />
+            <div className="bygg-hero-photo">
+              <img src={images.byggHeroKitchen} alt="" />
+              <div className="bygg-feature-strip">
+                {featureStrip.map((f) => (
+                  <div className="f" key={f.title}>
+                    <span className="ic">
+                      <Icon name={f.icon} strokeWidth={2} />
+                    </span>
+                    <div>
+                      <strong>{f.title}</strong>
+                      <span>{f.body}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </Reveal>
         </div>
       </section>
 
-      {/* Trust bar */}
-      <Reveal className="trust-bar" variant="scale">
-        <div className="container trust-inner">
-          <span>Anlitade av privatpersoner &amp; företag</span>
-          <div className="trust-points">
-            {trustPoints.map((t) => (
-              <span key={t}>✓ {t}</span>
-            ))}
-          </div>
-        </div>
-      </Reveal>
-
-      {/* Services */}
-      <section className="section" id="tjanster">
-        <div className="container">
-          <Reveal className="section-head">
+      {/* What we do */}
+      <section className="bygg-whatwedo">
+        <div className="container bygg-ww-grid">
+          <Reveal variant="left">
             <span className="eyebrow">Vad vi gör</span>
             <h2>Våra tjänster</h2>
             <p>Bygg och renovering från start till slut, skött av ett dedikerat team.</p>
+            <div className="bygg-svc-grid reveal-group">
+              {highlightServices.map((s) => (
+                <Reveal key={s.slug} className="bygg-svc-card" href={`/tjanster/${s.slug}`}>
+                  <span className="ic">
+                    <Icon name={s.slug} strokeWidth={1.7} />
+                  </span>
+                  <h3>{s.title}</h3>
+                  <p>{s.desc.split(" — ")[0].split(".")[0]}</p>
+                </Reveal>
+              ))}
+            </div>
+            <Link href="/tjanster" className="btn-dark-sm">
+              Alla våra tjänster
+              <Icon name="arrow" strokeWidth={2.4} />
+            </Link>
           </Reveal>
-          <div className="services-grid reveal-group">
-            {services.map((s) => (
-              <Reveal key={s.slug} className="service-card" href={`/tjanster/${s.slug}`}>
-                <div className="service-icon">
-                  <Icon name={s.slug} />
-                </div>
-                <h3>{s.title}</h3>
-                <p>{s.desc}</p>
-              </Reveal>
-            ))}
-          </div>
+
+          <Reveal variant="right">
+            <div className="bygg-ww-head-row">
+              <div>
+                <span className="eyebrow">Vårt senaste arbete</span>
+                <h2>Renoveringsprojekt</h2>
+              </div>
+              <Link href="/projekt">
+                Visa alla
+                <Icon name="arrow" strokeWidth={2.4} />
+              </Link>
+            </div>
+            <div className="bygg-proj-grid reveal-group">
+              {featuredProjects.slice(0, 2).map((p) => (
+                <Reveal key={p.slug} className="bygg-proj-card" href={`/projekt/${p.slug}`}>
+                  <img src={p.image} alt={p.title} loading="lazy" />
+                  <div className="b">
+                    <span>{p.tag}</span>
+                    <h3>{p.title}</h3>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+            <div className="bygg-dots" aria-hidden="true">
+              <span className="on" />
+              <span />
+              <span />
+            </div>
+          </Reveal>
         </div>
       </section>
 
-      {/* Process */}
-      <section className="section section--alt" id="process">
-        <div className="container">
-          <Reveal className="section-head">
-            <span className="eyebrow">Enkelt &amp; transparent</span>
-            <h2>Så funkar det</h2>
-            <p>Från första kontakt till färdigt projekt i fyra tydliga steg.</p>
-          </Reveal>
-          <ol className="process-grid reveal-group">
+      {/* Process + stats split */}
+      <div className="bygg-split">
+        <div className="bygg-split-process">
+          <span className="eyebrow">Vår process</span>
+          <h2>Enkelt &amp; transparent</h2>
+          <ol className="bygg-steps">
             {processSteps.map((p) => (
-              <Reveal as="li" key={p.n} className="process-step">
-                <span className="step-num">{p.n}</span>
+              <li className="bygg-step" key={p.n}>
+                <span className="circle">
+                  <Icon name={p.n === "01" ? "projektledning" : p.n === "02" ? "user" : p.n === "03" ? "tools" : "check"} strokeWidth={1.8} />
+                </span>
+                <span className="n">{p.n}</span>
                 <h3>{p.title}</h3>
                 <p>{p.body}</p>
-              </Reveal>
+              </li>
             ))}
           </ol>
         </div>
-      </section>
-
-      {/* Featured projects */}
-      <section className="section" id="projekt">
-        <div className="container">
-          <Reveal className="section-head">
-            <span className="eyebrow">Vårt arbete</span>
-            <h2>Utvalda projekt</h2>
-            <p>Ett urval av vad vi nyligen byggt och renoverat i Halland.</p>
-          </Reveal>
-          <div className="projects-grid reveal-group">
-            {featuredProjects.map((p) => (
-              <Reveal key={p.slug} className="project-card" href={`/projekt/${p.slug}`}>
-                <div className="project-thumb">
-                  <img src={p.image} alt={p.title} loading="lazy" />
-                </div>
-                <div className="project-body">
-                  <span className="tag">{p.tag}</span>
-                  <h3>{p.title}</h3>
-                  <p>{p.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+        <div className="bygg-split-stats">
+          {byggStats.map((s) => (
+            <div className="bygg-stat" key={s.label}>
+              <span className="ic">
+                <Icon name={s.icon} strokeWidth={1.8} />
+              </span>
+              <strong>{s.value}</strong>
+              <span>{s.label}</span>
+            </div>
+          ))}
         </div>
-      </section>
+      </div>
+
+      {/* CTA band */}
+      <div className="bygg-cta-band">
+        <div className="bygg-cta-inner">
+          <div className="l">
+            <span className="ic">
+              <Icon name="house" strokeWidth={1.8} />
+            </span>
+            <div>
+              <h2>Har du ett projekt i åtanke?</h2>
+              <p>Boka en kostnadsfri konsultation, helt utan förpliktelser.</p>
+            </div>
+          </div>
+          <Link href="/offert" className="btn btn-primary">
+            Boka kostnadsfri konsultation
+          </Link>
+        </div>
+      </div>
 
       {/* Offer */}
       <section className="section section--alt" id="offert">
