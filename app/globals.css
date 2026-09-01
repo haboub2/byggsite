@@ -111,11 +111,7 @@ h1, h2, h3, h4 { font-family: var(--font-head); line-height: 1.12; letter-spacin
   border-bottom-color: rgba(244, 246, 251, .12);
 }
 .site-header--dark.scrolled { background: rgba(11, 14, 24, .94); box-shadow: none; }
-.site-header--dark .logo,
-.site-header--dark .logo-text,
 .site-header--dark .main-nav a:not(.nav-cta) { color: #fff; }
-.site-header--dark .logo-text strong { color: var(--code-on-dark, #8fb0ff); }
-.site-header--dark .logo-mark { background: linear-gradient(135deg, var(--bygg, #24624d), var(--code, #2e6bff)); }
 .site-header--dark .nav-toggle span { background: #fff; }
 
 .logo { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-head); font-size: 1.25rem; font-weight: 600; color: var(--ink); }
@@ -131,6 +127,12 @@ h1, h2, h3, h4 { font-family: var(--font-head); line-height: 1.12; letter-spacin
   color: var(--on-accent);
 }
 .logo-mark svg { width: 22px; height: 22px; }
+.logo-badge {
+  display: inline-flex; align-items: center;
+  background: #fff; border-radius: 10px; padding: 7px 12px;
+  box-shadow: 0 1px 2px rgba(20, 22, 26, .08);
+}
+.logo-badge img { display: block; height: 24px; width: auto; }
 
 .main-nav { display: flex; align-items: center; gap: 30px; }
 .main-nav a { font-weight: 500; font-size: .98rem; color: var(--ink-soft); position: relative; transition: color .2s; }

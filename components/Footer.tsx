@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Icon } from "./Icons";
 import { site } from "@/lib/placeholder";
 
 type Division = "bygg" | "01" | "hub";
@@ -14,12 +13,9 @@ export default function Footer({ division }: { division: Division }) {
     <footer className="site-footer">
       <div className="container footer-inner">
         <div className="footer-brand">
-          <Link href={HOME[division]} className="logo logo--light">
-            <span className="logo-mark" aria-hidden="true">
-              <Icon name="house" strokeWidth={2} />
-            </span>
-            <span className="logo-text">
-              Byggly<strong>&nbsp;01</strong>
+          <Link href={HOME[division]} className="logo" aria-label="Byggly 01 hem">
+            <span className="logo-badge">
+              <img src="/brand/logo.png" alt="" />
             </span>
           </Link>
           <p>

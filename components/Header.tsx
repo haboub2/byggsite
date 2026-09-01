@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Icon } from "./Icons";
 
 type Division = "bygg" | "01" | "hub";
 
@@ -62,11 +61,8 @@ export default function Header({
     >
       <div className="container header-inner">
         <Link href={home} className="logo" aria-label="Byggly 01 hem">
-          <span className="logo-mark" aria-hidden="true">
-            <Icon name="house" strokeWidth={2} />
-          </span>
-          <span className="logo-text">
-            Byggly<strong>&nbsp;01</strong>
+          <span className="logo-badge">
+            <img src="/brand/logo.png" alt="" />
           </span>
         </Link>
 
