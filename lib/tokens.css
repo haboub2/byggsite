@@ -26,6 +26,16 @@
   /* semantic (lane-independent) */
   --danger: #e5484d;
   --success: #16794c;
+
+  /* division colors, always available (used on the hub lane, which sets neither --accent) */
+  --bygg: #24624d;
+  --bygg-strong: #1c4c3b;
+  --bygg-soft: #e7f0ec;
+  --bygg-on-dark: #7fb79f;
+  --code: #2e6bff;
+  --code-strong: #1e4fd6;
+  --code-soft: #e9efff;
+  --code-on-dark: #8fb0ff;
 }
 
 /* ===== Byggly — bygg division (light, Nordic green) ===== */

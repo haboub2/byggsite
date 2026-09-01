@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
 import Analytics from "@/components/Analytics";
 import CookieConsent from "@/components/CookieConsent";
+import MagneticButtons from "@/components/MagneticButtons";
 import { SITE_URL } from "@/lib/env";
 import "./globals.css";
 
@@ -44,6 +45,7 @@ export default function RootLayout({
         {children}
         <CookieConsent />
         <Analytics />
+        <MagneticButtons />
       </body>
     </html>
   );
