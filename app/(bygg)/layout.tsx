@@ -2,6 +2,7 @@ import type { Viewport } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import DivisionSwitcher from "@/components/DivisionSwitcher";
+import StickyCall from "@/components/StickyCall";
 
 export const viewport: Viewport = { themeColor: "#24624d" };
 
@@ -14,6 +15,7 @@ export default function ByggLayout({
       <DivisionSwitcher active="bygg" />
       <main>{children}</main>
       <Footer division="bygg" />
+      <StickyCall />
     </div>
   );
 }

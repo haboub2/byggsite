@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Reveal from "@/components/Reveal";
 import WorkFilter from "@/components/WorkFilter";
+import TrustBadges from "@/components/TrustBadges";
 import JsonLd from "@/components/JsonLd";
 import { Icon } from "@/components/Icons";
 import { websiteJsonLd } from "@/lib/seo";
@@ -88,6 +89,7 @@ export default function HubHome() {
                 Läs mer om oss
                 <Icon name="arrow" strokeWidth={2.4} />
               </Link>
+              <TrustBadges />
             </Reveal>
             <Reveal variant="right">
               <div className="hub-stat-icons">

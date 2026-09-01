@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
+import Analytics from "@/components/Analytics";
+import CookieConsent from "@/components/CookieConsent";
 import { SITE_URL } from "@/lib/env";
 import "./globals.css";
 
@@ -38,7 +40,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="sv" className={`${jakarta.variable} ${grotesk.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <CookieConsent />
+        <Analytics />
+      </body>
     </html>
   );
 }

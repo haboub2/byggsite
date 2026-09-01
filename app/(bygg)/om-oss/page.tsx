@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
-import { Icon } from "@/components/Icons";
 import JsonLd from "@/components/JsonLd";
+import TrustBadges from "@/components/TrustBadges";
 import { SITE_URL } from "@/lib/env";
 
 export const metadata: Metadata = {
@@ -11,13 +11,6 @@ export const metadata: Metadata = {
     "Byggly 01 — ett företag, två avdelningar. Byggly bygger och renoverar hem i Halmstad; 01 bygger mjukvaran.",
   alternates: { canonical: "/om-oss" },
 };
-
-const BADGES = [
-  { icon: "check", label: "F-skatt" },
-  { icon: "check", label: "Ansvarsförsäkring" },
-  { icon: "check", label: "ID06" },
-  { icon: "check", label: "5 års garanti" },
-];
 
 export default function OmOss() {
   return (
@@ -49,14 +42,7 @@ export default function OmOss() {
               resultatet är ett renoverat badrum eller ett internt system som
               sparar timmar varje vecka.
             </p>
-            <div className="trust-badges">
-              {BADGES.map((b) => (
-                <span key={b.label} className="trust-badge">
-                  <Icon name={b.icon} strokeWidth={2.4} />
-                  {b.label}
-                </span>
-              ))}
-            </div>
+            <TrustBadges />
           </Reveal>
         </div>
       </section>

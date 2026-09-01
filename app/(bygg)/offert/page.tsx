@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Reveal from "@/components/Reveal";
 import LeadForm from "@/components/LeadForm";
+import TrustBadges from "@/components/TrustBadges";
 import { site } from "@/lib/placeholder";
 
 export const metadata: Metadata = {
@@ -38,6 +39,7 @@ export default async function OffertPage({
             </a>
             <a href={`mailto:${site.contact.email}`}>{site.contact.email}</a>
           </div>
+          <TrustBadges />
         </Reveal>
         <Reveal variant="right">
           <LeadForm variant="offert" defaultService={tjanst ?? ""} />
