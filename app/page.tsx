@@ -106,16 +106,15 @@ export default function HubHome() {
                 </span>
               </Reveal>
 
-              {hub.departments.map((d) => (
+              {hub.departments.map((d, i) => (
                 <Reveal
                   key={d.slug}
                   href={d.href}
                   className={`tile tile--${d.division === "bygg" ? "bygg" : "software"}`}
                 >
-                  <Icon name="arrow-diagonal" strokeWidth={2.4} className="arr" />
-                  <span className="ic">
-                    <Icon name={d.icon} strokeWidth={1.8} />
-                  </span>
+                  <span className="split" aria-hidden="true" />
+                  <span className="seam" aria-hidden="true" />
+                  <span className="idx">{String(i + 1).padStart(2, "0")}</span>
                   <h3>{d.title}</h3>
                   <p>{d.body.split(" — ")[0].split(".")[0]}</p>
                 </Reveal>

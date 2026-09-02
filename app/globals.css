@@ -679,13 +679,32 @@ h1.hub-headline .g { color: var(--bygg-on-dark); }
 }
 .tile--photo .play svg { width: 17px; height: 17px; color: var(--ink); margin-left: 2px; }
 
-.tile--bygg { grid-column: 4 / 5; grid-row: 1 / 2; background: linear-gradient(155deg, var(--bygg), var(--bygg-strong)); color: #fff; border: none; }
-.tile--software { grid-column: 4 / 5; grid-row: 2 / 3; background: linear-gradient(155deg, var(--code), var(--code-strong)); color: #fff; border: none; }
-.tile--bygg h3, .tile--software h3 { color: #fff; font-size: 1.05rem; margin-top: 8px; }
-.tile--bygg p, .tile--software p { color: rgba(255,255,255,.82); font-size: .78rem; margin-top: 4px; }
-.tile--bygg .ic, .tile--software .ic { width: 34px; height: 34px; border-radius: 9px; background: rgba(255,255,255,.18); display: grid; place-items: center; }
-.tile--bygg .ic svg, .tile--software .ic svg { width: 17px; height: 17px; color: #fff; filter: drop-shadow(0 0 6px rgba(255,255,255,.5)); }
-.tile--bygg .arr, .tile--software .arr { position: absolute; top: 20px; right: 20px; width: 15px; height: 15px; color: rgba(255,255,255,.7); }
+.tile--bygg, .tile--software { grid-column: 4 / 5; color: #fff; border: none; background: var(--dark); }
+.tile--bygg { grid-row: 1 / 2; }
+.tile--software { grid-row: 2 / 3; }
+.tile--bygg h3, .tile--software h3 { position: relative; z-index: 3; color: #fff; font-size: 1.05rem; margin-top: 8px; }
+.tile--bygg p, .tile--software p { position: relative; z-index: 3; color: rgba(255,255,255,.82); font-size: .78rem; margin-top: 4px; }
+.tile--bygg .idx, .tile--software .idx {
+  position: relative; z-index: 3; display: block;
+  font-family: var(--font-head); font-weight: 300; font-size: 1.7rem; color: rgba(255,255,255,.55);
+}
+/* diagonal two-tone fill — echoes the hub hero seam, mesh gradient + grain instead of a flat color */
+.tile--bygg .split, .tile--software .split {
+  position: absolute; inset: 0; z-index: 1; overflow: hidden;
+  clip-path: polygon(38% 0, 100% 0, 100% 100%, 58% 100%);
+}
+.tile--bygg .split { background: radial-gradient(140% 160% at 20% -10%, #3a8f72 0%, transparent 55%), radial-gradient(140% 140% at 100% 120%, #12271f 0%, transparent 60%), linear-gradient(155deg, var(--bygg), var(--bygg-strong)); }
+.tile--software .split { background: radial-gradient(140% 160% at 20% -10%, #6f96ff 0%, transparent 55%), radial-gradient(140% 140% at 100% 120%, #0c1d4a 0%, transparent 60%), linear-gradient(155deg, var(--code), var(--code-strong)); }
+.tile--bygg .split::after, .tile--software .split::after {
+  content: ""; position: absolute; inset: 0; opacity: .5; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.tile--bygg .seam, .tile--software .seam {
+  position: absolute; inset: 0; z-index: 2;
+  clip-path: polygon(37.3% 0, 38.7% 0, 58.7% 100%, 57.3% 100%);
+}
+.tile--bygg .seam { background: var(--bygg-on-dark); }
+.tile--software .seam { background: var(--code-on-dark); }
 
 .tile--stat { grid-row: 3 / 4; display: flex; flex-direction: column; justify-content: center; text-align: center; }
 .tile--stat strong { font-family: var(--font-head); font-size: 2rem; font-weight: 700; }
