@@ -29,10 +29,10 @@ export default function HubHome() {
         <section className="hub-hero">
           <div className="hub-hero-panes">
             <div className="hub-pane hub-pane--left">
-              <img src={images.hubHeroCode} alt="" />
+              <img src={images.hubHeroVilla} alt="" />
             </div>
             <div className="hub-pane hub-pane--right">
-              <img src={images.hubHeroVilla} alt="" />
+              <img src={images.hubHeroCode} alt="" />
             </div>
           </div>
           <div className="hub-seam-glow" aria-hidden="true" />
