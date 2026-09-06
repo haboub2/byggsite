@@ -1,0 +1,86 @@
+/* ===== Design tokens =====
+   Shared tokens on :root. Division layouts set data-division on a wrapper;
+   the accent + surface set is overridden per lane. No raw hex outside this file
+   (except semantic error/success and photo gradients).
+*/
+
+:root {
+  /* text */
+  --ink: #14161a;
+  --ink-soft: #3a3f47;
+  --muted: #6b7280;
+  --line: #e7e8ec;
+
+  /* geometry */
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow-sm: 0 1px 2px rgba(20, 22, 26, .06), 0 2px 8px rgba(20, 22, 26, .05);
+  --shadow-md: 0 10px 30px rgba(20, 22, 26, .10);
+  --shadow-lg: 0 24px 60px rgba(20, 22, 26, .16);
+  --container: 1160px;
+
+  /* type (font family vars are injected by next/font in the root layout) */
+  --font-body: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+  --font-head: var(--font-grotesk), var(--font-body);
+
+  /* semantic (lane-independent) */
+  --danger: #e5484d;
+  --success: #16794c;
+
+  /* division colors, always available (used on the hub lane, which sets neither --accent) */
+  --bygg: #24624d;
+  --bygg-strong: #1c4c3b;
+  --bygg-soft: #e7f0ec;
+  --bygg-on-dark: #7fb79f;
+  --code: #2e6bff;
+  --code-strong: #1e4fd6;
+  --code-soft: #e9efff;
+  --code-on-dark: #8fb0ff;
+}
+
+/* ===== Byggly — bygg division (light, Nordic green) ===== */
+:root,
+[data-division="bygg"] {
+  --accent: #24624d;
+  --accent-strong: #1c4c3b;
+  --accent-soft: #e7f0ec;
+  --accent-line: #c7dcd3;
+  --accent-on-dark: #7fb79f;
+  --sand: #c99a5b;
+  --on-accent: #ffffff;
+
+  --surface: #ffffff;
+  --surface-alt: #f7f7f5;
+  --bg: #ffffff;
+  --bg-alt: #f7f7f5;
+  --dark: #15171c;
+  --dark-2: #1d2026;
+
+  --ink: #14161a;
+  --ink-soft: #3a3f47;
+  --muted: #6b7280;
+  --line: #e7e8ec;
+}
+
+/* ===== 01 — software division (dark, electric blue) ===== */
+[data-division="01"] {
+  --accent: #2e6bff;
+  --accent-strong: #1e4fd6;
+  --accent-soft: #e9efff;
+  --accent-line: #252c42;
+  --accent-on-dark: #8fb0ff;
+  --sand: #c99a5b;
+  --on-accent: #ffffff;
+
+  --surface: #0e1220;
+  --surface-alt: #141a2c;
+  --bg: #0e1220;
+  --bg-alt: #141a2c;
+  --dark: #0b0e18;
+  --dark-2: #141a2c;
+
+  --ink: #f4f6fb;
+  --ink-soft: #c3cad9;
+  --muted: #8a93a8;
+  --line: #252c42;
+}

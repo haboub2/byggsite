@@ -1,19 +1,32 @@
 {
-  "name": "nordbygg",
+  "name": "byggly",
   "version": "1.0.0",
-  "description": "NordBygg — bygg & renovering website with email-enabled contact and offer forms",
-  "type": "module",
-  "main": "server.js",
+  "private": true,
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:seed": "tsx supabase/seed.ts",
+    "db:types": "supabase gen types typescript --local > lib/database.types.ts"
   },
   "dependencies": {
-    "compression": "^1.7.4",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "express-rate-limit": "^7.4.0",
-    "multer": "^1.4.5-lts.1",
-    "nodemailer": "^6.9.14"
+    "@next/third-parties": "16.3.3",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.45.4",
+    "next": "16.3.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "resend": "^4.0.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
   }
 }

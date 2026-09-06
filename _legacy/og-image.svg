@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d2026"/>
+      <stop offset="1" stop-color="#14161a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1040" cy="-40" r="320" fill="#24624d" opacity="0.22"/>
+  <circle cx="120" cy="660" r="260" fill="#24624d" opacity="0.14"/>
+
+  <!-- Logo -->
+  <g transform="translate(90 86)">
+    <rect width="84" height="84" rx="20" fill="#24624d"/>
+    <g transform="translate(18 18)" fill="none" stroke="#ffffff" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 44h40"/>
+      <path d="M9 44V18l15-10 15 10v26"/>
+      <path d="M19 44V31h10v13"/>
+    </g>
+    <text x="108" y="56" font-family="'Space Grotesk',Arial,sans-serif" font-size="46" font-weight="700" fill="#ffffff">Byggly<tspan fill="#7fb79f">&#160;01</tspan></text>
+  </g>
+
+  <!-- Headline -->
+  <text x="90" y="300" font-family="'Space Grotesk',Arial,sans-serif" font-size="78" font-weight="700" fill="#ffffff">Bygg &amp; Renovering</text>
+  <text x="90" y="392" font-family="'Space Grotesk',Arial,sans-serif" font-size="78" font-weight="700" fill="#7fb79f">i Halmstad</text>
+
+  <!-- Subline -->
+  <text x="92" y="462" font-family="Arial,sans-serif" font-size="32" fill="#c9cdd4">Totalrenovering · Badrum · Kök · Tillbyggnad · Tak</text>
+
+  <!-- Pills -->
+  <g font-family="'Space Grotesk',Arial,sans-serif" font-size="26" font-weight="600">
+    <rect x="90" y="512" width="232" height="58" rx="29" fill="#24624d"/>
+    <text x="206" y="550" fill="#ffffff" text-anchor="middle">Kostnadsfri offert</text>
+    <rect x="338" y="512" width="190" height="58" rx="29" fill="none" stroke="#3a3f47" stroke-width="2"/>
+    <text x="433" y="550" fill="#ffffff" text-anchor="middle">5 års garanti</text>
+  </g>
+</svg>
