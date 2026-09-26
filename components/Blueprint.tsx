@@ -15,7 +15,7 @@ export default function Blueprint({
   className?: string;
 }) {
   return (
-    <figure className={`bp ${className}`.trim()}>
+    <figure className={`bp ${className}`.trim()} data-motion="draw">
       <div className="bp-frame">
         {children}
         <span className="bp-corner bp-corner--tr" aria-hidden="true" />

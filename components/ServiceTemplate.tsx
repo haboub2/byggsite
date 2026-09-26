@@ -5,6 +5,7 @@ import { Icon } from "./Icons";
 import { Stats, SectionHead, Steps, Faq, Bridge, CtaBand, Checklist } from "./Sections";
 import { SIDES, type Side } from "@/lib/sides";
 import { serviceImage } from "@/lib/images";
+import { projectsReady } from "@/lib/projects";
 
 type Work = { href: string; image: string; tag: string; title: string; desc: string };
 
@@ -44,6 +45,8 @@ export default function ServiceTemplate({
 }) {
   const cfg = SIDES[side];
   const base = side === "bygg" ? "/bygg" : "/mjukvara";
+  const secondary =
+    side === "bygg" && !projectsReady() ? { label: "Alla tjänster", href: "/bygg/tjanster" } : cfg.heroSecondary;
 
   return (
     <>
@@ -64,8 +67,8 @@ export default function ServiceTemplate({
           {cta.label}
           <Icon name="arrow" strokeWidth={2} />
         </Link>
-        <Link href={cfg.heroSecondary.href} className="link-quiet">
-          {cfg.heroSecondary.label}
+        <Link href={secondary.href} className="link-quiet">
+          {secondary.label}
         </Link>
       </PageHero>
 

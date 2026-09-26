@@ -14,6 +14,7 @@ export default function Photo({
   preload = false,
   alt,
   className = "",
+  curtain = true,
 }: {
   slot: string;
   ratio?: string;
@@ -22,12 +23,18 @@ export default function Photo({
   preload?: boolean;
   alt?: string;
   className?: string;
+  /** Reveal the photo behind a curtain the first time it scrolls into view. */
+  curtain?: boolean;
 }) {
   const src = resolveImage(slot);
   const classes = `photo${tone === "dark" ? " photo--dark" : ""} ${className}`.trim();
 
   return (
-    <div className={classes} style={{ "--ratio": ratio } as React.CSSProperties}>
+    <div
+      className={classes}
+      style={{ "--ratio": ratio } as React.CSSProperties}
+      data-motion={src && curtain ? "curtain" : undefined}
+    >
       {src ? (
         <Image
           src={src}

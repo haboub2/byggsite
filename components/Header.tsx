@@ -12,7 +12,7 @@ const SHARED_NAV = [
   { label: "Kontakt", href: "/kontakt" },
 ];
 
-export default function Header() {
+export default function Header({ showProjects = false }: { showProjects?: boolean }) {
   const pathname = usePathname();
   const side = sideFromPath(pathname);
   const [open, setOpen] = useState(false);
@@ -32,7 +32,7 @@ export default function Header() {
   }, [open]);
 
   const cfg = side ? SIDES[side] : null;
-  const nav = cfg ? cfg.nav : SHARED_NAV;
+  const nav = (cfg ? cfg.nav : SHARED_NAV).filter((n) => showProjects || n.href !== "/bygg/projekt");
   const cta = cfg ? cfg.cta : { label: "Kontakta oss", href: "/kontakt" };
   const isCurrent = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
@@ -46,7 +46,7 @@ export default function Header() {
 
         <nav className="side-marker" aria-label="Välj verksamhet">
           <Link
-            href={counterpartPath(pathname, "bygg")}
+            href={counterpartPath(pathname, "bygg", showProjects)}
             aria-current={side === "bygg" ? "true" : undefined}
           >
             Bygg

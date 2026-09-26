@@ -7,6 +7,7 @@ import Reveal from "@/components/Reveal";
 import { Icon } from "@/components/Icons";
 import { SectionHead, CtaBand } from "@/components/Sections";
 import { organizationJsonLd } from "@/lib/seo";
+import { hasImage } from "@/lib/images";
 import { team, values, trustPoints } from "@/lib/placeholder";
 
 export const metadata: Metadata = {
@@ -15,6 +16,11 @@ export const metadata: Metadata = {
     "Binaafy är ett företag med två verksamheter: vi bygger och renoverar hem i Halmstad, och vi bygger system som tar bort dubbelarbete.",
   alternates: { canonical: "/om-oss" },
 };
+
+function initials(name: string) {
+  const parts = name.split(" ");
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`;
+}
 
 const STORY = [
   {
@@ -60,7 +66,13 @@ export default function AboutPage() {
           <div className="team reveal-group">
             {team.map((p) => (
               <Reveal key={p.name} className="team-card">
-                <Photo slot={p.image} ratio="4 / 5" sizes="(max-width: 480px) 100vw, 33vw" alt={p.name} />
+                {hasImage(p.image) ? (
+                  <Photo slot={p.image} ratio="4 / 5" sizes="(max-width: 480px) 100vw, 33vw" alt={p.name} />
+                ) : (
+                  <div className="monogram" aria-hidden="true">
+                    {initials(p.name)}
+                  </div>
+                )}
                 <span className="team-side">{p.division === "bygg" ? "Bygg" : "Software"}</span>
                 <h3>{p.name}</h3>
                 <span className="team-role">{p.role}</span>

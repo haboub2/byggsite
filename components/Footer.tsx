@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { site, services } from "@/lib/placeholder";
 import { softwareAreas } from "@/lib/software-content";
+import { projectsReady } from "@/lib/projects";
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -36,7 +37,7 @@ export default function Footer() {
         <div className="ftr-col">
           <h4>Företaget</h4>
           <Link href="/om-oss">Om oss</Link>
-          <Link href="/bygg/projekt">Projekt</Link>
+          {projectsReady() && <Link href="/bygg/projekt">Projekt</Link>}
           <Link href="/kontakt">Kontakt</Link>
           <Link href="/bygg/offert">Begär offert</Link>
           <Link href="/mjukvara/brief">Skicka brief</Link>

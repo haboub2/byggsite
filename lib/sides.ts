@@ -19,6 +19,8 @@ export type SideConfig = {
   hero: { image: string; dimV: string; dimH: string; caption: string };
   register: { eyebrow: string; title: string; aside: string };
   work: { eyebrow: string; title: string; all: Link };
+  craft: { title: string; body: string; images: { slot: string; caption: string }[] };
+  band: { slot: string; statement: string; caption: string };
   bridge: { title: string; body: string; link: Link; icon: string };
   closing: { eyebrow: string; title: string; body: string };
 };
@@ -46,6 +48,20 @@ export const SIDES: Record<Side, SideConfig> = {
       aside: "Välj en rad för att läsa mer. Allt görs av samma team, under samma projektansvar.",
     },
     work: { eyebrow: "Utvalda projekt", title: "Nyligen byggt i Halland.", all: { label: "Alla projekt", href: "/bygg/projekt" } },
+    craft: {
+      title: "Detaljerna ingen ser — förrän de saknas.",
+      body: "Ett golv som ligger rakt, en fog som håller tätt, en list som möter väggen utan glipa. Det är där skillnaden syns efter tio år, och det är där vi lägger tiden.",
+      images: [
+        { slot: "detail-pencil", caption: "Mät två gånger" },
+        { slot: "detail-chisel", caption: "Anpassa på plats" },
+        { slot: "detail-timber", caption: "Rätt material" },
+      ],
+    },
+    band: {
+      slot: "band-bygg",
+      statement: "Vi bygger för hur Halland ser ut i november — inte bara i juli.",
+      caption: "Vind, salt och fukt. Västkustens villkor.",
+    },
     bridge: {
       title: "Driver du själv ett byggföretag?",
       body: "Samma team bygger webb, automation och interna verktyg — med en byggares blick för hur en arbetsdag faktiskt ser ut.",
@@ -80,6 +96,20 @@ export const SIDES: Record<Side, SideConfig> = {
       aside: "Vi väljer aldrig teknik för teknikens skull. Varje uppdrag börjar med vad som kostar tid idag.",
     },
     work: { eyebrow: "Case", title: "Byggt och i drift.", all: { label: "Alla case", href: "/mjukvara/case" } },
+    craft: {
+      title: "Systemen ingen märker — förrän de slutar fungera.",
+      body: "Rätt behörigheter, larm som går till rätt person, data som stämmer mellan systemen. Det syns inte i en demo, men det är det ni märker efter ett år.",
+      images: [
+        { slot: "detail-sketch", caption: "Skissa först" },
+        { slot: "detail-dashboard", caption: "Mät det som spelar roll" },
+        { slot: "automation-hero", caption: "Koppla ihop" },
+      ],
+    },
+    band: {
+      slot: "band-software",
+      statement: "Det ni inte ser är det som gör att allt fungerar.",
+      caption: "Integrationer, larm och backup. Inbyggt från start.",
+    },
     bridge: {
       title: "Byggt av folk som bygger.",
       body: "Vår andra halva renoverar hus i Halmstad. Vi vet hur en arbetsdag på bygget ser ut — och vad ett system måste klara där.",
@@ -102,7 +132,7 @@ export function sideFromPath(pathname: string): Side | null {
 }
 
 /** Where the side marker should send you: the matching section on the other side. */
-export function counterpartPath(pathname: string, target: Side): string {
+export function counterpartPath(pathname: string, target: Side, projects = true): string {
   const from = sideFromPath(pathname);
   if (from === target) return pathname;
   const section = pathname.split("/")[2];
@@ -113,7 +143,7 @@ export function counterpartPath(pathname: string, target: Side): string {
     return "/mjukvara";
   }
   if (section === "tjanster") return "/bygg/tjanster";
-  if (section === "case") return "/bygg/projekt";
+  if (section === "case") return projects ? "/bygg/projekt" : "/";
   if (section === "brief") return "/bygg/offert";
   return "/";
 }

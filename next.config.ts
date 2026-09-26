@@ -2,8 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  // Phase 2: add Supabase Storage host here for next/image
-  // images: { remotePatterns: [{ protocol: "https", hostname: "<project-ref>.supabase.co" }] },
+  // Stock mood photography (lib/images.ts). Phase 2: add the Supabase Storage host too.
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com", pathname: "/photo-*" }],
+  },
 
   // URLs from the Byggly 01 structure, so old links and bookmarks keep working.
   async redirects() {

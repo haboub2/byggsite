@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
 import ServiceTemplate from "@/components/ServiceTemplate";
 import Reveal from "@/components/Reveal";
+import { ServicePricing } from "@/components/Pricing";
 import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import { services, processSteps, featuredProjects } from "@/lib/placeholder";
 import { servicesContent, serviceExtras } from "@/lib/services-content";
+import { hasImage } from "@/lib/images";
 
 export function generateStaticParams() {
   return services.map((s) => ({ slug: s.slug }));
@@ -38,7 +40,8 @@ export default async function ByggServicePage({
   const extras = serviceExtras[slug];
   if (!svc || !content || !extras) notFound();
 
-  const project = featuredProjects.find((p) => p.service === slug);
+  // Only link a project once it has real photos.
+  const project = featuredProjects.find((p) => p.service === slug && hasImage(p.image));
   const offertHref = `/bygg/offert?tjanst=${encodeURIComponent(svc.title)}`;
 
   return (
@@ -96,6 +99,7 @@ export default async function ByggServicePage({
             </div>
           </div>
         </section>
+        <ServicePricing slug={slug} />
       </ServiceTemplate>
     </>
   );

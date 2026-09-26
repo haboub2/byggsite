@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/env";
 import { services, featuredProjects } from "@/lib/placeholder";
 import { softwareAreas, softwareCases } from "@/lib/software-content";
+import { projectsReady } from "@/lib/projects";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
@@ -20,8 +21,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/", 1, "weekly"),
     entry("/bygg/tjanster", 0.9, "weekly"),
     ...services.map((s) => entry(`/bygg/tjanster/${s.slug}`, 0.9)),
-    entry("/bygg/projekt", 0.7, "weekly"),
-    ...featuredProjects.map((p) => entry(`/bygg/projekt/${p.slug}`, 0.6)),
+    ...(projectsReady()
+      ? [entry("/bygg/projekt", 0.7, "weekly"), ...featuredProjects.map((p) => entry(`/bygg/projekt/${p.slug}`, 0.6))]
+      : []),
     entry("/bygg/offert", 0.8),
     entry("/mjukvara", 0.8, "monthly"),
     entry("/mjukvara/tjanster", 0.7),

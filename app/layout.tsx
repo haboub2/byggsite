@@ -34,8 +34,10 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="sv" className={jakarta.variable}>
+    <html lang="sv" className={jakarta.variable} suppressHydrationWarning>
       <body>
+        {/* Before first paint: lets CSS hide what the entrance animations will reveal. */}
+        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
         {children}
         <CookieConsent />
         <Analytics />

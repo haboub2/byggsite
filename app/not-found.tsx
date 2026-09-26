@@ -2,11 +2,12 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Icon } from "@/components/Icons";
+import { projectsReady } from "@/lib/projects";
 
 export default function NotFound() {
   return (
     <>
-      <Header />
+      <Header showProjects={projectsReady()} />
       <main id="main">
         <section className="phero phero--text" style={{ minHeight: "60vh", display: "flex", alignItems: "center" }}>
           <div className="container">
