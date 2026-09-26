@@ -3,17 +3,19 @@ import Footer from "@/components/Footer";
 import StickyCall from "@/components/StickyCall";
 import Motion from "@/components/Motion";
 import { projectsReady } from "@/lib/projects";
+import { getContent } from "@/lib/content/store";
 
-export default function SiteLayout({
+export default async function SiteLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const { company } = await getContent();
   return (
     <>
       <a href="#main" className="skip-link">Hoppa till innehållet</a>
       <Header showProjects={projectsReady()} />
       <main id="main">{children}</main>
       <Footer />
-      <StickyCall />
+      <StickyCall phone={company.phone} />
       <Motion />
     </>
   );

@@ -5,6 +5,7 @@ import ServiceTemplate from "@/components/ServiceTemplate";
 import { Checklist } from "@/components/Sections";
 import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 import { ogImage, serviceImage } from "@/lib/images";
+import { getContent } from "@/lib/content/store";
 import { softwareAreas, softwareProcess, softwareCases } from "@/lib/software-content";
 
 export function generateStaticParams() {
@@ -36,6 +37,7 @@ export default async function SoftwareServicePage({
   const index = softwareAreas.findIndex((a) => a.slug === slug);
   const area = softwareAreas[index];
   if (!area) notFound();
+  const { company } = await getContent();
 
   const kase = slug === "webb" ? softwareCases[0] : undefined;
   const briefHref = `/mjukvara/brief?typ=${encodeURIComponent(area.title)}`;
@@ -45,6 +47,7 @@ export default async function SoftwareServicePage({
       <JsonLd
         data={[
           serviceJsonLd({
+            company,
             path: `/mjukvara/tjanster/${slug}`,
             title: area.seo.title,
             description: area.body,

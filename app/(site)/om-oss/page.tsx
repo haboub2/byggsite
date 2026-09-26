@@ -9,6 +9,7 @@ import { SectionHead, CtaBand } from "@/components/Sections";
 import { breadcrumbJsonLd, pageMetadata, abs } from "@/lib/seo";
 import { hasImage, ogImage } from "@/lib/images";
 import { team, values, trustPoints } from "@/lib/placeholder";
+import { getContent } from "@/lib/content/store";
 
 export const metadata: Metadata = pageMetadata({
   title: "Om Binaafy — bygg och mjukvara i Halmstad",
@@ -38,7 +39,10 @@ const STORY = [
   },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const { warranty } = await getContent();
+  // The warranty chip follows the Bygg warranty set in /admin.
+  const trust = [...trustPoints.filter((t) => !t.includes("garanti")), `Garanti ${warranty.bygg.short}`];
   return (
     <>
       <JsonLd
@@ -100,7 +104,7 @@ export default function AboutPage() {
             <span className="eyebrow">Historien</span>
             <h2>Samma hantverkstänk, två discipliner.</h2>
             <div className="trust">
-              {trustPoints.map((t) => (
+              {trust.map((t) => (
                 <span key={t}>
                   <Icon name="check" strokeWidth={2.2} />
                   {t}

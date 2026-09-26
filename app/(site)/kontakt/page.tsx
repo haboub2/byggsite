@@ -3,31 +3,35 @@ import FormPage from "@/components/FormPage";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbJsonLd, pageMetadata, abs } from "@/lib/seo";
 import { Icon } from "@/components/Icons";
-import { site } from "@/lib/placeholder";
+import { getContent } from "@/lib/content/store";
 
-export const metadata: Metadata = pageMetadata({
-  title: "Kontakta Binaafy i Halmstad",
-  description: `Kontakta Binaafy i Halmstad om bygg, renovering eller mjukvara. Ring ${site.contact.phoneDisplay} eller mejla ${site.contact.email}. Vardagar 07–16.`,
-  path: "/kontakt",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const { company } = await getContent();
+  return pageMetadata({
+    title: "Kontakta Binaafy i Halmstad",
+    description: `Kontakta Binaafy i Halmstad om bygg, renovering eller mjukvara. Ring ${company.phoneDisplay} eller mejla ${company.email}. ${company.hours}.`,
+    path: "/kontakt",
+  });
+}
 
-export default function KontaktPage() {
+export default async function KontaktPage() {
+  const { company } = await getContent();
   const rows = [
-    { icon: "user", label: "Kontaktperson", value: site.contact.person },
+    { icon: "user", label: "Kontaktperson", value: company.contactPerson },
     {
       icon: "phone",
       label: "Ring oss",
-      value: site.contact.phoneDisplay,
-      href: `tel:${site.contact.phone}`,
+      value: company.phoneDisplay,
+      href: `tel:${company.phone}`,
     },
     {
       icon: "mail",
       label: "Mejla oss",
-      value: site.contact.email,
-      href: `mailto:${site.contact.email}`,
+      value: company.email,
+      href: `mailto:${company.email}`,
     },
-    { icon: "pin", label: "Besök oss", value: site.contact.address },
-    { icon: "clock", label: "Öppettider", value: site.contact.hours },
+    { icon: "pin", label: "Besök oss", value: `${company.street}, ${company.postalCode} ${company.city}` },
+    { icon: "clock", label: "Öppettider", value: company.hours },
   ];
 
   return (

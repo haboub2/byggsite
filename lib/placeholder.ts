@@ -55,7 +55,7 @@ export const processSteps = [
   { n: "01", title: "Förfrågan", body: "Berätta om ditt projekt i formuläret. Det tar två minuter." },
   { n: "02", title: "Hembesök", body: "Vi mäter, lyssnar och tar fram en specificerad offert. Kostnadsfritt." },
   { n: "03", title: "Bygget", body: "Ett dedikerat team, tydliga delmål och veckovis avstämning." },
-  { n: "04", title: "Överlämning", body: "Slutbesiktning, städning och 5 års garanti på hantverket." },
+  { n: "04", title: "Överlämning", body: "Slutbesiktning, städning och {garanti}." },
 ];
 
 /** Placeholder projects: replace with real jobs and real photos before launch. */
@@ -91,6 +91,6 @@ export const faq = [
   { q: "Vilka områden arbetar ni i?", a: "Vi utför bygg- och renoveringsprojekt i Halmstad med omnejd, inklusive Laholm, Falkenberg och övriga Hallands län." },
   { q: "Kan jag använda ROT-avdrag?", a: "Ja, för de flesta renoverings- och byggarbeten i hemmet kan du nyttja ROT-avdraget på arbetskostnaden. Vi hjälper dig med uppgifterna och drar av direkt på fakturan." },
   { q: "Hur lång tid tar ett projekt?", a: "Det beror på omfattningen. Ett badrum tar ofta 3–5 veckor, medan en totalrenovering kan ta flera månader. Du får en tydlig tidplan i offerten." },
-  { q: "Lämnar ni garanti på arbetet?", a: "Ja, vi lämnar 5 års garanti på vårt hantverk. Vi är dessutom licensierade och försäkrade för din trygghet." },
+  { q: "Lämnar ni garanti på arbetet?", a: "Ja, vi lämnar {garanti}. Vi är dessutom licensierade och försäkrade för din trygghet." },
   { q: "Vad kostar en renovering?", a: "Priset styrs av material, ytor och arbetets omfattning. Vi arbetar med fast pris och specificerad offert så att du vet exakt vad det kostar innan vi börjar — inga dolda kostnader." },
 ];

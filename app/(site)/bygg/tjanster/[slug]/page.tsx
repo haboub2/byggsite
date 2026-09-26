@@ -8,6 +8,8 @@ import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd, pageMetadata } from "@/lib/
 import { services, processSteps, featuredProjects } from "@/lib/placeholder";
 import { servicesContent, serviceExtras, serviceSeo } from "@/lib/services-content";
 import { hasImage, ogImage, serviceImage } from "@/lib/images";
+import { getContent } from "@/lib/content/store";
+import { fillWarranty } from "@/lib/content/schema";
 
 export function generateStaticParams() {
   return services.map((s) => ({ slug: s.slug }));
@@ -22,9 +24,11 @@ export async function generateMetadata({
   const svc = services.find((s) => s.slug === slug);
   const seo = serviceSeo[slug];
   if (!svc || !seo) return {};
+  const { warranty } = await getContent();
+  const w = warranty.services[slug] ?? warranty.bygg;
   return pageMetadata({
     title: seo.title,
-    description: seo.description,
+    description: fillWarranty(seo.description, w),
     path: `/bygg/tjanster/${slug}`,
     image: ogImage(serviceImage[slug]),
   });
@@ -38,9 +42,18 @@ export default async function ByggServicePage({
   const { slug } = await params;
   const index = services.findIndex((s) => s.slug === slug);
   const svc = services[index];
-  const content = servicesContent[slug];
+  const raw = servicesContent[slug];
   const extras = serviceExtras[slug];
-  if (!svc || !content || !extras) notFound();
+  if (!svc || !raw || !extras) notFound();
+
+  // Texts can say {garanti}; fill in this service's warranty from the store.
+  const { company, warranty } = await getContent();
+  const w = warranty.services[slug] ?? warranty.bygg;
+  const content = {
+    lead: fillWarranty(raw.lead, w),
+    sections: raw.sections.map((sec) => ({ ...sec, body: fillWarranty(sec.body, w) })),
+    faq: raw.faq.map((f) => ({ ...f, a: fillWarranty(f.a, w) })),
+  };
 
   // Only link a project once it has real photos.
   const project = featuredProjects.find((p) => p.service === slug && hasImage(p.image));
@@ -51,6 +64,7 @@ export default async function ByggServicePage({
       <JsonLd
         data={[
           serviceJsonLd({
+            company,
             path: `/bygg/tjanster/${slug}`,
             title: serviceSeo[slug]?.title ?? svc.title,
             description: content.lead,

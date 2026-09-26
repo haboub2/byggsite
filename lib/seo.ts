@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "./env";
 import { site, services } from "./placeholder";
+import type { Company, Warranty } from "./content/schema";
 import { softwareAreas } from "./software-content";
 
 /**
@@ -18,25 +19,26 @@ const ORG = { "@id": abs("/#org") };
 const BYGG = { "@id": abs("/#business") };
 const SOFTWARE = { "@id": abs("/#software") };
 
-const areasServed = site.areasServed.map((name) => ({ "@type": "AdministrativeArea", name }));
+/* Company details come from the content store (editable in /admin). */
+const areasServed = (c: Company) => c.areasServed.map((name) => ({ "@type": "AdministrativeArea", name }));
 
-const address = {
+const address = (c: Company) => ({
   "@type": "PostalAddress",
-  streetAddress: "Montörgatan 7",
-  postalCode: "302 62",
-  addressLocality: "Halmstad",
+  streetAddress: c.street,
+  postalCode: c.postalCode,
+  addressLocality: c.city,
   addressRegion: "Hallands län",
   addressCountry: "SE",
-};
+});
 
-const contactPoint = {
+const contactPoint = (c: Company) => ({
   "@type": "ContactPoint",
-  telephone: site.contact.phone,
-  email: site.contact.email,
+  telephone: c.phone,
+  email: c.email,
   contactType: "customer service",
   areaServed: "SE",
   availableLanguage: ["Swedish", "English"],
-};
+});
 
 /**
  * Page metadata with canonical URL, Open Graph and Twitter card. Next merges
@@ -87,24 +89,25 @@ export function pageMetadata({
 }
 
 /** The company. Rendered on every page from the root layout. */
-export function organizationJsonLd() {
+export function organizationJsonLd(c: Company) {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
     ...ORG,
     name: site.brand,
-    legalName: site.legalName,
+    legalName: c.legalName,
+    ...(c.orgNr && { taxID: c.orgNr }),
     url: abs("/"),
     logo: { "@type": "ImageObject", url: abs("/brand/binaafy-logo.png"), width: 1200, height: 406 },
     image: abs("/brand/binaafy-mark.png"),
     description:
       "Binaafy är ett företag i Halmstad med två verksamheter: bygg och renovering av hem i Halland, och mjukvara — webb, automation och interna system — för företag i hela Sverige.",
     foundingDate: "2026",
-    email: site.contact.email,
-    telephone: site.contact.phone,
-    address,
-    contactPoint,
-    areaServed: [...areasServed, { "@type": "Country", name: "Sverige" }],
+    email: c.email,
+    telephone: c.phone,
+    address: address(c),
+    contactPoint: contactPoint(c),
+    areaServed: [...areasServed(c), { "@type": "Country", name: "Sverige" }],
     knowsLanguage: ["sv", "en"],
     department: [BYGG, SOFTWARE],
   };
@@ -123,7 +126,7 @@ export function websiteJsonLd() {
 }
 
 /** The construction department as a local business. */
-export function businessJsonLd() {
+export function businessJsonLd(c: Company, w: Warranty) {
   return {
     "@context": "https://schema.org",
     "@type": ["HomeAndConstructionBusiness", "GeneralContractor"],
@@ -131,19 +134,19 @@ export function businessJsonLd() {
     name: `${site.brand} Bygg`,
     parentOrganization: ORG,
     description:
-      "Bygg- och renoveringsfirma i Halmstad: totalrenovering, badrum, kök, tillbyggnad, tak, golv, måleri samt el och VVS. Kostnadsfri offert, fast pris, ROT-avdrag på fakturan och 5 års garanti.",
+      "Bygg- och renoveringsfirma i Halmstad: totalrenovering, badrum, kök, tillbyggnad, tak, golv, måleri samt el och VVS. Kostnadsfri offert, fast pris, ROT-avdrag på fakturan och " + w.sentence + ".",
     url: abs("/"),
     image: abs("/opengraph-image.png"),
     logo: abs("/brand/binaafy-mark.png"),
-    telephone: site.contact.phone,
-    email: site.contact.email,
+    telephone: c.phone,
+    email: c.email,
     priceRange: "$$",
     currenciesAccepted: "SEK",
     paymentAccepted: "Faktura, Kort, Swish",
-    address,
+    address: address(c),
     geo: { "@type": "GeoCoordinates", latitude: 56.6597, longitude: 12.8569 },
-    areaServed: areasServed,
-    contactPoint,
+    areaServed: areasServed(c),
+    contactPoint: contactPoint(c),
     openingHoursSpecification: [
       {
         "@type": "OpeningHoursSpecification",
@@ -164,7 +167,7 @@ export function businessJsonLd() {
 }
 
 /** The software department. */
-export function softwareJsonLd() {
+export function softwareJsonLd(c: Company) {
   return {
     "@context": "https://schema.org",
     "@type": "ProfessionalService",
@@ -176,9 +179,9 @@ export function softwareJsonLd() {
     url: abs("/mjukvara"),
     image: abs("/opengraph-image.png"),
     logo: abs("/brand/binaafy-mark.png"),
-    telephone: site.contact.phone,
-    email: site.contact.email,
-    address,
+    telephone: c.phone,
+    email: c.email,
+    address: address(c),
     areaServed: { "@type": "Country", name: "Sverige" },
     knowsLanguage: ["sv", "en"],
     hasOfferCatalog: {
@@ -198,7 +201,9 @@ export function serviceJsonLd({
   description,
   provider,
   image,
+  company,
 }: {
+  company: Company;
   path: string;
   title: string;
   description: string;
@@ -213,7 +218,7 @@ export function serviceJsonLd({
     name: title,
     description,
     provider: provider === "bygg" ? BYGG : SOFTWARE,
-    areaServed: provider === "bygg" ? areasServed : { "@type": "Country", name: "Sverige" },
+    areaServed: provider === "bygg" ? areasServed(company) : { "@type": "Country", name: "Sverige" },
     url: abs(path),
     ...(image && { image }),
   };

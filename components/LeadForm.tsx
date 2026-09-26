@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { site, services } from "@/lib/placeholder";
+import { services } from "@/lib/placeholder";
 import { softwareAreas } from "@/lib/software-content";
 import { HONEYPOT } from "@/lib/schema";
 
@@ -35,9 +35,12 @@ const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function LeadForm({
   variant,
   defaultService = "",
+  contact,
 }: {
   variant: Variant;
   defaultService?: string;
+  /** Shown as the fallback when sending fails. */
+  contact: { phoneDisplay: string; email: string };
 }) {
   const cfg = CONFIG[variant];
   const [busy, setBusy] = useState(false);
@@ -91,7 +94,7 @@ export default function LeadForm({
       setFeedback({ msg: cfg.success, kind: "success" });
     } catch {
       setFeedback({
-        msg: `Något gick fel när formuläret skulle skickas. Ring ${site.contact.phoneDisplay} eller mejla ${site.contact.email} så länge.`,
+        msg: `Något gick fel när formuläret skulle skickas. Ring ${contact.phoneDisplay} eller mejla ${contact.email} så länge.`,
         kind: "error",
       });
     } finally {

@@ -9,7 +9,7 @@
     "lint": "eslint",
     "db:seed": "tsx supabase/seed.ts",
     "db:types": "supabase gen types typescript --local > lib/database.types.ts",
-    "test": "tsx --test lib/*.test.ts"
+    "test": "tsx --test lib/*.test.ts lib/**/*.test.ts"
   },
   "dependencies": {
     "@next/third-parties": "16.3.3",

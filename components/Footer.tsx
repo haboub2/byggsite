@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { site, services } from "@/lib/placeholder";
+import { services } from "@/lib/placeholder";
+import { getContent } from "@/lib/content/store";
 import { softwareAreas } from "@/lib/software-content";
 import { projectsReady } from "@/lib/projects";
 
-export default function Footer() {
+export default async function Footer() {
   const year = new Date().getFullYear();
+  const { company } = await getContent();
 
   return (
     <footer className="ftr">
@@ -46,14 +48,19 @@ export default function Footer() {
 
         <div className="ftr-col">
           <h4>Kontakt</h4>
-          <a href={`tel:${site.contact.phone}`}>{site.contact.phoneDisplay}</a>
-          <a href={`mailto:${site.contact.email}`}>{site.contact.email}</a>
-          <span>{site.contact.address}</span>
-          <span>{site.contact.hours}</span>
+          <a href={`tel:${company.phone}`}>{company.phoneDisplay}</a>
+          <a href={`mailto:${company.email}`}>{company.email}</a>
+          <span>
+            {company.street}, {company.postalCode} {company.city}
+          </span>
+          <span>{company.hours}</span>
         </div>
       </div>
       <div className="container ftr-bottom">
-        <span>© {year} {site.brand}. F-skatt, ansvarsförsäkring och ID06.</span>
+        <span>
+          © {year} {company.legalName}
+          {company.orgNr ? `, org.nr ${company.orgNr}` : ""}. F-skatt, ansvarsförsäkring och ID06.
+        </span>
         <Link href="/integritetspolicy">Integritetspolicy</Link>
       </div>
     </footer>

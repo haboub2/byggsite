@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation";
  * Plays the one-shot entrance animations: photos behind a curtain
  * ([data-motion="curtain"]) and blueprint marks that draw themselves
  * ([data-motion="draw"]). Each element animates once, when it first scrolls
- * into view; the CSS only hides anything while <html> has the `js` class, so
- * without JavaScript everything is simply visible.
+ * into view. The CSS only hides anything under @media (scripting: enabled),
+ * so without JavaScript everything is simply visible.
  *
  * After the first page has settled, `data-settled` goes on <html>. The landing
  * hero is marked data-motion-nav="instant": when you switch between Bygg and

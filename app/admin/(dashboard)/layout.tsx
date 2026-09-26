@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { checkAdmin } from "@/lib/admin";
 import { signOut } from "@/app/admin/actions";
+import AdminNav from "@/components/admin/AdminNav";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -51,10 +52,11 @@ export default async function AdminDashboardLayout({
           </div>
         </div>
       </header>
+      <AdminNav />
       {check.demo && (
         <p className="admin-demo">
-          Demoläge: exempeldata, bara på din egen dator. Koppla Supabase enligt docs/setup-forms.md för riktiga
-          förfrågningar.
+          Demoläge: exempeldata, bara på din egen dator. Ändringar sparas inte på riktigt förrän Supabase är kopplat
+          (docs/setup-forms.md).
         </p>
       )}
       <main>{children}</main>

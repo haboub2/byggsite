@@ -1,10 +1,10 @@
 import Reveal from "./Reveal";
 import LeadForm from "./LeadForm";
 import { Crumbs, Checklist } from "./Sections";
-import { site } from "@/lib/placeholder";
+import { getContent } from "@/lib/content/store";
 
 /** Shared layout for the offert, brief and contact forms. */
-export default function FormPage({
+export default async function FormPage({
   crumbs,
   eyebrow,
   title,
@@ -23,6 +23,7 @@ export default function FormPage({
   defaultService?: string;
   children?: React.ReactNode;
 }) {
+  const { company } = await getContent();
   return (
     <section className="sec">
       <div className="container">
@@ -34,17 +35,21 @@ export default function FormPage({
             <p>{lead}</p>
           </Reveal>
           <Reveal className="form-main">
-            <LeadForm variant={variant} defaultService={defaultService} />
+            <LeadForm
+              variant={variant}
+              defaultService={defaultService}
+              contact={{ phoneDisplay: company.phoneDisplay, email: company.email }}
+            />
           </Reveal>
           <Reveal className="form-aside">
             {benefits && <Checklist items={benefits} className="benefits" />}
             {children ?? (
               <div className="contact-card">
                 <p>Vill du hellre prata?</p>
-                <a href={`tel:${site.contact.phone}`} className="big">
-                  {site.contact.phoneDisplay}
+                <a href={`tel:${company.phone}`} className="big">
+                  {company.phoneDisplay}
                 </a>
-                <a href={`mailto:${site.contact.email}`}>{site.contact.email}</a>
+                <a href={`mailto:${company.email}`}>{company.email}</a>
               </div>
             )}
           </Reveal>

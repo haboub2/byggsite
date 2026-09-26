@@ -3,6 +3,7 @@ import Landing from "@/components/Landing";
 import JsonLd from "@/components/JsonLd";
 import { softwareJsonLd, pageMetadata } from "@/lib/seo";
 import { ogImage } from "@/lib/images";
+import { getContent } from "@/lib/content/store";
 
 export const metadata: Metadata = pageMetadata({
   title: "Webbutveckling, automation och interna system",
@@ -12,10 +13,11 @@ export const metadata: Metadata = pageMetadata({
   image: ogImage("hero-software"),
 });
 
-export default function SoftwareHome() {
+export default async function SoftwareHome() {
+  const { company } = await getContent();
   return (
     <>
-      <JsonLd data={softwareJsonLd()} />
+      <JsonLd data={softwareJsonLd(company)} />
       <Landing side="mjukvara" />
     </>
   );

@@ -9,13 +9,15 @@ import { projectsReady } from "@/lib/projects";
 import { guideBySlug, guidesFor } from "@/lib/guides";
 import { services } from "@/lib/placeholder";
 import { softwareAreas } from "@/lib/software-content";
+import { getContent } from "@/lib/content/store";
+import { fillWarranty } from "@/lib/content/schema";
 
 type Work = { href: string; image: string; tag: string; title: string; desc: string };
 
 /** One template for every service page on both sides. The side-specific
  *  middle (long-form copy for Bygg, fit + engagement for Software) comes in
  *  as children. */
-export default function ServiceTemplate({
+export default async function ServiceTemplate({
   side,
   slug,
   index,
@@ -50,6 +52,13 @@ export default function ServiceTemplate({
   children?: React.ReactNode;
 }) {
   const cfg = SIDES[side];
+  const { warranty } = await getContent();
+  // Each service has its own warranty (editable in /admin), shown as the
+  // fourth fact, under "Det här ingår", and wherever a text says {garanti}.
+  const w = warranty.services[slug] ?? (side === "bygg" ? warranty.bygg : warranty.software);
+  const allFacts = [...facts.slice(0, 3), { value: w.short, label: "garanti" }];
+  const filledSteps = steps.map((s) => ({ ...s, body: fillWarranty(s.body, w) }));
+  const filledFaq = faq.map((f) => ({ ...f, a: fillWarranty(f.a, w) }));
   const base = side === "bygg" ? "/bygg" : "/mjukvara";
   // Internal links: guides for this service and the other services on the same side.
   const readMore = (guidesFor[slug] ?? []).flatMap((g) => {
@@ -88,7 +97,7 @@ export default function ServiceTemplate({
       </PageHero>
 
       <div className="container">
-        <Stats items={facts} />
+        <Stats items={allFacts} />
       </div>
 
       <section className="sec">
@@ -96,6 +105,12 @@ export default function ServiceTemplate({
           <div className="split-aside">
             <span className="eyebrow">Det här ingår</span>
             <h2>{includedTitle}</h2>
+            <p className="warranty-note">
+              <Icon name="shield" strokeWidth={1.8} />
+              <span>
+                <strong>Garanti:</strong> {w.sentence}.
+              </span>
+            </p>
           </div>
           <Checklist items={included} />
         </div>
@@ -106,7 +121,7 @@ export default function ServiceTemplate({
       <section className="sec sec--alt">
         <div className="container">
           <SectionHead eyebrow="Så går det till" title={side === "bygg" ? "Fyra steg, inga överraskningar." : "Från brief till drift."} />
-          <Steps items={steps} />
+          <Steps items={filledSteps} />
         </div>
       </section>
 
@@ -133,7 +148,7 @@ export default function ServiceTemplate({
                 Vanliga frågor
               </span>
             )}
-            <Faq items={faq} name={`faq-${slug}`} />
+            <Faq items={filledFaq} name={`faq-${slug}`} />
           </div>
         </div>
       </section>

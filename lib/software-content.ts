@@ -45,7 +45,6 @@ export const softwareAreas: SoftwareArea[] = [
       { value: "2–8 v", label: "till lansering" },
       { value: "Fast pris", label: "per etapp" },
       { value: "100 %", label: "ni äger koden" },
-      { value: "Redigerbart", label: "innehåll utan oss" },
     ],
     included: [
       "Workshop och kravbild",
@@ -82,7 +81,6 @@ export const softwareAreas: SoftwareArea[] = [
     },
     facts: [
       { value: "1–4 v", label: "per integration" },
-      { value: "API", label: "webhook eller synk" },
       { value: "Testat", label: "mot verklig data" },
       { value: "Larm", label: "om något går fel" },
     ],
@@ -122,7 +120,6 @@ export const softwareAreas: SoftwareArea[] = [
       { value: "4–12 v", label: "till första drift" },
       { value: "Smalt", label: "först, sedan bredare" },
       { value: "Roller", label: "behörigheter och historik" },
-      { value: "Era", label: "rutiner, inte en mall" },
     ],
     included: [
       "Kartläggning av rutiner",

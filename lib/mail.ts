@@ -1,6 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
 import { site } from "./placeholder";
+import { getContent } from "./content/store";
 
 type LeadKind = "offert" | "kontakt" | "brief";
 type Division = "bygg" | "01";
@@ -35,7 +36,8 @@ export async function notify(input: {
   extra?: Record<string, string | undefined>;
 }) {
   const resend = client();
-  const to = process.env.MAIL_TO || site.contact.email;
+  const { company } = await getContent();
+  const to = process.env.MAIL_TO || company.email;
 
   if (!resend) {
     console.warn(`[mail] RESEND_API_KEY not set — internal notify skipped for ${input.kind} lead (${input.email}).`);
@@ -85,6 +87,7 @@ export async function autoreply(input: { kind: LeadKind; division: Division; nam
     return;
   }
 
+  const { company } = await getContent();
   const isSoftware = input.division === "01";
   const subject = isSoftware ? "Tack för din brief — vi hör av oss inom två arbetsdagar" : "Tack — vi hör av oss inom 24 timmar";
   const signOff = isSoftware ? `${site.brand} Software` : `${site.brand} Bygg`;
@@ -93,13 +96,13 @@ export async function autoreply(input: { kind: LeadKind; division: Division; nam
     await resend.emails.send({
       from: process.env.MAIL_FROM,
       to: input.email,
-      replyTo: site.contact.email,
+      replyTo: company.email,
       subject,
       html: `
         <div style="font-family:sans-serif;font-size:14px;color:#14161a">
           <p>Hej ${esc(input.name.split(" ")[0])},</p>
           <p>Tack för din förfrågan. Vi har tagit emot den och återkommer ${isSoftware ? "inom två arbetsdagar" : "inom 24 timmar"}.</p>
-          <p>Har du en brådskande fråga under tiden? Ring ${site.contact.phoneDisplay} eller svara direkt på det här mejlet.</p>
+          <p>Har du en brådskande fråga under tiden? Ring ${company.phoneDisplay} eller svara direkt på det här mejlet.</p>
           <p>Vänliga hälsningar,<br>${signOff}</p>
         </div>
       `,

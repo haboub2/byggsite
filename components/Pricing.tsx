@@ -1,19 +1,36 @@
 import Link from "next/link";
 import RotCalculator from "./RotCalculator";
 import { SectionHead } from "./Sections";
-import { priceGuide } from "@/lib/pricing";
 import { services } from "@/lib/placeholder";
+import { getContent } from "@/lib/content/store";
 
 const title = (slug: string) => services.find((s) => s.slug === slug)?.title ?? slug;
 
-export function presets() {
-  return priceGuide.flatMap((p) =>
-    p.preset ? [{ ...p.preset, slug: p.slug, service: title(p.slug) }] : []
-  );
+/** Guide prices in service order, from the content store (Priser in /admin). */
+async function priceList() {
+  const { pricing } = await getContent();
+  return services.flatMap((s) => {
+    const p = pricing.services[s.slug];
+    return p ? [{ slug: s.slug, ...p }] : [];
+  });
+}
+
+/** ROT calculator presets: the services that have an example project. */
+export async function presets() {
+  return (await priceList())
+    .filter((p) => p.example && p.labor + p.material > 0)
+    .map((p) => ({
+      slug: p.slug,
+      service: title(p.slug),
+      label: p.exampleLabel || title(p.slug),
+      labor: p.labor,
+      material: p.material,
+    }));
 }
 
 /** Landing section: ROT calculator plus the guide-price list. */
-export function PricingSection() {
+export async function PricingSection() {
+  const list = await priceList();
   return (
     <section className="sec" id="priser">
       <div className="container">
@@ -22,11 +39,11 @@ export function PricingSection() {
           title="Räkna på ditt projekt."
           aside="Välj ett exempel eller fyll i egna belopp. Du ser direkt vad ROT-avdraget blir och vad du själv betalar."
         />
-        <RotCalculator presets={presets()} />
+        <RotCalculator presets={await presets()} />
         <div className="guide">
           <span className="eyebrow">Riktpriser inkl. moms, före ROT</span>
           <ul>
-            {priceGuide.map((p) => (
+            {list.map((p) => (
               <li key={p.slug}>
                 <Link href={`/bygg/tjanster/${p.slug}`}>
                   <span className="guide-title">{title(p.slug)}</span>
@@ -50,18 +67,18 @@ export function PricingSection() {
 }
 
 /** Service page variant: the calculator starts on this service's example. */
-export function ServicePricing({ slug }: { slug: string }) {
-  const guide = priceGuide.find((p) => p.slug === slug);
-  if (!guide?.preset) return null;
+export async function ServicePricing({ slug }: { slug: string }) {
+  const p = (await priceList()).find((x) => x.slug === slug);
+  if (!p || !p.example) return null;
   return (
     <section className="sec">
       <div className="container">
         <SectionHead
-          eyebrow={`Riktpris ${guide.from}`}
+          eyebrow={`Riktpris ${p.from}`}
           title="Vad kostar det efter ROT?"
-          aside={`Exemplet är ${guide.preset.label.toLowerCase()}. Ändra beloppen för att räkna på ditt eget projekt.`}
+          aside={`Exemplet är ${(p.exampleLabel || title(slug)).toLowerCase()}. Ändra beloppen för att räkna på ditt eget projekt.`}
         />
-        <RotCalculator presets={presets()} initial={slug} />
+        <RotCalculator presets={await presets()} initial={slug} />
       </div>
     </section>
   );

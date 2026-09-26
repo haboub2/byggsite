@@ -5,6 +5,7 @@ import CookieConsent from "@/components/CookieConsent";
 import JsonLd from "@/components/JsonLd";
 import { SITE_URL } from "@/lib/env";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
+import { getContent } from "@/lib/content/store";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -42,15 +43,14 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#18232c" };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const { company } = await getContent();
   return (
-    <html lang="sv" className={jakarta.variable} suppressHydrationWarning>
+    <html lang="sv" className={jakarta.variable}>
       <body>
-        {/* Before first paint: lets CSS hide what the entrance animations will reveal. */}
-        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
-        <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
+        <JsonLd data={[organizationJsonLd(company), websiteJsonLd()]} />
         {children}
         <CookieConsent />
         <Analytics />

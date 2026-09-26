@@ -46,6 +46,7 @@ export default async function GuidePage({
   const g = guideBySlug(slug);
   if (!g) notFound();
   const cfg = SIDES[g.side];
+  const calcPresets = g.calculatorAfter !== undefined ? await presets() : [];
 
   return (
     <>
@@ -103,7 +104,7 @@ export default async function GuidePage({
                 )}
                 {g.calculatorAfter === i && (
                   <div className="guide-calc">
-                    <RotCalculator presets={presets()} />
+                    <RotCalculator presets={calcPresets} />
                   </div>
                 )}
               </Reveal>

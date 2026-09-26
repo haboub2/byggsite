@@ -3,12 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Icon } from "./Icons";
-import { site } from "@/lib/placeholder";
 import { sideFromPath } from "@/lib/sides";
 
 /** Mobile-only fixed call/WhatsApp bar. Hides while a form is in view so it
  *  never overlaps the thing the user is trying to fill in. Bygg side only. */
-export default function StickyCall() {
+export default function StickyCall({ phone }: { phone: string }) {
   const pathname = usePathname();
   const [hidden, setHidden] = useState(false);
   const barRef = useRef<HTMLDivElement | null>(null);
@@ -31,11 +30,11 @@ export default function StickyCall() {
 
   if (sideFromPath(pathname) !== "bygg") return null;
 
-  const waNumber = site.contact.phone.replace(/[^\d]/g, "");
+  const waNumber = phone.replace(/[^\d]/g, "");
 
   return (
     <div className={`sticky-call${hidden ? " sticky-call--hidden" : ""}`} ref={barRef}>
-      <a href={`tel:${site.contact.phone}`} className="sticky-call-btn sticky-call-btn--ring">
+      <a href={`tel:${phone}`} className="sticky-call-btn sticky-call-btn--ring">
         <Icon name="phone" strokeWidth={2} />
         Ring
       </a>

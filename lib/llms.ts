@@ -1,4 +1,6 @@
-import { site, services, byggStats, faq as byggFaq, processSteps } from "./placeholder";
+import { site, services, faq as byggFaq, processSteps } from "./placeholder";
+import { getContent } from "./content/store";
+import { fillWarranty, type ContentMap } from "./content/schema";
 import { servicesContent, serviceSeo } from "./services-content";
 import { softwareAreas, softwareFaq, softwareProcess } from "./software-content";
 import { guides } from "./guides";
@@ -11,22 +13,25 @@ import { abs, CONTENT_UPDATED } from "./seo";
  * purpose until the owners confirm real ones.
  */
 
-const facts = [
-  `Företag: ${site.brand}, ${site.contact.address}.`,
-  `Verksamheter: ${site.brand} Bygg (bygg och renovering) och ${site.brand} Software (webb, automation och interna system).`,
-  `Område för bygg: ${site.areasServed.join(", ")}. Software: hela Sverige.`,
-  `Kontakt: ${site.contact.phoneDisplay}, ${site.contact.email}. ${site.contact.hours}.`,
-  "Bygg: kostnadsfri offert och hembesök, fast pris, ROT-avdrag direkt på fakturan, 5 års garanti på hantverket.",
-  "Software: fast pris per etapp, kunden äger kod och data, samma team från brief till drift.",
-];
+function facts({ company: c, warranty }: ContentMap) {
+  return [
+    `Företag: ${c.legalName}${c.orgNr ? ` (org.nr ${c.orgNr})` : ""}, ${c.street}, ${c.postalCode} ${c.city}.`,
+    `Verksamheter: ${site.brand} Bygg (bygg och renovering) och ${site.brand} Software (webb, automation och interna system).`,
+    `Område för bygg: ${c.areasServed.join(", ")}. Software: hela Sverige.`,
+    `Kontakt: ${c.phoneDisplay}, ${c.email}. ${c.hours}.`,
+    `Bygg: kostnadsfri offert och hembesök, fast pris, ROT-avdrag direkt på fakturan, ${warranty.bygg.sentence}.`,
+    `Software: fast pris per etapp, kunden äger kod och data, ${warranty.software.sentence}.`,
+  ];
+}
 
-export function llmsTxt(): string {
+export async function llmsTxt(): Promise<string> {
+  const content = await getContent();
   const lines = [
     `# ${site.brand}`,
     "",
     `> ${site.brand} är ett företag i Halmstad med två verksamheter: bygg och renovering av hem i Halland, och mjukvara — webbplatser, kundportaler, automation och interna system — för företag i hela Sverige.`,
     "",
-    ...facts.map((f) => `- ${f}`),
+    ...facts(content).map((f) => `- ${f}`),
     "",
     "## Bygg och renovering",
     "",
@@ -59,24 +64,27 @@ export function llmsTxt(): string {
   return lines.join("\n");
 }
 
-export function llmsFullTxt(): string {
-  const out: string[] = [llmsTxt(), "---", ""];
+export async function llmsFullTxt(): Promise<string> {
+  const content = await getContent();
+  const { warranty } = content;
+  const out: string[] = [await llmsTxt(), "---", ""];
 
   out.push("# Bygg och renovering — tjänster", "");
-  out.push("## Så går det till", "", ...processSteps.map((p) => `${p.n}. ${p.title}: ${p.body}`), "");
+  out.push("## Så går det till", "", ...processSteps.map((p) => `${p.n}. ${p.title}: ${fillWarranty(p.body, warranty.bygg)}`), "");
   for (const s of services) {
     const c = servicesContent[s.slug];
+    const w = warranty.services[s.slug] ?? warranty.bygg;
     out.push(`## ${serviceSeo[s.slug]?.title ?? s.title}`, "", `URL: ${abs(`/bygg/tjanster/${s.slug}`)}`, "");
     if (c) {
-      out.push(c.lead, "");
-      for (const sec of c.sections) out.push(`### ${sec.heading}`, "", sec.body, "");
+      out.push(fillWarranty(c.lead, w), "", `Garanti: ${w.sentence}.`, "");
+      for (const sec of c.sections) out.push(`### ${sec.heading}`, "", fillWarranty(sec.body, w), "");
       out.push("### Vanliga frågor", "");
-      for (const f of c.faq) out.push(`**${f.q}**`, "", f.a, "");
+      for (const f of c.faq) out.push(`**${f.q}**`, "", fillWarranty(f.a, w), "");
     }
   }
   out.push("## Vanliga frågor om bygg", "");
-  for (const f of byggFaq) out.push(`**${f.q}**`, "", f.a, "");
-  out.push(`Nyckeltal: ${byggStats.map((s) => `${s.value} ${s.label}`).join(", ")}.`, "");
+  for (const f of byggFaq) out.push(`**${f.q}**`, "", fillWarranty(f.a, warranty.bygg), "");
+  out.push(`Nyckeltal: ${content.company.byggStats.map((s) => `${s.value} ${s.label}`).join(", ")}.`, "");
 
   out.push("# Software — tjänster", "");
   out.push("## Så går det till", "", ...softwareProcess.map((p) => `${p.n}. ${p.title}: ${p.body}`), "");
@@ -85,6 +93,7 @@ export function llmsFullTxt(): string {
     out.push("Passar er om:", ...a.fitsIf.map((f) => `- ${f}`), "");
     out.push(`Typiskt upplägg: ${a.engagement.label}. ${a.engagement.body}`, "");
     out.push("Det här ingår:", ...a.included.map((i) => `- ${i}`), "");
+    out.push(`Garanti: ${(warranty.services[a.slug] ?? warranty.software).sentence}.`, "");
     for (const f of a.faq) out.push(`**${f.q}**`, "", f.a, "");
   }
   out.push("## Vanliga frågor om Software", "");

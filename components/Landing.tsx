@@ -11,21 +11,27 @@ import { PricingSection } from "./Pricing";
 import { hasImage } from "@/lib/images";
 import { projectsReady } from "@/lib/projects";
 import { SIDES, type Side } from "@/lib/sides";
-import { site, services, processSteps, featuredProjects, faq as byggFaq, byggStats } from "@/lib/placeholder";
+import { services, processSteps, featuredProjects, faq as byggFaq } from "@/lib/placeholder";
+import { getContent } from "@/lib/content/store";
+import { fillWarranty } from "@/lib/content/schema";
 import { serviceExtras } from "@/lib/services-content";
 import {
   softwareAreas,
   softwareProcess,
   softwareCases,
   softwareFaq,
-  softwareStats,
 } from "@/lib/software-content";
 
 /** Landing page for one side. Both sides share this template; the two
  *  headline lines double as the Bygg / Software switch. */
-export default function Landing({ side }: { side: Side }) {
+export default async function Landing({ side }: { side: Side }) {
   const cfg = SIDES[side];
   const isBygg = side === "bygg";
+  const { company, warranty } = await getContent();
+  const w = isBygg ? warranty.bygg : warranty.software;
+  const stats = [...(isBygg ? company.byggStats : company.softwareStats), { value: w.short, label: "garanti" }];
+  const steps = (isBygg ? processSteps : softwareProcess).map((s) => ({ ...s, body: fillWarranty(s.body, w) }));
+  const faq = (isBygg ? byggFaq : softwareFaq).map((f) => ({ ...f, a: fillWarranty(f.a, w) }));
   const secondary =
     isBygg && !projectsReady() ? { label: "Se vad det kostar", href: "#priser" } : cfg.heroSecondary;
 
@@ -122,7 +128,7 @@ export default function Landing({ side }: { side: Side }) {
       </section>
 
       <div className="container">
-        <Stats items={isBygg ? byggStats : softwareStats} />
+        <Stats items={stats} />
       </div>
 
       <section className="sec">
@@ -140,7 +146,7 @@ export default function Landing({ side }: { side: Side }) {
             eyebrow="Så går det till"
             title={isBygg ? "Fyra steg, inga överraskningar." : "Från brief till drift."}
           />
-          <Steps items={isBygg ? processSteps : softwareProcess} />
+          <Steps items={steps} />
         </div>
       </section>
 
@@ -189,11 +195,11 @@ export default function Landing({ side }: { side: Side }) {
             <h2>{isBygg ? "Det folk brukar undra." : "Det företag brukar undra."}</h2>
             <p>
               Hittar du inte svaret? Ring{" "}
-              <a href={`tel:${site.contact.phone}`} className="link-quiet">{site.contact.phoneDisplay}</a> eller{" "}
+              <a href={`tel:${company.phone}`} className="link-quiet">{company.phoneDisplay}</a> eller{" "}
               <Link href="/kontakt" className="link-quiet">skriv till oss</Link>.
             </p>
           </div>
-          <Faq items={isBygg ? byggFaq : softwareFaq} name={`faq-${side}`} />
+          <Faq items={faq} name={`faq-${side}`} />
         </div>
       </section>
 

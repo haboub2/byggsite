@@ -27,7 +27,7 @@ export const servicesContent: Record<string, ServiceContent> = {
       },
       {
         heading: "Material och garanti",
-        body: "Vi arbetar med material från etablerade svenska leverantörer och följer branschens våtrumsnormer (GVK/Säker Vatten) där det är relevant. Alla totalrenoveringar omfattas av vår 5 års garanti på utfört arbete, och du är licensierad och försäkrad genom oss under hela byggtiden.",
+        body: "Vi arbetar med material från etablerade svenska leverantörer och följer branschens våtrumsnormer (GVK/Säker Vatten) där det är relevant. Alla totalrenoveringar omfattas av {garanti}, och du är licensierad och försäkrad genom oss under hela byggtiden.",
       },
     ],
     faq: [
@@ -39,7 +39,7 @@ export const servicesContent: Record<string, ServiceContent> = {
   },
 
   badrumsrenovering: {
-    lead: "Ett badrum som ska hålla i tjugo år kräver rätt tätskikt, rätt fall mot golvbrunn och hantverkare som följer branschreglerna till punkt och pricka. Vi renoverar badrum enligt Säker Vatten och GVK, med fast pris och 5 års garanti.",
+    lead: "Ett badrum som ska hålla i tjugo år kräver rätt tätskikt, rätt fall mot golvbrunn och hantverkare som följer branschreglerna till punkt och pricka. Vi renoverar badrum enligt Säker Vatten och GVK, med fast pris och {garanti}.",
     sections: [
       {
         heading: "Tätskikt och våtrumsnormer",
@@ -232,7 +232,8 @@ export const servicesContent: Record<string, ServiceContent> = {
 };
 
 /** Page furniture for each Bygg service: the short line in the register,
- *  the four facts under the hero, and the "Det här ingår" checklist.
+ *  three facts under the hero (the warranty is the fourth, from the content
+ *  store), and the "Det här ingår" checklist.
  *  Durations mirror the FAQ answers above. Review before launch. */
 export type ServiceExtras = {
   meta: string;
@@ -246,7 +247,6 @@ export const serviceExtras: Record<string, ServiceExtras> = {
     facts: [
       { value: "6–10 v", label: "lägenhet 60–80 m²" },
       { value: "3–6 mån", label: "helt hus" },
-      { value: "5 år", label: "garanti" },
       { value: "Fast pris", label: "efter platsbesök" },
     ],
     included: [
@@ -264,7 +264,6 @@ export const serviceExtras: Record<string, ServiceExtras> = {
       { value: "3–5 v", label: "badrum 5–8 m²" },
       { value: "GVK", label: "och Säker Vatten" },
       { value: "ROT", label: "avdrag på arbetet" },
-      { value: "5 år", label: "garanti" },
     ],
     included: [
       "Rivning av befintligt badrum",
@@ -279,7 +278,6 @@ export const serviceExtras: Record<string, ServiceExtras> = {
     meta: "Snickerier, bänkskivor, vitvaror",
     facts: [
       { value: "2–4 v", label: "typisk byggtid" },
-      { value: "Alla", label: "större köksleverantörer" },
       { value: "ROT", label: "avdrag på arbetet" },
       { value: "Fast pris", label: "efter platsbesök" },
     ],
@@ -298,7 +296,6 @@ export const serviceExtras: Record<string, ServiceExtras> = {
       { value: "3–5 mån", label: "20–30 m², inkl. bygglov" },
       { value: "Bygglov", label: "vi tar fram underlaget" },
       { value: "Grund", label: "till tak" },
-      { value: "5 år", label: "garanti" },
     ],
     included: [
       "Ritningar och bygglovsunderlag",
@@ -314,7 +311,6 @@ export const serviceExtras: Record<string, ServiceExtras> = {
     facts: [
       { value: "1–2 v", label: "normalstort villatak" },
       { value: "Gratis", label: "takbesiktning" },
-      { value: "4", label: "taktäckningsmaterial" },
       { value: "Akut", label: "läckage prioriteras" },
     ],
     included: [
@@ -331,7 +327,6 @@ export const serviceExtras: Record<string, ServiceExtras> = {
     facts: [
       { value: "1–3 dagar", label: "per rum" },
       { value: "Avjämning", label: "ingår vid behov" },
-      { value: "Golvvärme", label: "vatten eller el" },
       { value: "ROT", label: "avdrag på arbetet" },
     ],
     included: [
@@ -348,7 +343,6 @@ export const serviceExtras: Record<string, ServiceExtras> = {
     facts: [
       { value: "1–2 dagar", label: "per rum" },
       { value: "8–15 år", label: "hållbarhet på fasad" },
-      { value: "Inne", label: "och ute" },
       { value: "ROT", label: "avdrag på arbetet" },
     ],
     included: [
@@ -365,7 +359,6 @@ export const serviceExtras: Record<string, ServiceExtras> = {
     facts: [
       { value: "Certifierat", label: "el och VVS" },
       { value: "Säker Vatten", label: "i våtrum" },
-      { value: "Laddbox", label: "för elbil" },
       { value: "Akut", label: "ärenden prioriteras" },
     ],
     included: [
@@ -383,7 +376,6 @@ export const serviceExtras: Record<string, ServiceExtras> = {
       { value: "1", label: "kontaktperson" },
       { value: "Löpande", label: "avstämningar" },
       { value: "Öppen", label: "budgetuppföljning" },
-      { value: "Alla", label: "yrkesgrupper samordnade" },
     ],
     included: [
       "Tidplan före start",
@@ -401,11 +393,11 @@ export const serviceExtras: Record<string, ServiceExtras> = {
 export const serviceSeo: Record<string, { title: string; description: string }> = {
   totalrenovering: {
     title: "Totalrenovering i Halmstad",
-    description: "Totalrenovering av hus och lägenhet i Halmstad — rivning, el, VVS, ytskikt och snickerier. Ett team, fast pris, ROT-avdrag och 5 års garanti.",
+    description: "Totalrenovering av hus och lägenhet i Halmstad — rivning, el, VVS, ytskikt och snickerier. Ett team, fast pris, ROT-avdrag och {garanti}.",
   },
   badrumsrenovering: {
     title: "Badrumsrenovering i Halmstad",
-    description: "Badrumsrenovering i Halmstad med tätskikt enligt branschregler, kakel, golvvärme och VVS. Fast pris, ROT på fakturan och 5 års garanti.",
+    description: "Badrumsrenovering i Halmstad med tätskikt enligt branschregler, kakel, golvvärme och VVS. Fast pris, ROT på fakturan och {garanti}.",
   },
   koksrenovering: {
     title: "Köksrenovering i Halmstad",

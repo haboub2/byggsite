@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import PageHero from "@/components/PageHero";
 import { pageMetadata } from "@/lib/seo";
 import Reveal from "@/components/Reveal";
-import { site } from "@/lib/placeholder";
+import { getContent } from "@/lib/content/store";
 
 export const metadata: Metadata = pageMetadata({
   title: "Integritetspolicy",
@@ -11,10 +11,10 @@ export const metadata: Metadata = pageMetadata({
   noindex: true,
 });
 
-const SECTIONS = [
+const sections = (email: string) => [
   {
     heading: "Personuppgiftsansvarig",
-    body: `Binaafy (nedan "vi", "oss") är personuppgiftsansvarig för de personuppgifter som samlas in via binaafy.se. Frågor om denna policy eller dina personuppgifter skickas till ${site.contact.email}.`,
+    body: `Binaafy (nedan "vi", "oss") är personuppgiftsansvarig för de personuppgifter som samlas in via binaafy.se. Frågor om denna policy eller dina personuppgifter skickas till ${email}.`,
   },
   {
     heading: "Vilka uppgifter vi samlar in",
@@ -42,7 +42,8 @@ const SECTIONS = [
   },
 ];
 
-export default function IntegritetspolicyPage() {
+export default async function IntegritetspolicyPage() {
+  const { company } = await getContent();
   return (
     <>
       <PageHero
@@ -54,7 +55,7 @@ export default function IntegritetspolicyPage() {
       <section className="sec">
         <div className="container">
           <div className="article-sections" style={{ maxWidth: 860 }}>
-            {SECTIONS.map((s, i) => (
+            {sections(company.email).map((s, i) => (
               <Reveal as="section" key={s.heading}>
                 <span className="n">{String(i + 1).padStart(2, "0")}</span>
                 <div>
