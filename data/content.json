@@ -1,9 +1,9 @@
 {
-  "brand": "Byggly 01",
+  "brand": "Binaafy",
   "hero": {
     "eyebrow": "Experter på bygg & renovering",
     "titleHtml": "Vi bygger, renoverar & <span class=\"hl\">förvandlar</span> ditt hem",
-    "lead": "Från totalrenoveringar till badrum, kök och tillbyggnader — Byggly levererar hantverk du kan lita på, i tid och inom budget.",
+    "lead": "Från totalrenoveringar till badrum, kök och tillbyggnader — vi levererar hantverk du kan lita på, i tid och inom budget.",
     "stats": [
       {
         "value": "6+",
@@ -71,7 +71,7 @@
     "hours": "Mån–Fre, 07:00–16:00",
     "phone": "+46793049737",
     "phoneDisplay": "079-304 97 37",
-    "email": "info@byggly.se",
+    "email": "info@binaafy.se",
     "address": "Montörgatan 7, 302 62 Halmstad"
   }
 }

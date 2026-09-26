@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-export const CONSENT_KEY = "byggly-cookie-consent";
-export const CONSENT_EVENT = "byggly-consent-change";
+export const CONSENT_KEY = "binaafy-cookie-consent";
+export const CONSENT_EVENT = "binaafy-consent-change";
 
 type Consent = "granted" | "denied";
 

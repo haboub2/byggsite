@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Icon } from "./Icons";
 import { site } from "@/lib/placeholder";
+import { sideFromPath } from "@/lib/sides";
 
 /** Mobile-only fixed call/WhatsApp bar. Hides while a form is in view so it
- *  never overlaps the thing the user is trying to fill in. Bygg pages only. */
+ *  never overlaps the thing the user is trying to fill in. Bygg side only. */
 export default function StickyCall() {
+  const pathname = usePathname();
   const [hidden, setHidden] = useState(false);
   const barRef = useRef<HTMLDivElement | null>(null);
 
@@ -24,7 +27,9 @@ export default function StickyCall() {
     );
     forms.forEach((f) => io.observe(f));
     return () => io.disconnect();
-  }, []);
+  }, [pathname]);
+
+  if (sideFromPath(pathname) !== "bygg") return null;
 
   const waNumber = site.contact.phone.replace(/[^\d]/g, "");
 

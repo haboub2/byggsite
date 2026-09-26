@@ -20,9 +20,9 @@ export default async function AdminDashboardLayout({
 
   if (!admin) {
     return (
-      <div className="division-root" data-division="bygg">
+      <div>
         <main>
-          <section className="section" style={{ textAlign: "center" }}>
+          <section className="sec" style={{ textAlign: "center" }}>
             <div className="container">
               <p>{user.email} är inloggad men saknar admin-behörighet.</p>
               <form action={signOut} style={{ marginTop: 16 }}>
@@ -38,14 +38,10 @@ export default async function AdminDashboardLayout({
   }
 
   return (
-    <div className="division-root" data-division="bygg">
-      <header className="site-header scrolled">
-        <div className="container header-inner">
-          <span className="logo">
-            <span className="logo-text">
-              Byggly<strong>&nbsp;01</strong> Admin
-            </span>
-          </span>
+    <div>
+      <header className="admin-bar">
+        <div className="container">
+          <img src="/brand/binaafy-light.svg" alt="Binaafy admin" width={95} height={22} />
           <form action={signOut}>
             <button type="submit" className="btn btn-ghost">
               Logga ut

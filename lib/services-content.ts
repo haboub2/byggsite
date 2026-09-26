@@ -1,5 +1,5 @@
 /**
- * Long-form body copy for the /tjanster/[slug] pages. Placeholder-quality
+ * Long-form body copy for the /bygg/tjanster/[slug] pages. Placeholder-quality
  * content the owner should review and personalize — but real, specific,
  * non-repetitive copy rather than lorem ipsum, so the pages are genuinely
  * indexable from day one. Migrates to content/tjanster/*.mdx per PLAN.md
@@ -15,7 +15,7 @@ export type ServiceContent = {
 
 export const servicesContent: Record<string, ServiceContent> = {
   totalrenovering: {
-    lead: "En totalrenovering rör hela hemmet på en gång — stomme, planlösning, el, VVS och ytskikt. Byggly driver hela projektet, från rivning till slutstädning, med en tidplan och ett fast pris du kan lita på.",
+    lead: "En totalrenovering rör hela hemmet på en gång — stomme, planlösning, el, VVS och ytskikt. Vi driver hela projektet, från rivning till slutstädning, med en tidplan och ett fast pris du kan lita på.",
     sections: [
       {
         heading: "Vad ingår i en totalrenovering",
@@ -207,7 +207,7 @@ export const servicesContent: Record<string, ServiceContent> = {
   },
 
   projektledning: {
-    lead: "Ett större byggprojekt involverar många yrkesgrupper, leveranser och beslut. Med Byggly som projektledare får du en kontaktperson som samordnar allt — så att du slipper vara din egen byggledare.",
+    lead: "Ett större byggprojekt involverar många yrkesgrupper, leveranser och beslut. Med oss som projektledare får du en kontaktperson som samordnar allt — så att du slipper vara din egen byggledare.",
     sections: [
       {
         heading: "En kontaktperson, hela vägen",
@@ -227,6 +227,171 @@ export const servicesContent: Record<string, ServiceContent> = {
       { q: "Hur ofta får jag uppdateringar?", a: "Du får löpande avstämningar under hela projektet, med tydliga delmål så att du alltid vet var arbetet står." },
       { q: "Vad kostar projektledning?", a: "Det beror på projektets omfattning och antal inblandade yrkesgrupper. Du får en specificerad offert efter det kostnadsfria platsbesöket." },
       { q: "Hjälper ni till med upphandling av underentreprenörer?", a: "Ja, vi upphandlar och kvalitetssäkrar de underentreprenörer som krävs, och tar ansvar för helheten gentemot dig som kund." },
+    ],
+  },
+};
+
+/** Page furniture for each Bygg service: the short line in the register,
+ *  the four facts under the hero, and the "Det här ingår" checklist.
+ *  Durations mirror the FAQ answers above. Review before launch. */
+export type ServiceExtras = {
+  meta: string;
+  facts: { value: string; label: string }[];
+  included: string[];
+};
+
+export const serviceExtras: Record<string, ServiceExtras> = {
+  totalrenovering: {
+    meta: "Hus, lägenhet, hela kedjan",
+    facts: [
+      { value: "6–10 v", label: "lägenhet 60–80 m²" },
+      { value: "3–6 mån", label: "helt hus" },
+      { value: "5 år", label: "garanti" },
+      { value: "Fast pris", label: "efter platsbesök" },
+    ],
+    included: [
+      "Rivning och bortforsling",
+      "Bärande konstruktion vid behov",
+      "El och VVS enligt gällande normer",
+      "Isolering, golv, väggar och tak",
+      "Snickerier och montering",
+      "Slutbesiktning och städning",
+    ],
+  },
+  badrumsrenovering: {
+    meta: "Tätskikt, kakel, VVS",
+    facts: [
+      { value: "3–5 v", label: "badrum 5–8 m²" },
+      { value: "GVK", label: "och Säker Vatten" },
+      { value: "ROT", label: "avdrag på arbetet" },
+      { value: "5 år", label: "garanti" },
+    ],
+    included: [
+      "Rivning av befintligt badrum",
+      "Tätskikt enligt GVK",
+      "VVS enligt Säker Vatten",
+      "Kakel och klinker",
+      "Golvvärme och belysning",
+      "Montering av inredning",
+    ],
+  },
+  koksrenovering: {
+    meta: "Snickerier, bänkskivor, vitvaror",
+    facts: [
+      { value: "2–4 v", label: "typisk byggtid" },
+      { value: "Alla", label: "större köksleverantörer" },
+      { value: "ROT", label: "avdrag på arbetet" },
+      { value: "Fast pris", label: "efter platsbesök" },
+    ],
+    included: [
+      "Planlösning och ritning",
+      "Montering av stommar och luckor",
+      "Bänkskivor i laminat, sten eller trä",
+      "Inkoppling av vitvaror",
+      "Omdragning av el och VVS",
+      "Arbets- och stämningsbelysning",
+    ],
+  },
+  tillbyggnad: {
+    meta: "Tillbyggnad, vind, planlösning",
+    facts: [
+      { value: "3–5 mån", label: "20–30 m², inkl. bygglov" },
+      { value: "Bygglov", label: "vi tar fram underlaget" },
+      { value: "Grund", label: "till tak" },
+      { value: "5 år", label: "garanti" },
+    ],
+    included: [
+      "Ritningar och bygglovsunderlag",
+      "Grund eller platta",
+      "Stomme, tak och fasad",
+      "Fönster och dörrar",
+      "El, VVS och ventilation",
+      "Anslutning mot befintligt hus",
+    ],
+  },
+  tak: {
+    meta: "Omläggning, reparation, tätning",
+    facts: [
+      { value: "1–2 v", label: "normalstort villatak" },
+      { value: "Gratis", label: "takbesiktning" },
+      { value: "4", label: "taktäckningsmaterial" },
+      { value: "Akut", label: "läckage prioriteras" },
+    ],
+    included: [
+      "Besiktning av taktäcke och underlagstak",
+      "Rivning och bortforsling",
+      "Nytt underlagstak vid behov",
+      "Tegel, betong, plåt eller papp",
+      "Plåtdetaljer och genomföringar",
+      "Takavvattning",
+    ],
+  },
+  golv: {
+    meta: "Trä, laminat, klinker, vinyl",
+    facts: [
+      { value: "1–3 dagar", label: "per rum" },
+      { value: "Avjämning", label: "ingår vid behov" },
+      { value: "Golvvärme", label: "vatten eller el" },
+      { value: "ROT", label: "avdrag på arbetet" },
+    ],
+    included: [
+      "Rivning av befintligt golv",
+      "Avjämning av undergolv",
+      "Fuktspärr där det behövs",
+      "Trä, laminat, klinker eller vinyl",
+      "Golvvärme",
+      "Lister och avslutning",
+    ],
+  },
+  maleri: {
+    meta: "Inomhus, fasad, puts",
+    facts: [
+      { value: "1–2 dagar", label: "per rum" },
+      { value: "8–15 år", label: "hållbarhet på fasad" },
+      { value: "Inne", label: "och ute" },
+      { value: "ROT", label: "avdrag på arbetet" },
+    ],
+    included: [
+      "Skydd av golv och möbler",
+      "Spackling och slipning",
+      "Grundning",
+      "Väggar, tak och snickerier",
+      "Putslagning",
+      "Fasadmålning",
+    ],
+  },
+  "el-vvs": {
+    meta: "Installation och uppgradering",
+    facts: [
+      { value: "Certifierat", label: "el och VVS" },
+      { value: "Säker Vatten", label: "i våtrum" },
+      { value: "Laddbox", label: "för elbil" },
+      { value: "Akut", label: "ärenden prioriteras" },
+    ],
+    included: [
+      "Ny el och omdragning",
+      "Byte av elcentral",
+      "Jordfelsbrytare",
+      "Laddbox för elbil",
+      "Vatten och avlopp",
+      "Golvvärme och bergvärme",
+    ],
+  },
+  projektledning: {
+    meta: "En kontaktperson, hela vägen",
+    facts: [
+      { value: "1", label: "kontaktperson" },
+      { value: "Löpande", label: "avstämningar" },
+      { value: "Öppen", label: "budgetuppföljning" },
+      { value: "Alla", label: "yrkesgrupper samordnade" },
+    ],
+    included: [
+      "Tidplan före start",
+      "Samordning av yrkesgrupper",
+      "Upphandling av underentreprenörer",
+      "Materialbeställningar",
+      "Löpande budgetuppföljning",
+      "Slutbesiktning",
     ],
   },
 };

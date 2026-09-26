@@ -1,58 +1,58 @@
 import Link from "next/link";
-import { site } from "@/lib/placeholder";
+import { site, services } from "@/lib/placeholder";
+import { softwareAreas } from "@/lib/software-content";
 
-type Division = "bygg" | "01" | "hub";
-
-const HOME: Record<Division, string> = { bygg: "/bygg", "01": "/01", hub: "/" };
-
-export default function Footer({ division }: { division: Division }) {
+export default function Footer() {
   const year = new Date().getFullYear();
-  const tel = `tel:${site.contact.phone}`;
 
   return (
-    <footer className="site-footer">
-      <div className="container footer-inner">
-        <div className="footer-brand">
-          <Link href={HOME[division]} className="logo" aria-label="Byggly 01 hem">
-            <span className="logo-badge">
-              <img src="/brand/logo.svg" alt="" />
-            </span>
-          </Link>
-          <p>
-            Bygg &amp; renovering gjort på rätt sätt — kvalitetshantverk du kan lita på.
-            01 är mjukvarugrenen i samma företag.
-          </p>
+    <footer className="ftr">
+      <div className="container ftr-grid">
+        <div className="ftr-brand">
+          <img src="/brand/binaafy-light.svg" alt="Binaafy" width={121} height={28} />
+          <p>Ett företag, två verksamheter. Vi bygger hus i Halland och system för verksamheter i hela Sverige.</p>
         </div>
 
-        <div className="footer-col">
-          <h4>Tjänster</h4>
-          <Link href="/tjanster/totalrenovering">Totalrenovering</Link>
-          <Link href="/tjanster/badrumsrenovering">Badrum</Link>
-          <Link href="/tjanster/koksrenovering">Kök</Link>
-          <Link href="/tjanster/tillbyggnad">Tillbyggnad</Link>
+        <div className="ftr-col">
+          <h4>Bygg</h4>
+          {services.slice(0, 5).map((s) => (
+            <Link key={s.slug} href={`/bygg/tjanster/${s.slug}`}>
+              {s.title}
+            </Link>
+          ))}
+          <Link href="/bygg/tjanster">Alla tjänster</Link>
         </div>
 
-        <div className="footer-col">
-          <h4>Företag</h4>
+        <div className="ftr-col">
+          <h4>Software</h4>
+          {softwareAreas.map((a) => (
+            <Link key={a.slug} href={`/mjukvara/tjanster/${a.slug}`}>
+              {a.title}
+            </Link>
+          ))}
+          <Link href="/mjukvara/case">Case</Link>
+        </div>
+
+        <div className="ftr-col">
+          <h4>Företaget</h4>
           <Link href="/om-oss">Om oss</Link>
-          <Link href="/projekt">Projekt</Link>
+          <Link href="/bygg/projekt">Projekt</Link>
           <Link href="/kontakt">Kontakt</Link>
-          <Link href="/offert">Begär offert</Link>
-          <Link href="/01">01 Mjukvara</Link>
+          <Link href="/bygg/offert">Begär offert</Link>
+          <Link href="/mjukvara/brief">Skicka brief</Link>
         </div>
 
-        <div className="footer-col">
+        <div className="ftr-col">
           <h4>Kontakt</h4>
-          <a href={tel}>{site.contact.phoneDisplay}</a>
+          <a href={`tel:${site.contact.phone}`}>{site.contact.phoneDisplay}</a>
           <a href={`mailto:${site.contact.email}`}>{site.contact.email}</a>
           <span>{site.contact.address}</span>
+          <span>{site.contact.hours}</span>
         </div>
       </div>
-      <div className="container footer-bottom">
-        <span>© {year} Byggly 01. Alla rättigheter förbehållna.</span>
-        <span>
-          Licensierad &amp; försäkrad · <Link href="/integritetspolicy">Integritetspolicy</Link>
-        </span>
+      <div className="container ftr-bottom">
+        <span>© {year} {site.brand}. F-skatt, ansvarsförsäkring och ID06.</span>
+        <Link href="/integritetspolicy">Integritetspolicy</Link>
       </div>
     </footer>
   );

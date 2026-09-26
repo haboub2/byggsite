@@ -30,6 +30,10 @@ export const iconPaths: Record<string, string> = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
   "arrow-diagonal": '<path d="M7 17 17 7M8 7h9v9"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  "arrow-up-right": '<path d="M7 17 17 7M8 7h9v9"/>',
+  chevron: '<path d="m9 6 6 6-6 6"/>',
+  shield: '<path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3z"/><path d="m9 12 2 2 4-4"/>',
   sync: '<path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.7-3M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.7 3"/><path d="M21 3v6h-6"/><path d="M3 21v-6h6"/>',
 };
 

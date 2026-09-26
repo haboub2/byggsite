@@ -7,12 +7,13 @@ export function businessJsonLd() {
     "@context": "https://schema.org",
     "@type": "GeneralContractor",
     "@id": `${SITE_URL}/#business`,
-    name: "Byggly",
-    legalName: "Byggly 01",
+    name: "Binaafy Bygg",
+    legalName: site.legalName,
+    parentOrganization: { "@id": `${SITE_URL}/#org` },
     slogan: "Kvalitetshantverk i tid och inom budget",
     description:
       "Bygg- och renoveringsfirma i Halmstad som utför totalrenovering, badrum, kök, tillbyggnad, takarbeten, golvläggning, måleri samt el och VVS. Kostnadsfri offert, fast pris och 5 års garanti.",
-    url: `${SITE_URL}/bygg`,
+    url: `${SITE_URL}/`,
     telephone: site.contact.phone,
     email: site.contact.email,
     priceRange: "$$",
@@ -45,21 +46,23 @@ export function websiteJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "Byggly 01",
+    name: site.brand,
     url: `${SITE_URL}/`,
     inLanguage: "sv-SE",
   };
 }
 
-/** Service — per /tjanster/[slug] page, per PLAN.md §11 */
+/** Service — per service page on either side */
 export function serviceJsonLd({
-  slug,
+  path,
   title,
   description,
+  provider,
 }: {
-  slug: string;
+  path: string;
   title: string;
   description: string;
+  provider: "bygg" | "software";
 }) {
   return {
     "@context": "https://schema.org",
@@ -67,9 +70,12 @@ export function serviceJsonLd({
     serviceType: title,
     name: title,
     description,
-    provider: { "@id": `${SITE_URL}/#business` },
-    areaServed: site.areasServed.map((name) => ({ "@type": "AdministrativeArea", name })),
-    url: `${SITE_URL}/tjanster/${slug}`,
+    provider: { "@id": `${SITE_URL}/${provider === "bygg" ? "#business" : "#software"}` },
+    areaServed:
+      provider === "bygg"
+        ? site.areasServed.map((name) => ({ "@type": "AdministrativeArea", name }))
+        : { "@type": "Country", name: "Sverige" },
+    url: `${SITE_URL}${path}`,
   };
 }
 
@@ -98,17 +104,34 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
   };
 }
 
-/** ProfessionalService (01) — @id {site}/#software, department of #org */
+/** ProfessionalService (Software) — @id {site}/#software, department of #org */
 export function softwareJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "ProfessionalService",
     "@id": `${SITE_URL}/#software`,
-    name: "01 av Byggly",
+    name: "Binaafy Software",
     serviceType: "Software development",
-    url: `${SITE_URL}/01`,
+    url: `${SITE_URL}/mjukvara`,
     parentOrganization: { "@id": `${SITE_URL}/#org` },
     areaServed: "SE",
     knowsLanguage: ["sv", "en"],
+  };
+}
+
+/** The company itself — both sides are departments of it. */
+export function organizationJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${SITE_URL}/#org`,
+    name: site.brand,
+    legalName: site.legalName,
+    foundingDate: "2026",
+    url: `${SITE_URL}/`,
+    logo: `${SITE_URL}/brand/binaafy.svg`,
+    email: site.contact.email,
+    telephone: site.contact.phone,
+    department: [{ "@id": `${SITE_URL}/#business` }, { "@id": `${SITE_URL}/#software` }],
   };
 }

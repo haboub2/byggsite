@@ -1,51 +1,44 @@
-import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import Analytics from "@/components/Analytics";
 import CookieConsent from "@/components/CookieConsent";
-import MagneticButtons from "@/components/MagneticButtons";
 import { SITE_URL } from "@/lib/env";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600"],
   variable: "--font-jakarta",
-  display: "swap",
-});
-
-const grotesk = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-grotesk",
   display: "swap",
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Byggly 01 — bygg & mjukvara i Halmstad",
-    template: "%s | Byggly 01",
+    default: "Binaafy — bygg och software i Halmstad",
+    template: "%s | Binaafy",
   },
   description:
-    "Byggly 01 är ett företag, två avdelningar: Byggly renoverar och bygger hem i Halmstad, 01 bygger systemen som driver verksamheter.",
+    "Binaafy är ett företag med två verksamheter: vi bygger och renoverar hem i Halmstad, och vi bygger system som tar bort dubbelarbete.",
   openGraph: {
     type: "website",
     locale: "sv_SE",
-    siteName: "Byggly 01",
+    siteName: "Binaafy",
     url: SITE_URL,
   },
 };
+
+export const viewport: Viewport = { themeColor: "#18232c" };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="sv" className={`${jakarta.variable} ${grotesk.variable}`}>
+    <html lang="sv" className={jakarta.variable}>
       <body>
         {children}
         <CookieConsent />
         <Analytics />
-        <MagneticButtons />
       </body>
     </html>
   );

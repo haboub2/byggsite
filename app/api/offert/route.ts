@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     request,
     kind: "offert",
     division: "bygg",
-    page: "/offert",
+    page: "/bygg/offert",
     schema: offertSchema,
     toLeadFields: (data) => ({
       service: data.service,

@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { site, heroBygg, trustPoints, processSteps, faq, featuredProjects, services as placeholderServices } from "../lib/placeholder";
+import { site, byggStats, trustPoints, processSteps, faq, featuredProjects, services as placeholderServices } from "../lib/placeholder";
 import { iconPaths } from "../components/Icons";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -57,9 +57,9 @@ async function main() {
 
   const siteBlock = {
     company: {
-      brand: "Byggly",
-      wordmark: "Byggly 01",
-      legalName: "Byggly 01",
+      brand: site.brand,
+      wordmark: site.brand,
+      legalName: site.legalName,
       orgNr: null,
       foundedYear: 2026,
       fSkatt: null,
@@ -78,11 +78,11 @@ async function main() {
     },
     areasServed: site.areasServed,
     social: { facebook: "", instagram: "", linkedin: "", gbp: "" },
-    siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://byggly.se",
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://binaafy.se",
   };
 
   const byggBlock = {
-    hero: heroBygg,
+    stats: byggStats,
     trustPoints,
     process: processSteps,
     faq,

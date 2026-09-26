@@ -13,7 +13,7 @@ function client() {
 const KIND_LABEL: Record<LeadKind, string> = {
   offert: "Offertförfrågan",
   kontakt: "Kontaktmeddelande",
-  brief: "01 — Brief",
+  brief: "Software — brief",
 };
 
 /** Internal notification to the team. Never throws — logs and returns on failure. */
@@ -40,7 +40,7 @@ export async function notify(input: {
 
   try {
     await resend.emails.send({
-      from: "Byggly 01 <leads@byggly.se>",
+      from: `${site.brand} <leads@${site.domain}>`,
       to,
       replyTo: input.email,
       subject: `${KIND_LABEL[input.kind]} — ${input.name}`,
@@ -72,7 +72,7 @@ export async function autoreply(input: { kind: LeadKind; division: Division; nam
 
   const isSoftware = input.division === "01";
   const subject = isSoftware ? "Tack för din brief — vi hör av oss inom två arbetsdagar" : "Tack — vi hör av oss inom 24 timmar";
-  const signOff = isSoftware ? "01, mjukvaruavdelningen på Byggly" : "Byggly";
+  const signOff = isSoftware ? `${site.brand} Software` : `${site.brand} Bygg`;
 
   try {
     await resend.emails.send({

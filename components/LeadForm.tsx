@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { services } from "@/lib/placeholder";
+import { site, services } from "@/lib/placeholder";
+import { softwareAreas } from "@/lib/software-content";
 
 type Variant = "offert" | "kontakt" | "brief";
 
@@ -67,7 +68,7 @@ export default function LeadForm({
       setFeedback({ msg: cfg.success, kind: "success" });
     } catch {
       setFeedback({
-        msg: "Formuläret är inte kopplat än. Ring 079-304 97 37 eller mejla info@byggly.se så länge.",
+        msg: `Något gick fel när formuläret skulle skickas. Ring ${site.contact.phoneDisplay} eller mejla ${site.contact.email} så länge.`,
         kind: "error",
       });
     } finally {
@@ -127,11 +128,11 @@ export default function LeadForm({
         {variant === "brief" && (
           <div className="field">
             <label htmlFor="lf-type">Typ av projekt *</label>
-            <select id="lf-type" name="service" required>
+            <select id="lf-type" name="service" defaultValue={defaultService} required>
               <option value="">Välj…</option>
-              <option>Webb &amp; portal</option>
-              <option>Automation / integration</option>
-              <option>Internt system</option>
+              {softwareAreas.map((a) => (
+                <option key={a.slug}>{a.title}</option>
+              ))}
               <option>Annat</option>
             </select>
           </div>
