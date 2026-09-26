@@ -6,7 +6,8 @@ import Reveal from "@/components/Reveal";
 import { Stats, Bridge, CtaBand } from "@/components/Sections";
 import { softwareCases } from "@/lib/software-content";
 import { SIDES } from "@/lib/sides";
-import { SITE_URL } from "@/lib/env";
+import { articleJsonLd, breadcrumbJsonLd, pageMetadata, CONTENT_UPDATED } from "@/lib/seo";
+import { ogImage } from "@/lib/images";
 
 export function generateStaticParams() {
   return softwareCases.map((c) => ({ slug: c.slug }));
@@ -20,11 +21,13 @@ export async function generateMetadata({
   const { slug } = await params;
   const c = softwareCases.find((x) => x.slug === slug);
   if (!c) return {};
-  return {
+  return pageMetadata({
     title: c.title,
     description: c.summary,
-    alternates: { canonical: `/mjukvara/case/${slug}` },
-  };
+    path: `/mjukvara/case/${slug}`,
+    image: ogImage(c.image),
+    type: "article",
+  });
 }
 
 export default async function CasePage({
@@ -49,14 +52,21 @@ export default async function CasePage({
   return (
     <>
       <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "Article",
-          headline: c.title,
-          about: c.client,
-          author: { "@id": `${SITE_URL}/#software` },
-          url: `${SITE_URL}/mjukvara/case/${slug}`,
-        }}
+        data={[
+          articleJsonLd({
+            path: `/mjukvara/case/${slug}`,
+            title: c.title,
+            description: c.summary,
+            published: CONTENT_UPDATED,
+            image: ogImage(c.image),
+            about: c.client,
+          }),
+          breadcrumbJsonLd([
+            { name: "Software", path: "/mjukvara" },
+            { name: "Case", path: "/mjukvara/case" },
+            { name: c.title, path: `/mjukvara/case/${slug}` },
+          ]),
+        ]}
       />
       <PageHero
         crumbs={[{ label: "Software", href: "/mjukvara" }, { label: "Case", href: "/mjukvara/case" }, { label: c.title }]}

@@ -50,6 +50,7 @@ export default function Landing({ side }: { side: Side }) {
         tag: p.tag,
         title: p.title,
         desc: p.desc,
+        alt: `${p.title}: ${p.tag.toLowerCase()}`,
       }))
     : softwareCases.map((c) => ({
         href: `/mjukvara/case/${c.slug}`,
@@ -73,13 +74,14 @@ export default function Landing({ side }: { side: Side }) {
       <section className="lhero" data-motion-nav="instant">
         <div className="container lhero-grid">
           <div>
-            <span className="eyebrow eyebrow--dark">Halmstad — bygg och software</span>
+            <p className="eyebrow eyebrow--dark">{cfg.topic}</p>
             <ViewTransition name="hero-lines" share="auto" default="none">
               <div className="lhero-lines">
                 {lines.map((l) =>
                   l.key === side ? (
                     <h1 key={l.key} className="lhero-line" aria-current="true">
                       Vi bygger <span className="lhero-word">{l.word}</span>.
+                      <span className="sr-only"> {cfg.topic}.</span>
                     </h1>
                   ) : (
                     <Link key={l.key} href={l.href} scroll={false} className="lhero-line">

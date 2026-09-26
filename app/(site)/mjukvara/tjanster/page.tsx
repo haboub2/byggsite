@@ -1,20 +1,23 @@
 import type { Metadata } from "next";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 import PageHero from "@/components/PageHero";
 import { Register, Bridge, CtaBand } from "@/components/Sections";
 import { softwareAreas, techStack } from "@/lib/software-content";
 import { SIDES } from "@/lib/sides";
 
-export const metadata: Metadata = {
-  title: "Tjänster — Software",
+export const metadata: Metadata = pageMetadata({
+  title: "Mjukvarutjänster — webb, automation och interna system",
   description:
-    "Webb och portaler, automation och integrationer, interna system — tre sätt vi tar bort dubbelarbete och bygger system som håller.",
-  alternates: { canonical: "/mjukvara/tjanster" },
-};
+    "Webbutveckling och kundportaler, automation och systemintegration, interna verksamhetssystem. Tre sätt vi tar bort dubbelarbete, med fast pris per etapp.",
+  path: "/mjukvara/tjanster",
+});
 
 export default function SoftwareServicesIndex() {
   const cfg = SIDES.mjukvara;
   return (
     <>
+      <JsonLd data={breadcrumbJsonLd([{ name: "Software", path: "/mjukvara" }, { name: "Tjänster", path: "/mjukvara/tjanster" }])} />
       <PageHero
         crumbs={[{ label: "Software", href: "/mjukvara" }, { label: "Tjänster" }]}
         eyebrow="Register"

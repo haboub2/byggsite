@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import FormPage from "@/components/FormPage";
 
-export const metadata: Metadata = {
-  title: "Skicka brief — Software",
-  description: "Berätta kort om projektet så återkommer vi inom två arbetsdagar med hur vi skulle angripa det.",
-  alternates: { canonical: "/mjukvara/brief" },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Skicka en brief — webb, automation eller system",
+  description:
+    "Beskriv vad som kostar er tid idag. Vi återkommer inom två arbetsdagar med ett konkret angreppssätt, uppskattad omfattning och fast pris per etapp.",
+  path: "/mjukvara/brief",
+});
 
 export default async function BriefPage({
   searchParams,

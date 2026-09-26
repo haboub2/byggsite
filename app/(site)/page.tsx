@@ -1,19 +1,22 @@
 import type { Metadata } from "next";
 import Landing from "@/components/Landing";
 import JsonLd from "@/components/JsonLd";
-import { businessJsonLd, websiteJsonLd } from "@/lib/seo";
+import { businessJsonLd, pageMetadata } from "@/lib/seo";
+import { ogImage } from "@/lib/images";
 
-export const metadata: Metadata = {
-  title: { absolute: "Binaafy — bygg och renovering i Halmstad" },
+export const metadata: Metadata = pageMetadata({
+  title: "Binaafy — bygg och renovering i Halmstad",
+  absoluteTitle: true,
   description:
-    "Binaafy renoverar, bygger om och bygger nytt i Halmstad med omnejd. Ett team, en kontaktperson, fast pris och 5 års garanti.",
-  alternates: { canonical: "/" },
-};
+    "Byggfirma i Halmstad: renovering, badrum, kök, tillbyggnad och tak. Ett team, en kontaktperson, fast pris, ROT-avdrag på fakturan och 5 års garanti.",
+  path: "/",
+  image: ogImage("hero-bygg"),
+});
 
 export default function HomePage() {
   return (
     <>
-      <JsonLd data={[websiteJsonLd(), businessJsonLd()]} />
+      <JsonLd data={businessJsonLd()} />
       <Landing side="bygg" />
     </>
   );

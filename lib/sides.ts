@@ -11,6 +11,9 @@ export type SideConfig = {
   label: string;
   home: string;
   word: string;
+  /** What the side is, in search terms: the eyebrow above the headline, and
+   *  appended to the h1 for screen readers and search engines. */
+  topic: string;
   lead: string;
   heroCta: Link;
   heroSecondary: Link;
@@ -31,6 +34,7 @@ export const SIDES: Record<Side, SideConfig> = {
     label: "Bygg",
     home: "/",
     word: "hus",
+    topic: "Bygg och renovering i Halmstad",
     lead: "Renovering, ombyggnad och nybygg i Halmstad. Ett team, en kontaktperson, från första skiss till sista detalj.",
     heroCta: { label: "Berätta om ditt projekt", href: "/bygg/offert" },
     heroSecondary: { label: "Se våra projekt", href: "/bygg/projekt" },
@@ -38,6 +42,7 @@ export const SIDES: Record<Side, SideConfig> = {
     nav: [
       { label: "Tjänster", href: "/bygg/tjanster" },
       { label: "Projekt", href: "/bygg/projekt" },
+      { label: "Guider", href: "/guider" },
       { label: "Om oss", href: "/om-oss" },
       { label: "Kontakt", href: "/kontakt" },
     ],
@@ -79,6 +84,7 @@ export const SIDES: Record<Side, SideConfig> = {
     label: "Software",
     home: "/mjukvara",
     word: "system",
+    topic: "Webbutveckling, automation och system",
     lead: "Webb, automation och interna verktyg. Samma hantverkstänk som på byggsidan — bara i kod.",
     heroCta: { label: "Berätta om er idé", href: "/mjukvara/brief" },
     heroSecondary: { label: "Se våra case", href: "/mjukvara/case" },

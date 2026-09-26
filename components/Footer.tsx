@@ -37,6 +37,7 @@ export default function Footer() {
         <div className="ftr-col">
           <h4>Företaget</h4>
           <Link href="/om-oss">Om oss</Link>
+          <Link href="/guider">Guider</Link>
           {projectsReady() && <Link href="/bygg/projekt">Projekt</Link>}
           <Link href="/kontakt">Kontakt</Link>
           <Link href="/bygg/offert">Begär offert</Link>

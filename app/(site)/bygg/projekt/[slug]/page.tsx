@@ -7,6 +7,8 @@ import { Icon } from "@/components/Icons";
 import { CtaBand } from "@/components/Sections";
 import { featuredProjects, services } from "@/lib/placeholder";
 import { SIDES } from "@/lib/sides";
+import { pageMetadata } from "@/lib/seo";
+import { hasImage } from "@/lib/images";
 
 export function generateStaticParams() {
   return featuredProjects.map((p) => ({ slug: p.slug }));
@@ -20,11 +22,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const p = featuredProjects.find((x) => x.slug === slug);
   if (!p) return {};
-  return {
-    title: p.title,
+  return pageMetadata({
+    title: `${p.title} — ${p.tag.toLowerCase()}`,
     description: p.desc,
-    alternates: { canonical: `/bygg/projekt/${slug}` },
-  };
+    path: `/bygg/projekt/${slug}`,
+    noindex: !hasImage(p.image),
+  });
 }
 
 export default async function ProjectPage({
@@ -56,11 +59,11 @@ export default async function ProjectPage({
         <div className="container">
           <div className="work work--2">
             <div>
-              <Photo slot={`${p.image}-fore`} ratio="4 / 3" sizes="(max-width: 580px) 100vw, 50vw" />
+              <Photo slot={`${p.image}-fore`} ratio="4 / 3" sizes="(max-width: 580px) 100vw, 50vw" alt={`${p.title} före renoveringen`} />
               <span className="work-tag">Före</span>
             </div>
             <div>
-              <Photo slot={`${p.image}-efter`} ratio="4 / 3" sizes="(max-width: 580px) 100vw, 50vw" />
+              <Photo slot={`${p.image}-efter`} ratio="4 / 3" sizes="(max-width: 580px) 100vw, 50vw" alt={`${p.title} efter renoveringen`} />
               <span className="work-tag">Efter</span>
             </div>
           </div>

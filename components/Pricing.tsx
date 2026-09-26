@@ -6,7 +6,7 @@ import { services } from "@/lib/placeholder";
 
 const title = (slug: string) => services.find((s) => s.slug === slug)?.title ?? slug;
 
-function presets() {
+export function presets() {
   return priceGuide.flatMap((p) =>
     p.preset ? [{ ...p.preset, slug: p.slug, service: title(p.slug) }] : []
   );
@@ -38,7 +38,10 @@ export function PricingSection() {
           </ul>
           <p className="guide-foot">
             Riktpriserna visar var ett normalt projekt brukar landa. Ditt pris får du i offerten
-            efter hembesöket — fast pris, specificerat.
+            efter hembesöket — fast pris, specificerat.{" "}
+            <Link href="/guider/rot-avdrag-2026" className="link-quiet">
+              Så fungerar ROT-avdraget 2026
+            </Link>
           </p>
         </div>
       </div>

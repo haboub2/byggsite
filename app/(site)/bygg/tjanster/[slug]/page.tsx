@@ -4,10 +4,10 @@ import JsonLd from "@/components/JsonLd";
 import ServiceTemplate from "@/components/ServiceTemplate";
 import Reveal from "@/components/Reveal";
 import { ServicePricing } from "@/components/Pricing";
-import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 import { services, processSteps, featuredProjects } from "@/lib/placeholder";
-import { servicesContent, serviceExtras } from "@/lib/services-content";
-import { hasImage } from "@/lib/images";
+import { servicesContent, serviceExtras, serviceSeo } from "@/lib/services-content";
+import { hasImage, ogImage, serviceImage } from "@/lib/images";
 
 export function generateStaticParams() {
   return services.map((s) => ({ slug: s.slug }));
@@ -20,12 +20,14 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const svc = services.find((s) => s.slug === slug);
-  if (!svc) return {};
-  return {
-    title: `${svc.title} i Halmstad`,
-    description: svc.desc,
-    alternates: { canonical: `/bygg/tjanster/${slug}` },
-  };
+  const seo = serviceSeo[slug];
+  if (!svc || !seo) return {};
+  return pageMetadata({
+    title: seo.title,
+    description: seo.description,
+    path: `/bygg/tjanster/${slug}`,
+    image: ogImage(serviceImage[slug]),
+  });
 }
 
 export default async function ByggServicePage({
@@ -48,7 +50,13 @@ export default async function ByggServicePage({
     <>
       <JsonLd
         data={[
-          serviceJsonLd({ path: `/bygg/tjanster/${slug}`, title: svc.title, description: svc.desc, provider: "bygg" }),
+          serviceJsonLd({
+            path: `/bygg/tjanster/${slug}`,
+            title: serviceSeo[slug]?.title ?? svc.title,
+            description: content.lead,
+            provider: "bygg",
+            image: ogImage(serviceImage[slug]),
+          }),
           faqJsonLd(content.faq),
           breadcrumbJsonLd([
             { name: "Bygg", path: "/" },
@@ -63,6 +71,7 @@ export default async function ByggServicePage({
         index={index}
         total={services.length}
         title={svc.title}
+        seoTitle={serviceSeo[slug]?.title}
         lead={content.lead}
         facts={extras.facts}
         included={extras.included}

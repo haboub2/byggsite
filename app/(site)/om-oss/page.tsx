@@ -6,16 +6,17 @@ import Photo from "@/components/Photo";
 import Reveal from "@/components/Reveal";
 import { Icon } from "@/components/Icons";
 import { SectionHead, CtaBand } from "@/components/Sections";
-import { organizationJsonLd } from "@/lib/seo";
-import { hasImage } from "@/lib/images";
+import { breadcrumbJsonLd, pageMetadata, abs } from "@/lib/seo";
+import { hasImage, ogImage } from "@/lib/images";
 import { team, values, trustPoints } from "@/lib/placeholder";
 
-export const metadata: Metadata = {
-  title: "Om oss",
+export const metadata: Metadata = pageMetadata({
+  title: "Om Binaafy — bygg och mjukvara i Halmstad",
   description:
-    "Binaafy är ett företag med två verksamheter: vi bygger och renoverar hem i Halmstad, och vi bygger system som tar bort dubbelarbete.",
-  alternates: { canonical: "/om-oss" },
-};
+    "Binaafy är ett företag i Halmstad med två verksamheter: vi bygger och renoverar hem i Halland, och bygger system som tar bort dubbelarbete för företag.",
+  path: "/om-oss",
+  image: ogImage("about-workshop"),
+});
 
 function initials(name: string) {
   const parts = name.split(" ");
@@ -40,7 +41,18 @@ const STORY = [
 export default function AboutPage() {
   return (
     <>
-      <JsonLd data={organizationJsonLd()} />
+      <JsonLd
+        data={[
+          {
+            "@context": "https://schema.org",
+            "@type": "AboutPage",
+            url: abs("/om-oss"),
+            about: { "@id": abs("/#org") },
+            mainEntity: { "@id": abs("/#org") },
+          },
+          breadcrumbJsonLd([{ name: "Om oss", path: "/om-oss" }]),
+        ]}
+      />
       <PageHero
         crumbs={[{ label: "Om oss" }]}
         eyebrow="Om Binaafy"

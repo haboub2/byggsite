@@ -8,6 +8,7 @@ import { SIDES, sideFromPath, counterpartPath } from "@/lib/sides";
 const SHARED_NAV = [
   { label: "Bygg", href: "/" },
   { label: "Software", href: "/mjukvara" },
+  { label: "Guider", href: "/guider" },
   { label: "Om oss", href: "/om-oss" },
   { label: "Kontakt", href: "/kontakt" },
 ];

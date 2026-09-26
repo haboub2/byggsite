@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
 import ServiceTemplate from "@/components/ServiceTemplate";
 import { Checklist } from "@/components/Sections";
-import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import { ogImage, serviceImage } from "@/lib/images";
 import { softwareAreas, softwareProcess, softwareCases } from "@/lib/software-content";
 
 export function generateStaticParams() {
@@ -18,11 +19,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const area = softwareAreas.find((a) => a.slug === slug);
   if (!area) return {};
-  return {
-    title: `${area.title} — Software`,
-    description: area.body,
-    alternates: { canonical: `/mjukvara/tjanster/${slug}` },
-  };
+  return pageMetadata({
+    title: area.seo.title,
+    description: area.seo.description,
+    path: `/mjukvara/tjanster/${slug}`,
+    image: ogImage(serviceImage[slug]),
+  });
 }
 
 export default async function SoftwareServicePage({
@@ -42,7 +44,13 @@ export default async function SoftwareServicePage({
     <>
       <JsonLd
         data={[
-          serviceJsonLd({ path: `/mjukvara/tjanster/${slug}`, title: area.title, description: area.body, provider: "software" }),
+          serviceJsonLd({
+            path: `/mjukvara/tjanster/${slug}`,
+            title: area.seo.title,
+            description: area.body,
+            provider: "software",
+            image: ogImage(serviceImage[slug]),
+          }),
           faqJsonLd(area.faq),
           breadcrumbJsonLd([
             { name: "Software", path: "/mjukvara" },
@@ -57,6 +65,7 @@ export default async function SoftwareServicePage({
         index={index}
         total={softwareAreas.length}
         title={area.title}
+        seoTitle={area.seo.title}
         lead={area.body}
         facts={area.facts}
         included={area.included}

@@ -7,17 +7,22 @@ import { Icon } from "@/components/Icons";
 import { CtaBand } from "@/components/Sections";
 import { softwareCases } from "@/lib/software-content";
 import { SIDES } from "@/lib/sides";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import { ogImage } from "@/lib/images";
 
-export const metadata: Metadata = {
-  title: "Case — Software",
-  description: "Case från Binaafy Software: situation, insats och mätbart resultat.",
-  alternates: { canonical: "/mjukvara/case" },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Case — webb och system vi har byggt",
+  description: "Case från Binaafy Software: situationen, vad vi byggde och vad det gav. Webb, automation och interna system i drift.",
+  path: "/mjukvara/case",
+  image: ogImage("case-binaafy-sajten"),
+});
 
 export default function CaseIndex() {
   const cfg = SIDES.mjukvara;
   return (
     <>
+      <JsonLd data={breadcrumbJsonLd([{ name: "Software", path: "/mjukvara" }, { name: "Case", path: "/mjukvara/case" }])} />
       <PageHero
         crumbs={[{ label: "Software", href: "/mjukvara" }, { label: "Case" }]}
         eyebrow="Case"

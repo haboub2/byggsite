@@ -6,6 +6,9 @@ import { Stats, SectionHead, Steps, Faq, Bridge, CtaBand, Checklist } from "./Se
 import { SIDES, type Side } from "@/lib/sides";
 import { serviceImage } from "@/lib/images";
 import { projectsReady } from "@/lib/projects";
+import { guideBySlug, guidesFor } from "@/lib/guides";
+import { services } from "@/lib/placeholder";
+import { softwareAreas } from "@/lib/software-content";
 
 type Work = { href: string; image: string; tag: string; title: string; desc: string };
 
@@ -18,6 +21,7 @@ export default function ServiceTemplate({
   index,
   total,
   title,
+  seoTitle,
   lead,
   facts,
   included,
@@ -33,6 +37,8 @@ export default function ServiceTemplate({
   index: number;
   total: number;
   title: string;
+  /** Full search phrase, e.g. "Badrumsrenovering i Halmstad". */
+  seoTitle?: string;
   lead: string;
   facts: { value: string; label: string }[];
   included: string[];
@@ -45,6 +51,14 @@ export default function ServiceTemplate({
 }) {
   const cfg = SIDES[side];
   const base = side === "bygg" ? "/bygg" : "/mjukvara";
+  // Internal links: guides for this service and the other services on the same side.
+  const readMore = (guidesFor[slug] ?? []).flatMap((g) => {
+    const guide = guideBySlug(g);
+    return guide ? [{ label: guide.title, href: `/guider/${guide.slug}` }] : [];
+  });
+  const siblings = (side === "bygg" ? services.map((s) => ({ slug: s.slug, title: s.title })) : softwareAreas)
+    .filter((s) => s.slug !== slug)
+    .map((s) => ({ label: s.title, href: `${base}/tjanster/${s.slug}` }));
   const secondary =
     side === "bygg" && !projectsReady() ? { label: "Alla tjänster", href: "/bygg/tjanster" } : cfg.heroSecondary;
 
@@ -58,6 +72,7 @@ export default function ServiceTemplate({
         ]}
         eyebrow={`Tjänst ${String(index + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}`}
         title={title}
+        titleContext={seoTitle && seoTitle !== title ? seoTitle : undefined}
         lead={lead}
         image={serviceImage[slug]}
         dimH={title}
@@ -120,6 +135,36 @@ export default function ServiceTemplate({
             )}
             <Faq items={faq} name={`faq-${slug}`} />
           </div>
+        </div>
+      </section>
+
+      <section className="sec sec--tight">
+        <div className="container guide-links">
+          {readMore.length > 0 && (
+            <nav aria-label="Guider">
+              <span className="eyebrow">Läs mer</span>
+              <ul>
+                {readMore.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className="link-arrow">
+                      {l.label}
+                      <Icon name="arrow" strokeWidth={2} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
+          <nav aria-label="Fler tjänster">
+            <span className="eyebrow">Fler tjänster</span>
+            <ul className="chip-links">
+              {siblings.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href}>{l.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
       </section>
 

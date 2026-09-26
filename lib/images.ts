@@ -54,6 +54,15 @@ export function hasImage(slot: string): boolean {
   return resolveImage(slot) !== null;
 }
 
+/** Same slot as a 1200×630 share image (Open Graph). Local files are used as-is. */
+export function ogImage(slot: string): string | undefined {
+  const src = resolveImage(slot);
+  if (!src) return undefined;
+  return src.startsWith("https://images.unsplash.com/")
+    ? src.replace(/w=\d+/, "w=1200") + "&h=630"
+    : src;
+}
+
 /** Alt text per slot. Describes the scene; never claims the photo is our work. */
 export const imageAlt: Record<string, string> = {
   "hero-bygg": "Fåtölj och golvlampa i ljuset från ett stort fönster",
@@ -78,6 +87,7 @@ export const imageAlt: Record<string, string> = {
   "detail-timber": "Sågat virke i stapel",
   "detail-dashboard": "Instrumentpanel med diagram på en skärm",
   "detail-sketch": "Laptop och ritningar på ett skrivbord",
+  "case-binaafy-sajten": "Skärmbild av Binaafy.se: Software-sidan med rubriken Vi bygger system och ett skrivbord i trä",
 };
 
 /** Service slug → hero image slot (Bygg slugs differ from the prompt file names). */

@@ -6,6 +6,7 @@ export type SoftwareArea = {
   slug: string;
   title: string;
   meta: string;
+  seo: { title: string; description: string };
   body: string;
   fitsIf: string[];
   engagement: { label: string; body: string };
@@ -26,6 +27,10 @@ export const softwareAreas: SoftwareArea[] = [
     slug: "webb",
     title: "Webb & portaler",
     meta: "Sajter och kundportaler",
+    seo: {
+      title: "Webbutveckling och kundportaler för företag",
+      description: "Vi bygger snabba webbplatser och inloggade kundportaler i Next.js. Redigerbart innehåll, SEO från start, fast pris per etapp och kod ni äger.",
+    },
     body: "Publika sajter och inloggade kundportaler — snabba, mätbara och byggda så att ni själva kan ändra innehåll utan att vänta på en utvecklare för varje textrad.",
     fitsIf: [
       "Er nuvarande sajt är långsam, svår att uppdatera, eller inte mobilanpassad",
@@ -61,6 +66,10 @@ export const softwareAreas: SoftwareArea[] = [
     slug: "automation",
     title: "Automation & integrationer",
     meta: "Integrationer och dataflöden",
+    seo: {
+      title: "Automation och systemintegration",
+      description: "Koppla ihop system som inte pratar med varandra: API-integrationer, synk och automatiska flöden. Testat mot verklig data, med larm om något fallerar.",
+    },
     body: "Koppla ihop system som idag inte pratar med varandra. Om någon i teamet kopierar data mellan Excel, mejl och ett affärssystem varje vecka, är det ett automationsproblem, inte en personalfråga.",
     fitsIf: [
       "Samma information matas in manuellt på flera ställen",
@@ -95,6 +104,10 @@ export const softwareAreas: SoftwareArea[] = [
     slug: "interna-system",
     title: "Interna system",
     meta: "Offert, planering, uppföljning",
+    seo: {
+      title: "Interna system — offert, planering och uppföljning",
+      description: "Skräddarsydda verksamhetssystem som ersätter Excel-ark: offert, planering och uppföljning med behörigheter och historik. Smalt först, i drift på veckor.",
+    },
     body: "Verktyg för offert, planering och uppföljning — formade efter hur ni faktiskt jobbar, inte efter hur ett generiskt SaaS-verktyg tror att alla jobbar.",
     fitsIf: [
       "Ett standardverktyg täcker 80 % av behovet men saknar det som spelar roll för er",

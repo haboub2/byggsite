@@ -8,6 +8,7 @@ export default function PageHero({
   crumbs,
   eyebrow,
   title,
+  titleContext,
   lead,
   image,
   dimH,
@@ -18,6 +19,9 @@ export default function PageHero({
   crumbs: { label: string; href?: string }[];
   eyebrow?: string;
   title: string;
+  /** Appended to the h1 for screen readers and search engines, e.g. the full
+   *  service name and town when the visible title is a short word. */
+  titleContext?: string;
   lead?: string;
   image?: string;
   dimH?: string;
@@ -32,7 +36,10 @@ export default function PageHero({
         <div className="phero-grid swap">
           <div>
             {eyebrow && <span className="eyebrow eyebrow--accent">{eyebrow}</span>}
-            <h1>{title}</h1>
+            <h1>
+              {title}
+              {titleContext && <span className="sr-only"> — {titleContext}</span>}
+            </h1>
             {lead && <p className="phero-lead">{lead}</p>}
             {children && <div className="phero-actions">{children}</div>}
           </div>

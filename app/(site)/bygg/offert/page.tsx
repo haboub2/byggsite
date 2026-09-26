@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import FormPage from "@/components/FormPage";
 
-export const metadata: Metadata = {
-  title: "Begär offert",
+export const metadata: Metadata = pageMetadata({
+  title: "Begär offert på bygg eller renovering i Halmstad",
   description:
-    "Kostnadsfri och specificerad offert på ditt bygg- eller renoveringsprojekt i Halmstad — svar inom 24 timmar.",
-  alternates: { canonical: "/bygg/offert" },
-};
+    "Kostnadsfri, specificerad offert med fast pris på ditt bygg- eller renoveringsprojekt i Halmstad. Svar inom 24 timmar och kostnadsfritt hembesök.",
+  path: "/bygg/offert",
+});
 
 export default async function OffertPage({
   searchParams,

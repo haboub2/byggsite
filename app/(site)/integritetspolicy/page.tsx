@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import PageHero from "@/components/PageHero";
+import { pageMetadata } from "@/lib/seo";
 import Reveal from "@/components/Reveal";
 import { site } from "@/lib/placeholder";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Integritetspolicy",
-  description: "Hur Binaafy behandlar personuppgifter från webbplatsens formulär.",
-  alternates: { canonical: "/integritetspolicy" },
-  robots: { index: false },
-};
+  description: "Hur Binaafy samlar in, använder och skyddar personuppgifter från webbplatsens formulär, enligt GDPR.",
+  path: "/integritetspolicy",
+  noindex: true,
+});
 
 const SECTIONS = [
   {
