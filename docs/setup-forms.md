@@ -58,11 +58,33 @@ MAIL_FROM=
 Starta om utvecklingsservern efteråt. I produktion läggs samma värden in under
 **Vercel → Project → Settings → Environment Variables**.
 
-## 4. Testa
+## 4. Admin-inloggning (inkorgen)
+
+Förfrågningarna läses på `/admin`. Bara användare i tabellen `admins` kommer in.
+
+1. Supabase → **Authentication → Users → Add user** → e-post och ett starkt lösenord
+   (bocka i *Auto Confirm User*).
+2. Kopiera användarens **UID**.
+3. **SQL Editor** → kör, med UID:t insatt:
+
+   ```sql
+   insert into admins (user_id) values ('UID-HÄR');
+   ```
+
+4. Logga in på `/admin/login`.
+
+Upprepa för varje person som ska se förfrågningarna. Ta bort behörighet med
+`delete from admins where user_id = '...';`.
+
+> Utan Supabase visar `/admin` exempeldata när sajten körs lokalt (`npm run dev`),
+> så att inkorgen går att prova. I produktion kräver `/admin` alltid inloggning.
+
+## 5. Testa
 
 1. Skicka ett offertformulär på `/bygg/offert` med er egen e-post.
 2. Kontrollera att raden syns i Supabase: **Table Editor → leads**.
 3. Kontrollera att notismejlet kom fram till `MAIL_TO`.
+4. Öppna `/admin`: förfrågan ska synas som **Ny**.
 
 ## Hur det fungerar
 
