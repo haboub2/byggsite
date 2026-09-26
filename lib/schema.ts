@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+/** Hidden input that only bots fill in (components/LeadForm.tsx, lib/lead-handler.ts). */
+export const HONEYPOT = "website";
+
 const consent = z
   .string({ message: "Du måste godkänna villkoren." })
   .refine((v) => v === "on", { message: "Du måste godkänna villkoren." });

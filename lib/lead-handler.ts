@@ -4,12 +4,27 @@ import type { ZodType } from "zod";
 import { rateLimit } from "./rate-limit";
 import { notify, autoreply } from "./mail";
 import { isSupabaseConfigured } from "./supabase/config";
+import { HONEYPOT } from "./schema";
 import { createAdminClient } from "./supabase/admin";
 
 type LeadKind = "offert" | "kontakt" | "brief";
 type Division = "bygg" | "01";
 
 type BaseFields = { name: string; email: string; phone?: string; message: string };
+
+const str = (v: unknown, max = 300) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
+
+/** Attribution sent by the form: the page the visitor was on, not the API URL. */
+function readSource(raw: Record<string, unknown>, request: NextRequest, page: string) {
+  const s = (raw.source && typeof raw.source === "object" ? raw.source : {}) as Record<string, unknown>;
+  return {
+    utm_source: str(s.utm_source),
+    utm_medium: str(s.utm_medium),
+    utm_campaign: str(s.utm_campaign),
+    referrer: str(s.referrer) ?? request.headers.get("referer"),
+    page: str(s.page) ?? page,
+  };
+}
 
 /**
  * Shared POST handler for the three lead forms. Validates -> persists to
@@ -56,6 +71,13 @@ export async function handleLead<T extends BaseFields>({
     return NextResponse.json({ ok: false, error: "Ogiltig förfrågan." }, { status: 400 });
   }
 
+  const raw = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+
+  // Bots fill every field, including the hidden one. Pretend it worked and drop it.
+  if (str(raw[HONEYPOT])) {
+    return NextResponse.json({ ok: true });
+  }
+
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -74,14 +96,10 @@ export async function handleLead<T extends BaseFields>({
     );
   }
 
-  const url = new URL(request.url);
-  const source = {
-    utm_source: url.searchParams.get("utm_source"),
-    utm_medium: url.searchParams.get("utm_medium"),
-    utm_campaign: url.searchParams.get("utm_campaign"),
-    referrer: request.headers.get("referer"),
-    page,
-  };
+  const source = readSource(raw, request, page);
+  const details = Object.fromEntries(
+    Object.entries(fields.extra ?? {}).filter((entry): entry is [string, string] => Boolean(entry[1]))
+  );
 
   try {
     const admin = createAdminClient();
@@ -95,7 +113,9 @@ export async function handleLead<T extends BaseFields>({
       budget: fields.budget || null,
       timeline: fields.timeline || null,
       message: data.message,
+      details,
       source,
+      consent_at: new Date().toISOString(),
       status: "new",
     });
     if (error) {

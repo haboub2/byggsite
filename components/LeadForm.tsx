@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { site, services } from "@/lib/placeholder";
 import { softwareAreas } from "@/lib/software-content";
+import { HONEYPOT } from "@/lib/schema";
 
 type Variant = "offert" | "kontakt" | "brief";
 
@@ -54,6 +55,20 @@ export default function LeadForm({
       setFeedback({ msg: "Fyll i namn, en giltig e-post och ett meddelande.", kind: "error" });
       return;
     }
+    if (data.consent !== "on") {
+      setFeedback({ msg: "Kryssa i att du godkänner att bli kontaktad.", kind: "error" });
+      return;
+    }
+
+    // Attribution comes from the page the visitor is on, not the API URL.
+    const params = new URLSearchParams(window.location.search);
+    const source = {
+      utm_source: params.get("utm_source"),
+      utm_medium: params.get("utm_medium"),
+      utm_campaign: params.get("utm_campaign"),
+      referrer: document.referrer || null,
+      page: window.location.pathname,
+    };
 
     setBusy(true);
     setFeedback({ msg: "", kind: "" });
@@ -61,9 +76,17 @@ export default function LeadForm({
       const res = await fetch(cfg.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, division: variant === "brief" ? "01" : "bygg" }),
+        body: JSON.stringify({ ...data, source }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        // 400 carries a message about the input; anything else is on our side.
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        if (res.status === 400 && body?.error) {
+          setFeedback({ msg: body.error, kind: "error" });
+          return;
+        }
+        throw new Error(String(res.status));
+      }
       form.reset();
       setFeedback({ msg: cfg.success, kind: "success" });
     } catch {
@@ -78,6 +101,11 @@ export default function LeadForm({
 
   return (
     <form className="form" onSubmit={onSubmit} noValidate>
+      {/* Honeypot: hidden from people and screen readers, filled in by bots. */}
+      <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
+        <label htmlFor="lf-website">Lämna tomt</label>
+        <input id="lf-website" name={HONEYPOT} type="text" tabIndex={-1} autoComplete="off" />
+      </div>
       {variant === "brief" && (
         <div className="form-row">
           <div className="field">
