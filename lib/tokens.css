@@ -1,0 +1,61 @@
+/* ===== Binaafy design tokens =====
+   One palette for both sides of the business, taken from the logo:
+   anthracite ink, one orange accent, warm cream surfaces. The Bygg and
+   Software sides differ by content and photography, never by color.
+   No raw hex outside this file.
+*/
+
+:root {
+  /* anthracite — the logo ink, plus a deeper tone for dark heroes */
+  --dark: #18232c;
+  --dark-2: #1e2c37;
+  --dark-3: #26343f;
+  --dark-4: #34434f;
+
+  /* cream surfaces */
+  --bg: #f5f2ed;
+  --bg-alt: #eeeae3;
+  --bg-deep: #e3ddd3;
+  --paper: #fbfaf7;
+
+  /* text on cream */
+  --ink: #1e2c37;
+  --ink-2: #4b5763;
+  --ink-3: #5e6a76;
+
+  /* text on anthracite */
+  --on-dark: #f5f2ed;
+  --on-dark-2: #a9b3bd;
+  --on-dark-3: #8793a0;
+  /* inactive-but-clickable text on dark (large type only, ≥3:1) */
+  --on-dark-dim: #6b7884;
+
+  /* the one accent */
+  --orange: #f7802e;
+  --orange-hover: #ff9446;
+  --orange-press: #e8711f;
+  /* orange as text on cream (AA for body size) */
+  --orange-text: #a94c0c;
+
+  /* hairlines */
+  --line: rgba(30, 44, 55, 0.14);
+  --line-strong: rgba(30, 44, 55, 0.3);
+  --line-dark: rgba(245, 242, 237, 0.14);
+  --line-dark-strong: rgba(245, 242, 237, 0.28);
+
+  /* semantic */
+  --danger: #b42318;
+  --success: #1f7a4d;
+
+  /* geometry */
+  --radius: 4px;
+  --radius-sm: 2px;
+  --container: 1240px;
+  --gutter: clamp(16px, 4vw, 40px);
+
+  /* type (family var injected by next/font in the root layout) */
+  --font-body: var(--font-jakarta), system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* motion */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
