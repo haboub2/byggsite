@@ -4,13 +4,16 @@ import Photo from "./Photo";
 export default function WorkCard({
   href,
   image,
+  src,
   tag,
   title,
   desc,
   alt,
 }: {
   href: string;
-  image: string;
+  /** Image slot, or pass `src` for an uploaded photo. */
+  image?: string;
+  src?: string | null;
   tag: string;
   title: string;
   desc: string;
@@ -19,7 +22,7 @@ export default function WorkCard({
 }) {
   return (
     <Link href={href} className="work-card">
-      <Photo slot={image} ratio="4 / 3" sizes="(max-width: 580px) 100vw, (max-width: 900px) 50vw, 33vw" alt={alt} />
+      <Photo slot={image} src={src} ratio="4 / 3" sizes="(max-width: 580px) 100vw, (max-width: 900px) 50vw, 33vw" alt={alt} />
       <span className="work-tag">{tag}</span>
       <h3 className="work-title">{title}</h3>
       <p className="work-desc">{desc}</p>

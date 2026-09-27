@@ -341,14 +341,12 @@ Macro close-up of the corner of a slim charcoal-grey window frame against a whit
 
 These have to be real, or the site is showing work and people that don't exist.
 
-- **Projects** — one cover plus a before and after per project, named after the project:
-  - `projekt-villa-sondrum.jpg`, `projekt-villa-sondrum-fore.jpg`, `projekt-villa-sondrum-efter.jpg`
-  - `projekt-radhus-vallas.jpg`, `projekt-radhus-vallas-fore.jpg`, `projekt-radhus-vallas-efter.jpg`
-  - `projekt-tillbyggnad-fyllinge.jpg`, `…-fore.jpg`, `…-efter.jpg`
-  - The three projects above are placeholders from the old site. Replace them with real jobs
-    (tell me the name, place, service and a one-line description) before launch.
-- **Team portraits** (4:5): `team-mohamed.jpg`, `team-abdulmalek.jpg`, `team-ibrahim.jpg`.
-- **Software case** (4:3): `case-binaafy-sajten.jpg` — a real screenshot of this site.
+- **Projects and team portraits** are uploaded from the admin, not as files:
+  **/admin → Projekt** (cover, before, after and a gallery per project) and
+  **/admin → Team** (one portrait each). Photos are resized and compressed in the
+  browser, so straight-from-the-phone is fine.
+- **Software case** (4:3): `case-binaafy-sajten.jpg` in `public/images/` — a real
+  screenshot of this site (already there).
 
 **Photo tips so they match the generated images:**
 - Shoot in daylight on an overcast day, lights off. Avoid flash.

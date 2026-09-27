@@ -11,6 +11,8 @@ export default function PageHero({
   titleContext,
   lead,
   image,
+  imageSrc,
+  imageAlt,
   dimH,
   dimV,
   caption,
@@ -23,14 +25,18 @@ export default function PageHero({
    *  service name and town when the visible title is a short word. */
   titleContext?: string;
   lead?: string;
+  /** Image slot (lib/images.ts)… */
   image?: string;
+  /** …or an uploaded photo. */
+  imageSrc?: string | null;
+  imageAlt?: string;
   dimH?: string;
   dimV?: string;
   caption?: string;
   children?: React.ReactNode;
 }) {
   return (
-    <section className={`phero${image ? "" : " phero--text"}`}>
+    <section className={`phero${image || imageSrc ? "" : " phero--text"}`}>
       <div className="container">
         <Crumbs items={crumbs} />
         <div className="phero-grid swap">
@@ -43,9 +49,17 @@ export default function PageHero({
             {lead && <p className="phero-lead">{lead}</p>}
             {children && <div className="phero-actions">{children}</div>}
           </div>
-          {image && (
+          {(image || imageSrc) && (
             <Blueprint dimH={dimH} dimV={dimV} caption={caption}>
-              <Photo slot={image} ratio="4 / 3" tone="dark" preload sizes="(max-width: 900px) 100vw, 45vw" />
+              <Photo
+                slot={image}
+                src={imageSrc}
+                alt={imageAlt}
+                ratio="4 / 3"
+                tone="dark"
+                preload
+                sizes="(max-width: 900px) 100vw, 45vw"
+              />
             </Blueprint>
           )}
         </div>

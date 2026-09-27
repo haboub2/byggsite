@@ -1,12 +1,13 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/env";
-import { services, featuredProjects } from "@/lib/placeholder";
+import { services } from "@/lib/placeholder";
 import { softwareAreas, softwareCases } from "@/lib/software-content";
-import { projectsReady } from "@/lib/projects";
+import { listPublishedProjects } from "@/lib/projects";
 import { CONTENT_UPDATED } from "@/lib/seo";
 import { guides } from "@/lib/guides";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const projects = await listPublishedProjects();
   // A fixed content date: a lastmod that changes on every build gets ignored.
   const updated = new Date(CONTENT_UPDATED);
   const entry = (
@@ -24,8 +25,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/", 1, "weekly"),
     entry("/bygg/tjanster", 0.9, "weekly"),
     ...services.map((s) => entry(`/bygg/tjanster/${s.slug}`, 0.9)),
-    ...(projectsReady()
-      ? [entry("/bygg/projekt", 0.7, "weekly"), ...featuredProjects.map((p) => entry(`/bygg/projekt/${p.slug}`, 0.6))]
+    ...(projects.length
+      ? [entry("/bygg/projekt", 0.7, "weekly"), ...projects.map((p) => entry(`/bygg/projekt/${p.slug}`, 0.7))]
       : []),
     entry("/bygg/offert", 0.8),
     entry("/mjukvara", 0.8, "monthly"),

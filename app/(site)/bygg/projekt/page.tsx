@@ -3,22 +3,25 @@ import PageHero from "@/components/PageHero";
 import WorkCard from "@/components/WorkCard";
 import Reveal from "@/components/Reveal";
 import { CtaBand } from "@/components/Sections";
-import { featuredProjects } from "@/lib/placeholder";
+import { services } from "@/lib/placeholder";
 import { SIDES } from "@/lib/sides";
 import { pageMetadata } from "@/lib/seo";
-import { projectsReady } from "@/lib/projects";
+import { listPublishedProjects, resolve } from "@/lib/projects";
 
 export async function generateMetadata(): Promise<Metadata> {
+  const projects = await listPublishedProjects();
   return pageMetadata({
     title: "Projekt — bygg och renovering i Halland",
     description: "Ett urval av bygg- och renoveringsprojekt vi genomfört i Halmstad och Halland, med före- och efterbilder.",
     path: "/bygg/projekt",
-    // Kept out of search until the projects have real photos.
-    noindex: !projectsReady(),
+    image: resolve(projects[0]?.cover ?? null)?.url,
+    // Kept out of search until there is a real project to show.
+    noindex: projects.length === 0,
   });
 }
 
-export default function ProjectsIndex() {
+export default async function ProjectsIndex() {
+  const projects = await listPublishedProjects();
   const cfg = SIDES.bygg;
   return (
     <>
@@ -26,24 +29,30 @@ export default function ProjectsIndex() {
         crumbs={[{ label: "Bygg", href: "/" }, { label: "Projekt" }]}
         eyebrow="Vårt arbete"
         title="Nyligen byggt i Halland."
-        lead="Ett urval av våra jobb. Före- och efterbilder läggs in efter hand som fotograferingen blir klar."
+        lead={
+          projects.length
+            ? "Ett urval av våra jobb, med före- och efterbilder där vi har dem."
+            : "Här visar vi snart våra projekt, med före- och efterbilder."
+        }
       />
-      <section className="sec">
-        <div className="container work reveal-group">
-          {featuredProjects.map((p) => (
-            <Reveal key={p.slug}>
-              <WorkCard
-                href={`/bygg/projekt/${p.slug}`}
-                image={p.image}
-                tag={p.tag}
-                title={p.title}
-                desc={p.desc}
-                alt={`${p.title}: ${p.tag.toLowerCase()}`}
-              />
-            </Reveal>
-          ))}
-        </div>
-      </section>
+      {projects.length > 0 && (
+        <section className="sec">
+          <div className="container work reveal-group">
+            {projects.map((p) => (
+              <Reveal key={p.slug}>
+                <WorkCard
+                  href={`/bygg/projekt/${p.slug}`}
+                  src={resolve(p.cover)?.url}
+                  alt={p.cover?.alt}
+                  tag={[services.find((s) => s.slug === p.service)?.title, p.location].filter(Boolean).join(" · ") || "Projekt"}
+                  title={p.title}
+                  desc={p.summary}
+                />
+              </Reveal>
+            ))}
+          </div>
+        </section>
+      )}
       <CtaBand {...cfg.closing} cta={cfg.cta} />
     </>
   );

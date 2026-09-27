@@ -8,6 +8,8 @@ const LINKS = [
   { href: "/admin/innehall/foretaget", label: "Företaget" },
   { href: "/admin/innehall/priser", label: "Priser" },
   { href: "/admin/innehall/garanti", label: "Garanti" },
+  { href: "/admin/innehall/projekt", label: "Projekt" },
+  { href: "/admin/innehall/team", label: "Team" },
 ];
 
 export default function AdminNav() {

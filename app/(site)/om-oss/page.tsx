@@ -7,8 +7,9 @@ import Reveal from "@/components/Reveal";
 import { Icon } from "@/components/Icons";
 import { SectionHead, CtaBand } from "@/components/Sections";
 import { breadcrumbJsonLd, pageMetadata, abs } from "@/lib/seo";
-import { hasImage, ogImage } from "@/lib/images";
-import { team, values, trustPoints } from "@/lib/placeholder";
+import { ogImage } from "@/lib/images";
+import { publicUrl } from "@/lib/storage";
+import { values, trustPoints } from "@/lib/placeholder";
 import { getContent } from "@/lib/content/store";
 
 export const metadata: Metadata = pageMetadata({
@@ -40,7 +41,7 @@ const STORY = [
 ];
 
 export default async function AboutPage() {
-  const { warranty } = await getContent();
+  const { warranty, team } = await getContent();
   // The warranty chip follows the Bygg warranty set in /admin.
   const trust = [...trustPoints.filter((t) => !t.includes("garanti")), `Garanti ${warranty.bygg.short}`];
   return (
@@ -80,16 +81,21 @@ export default async function AboutPage() {
         <div className="container">
           <SectionHead eyebrow="Teamet" title="Byggingenjörer och en dataingenjör, vid samma bord." />
           <div className="team reveal-group">
-            {team.map((p) => (
+            {team.members.map((p) => (
               <Reveal key={p.name} className="team-card">
-                {hasImage(p.image) ? (
-                  <Photo slot={p.image} ratio="4 / 5" sizes="(max-width: 480px) 100vw, 33vw" alt={p.name} />
+                {p.photo && publicUrl(p.photo.path) ? (
+                  <Photo
+                    src={publicUrl(p.photo.path)}
+                    ratio="4 / 5"
+                    sizes="(max-width: 480px) 100vw, 33vw"
+                    alt={p.photo.alt || p.name}
+                  />
                 ) : (
                   <div className="monogram" aria-hidden="true">
                     {initials(p.name)}
                   </div>
                 )}
-                <span className="team-side">{p.division === "bygg" ? "Bygg" : "Software"}</span>
+                <span className="team-side">{p.side === "bygg" ? "Bygg" : "Software"}</span>
                 <h3>{p.name}</h3>
                 <span className="team-role">{p.role}</span>
               </Reveal>

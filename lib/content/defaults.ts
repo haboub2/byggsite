@@ -1,5 +1,5 @@
 import type { ContentMap } from "./schema";
-import { site, services, byggStats } from "../placeholder";
+import { site, services, byggStats, team } from "../placeholder";
 import { softwareAreas, softwareStats } from "../software-content";
 import { priceGuide } from "../pricing";
 
@@ -44,6 +44,14 @@ export const defaultContent: ContentMap = {
         },
       ])
     ),
+  },
+  team: {
+    members: team.map((m) => ({
+      name: m.name,
+      role: m.role,
+      side: m.division === "01" ? ("software" as const) : ("bygg" as const),
+      photo: null,
+    })),
   },
   warranty: {
     bygg: byggWarranty,

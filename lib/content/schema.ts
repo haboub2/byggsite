@@ -77,21 +77,36 @@ export const warrantySchema = z.object({
 });
 export type WarrantyBlock = z.infer<typeof warrantySchema>;
 
-export const CONTENT_KEYS = ["company", "pricing", "warranty"] as const;
+export const teamMemberSchema = z.object({
+  name: text(60, "Namn"),
+  role: text(60, "Roll"),
+  side: z.enum(["bygg", "software"]),
+  photo: z.object({ path: z.string().min(1), alt: optionalText(160, "Bildtext") }).nullable(),
+});
+export type TeamMember = z.infer<typeof teamMemberSchema>;
+
+export const teamSchema = z.object({
+  members: z.array(teamMemberSchema).max(24, "Högst 24 personer."),
+});
+export type Team = z.infer<typeof teamSchema>;
+
+export const CONTENT_KEYS = ["company", "pricing", "warranty", "team"] as const;
 export type ContentKey = (typeof CONTENT_KEYS)[number];
 
 export const contentSchemas = {
   company: companySchema,
   pricing: pricingSchema,
   warranty: warrantySchema,
+  team: teamSchema,
 } as const;
 
-export type ContentMap = { company: Company; pricing: Pricing; warranty: WarrantyBlock };
+export type ContentMap = { company: Company; pricing: Pricing; warranty: WarrantyBlock; team: Team };
 
 export const CONTENT_LABEL: Record<ContentKey, string> = {
   company: "Företaget",
   pricing: "Priser",
   warranty: "Garanti",
+  team: "Team",
 };
 
 /** Put the warranty into a text that contains the {garanti} token. */

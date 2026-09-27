@@ -8,6 +8,7 @@ import { resolveImage, imageAlt } from "@/lib/images";
  */
 export default function Photo({
   slot,
+  src: directSrc,
   ratio = "4 / 5",
   tone = "light",
   sizes = "(max-width: 900px) 100vw, 50vw",
@@ -16,7 +17,10 @@ export default function Photo({
   className = "",
   curtain = true,
 }: {
-  slot: string;
+  /** Named image slot (lib/images.ts). */
+  slot?: string;
+  /** Or a direct URL, e.g. a photo uploaded from /admin. */
+  src?: string | null;
   ratio?: string;
   tone?: "light" | "dark";
   sizes?: string;
@@ -26,7 +30,7 @@ export default function Photo({
   /** Reveal the photo behind a curtain the first time it scrolls into view. */
   curtain?: boolean;
 }) {
-  const src = resolveImage(slot);
+  const src = directSrc ?? (slot ? resolveImage(slot) : null);
   const classes = `photo${tone === "dark" ? " photo--dark" : ""} ${className}`.trim();
 
   return (
@@ -38,14 +42,14 @@ export default function Photo({
       {src ? (
         <Image
           src={src}
-          alt={alt ?? imageAlt[slot] ?? ""}
+          alt={alt ?? (slot ? imageAlt[slot] : undefined) ?? ""}
           fill
           sizes={sizes}
           preload={preload}
         />
       ) : (
         <div className="photo-ph" aria-hidden="true">
-          <span>{slot}</span>
+          <span>{slot ?? "Bild saknas"}</span>
         </div>
       )}
     </div>

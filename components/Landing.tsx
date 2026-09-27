@@ -9,9 +9,9 @@ import { Stats, SectionHead, Register, Steps, Faq, Bridge, CtaBand, type Registe
 import { Craft, PhotoBand } from "./PhotoSections";
 import { PricingSection } from "./Pricing";
 import { hasImage } from "@/lib/images";
-import { projectsReady } from "@/lib/projects";
+import { listPublishedProjects, resolve } from "@/lib/projects";
 import { SIDES, type Side } from "@/lib/sides";
-import { services, processSteps, featuredProjects, faq as byggFaq } from "@/lib/placeholder";
+import { services, processSteps, faq as byggFaq } from "@/lib/placeholder";
 import { getContent } from "@/lib/content/store";
 import { fillWarranty } from "@/lib/content/schema";
 import { serviceExtras } from "@/lib/services-content";
@@ -27,13 +27,13 @@ import {
 export default async function Landing({ side }: { side: Side }) {
   const cfg = SIDES[side];
   const isBygg = side === "bygg";
-  const { company, warranty } = await getContent();
+  const [{ company, warranty }, projects] = await Promise.all([getContent(), listPublishedProjects()]);
   const w = isBygg ? warranty.bygg : warranty.software;
   const stats = [...(isBygg ? company.byggStats : company.softwareStats), { value: w.short, label: "garanti" }];
   const steps = (isBygg ? processSteps : softwareProcess).map((s) => ({ ...s, body: fillWarranty(s.body, w) }));
   const faq = (isBygg ? byggFaq : softwareFaq).map((f) => ({ ...f, a: fillWarranty(f.a, w) }));
   const secondary =
-    isBygg && !projectsReady() ? { label: "Se vad det kostar", href: "#priser" } : cfg.heroSecondary;
+    isBygg && projects.length === 0 ? { label: "Se vad det kostar", href: "#priser" } : cfg.heroSecondary;
 
   const register: RegisterItem[] = isBygg
     ? services.map((s) => ({
@@ -49,26 +49,23 @@ export default async function Landing({ side }: { side: Side }) {
         href: `/mjukvara/tjanster/${a.slug}`,
       }));
 
-  const work = isBygg
-    ? featuredProjects.map((p) => ({
-        href: `/bygg/projekt/${p.slug}`,
-        image: p.image,
-        tag: p.tag,
-        title: p.title,
-        desc: p.desc,
-        alt: `${p.title}: ${p.tag.toLowerCase()}`,
-      }))
-    : softwareCases.map((c) => ({
-        href: `/mjukvara/case/${c.slug}`,
-        image: c.image,
-        tag: c.tag,
-        title: c.title,
-        desc: c.summary,
-      }));
-
-  // Projects and cases only appear once they have real photos: stock images
-  // never stand in for our own work.
-  const shownWork = work.filter((w) => hasImage(w.image));
+  // Projects come from /admin and only appear with a real cover photo; cases
+  // need a real screenshot. Stock images never stand in for our own work.
+  const shownWork = isBygg
+    ? projects
+        .filter((p) => p.featured)
+        .slice(0, 3)
+        .map((p) => ({
+          href: `/bygg/projekt/${p.slug}`,
+          src: resolve(p.cover)?.url,
+          alt: p.cover?.alt,
+          tag: services.find((s) => s.slug === p.service)?.title ?? "Projekt",
+          title: p.title,
+          desc: p.summary,
+        }))
+    : softwareCases
+        .filter((c) => hasImage(c.image))
+        .map((c) => ({ href: `/mjukvara/case/${c.slug}`, image: c.image, tag: c.tag, title: c.title, desc: c.summary }));
 
   const lines: { key: Side; word: string; href: string }[] = [
     { key: "bygg", word: SIDES.bygg.word, href: SIDES.bygg.home },

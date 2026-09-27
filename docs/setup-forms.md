@@ -15,9 +15,9 @@ Tidsåtgång: cirka 20 minuter.
    - Region: **Stockholm (eu-north-1)** — datan stannar i Sverige.
    - Lösenord: välj ett starkt och spara det i en lösenordshanterare.
 2. Vänta tills projektet är klart (ett par minuter).
-3. Säg till Claude att projektet finns. Tabellerna (`supabase/migrations/0001`–`0005`)
+3. Säg till Claude att projektet finns. Tabellerna (`supabase/migrations/0001`–`0006`)
    kan då köras direkt härifrån. Vill ni göra det själva: öppna **SQL Editor** och kör
-   filerna i ordning, `0001` → `0005`.
+   filerna i ordning, `0001` → `0006`.
 4. Hämta nycklarna under **Project Settings → API**:
    - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
    - **anon / publishable** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`

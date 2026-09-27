@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient as createSessionClient } from "../supabase/server";
+import { createPublicClient } from "../supabase/public";
 import { isSupabaseConfigured } from "../supabase/config";
 import { isDemo } from "../leads";
 import { defaultContent } from "./defaults";
@@ -28,12 +28,6 @@ const g = globalThis as unknown as {
   __binaafyContentHistory?: ({ key: ContentKey; data: unknown } & HistoryEntry)[];
 };
 
-function publicClient() {
-  return createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-    auth: { persistSession: false },
-  });
-}
-
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Stored values over defaults, one level deep for the per-service maps, so a
@@ -44,6 +38,8 @@ function mergeBlock<K extends ContentKey>(key: K, stored: unknown): ContentMap[K
   let merged: unknown;
   if (key === "company") {
     merged = { ...def, ...stored };
+  } else if (key === "team") {
+    merged = stored;
   } else if (key === "pricing") {
     const d = def as ContentMap["pricing"];
     merged = { services: { ...d.services, ...(isObj(stored.services) ? stored.services : {}) } };
@@ -67,7 +63,7 @@ async function readStored(): Promise<Stored> {
   if (isDemo()) return g.__binaafyContent ?? {};
   if (!isSupabaseConfigured()) return {};
   try {
-    const { data, error } = await publicClient()
+    const { data, error } = await createPublicClient()
       .from("content_blocks")
       .select("key, data")
       .in("key", [...CONTENT_KEYS]);
@@ -86,6 +82,7 @@ export const getContent = cache(async (): Promise<ContentMap> => {
     company: mergeBlock("company", stored.company),
     pricing: mergeBlock("pricing", stored.pricing),
     warranty: mergeBlock("warranty", stored.warranty),
+    team: mergeBlock("team", stored.team),
   };
 });
 

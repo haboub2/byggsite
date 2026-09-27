@@ -4,10 +4,10 @@ import Footer from "@/components/Footer";
 import { Icon } from "@/components/Icons";
 import { projectsReady } from "@/lib/projects";
 
-export default function NotFound() {
+export default async function NotFound() {
   return (
     <>
-      <Header showProjects={projectsReady()} />
+      <Header showProjects={await projectsReady()} />
       <main id="main">
         <section className="phero phero--text" style={{ minHeight: "60vh", display: "flex", alignItems: "center" }}>
           <div className="container">

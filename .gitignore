@@ -55,3 +55,6 @@ supabase/.temp
 
 # local Claude Code settings
 .claude/settings.local.json
+
+# Demo-mode photo uploads from /admin (local dev only)
+/public/uploads/

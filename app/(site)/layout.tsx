@@ -12,7 +12,7 @@ export default async function SiteLayout({
   return (
     <>
       <a href="#main" className="skip-link">Hoppa till innehållet</a>
-      <Header showProjects={projectsReady()} />
+      <Header showProjects={await projectsReady()} />
       <main id="main">{children}</main>
       <Footer />
       <StickyCall phone={company.phone} />

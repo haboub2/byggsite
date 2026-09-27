@@ -5,9 +5,10 @@ import ServiceTemplate from "@/components/ServiceTemplate";
 import Reveal from "@/components/Reveal";
 import { ServicePricing } from "@/components/Pricing";
 import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
-import { services, processSteps, featuredProjects } from "@/lib/placeholder";
+import { services, processSteps } from "@/lib/placeholder";
+import { listPublishedProjects, resolve } from "@/lib/projects";
 import { servicesContent, serviceExtras, serviceSeo } from "@/lib/services-content";
-import { hasImage, ogImage, serviceImage } from "@/lib/images";
+import { ogImage, serviceImage } from "@/lib/images";
 import { getContent } from "@/lib/content/store";
 import { fillWarranty } from "@/lib/content/schema";
 
@@ -55,8 +56,8 @@ export default async function ByggServicePage({
     faq: raw.faq.map((f) => ({ ...f, a: fillWarranty(f.a, w) })),
   };
 
-  // Only link a project once it has real photos.
-  const project = featuredProjects.find((p) => p.service === slug && hasImage(p.image));
+  // A published project for this service, if there is one (they always have a cover photo).
+  const project = (await listPublishedProjects()).find((p) => p.service === slug);
   const offertHref = `/bygg/offert?tjanst=${encodeURIComponent(svc.title)}`;
 
   return (
@@ -94,10 +95,11 @@ export default async function ByggServicePage({
         related={
           project && {
             href: `/bygg/projekt/${project.slug}`,
-            image: project.image,
-            tag: project.tag,
+            src: resolve(project.cover)?.url,
+            alt: project.cover?.alt,
+            tag: [svc.title, project.location].filter(Boolean).join(" · "),
             title: project.title,
-            desc: project.desc,
+            desc: project.summary,
           }
         }
         faq={content.faq}

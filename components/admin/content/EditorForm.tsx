@@ -13,19 +13,27 @@ const ErrorsContext = createContext<Record<string, string>>({});
  *  sticky save bar that knows whether there are unsaved changes. */
 export function EditorForm<T>({
   contentKey,
+  action: customAction,
+  hidden,
+  submitLabel = "Spara och publicera",
   value,
   initial,
   lastSaved,
   children,
 }: {
-  contentKey: ContentKey;
+  /** A content block (company, pricing…) saved by saveContentBlock… */
+  contentKey?: ContentKey;
+  /** …or any other save action with the same state shape (e.g. projects). */
+  action?: (prev: ContentActionState, formData: FormData) => Promise<ContentActionState>;
+  hidden?: Record<string, string>;
+  submitLabel?: string;
   value: T;
   initial: T;
   /** Latest saved version, so the bar can say when (it survives the remount after a save). */
   lastSaved?: LastSaved;
   children: React.ReactNode;
 }) {
-  const [state, action, pending] = useActionState<ContentActionState, FormData>(saveContentBlock, {});
+  const [state, action, pending] = useActionState<ContentActionState, FormData>(customAction ?? saveContentBlock, {});
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(initial));
   const json = JSON.stringify(value);
   const dirty = json !== savedJson;
@@ -48,7 +56,10 @@ export function EditorForm<T>({
   return (
     <ErrorsContext.Provider value={state.fieldErrors ?? {}}>
       <form action={action} className="editor" noValidate>
-        <input type="hidden" name="key" value={contentKey} />
+        {contentKey && <input type="hidden" name="key" value={contentKey} />}
+        {Object.entries(hidden ?? {}).map(([k, v]) => (
+          <input key={k} type="hidden" name={k} value={v} />
+        ))}
         <input type="hidden" name="payload" value={json} />
         {children}
         <div className="editor-bar" role="status" aria-live="polite">
@@ -63,10 +74,10 @@ export function EditorForm<T>({
                     ? "Sparat. Sajten är uppdaterad."
                     : lastSaved
                       ? `Senast sparat ${formatWhen(lastSaved.at)}${lastSaved.by ? ` av ${lastSaved.by}` : ""}. Sajten är uppdaterad.`
-                      : "Inga ändringar sedan start"}
+                      : "Inga osparade ändringar"}
           </span>
           <button type="submit" className="btn btn-primary" disabled={pending || !dirty}>
-            {pending ? "Sparar…" : "Spara och publicera"}
+            {pending ? "Sparar…" : submitLabel}
           </button>
         </div>
       </form>
@@ -76,6 +87,10 @@ export function EditorForm<T>({
 
 export function useFieldError(path: string): string | undefined {
   return useContext(ErrorsContext)[path];
+}
+
+export function useAllFieldErrors(): Record<string, string> {
+  return useContext(ErrorsContext);
 }
 
 export function TextField({
@@ -141,5 +156,33 @@ export function MoneyField({
       placeholder="0"
       onChange={(v) => onChange(Number(v.replace(/[^\d]/g, "")) || 0)}
     />
+  );
+}
+
+export function TextArea({
+  label,
+  hint,
+  path,
+  value,
+  onChange,
+  placeholder,
+  rows = 3,
+}: {
+  label: string;
+  hint?: string;
+  path: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  const id = useId();
+  const error = useFieldError(path);
+  return (
+    <div className={`efield efield--wide${error ? " has-error" : ""}`}>
+      <label htmlFor={id}>{label}</label>
+      <textarea id={id} rows={rows} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} aria-invalid={Boolean(error)} />
+      {(error || hint) && <span className={error ? "efield-error" : "efield-hint"}>{error ?? hint}</span>}
+    </div>
   );
 }

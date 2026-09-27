@@ -12,7 +12,7 @@ import { softwareAreas } from "@/lib/software-content";
 import { getContent } from "@/lib/content/store";
 import { fillWarranty } from "@/lib/content/schema";
 
-type Work = { href: string; image: string; tag: string; title: string; desc: string };
+type Work = { href: string; image?: string; src?: string | null; alt?: string; tag: string; title: string; desc: string };
 
 /** One template for every service page on both sides. The side-specific
  *  middle (long-form copy for Bygg, fit + engagement for Software) comes in
@@ -69,7 +69,7 @@ export default async function ServiceTemplate({
     .filter((s) => s.slug !== slug)
     .map((s) => ({ label: s.title, href: `${base}/tjanster/${s.slug}` }));
   const secondary =
-    side === "bygg" && !projectsReady() ? { label: "Alla tjänster", href: "/bygg/tjanster" } : cfg.heroSecondary;
+    side === "bygg" && !(await projectsReady()) ? { label: "Alla tjänster", href: "/bygg/tjanster" } : cfg.heroSecondary;
 
   return (
     <>
