@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
 import Analytics from "@/components/Analytics";
 import CookieConsent from "@/components/CookieConsent";
 import JsonLd from "@/components/JsonLd";
@@ -54,6 +55,7 @@ export default async function RootLayout({
         {children}
         <CookieConsent />
         <Analytics />
+        <VercelAnalytics />
       </body>
     </html>
   );
