@@ -7,7 +7,7 @@ photos can be uploaded from `/admin` at any point.
 |---|---|---|
 | 1 | Company details, contact page, team contacts, no city in the copy | **Done** (org.nr and phones: owners, in `/admin`) |
 | 2 | Subcontractor wording + rich text across the site | **Done** |
-| 3 | References page (Bygg + Software) | To do |
+| 3 | References page (Bygg + Software) | **Page built** with empty slots; fill from `/admin → Projekt` (Bygg). Software cases are still in code |
 | 4 | Trustpilot page | To do |
 | 5 | Premium animations | To do |
 

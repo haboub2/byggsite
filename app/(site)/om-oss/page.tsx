@@ -36,13 +36,14 @@ const STORY = [
     body: "Oavsett sida gäller samma princip: en kontaktperson, ett fast pris innan arbetet startar, och en tidplan vi håller. På byggsidan utför vi merparten av arbetet med egen personal. För specialistmoment som el, VVS och våtrumsarbeten anlitar vi behöriga underentreprenörer som vi har arbetat med länge — men du har alltid ett avtal och en kontaktperson hos oss, och vi tar fullt ansvar för helheten, inklusive garantin. På mjukvarusidan levererar vi system i drift, inte bara demos, och står kvar efter lansering.",
   },
   {
-    heading: "Legala uppgifter",
-    body: "Binaafy innehar F-skattsedel, ansvarsförsäkring och ID06 för samtliga byggarbetsplatser. Organisationsnummer publiceras här så snart bolagsregistreringen är klar.",
+    // The one place the company's registrations are listed (not in the footer).
+    heading: "Företagsuppgifter",
+    body: "Binaafy har F-skatt och ansvarsförsäkring, och alla som arbetar på våra byggarbetsplatser är registrerade i ID06.",
   },
 ];
 
 export default async function AboutPage() {
-  const { warranty, team } = await getContent();
+  const { warranty, team, company } = await getContent();
   // The warranty chip follows the Bygg warranty set in /admin.
   const trust = [...trustPoints.filter((t) => !t.includes("garanti")), `Garanti ${warranty.bygg.short}`];
   return (
@@ -135,6 +136,7 @@ export default async function AboutPage() {
                     {s.body}
                     {i === STORY.length - 1 && (
                       <>
+                        {company.orgNr && ` Organisationsnummer: ${company.orgNr}.`}
                         {" "}Läs mer i vår <Link href="/integritetspolicy" className="link-quiet">integritetspolicy</Link>.
                       </>
                     )}

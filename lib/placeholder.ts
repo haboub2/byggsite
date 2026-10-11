@@ -41,7 +41,7 @@ export const responsibility = {
   ],
 };
 
-export const trustPoints = ["F-skatt", "Ansvarsförsäkring", "ID06", "5 års garanti"];
+export const trustPoints = ["Fast pris", "ROT-avdrag på fakturan", "5 års garanti"];
 
 export const byggStats = [
   { value: "6+", label: "års erfarenhet" },
@@ -103,6 +103,6 @@ export const faq = [
   { q: "Gör ni allt arbete själva?", a: "Merparten, ja. Rivning, stomme, snickerier, golv, kakel och montering gör vi med egen personal. El- och VVS-arbeten utförs av behöriga specialister som vi har arbetat med länge, eftersom det är reglerade yrken. Du har ändå bara ett avtal och en kontaktperson – vi samordnar arbetet och ansvarar för helheten, inklusive garantin." },
   { q: "Kan jag använda ROT-avdrag?", a: "Ja, för de flesta renoverings- och byggarbeten i hemmet kan du nyttja ROT-avdraget på arbetskostnaden. Vi hjälper dig med uppgifterna och drar av direkt på fakturan." },
   { q: "Hur lång tid tar ett projekt?", a: "Det beror på omfattningen. Ett badrum tar ofta 3–5 veckor, medan en totalrenovering kan ta flera månader. Du får en tydlig tidplan i offerten." },
-  { q: "Lämnar ni garanti på arbetet?", a: "Ja, vi lämnar {garanti}. Vi är dessutom licensierade och försäkrade för din trygghet." },
+  { q: "Lämnar ni garanti på arbetet?", a: "Ja, vi lämnar {garanti}." },
   { q: "Vad kostar en renovering?", a: "Priset styrs av material, ytor och arbetets omfattning. Vi arbetar med fast pris och specificerad offert så att du vet exakt vad det kostar innan vi börjar — inga dolda kostnader." },
 ];

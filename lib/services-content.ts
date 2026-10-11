@@ -27,7 +27,7 @@ export const servicesContent: Record<string, ServiceContent> = {
       },
       {
         heading: "Material och garanti",
-        body: "Vi arbetar med material från etablerade svenska leverantörer och följer branschens våtrumsnormer (GVK/Säker Vatten) där det är relevant. Alla totalrenoveringar omfattas av {garanti}, och du är licensierad och försäkrad genom oss under hela byggtiden.",
+        body: "Vi arbetar med material från etablerade svenska leverantörer och följer branschens våtrumsnormer (GVK/Säker Vatten) där det är relevant. Alla totalrenoveringar omfattas av {garanti}.",
       },
       {
         heading: "Vad påverkar priset",
