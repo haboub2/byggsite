@@ -37,6 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry("/mjukvara/brief", 0.6),
     entry("/guider", 0.7, "weekly"),
     ...guides.map((g) => ({ ...entry(`/guider/${g.slug}`, 0.8), lastModified: new Date(g.updated) })),
+    entry("/referenser", 0.7, "weekly"),
     entry("/om-oss", 0.5),
     entry("/kontakt", 0.6),
   ];

@@ -463,6 +463,13 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
   border: 1px dashed var(--line-strong); border-radius: var(--radius-sm);
 }
 .work-empty p { color: var(--ink-2); font-size: 15px; }
+/* References (/referenser): filter + cards tagged data-side */
+.ref-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.ref-filter button { padding: 9px 16px; font-size: 14px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--ink-2); transition: border-color .18s var(--ease), color .18s var(--ease), background-color .18s var(--ease); }
+.ref-filter button:hover { border-color: var(--ink); color: var(--ink); }
+.ref-filter button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.refs[data-filter="bygg"] .ref-card[data-side="software"],
+.refs[data-filter="software"] .ref-card[data-side="bygg"] { display: none; }
 @media (max-width: 900px) { .work { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 580px) { .work, .work--2 { grid-template-columns: 1fr; } }
 

@@ -37,11 +37,11 @@ export const SIDES: Record<Side, SideConfig> = {
     topic: "Bygg och renovering i södra och västra Sverige",
     lead: "Renovering, ombyggnad och nybygg i södra och västra Sverige. Ett team, en kontaktperson, från första skiss till sista detalj.",
     heroCta: { label: "Berätta om ditt projekt", href: "/bygg/offert" },
-    heroSecondary: { label: "Se våra projekt", href: "/bygg/projekt" },
+    heroSecondary: { label: "Se referenser", href: "/referenser" },
     cta: { label: "Begär offert", href: "/bygg/offert" },
     nav: [
       { label: "Tjänster", href: "/bygg/tjanster" },
-      { label: "Projekt", href: "/bygg/projekt" },
+      { label: "Referenser", href: "/referenser" },
       { label: "Guider", href: "/guider" },
       { label: "Om oss", href: "/om-oss" },
       { label: "Kontakt", href: "/kontakt" },
@@ -52,7 +52,7 @@ export const SIDES: Record<Side, SideConfig> = {
       title: "Nio tjänster, ett team.",
       aside: "Välj en rad för att läsa mer. Allt sker under samma projektansvar – med egen personal och behöriga specialister där det krävs.",
     },
-    work: { eyebrow: "Utvalda projekt", title: "Nyligen byggt.", all: { label: "Alla projekt", href: "/bygg/projekt" } },
+    work: { eyebrow: "Utvalda projekt", title: "Nyligen byggt.", all: { label: "Alla referenser", href: "/referenser" } },
     craft: {
       title: "Detaljerna ingen ser — förrän de saknas.",
       body: "Ett golv som ligger rakt, en fog som håller tätt, en list som möter väggen utan glipa. Det är där skillnaden syns efter tio år, och det är där vi lägger tiden.",
@@ -91,7 +91,7 @@ export const SIDES: Record<Side, SideConfig> = {
     cta: { label: "Skicka brief", href: "/mjukvara/brief" },
     nav: [
       { label: "Tjänster", href: "/mjukvara/tjanster" },
-      { label: "Case", href: "/mjukvara/case" },
+      { label: "Referenser", href: "/referenser" },
       { label: "Om oss", href: "/om-oss" },
       { label: "Kontakt", href: "/kontakt" },
     ],

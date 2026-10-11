@@ -21,7 +21,8 @@ export async function checkAdmin(): Promise<AdminCheck> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, reason: "signed-out" };
 
-  const { data: admin } = await supabase.from("admins").select("user_id").eq("user_id", user.id).maybeSingle();
+  const { data: admin, error } = await supabase.from("admins").select("user_id").eq("user_id", user.id).maybeSingle();
+  if (error) console.error("[admin] admin lookup failed:", error.message);
   if (!admin) return { ok: false, reason: "not-admin", email: user.email };
 
   return { ok: true, email: user.email ?? null, demo: false };

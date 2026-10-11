@@ -39,6 +39,7 @@ export default async function Footer() {
         <div className="ftr-col">
           <h4>Företaget</h4>
           <Link href="/om-oss">Om oss</Link>
+          <Link href="/referenser">Referenser</Link>
           <Link href="/guider">Guider</Link>
           {(await projectsReady()) && <Link href="/bygg/projekt">Projekt</Link>}
           <Link href="/kontakt">Kontakt</Link>
@@ -59,7 +60,7 @@ export default async function Footer() {
       <div className="container ftr-bottom">
         <span>
           © {year} {company.legalName}
-          {company.orgNr ? `, org.nr ${company.orgNr}` : ""}. F-skatt, ansvarsförsäkring och ID06.
+          {company.orgNr ? `, org.nr ${company.orgNr}` : ""}.
         </span>
         <Link href="/integritetspolicy">Integritetspolicy</Link>
       </div>
