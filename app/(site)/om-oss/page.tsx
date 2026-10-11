@@ -33,7 +33,7 @@ const STORY = [
   },
   {
     heading: "Hur vi jobbar",
-    body: "Oavsett sida gäller samma princip: en kontaktperson, ett fast pris innan arbetet startar, och en tidplan vi håller. På byggsidan tar vi helhetsansvar — egen personal plus kvalitetssäkrade underentreprenörer där det behövs. På mjukvarusidan levererar vi system i drift, inte bara demos, och står kvar efter lansering.",
+    body: "Oavsett sida gäller samma princip: en kontaktperson, ett fast pris innan arbetet startar, och en tidplan vi håller. På byggsidan utför vi merparten av arbetet med egen personal. För specialistmoment som el, VVS och våtrumsarbeten anlitar vi behöriga underentreprenörer som vi har arbetat med länge — men du har alltid ett avtal och en kontaktperson hos oss, och vi tar fullt ansvar för helheten, inklusive garantin. På mjukvarusidan levererar vi system i drift, inte bara demos, och står kvar efter lansering.",
   },
   {
     heading: "Legala uppgifter",

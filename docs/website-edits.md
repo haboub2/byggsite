@@ -6,7 +6,7 @@ photos can be uploaded from `/admin` at any point.
 | Step | What | Status |
 |---|---|---|
 | 1 | Company details, contact page, team contacts, no city in the copy | **Done** (org.nr and phones: owners, in `/admin`) |
-| 2 | Subcontractor wording + rich text across the site | To do |
+| 2 | Subcontractor wording + rich text across the site | **Bygg done** (software pages: follow-up) |
 | 3 | References page (Bygg + Software) | To do |
 | 4 | Trustpilot page | To do |
 | 5 | Premium animations | To do |

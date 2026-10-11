@@ -50,7 +50,7 @@ export const SIDES: Record<Side, SideConfig> = {
     register: {
       eyebrow: "Register — vad vi gör",
       title: "Nio tjänster, ett team.",
-      aside: "Välj en rad för att läsa mer. Allt görs av samma team, under samma projektansvar.",
+      aside: "Välj en rad för att läsa mer. Allt sker under samma projektansvar – med egen personal och behöriga specialister där det krävs.",
     },
     work: { eyebrow: "Utvalda projekt", title: "Nyligen byggt.", all: { label: "Alla projekt", href: "/bygg/projekt" } },
     craft: {

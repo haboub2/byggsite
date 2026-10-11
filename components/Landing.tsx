@@ -11,7 +11,7 @@ import { PricingSection } from "./Pricing";
 import { hasImage } from "@/lib/images";
 import { listPublishedProjects, resolve } from "@/lib/projects";
 import { SIDES, type Side } from "@/lib/sides";
-import { services, processSteps, faq as byggFaq } from "@/lib/placeholder";
+import { services, processSteps, responsibility, faq as byggFaq } from "@/lib/placeholder";
 import { getContent } from "@/lib/content/store";
 import { fillWarranty } from "@/lib/content/schema";
 import { serviceExtras } from "@/lib/services-content";
@@ -146,6 +146,23 @@ export default async function Landing({ side }: { side: Side }) {
           <Steps items={steps} />
         </div>
       </section>
+
+      {isBygg && (
+        <section className="sec">
+          <div className="container">
+            <SectionHead eyebrow={responsibility.eyebrow} title={responsibility.title} />
+            <p className="lede-text">{responsibility.body}</p>
+            <ul className="values values--3 reveal-group">
+              {responsibility.points.map((p) => (
+                <Reveal as="li" key={p.title}>
+                  <h3>{p.title}</h3>
+                  <p>{p.body}</p>
+                </Reveal>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
 
       {isBygg && <PricingSection />}
 
