@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { EditorForm, TextArea, TextField, useAllFieldErrors, useFieldError } from "./EditorForm";
-import ImageUpload, { uploadPhoto, type StoredImage } from "../ImageUpload";
+import { EditorForm, TextArea, TextField, useFieldError } from "./EditorForm";
+import ImageUpload from "../ImageUpload";
+import { Gallery, ListField } from "./fields";
 import { saveProject } from "@/app/admin/project-actions";
-import { publicUrl } from "@/lib/storage-url";
 import { slugify, type Project } from "@/lib/project-schema";
 
 function ServiceSelect({
@@ -31,122 +31,6 @@ function ServiceSelect({
       <span className={error ? "efield-error" : "efield-hint"}>
         {error ?? "Projektet visas då också på tjänstens sida."}
       </span>
-    </div>
-  );
-}
-
-function ScopeList({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  const [draft, setDraft] = useState("");
-  const add = () => {
-    const v = draft.trim();
-    if (v) onChange([...value, v]);
-    setDraft("");
-  };
-  return (
-    <div className="efield efield--wide">
-      <label htmlFor="p-scope">Det här gjorde vi</label>
-      {value.length > 0 && (
-        <ol className="scope-edit">
-          {value.map((s, i) => (
-            <li key={`${s}-${i}`}>
-              <span>{s}</span>
-              <button type="button" aria-label={`Ta bort ${s}`} onClick={() => onChange(value.filter((_, j) => j !== i))}>
-                ×
-              </button>
-            </li>
-          ))}
-        </ol>
-      )}
-      <div className="chips-add">
-        <input
-          id="p-scope"
-          value={draft}
-          placeholder="Två våtrum med tätskikt och golvvärme"
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              add();
-            }
-          }}
-        />
-        <button type="button" className="btn btn-ghost" onClick={add}>
-          Lägg till
-        </button>
-      </div>
-      <span className="efield-hint">En rad per punkt. Visas som en lista på projektsidan.</span>
-    </div>
-  );
-}
-
-function Gallery({ value, onChange }: { value: StoredImage[]; onChange: (v: StoredImage[]) => void }) {
-  const [busy, setBusy] = useState(0);
-  const [problem, setProblem] = useState<string | null>(null);
-  const errors = useFieldErrorsFor("gallery");
-
-  async function addFiles(files: FileList | null) {
-    if (!files?.length) return;
-    setProblem(null);
-    const added: StoredImage[] = [];
-    for (const f of Array.from(files)) {
-      setBusy((n) => n + 1);
-      try {
-        added.push({ path: await uploadPhoto(f, "projects"), alt: "" });
-      } catch (err) {
-        setProblem(err instanceof Error ? err.message : "Uppladdningen misslyckades.");
-      } finally {
-        setBusy((n) => n - 1);
-      }
-    }
-    onChange([...value, ...added]);
-  }
-
-  const move = (i: number, d: number) => {
-    const j = i + d;
-    if (j < 0 || j >= value.length) return;
-    const next = [...value];
-    [next[i], next[j]] = [next[j], next[i]];
-    onChange(next);
-  };
-
-  return (
-    <div className="efield efield--wide">
-      <span className="upload-label">Galleri</span>
-      {value.length > 0 && (
-        <ul className="gallery-edit">
-          {value.map((g, i) => (
-            <li key={g.path}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={publicUrl(g.path) ?? ""} alt="" />
-              <div className={`efield${errors[`${i}.alt`] ? " has-error" : ""}`}>
-                <label htmlFor={`g-${i}`}>Beskriv bilden</label>
-                <input
-                  id={`g-${i}`}
-                  value={g.alt}
-                  onChange={(e) => onChange(value.map((x, j) => (j === i ? { ...x, alt: e.target.value } : x)))}
-                />
-                {errors[`${i}.alt`] && <span className="efield-error">{errors[`${i}.alt`]}</span>}
-              </div>
-              <div className="gallery-tools">
-                <button type="button" aria-label="Flytta upp" onClick={() => move(i, -1)} disabled={i === 0}>
-                  ↑
-                </button>
-                <button type="button" aria-label="Flytta ner" onClick={() => move(i, 1)} disabled={i === value.length - 1}>
-                  ↓
-                </button>
-                <button type="button" aria-label="Ta bort bilden" onClick={() => onChange(value.filter((_, j) => j !== i))}>
-                  ×
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      <label className="btn btn-ghost gallery-add">
-        {busy > 0 ? `Laddar upp ${busy}…` : "Lägg till bilder"}
-        <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => addFiles(e.target.files)} />
-      </label>
-      {problem && <span className="efield-error">{problem}</span>}
     </div>
   );
 }
@@ -192,17 +76,6 @@ function MainPhotos({
     </div>
   );
 }
-
-/** Field errors under a path prefix, e.g. "gallery" → { "0.alt": "…" }. */
-function useFieldErrorsFor(prefix: string): Record<string, string> {
-  const all = useAllFieldErrors();
-  return Object.fromEntries(
-    Object.entries(all)
-      .filter(([k]) => k.startsWith(`${prefix}.`))
-      .map(([k, v]) => [k.slice(prefix.length + 1), v])
-  );
-}
-
 
 export default function ProjectEditor({
   initial,
@@ -264,7 +137,14 @@ export default function ProjectEditor({
             placeholder="Genomgående renovering av 1970-talsvilla — nytt kök, två badrum och öppen planlösning."
             hint="Visas på projektkortet, överst på projektsidan och i Google."
           />
-          <ScopeList value={p.scope} onChange={set("scope")} />
+          <ListField
+            id="p-scope"
+            label="Det här gjorde vi"
+            placeholder="Två våtrum med tätskikt och golvvärme"
+            hint="En rad per punkt. Visas som en lista på projektsidan."
+            value={p.scope}
+            onChange={set("scope")}
+          />
         </div>
       </fieldset>
 
@@ -274,7 +154,7 @@ export default function ProjectEditor({
           Ta bilderna i dagsljus med raka linjer. Före- och efterbilden blir bäst tagna från samma plats.
         </p>
         <MainPhotos p={p} set={set} />
-        <Gallery value={p.gallery} onChange={set("gallery")} />
+        <Gallery folder="projects" value={p.gallery} onChange={set("gallery")} />
       </fieldset>
 
       <fieldset className="efieldset">

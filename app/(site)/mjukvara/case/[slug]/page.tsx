@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import PageHero from "@/components/PageHero";
 import JsonLd from "@/components/JsonLd";
+import Photo from "@/components/Photo";
 import Reveal from "@/components/Reveal";
-import { Stats, Bridge, CtaBand } from "@/components/Sections";
-import { softwareCases } from "@/lib/software-content";
+import { Icon } from "@/components/Icons";
+import { Stats, Bridge, CtaBand, SectionHead } from "@/components/Sections";
+import { getPublishedCase, listPublishedCases } from "@/lib/cases";
 import { SIDES } from "@/lib/sides";
 import { articleJsonLd, breadcrumbJsonLd, pageMetadata, CONTENT_UPDATED } from "@/lib/seo";
 import { ogImage } from "@/lib/images";
 
-export function generateStaticParams() {
-  return softwareCases.map((c) => ({ slug: c.slug }));
+export async function generateStaticParams() {
+  return (await listPublishedCases()).map((c) => ({ slug: c.slug }));
 }
 
 export async function generateMetadata({
@@ -19,13 +22,13 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const c = softwareCases.find((x) => x.slug === slug);
+  const c = await getPublishedCase(slug);
   if (!c) return {};
   return pageMetadata({
     title: c.title,
     description: c.summary,
     path: `/mjukvara/case/${slug}`,
-    image: ogImage(c.image),
+    image: c.cover?.url ?? (c.image ? ogImage(c.image) : undefined),
     type: "article",
   });
 }
@@ -36,18 +39,15 @@ export default async function CasePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const c = softwareCases.find((x) => x.slug === slug);
+  const c = await getPublishedCase(slug);
   if (!c) notFound();
   const cfg = SIDES.mjukvara;
 
   const sections = [
-    { heading: "Situation", body: c.situation },
-    { heading: "Insats", body: c.insats },
-    {
-      heading: "Tekniken bakom",
-      body: `Byggt med ${c.stack.join(", ")}. Kodbasen ägs av Binaafy — ingen inlåsning hos en extern leverantör.`,
-    },
-  ];
+    c.situation && { heading: "Situationen", body: c.situation },
+    c.solution && { heading: "Vad vi byggde", body: c.solution },
+    c.stack.length > 0 && { heading: "Tekniken bakom", body: `Byggt med ${c.stack.join(", ")}.` },
+  ].filter((s): s is { heading: string; body: string } => Boolean(s));
 
   return (
     <>
@@ -58,7 +58,7 @@ export default async function CasePage({
             title: c.title,
             description: c.summary,
             published: CONTENT_UPDATED,
-            image: ogImage(c.image),
+            image: c.cover?.url ?? (c.image ? ogImage(c.image) : undefined),
             about: c.client,
           }),
           breadcrumbJsonLd([
@@ -70,35 +70,82 @@ export default async function CasePage({
       />
       <PageHero
         crumbs={[{ label: "Software", href: "/mjukvara" }, { label: "Case", href: "/mjukvara/case" }, { label: c.title }]}
-        eyebrow={c.client}
+        eyebrow={[c.tag, c.client].filter(Boolean).join(" · ")}
         title={c.title}
         lead={c.summary}
-        image={c.image}
+        image={c.cover ? undefined : c.image}
+        imageSrc={c.cover?.url}
+        imageAlt={c.cover?.alt}
         dimH="Resultat"
         caption={c.stack.join(" · ")}
-      />
+      >
+        {c.url && (
+          <a href={c.url} target="_blank" rel="noopener noreferrer" className="link-quiet">
+            Besök {c.url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+          </a>
+        )}
+      </PageHero>
 
-      <div className="container">
-        <Stats items={c.resultat.map((r) => ({ value: r.label, label: r.desc }))} />
-      </div>
+      {c.metrics.length > 0 && (
+        <div className="container">
+          <Stats items={c.metrics} />
+        </div>
+      )}
 
-      <section className="sec">
-        <div className="container split split--sticky">
-          <div className="split-aside">
-            <span className="eyebrow">Caset</span>
-            <h2>Från problem till system i drift.</h2>
+      {sections.length > 0 && (
+        <section className="sec">
+          <div className="container split split--sticky">
+            <div className="split-aside">
+              <span className="eyebrow">Caset</span>
+              <h2>Från problem till system i drift.</h2>
+            </div>
+            <div className="article-sections">
+              {sections.map((s, i) => (
+                <Reveal as="section" key={s.heading}>
+                  <span className="n">{String(i + 1).padStart(2, "0")}</span>
+                  <div>
+                    <h2>{s.heading}</h2>
+                    <p>{s.body}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
           </div>
-          <div className="article-sections">
-            {sections.map((s, i) => (
-              <Reveal as="section" key={s.heading}>
-                <span className="n">{String(i + 1).padStart(2, "0")}</span>
-                <div>
-                  <h2>{s.heading}</h2>
-                  <p>{s.body}</p>
-                </div>
-              </Reveal>
-            ))}
+        </section>
+      )}
+
+      {c.testimonial && (
+        <section className="sec on-dark">
+          <div className="container">
+            <figure className="quote">
+              <blockquote>”{c.testimonial.quote}”</blockquote>
+              <figcaption>{c.testimonial.author}</figcaption>
+            </figure>
           </div>
+        </section>
+      )}
+
+      {c.gallery.length > 0 && (
+        <section className="sec">
+          <div className="container">
+            <SectionHead eyebrow="Bilder" title="Så ser det ut." />
+            <div className="work reveal-group">
+              {c.gallery.map((g) => (
+                <Reveal key={g.url}>
+                  <Photo src={g.url} alt={g.alt} ratio="4 / 3" sizes="(max-width: 580px) 100vw, (max-width: 900px) 50vw, 33vw" />
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="sec sec--tight">
+        <div className="container">
+          <Link href="/referenser" className="link-arrow">
+            Alla referenser
+            <Icon name="arrow" strokeWidth={2} />
+          </Link>
         </div>
       </section>
 

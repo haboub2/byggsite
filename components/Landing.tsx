@@ -15,10 +15,10 @@ import { services, processSteps, responsibility, faq as byggFaq } from "@/lib/pl
 import { getContent } from "@/lib/content/store";
 import { fillWarranty } from "@/lib/content/schema";
 import { serviceExtras } from "@/lib/services-content";
+import { listPublishedCases } from "@/lib/cases";
 import {
   softwareAreas,
   softwareProcess,
-  softwareCases,
   softwareFaq,
 } from "@/lib/software-content";
 
@@ -27,7 +27,7 @@ import {
 export default async function Landing({ side }: { side: Side }) {
   const cfg = SIDES[side];
   const isBygg = side === "bygg";
-  const [{ company, warranty }, projects] = await Promise.all([getContent(), listPublishedProjects()]);
+  const [{ company, warranty }, projects, cases] = await Promise.all([getContent(), listPublishedProjects(), listPublishedCases()]);
   const w = isBygg ? warranty.bygg : warranty.software;
   const stats = [...(isBygg ? company.byggStats : company.softwareStats), { value: w.short, label: "garanti" }];
   const steps = (isBygg ? processSteps : softwareProcess).map((s) => ({ ...s, body: fillWarranty(s.body, w) }));
@@ -63,9 +63,18 @@ export default async function Landing({ side }: { side: Side }) {
           title: p.title,
           desc: p.summary,
         }))
-    : softwareCases
-        .filter((c) => hasImage(c.image))
-        .map((c) => ({ href: `/mjukvara/case/${c.slug}`, image: c.image, tag: c.tag, title: c.title, desc: c.summary }));
+    : cases
+        .filter((c) => c.featured && (c.cover || (c.image && hasImage(c.image))))
+        .slice(0, 3)
+        .map((c) => ({
+          href: `/mjukvara/case/${c.slug}`,
+          image: c.image,
+          src: c.cover?.url,
+          alt: c.cover?.alt,
+          tag: c.tag,
+          title: c.title,
+          desc: c.summary,
+        }));
 
   const lines: { key: Side; word: string; href: string }[] = [
     { key: "bygg", word: SIDES.bygg.word, href: SIDES.bygg.home },

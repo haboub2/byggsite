@@ -16,7 +16,7 @@ import { publicUrl } from "./storage-url";
  */
 
 export const BUCKET = "gallery";
-export const UPLOAD_FOLDERS = ["projects", "team"] as const;
+export const UPLOAD_FOLDERS = ["projects", "team", "cases"] as const;
 export type UploadFolder = (typeof UPLOAD_FOLDERS)[number];
 
 const TYPES: Record<string, string> = { "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png" };
