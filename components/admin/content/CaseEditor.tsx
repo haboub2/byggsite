@@ -66,11 +66,25 @@ function Metrics({ value, onChange }: { value: Case["metrics"]; onChange: (v: Ca
   );
 }
 
+/** Reads its error from the EditorForm context, so it must render inside the form. */
+function CoverPhoto({ value, onChange }: { value: Case["cover"]; onChange: (v: Case["cover"]) => void }) {
+  const altError = useFieldError("cover.alt");
+  return (
+    <ImageUpload
+      label="Omslagsbild (valfritt)"
+      folder="cases"
+      value={value}
+      onChange={onChange}
+      altError={altError}
+      altPlaceholder="Startsidan i kundportalen"
+    />
+  );
+}
+
 export default function CaseEditor({ initial, original }: { initial: Case; original: string | null }) {
   const [c, setC] = useState(initial);
   const [slugTouched, setSlugTouched] = useState(Boolean(original));
   const set = <K extends keyof Case>(k: K) => (v: Case[K]) => setC((prev) => ({ ...prev, [k]: v }));
-  const coverAlt = useFieldErrorsFor("cover")["alt"];
 
   return (
     <EditorForm
@@ -157,14 +171,7 @@ export default function CaseEditor({ initial, original }: { initial: Case; origi
         <legend>Bilder</legend>
         <p className="efield-hint">Skärmdumpar fungerar bra. Dölj kunduppgifter och annat som inte ska visas.</p>
         <div className="egrid">
-          <ImageUpload
-            label="Omslagsbild (valfritt)"
-            folder="cases"
-            value={c.cover}
-            onChange={set("cover")}
-            altError={coverAlt}
-            altPlaceholder="Startsidan i kundportalen"
-          />
+          <CoverPhoto value={c.cover} onChange={set("cover")} />
         </div>
         <Gallery folder="cases" value={c.gallery} onChange={set("gallery")} />
       </fieldset>

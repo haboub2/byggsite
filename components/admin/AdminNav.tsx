@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/admin/innehall/projekt", label: "Projekt" },
   { href: "/admin/innehall/case", label: "Case" },
   { href: "/admin/innehall/team", label: "Team" },
+  { href: "/admin/innehall/omdomen", label: "Omdömen" },
 ];
 
 export default function AdminNav() {

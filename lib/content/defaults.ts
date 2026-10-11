@@ -54,6 +54,8 @@ export const defaultContent: ContentMap = {
       photo: null,
     })),
   },
+  // Empty until the owners add their platforms in /admin: no invented scores.
+  reviews: { platforms: [], quotes: [], trustbox: { businessUnitId: "", templateId: "" } },
   warranty: {
     bygg: byggWarranty,
     software: softwareWarranty,
