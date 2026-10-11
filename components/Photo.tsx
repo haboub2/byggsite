@@ -16,6 +16,7 @@ export default function Photo({
   alt,
   className = "",
   curtain = true,
+  parallax = false,
 }: {
   /** Named image slot (lib/images.ts). */
   slot?: string;
@@ -29,6 +30,8 @@ export default function Photo({
   className?: string;
   /** Reveal the photo behind a curtain the first time it scrolls into view. */
   curtain?: boolean;
+  /** Drift the photo slightly against the scroll (large photos only). */
+  parallax?: boolean;
 }) {
   const src = directSrc ?? (slot ? resolveImage(slot) : null);
   const classes = `photo${tone === "dark" ? " photo--dark" : ""} ${className}`.trim();
@@ -38,6 +41,7 @@ export default function Photo({
       className={classes}
       style={{ "--ratio": ratio } as React.CSSProperties}
       data-motion={src && curtain ? "curtain" : undefined}
+      data-parallax={src && parallax ? "" : undefined}
     >
       {src ? (
         <Image

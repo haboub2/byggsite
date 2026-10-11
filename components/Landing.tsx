@@ -111,7 +111,7 @@ export default async function Landing({ side }: { side: Side }) {
               <div>
                 <p className="lhero-lead">{cfg.lead}</p>
                 <div className="lhero-actions">
-                  <Link href={cfg.heroCta.href} className="btn btn-primary">
+                  <Link href={cfg.heroCta.href} className="btn btn-primary" data-magnetic>
                     {cfg.heroCta.label}
                     <Icon name="arrow" strokeWidth={2} />
                   </Link>
@@ -126,7 +126,7 @@ export default async function Landing({ side }: { side: Side }) {
           <ViewTransition name="hero-media" share="auto" default="none">
             <div className="lhero-media">
               <Blueprint dimH={cfg.hero.dimH} dimV={cfg.hero.dimV} caption={cfg.hero.caption}>
-                <Photo slot={cfg.hero.image} ratio="4 / 5" tone="dark" preload sizes="(max-width: 900px) 100vw, 44vw" />
+                <Photo slot={cfg.hero.image} ratio="4 / 5" tone="dark" preload parallax sizes="(max-width: 900px) 100vw, 44vw" />
               </Blueprint>
             </div>
           </ViewTransition>

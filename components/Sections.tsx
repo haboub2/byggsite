@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { Icon } from "./Icons";
 import Reveal from "./Reveal";
+import CountUp from "./CountUp";
+import Words from "./Words";
 
-/* Presentational building blocks shared by both sides. All server components;
-   the only interactivity (register rows, FAQ) uses native <details>. */
+/* Presentational building blocks shared by both sides. Server components,
+   except the count-up in Stats; register rows and the FAQ use native <details>. */
 
 export function Stats({ items }: { items: { value: string; label: string }[] }) {
   return (
     <div className="stats">
       {items.map((s) => (
         <div className="stat" key={s.label}>
-          <span className="stat-value">{s.value}</span>
+          <CountUp className="stat-value" value={s.value} />
           <span className="stat-label">{s.label}</span>
         </div>
       ))}
@@ -33,7 +35,9 @@ export function SectionHead({
     <Reveal className="sec-head">
       <div>
         <span className="eyebrow">{eyebrow}</span>
-        <Tag>{title}</Tag>
+        <Tag data-motion="rise">
+          <Words text={title} />
+        </Tag>
       </div>
       {aside && (typeof aside === "string" ? <p>{aside}</p> : aside)}
     </Reveal>
@@ -167,10 +171,12 @@ export function CtaBand({
       <div className="container cta-band-inner">
         <div>
           <span className="eyebrow eyebrow--dark">{eyebrow}</span>
-          <h2>{title}</h2>
+          <h2 data-motion="rise">
+            <Words text={title} />
+          </h2>
           <p>{body}</p>
         </div>
-        <Link href={cta.href} className="btn btn-primary">
+        <Link href={cta.href} className="btn btn-primary" data-magnetic>
           {cta.label}
           <Icon name="arrow" strokeWidth={2} />
         </Link>

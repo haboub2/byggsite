@@ -9,7 +9,7 @@ photos can be uploaded from `/admin` at any point.
 | 2 | Subcontractor wording + rich text across the site | **Done** |
 | 3 | References page (Bygg + Software) | **Done**: `/referenser`; Bygg jobs in `/admin → Projekt`, software cases in `/admin → Case` |
 | 4 | Reviews page | **Done**: `/omdomen`, edited in `/admin → Omdömen` (platforms, quotes, optional TrustBox) |
-| 5 | Premium animations | To do |
+| 5 | Premium animations | **Done** except the client logo strip (no logos yet) |
 
 ---
 

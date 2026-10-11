@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import PageHero from "@/components/PageHero";
 import JsonLd from "@/components/JsonLd";
-import Photo from "@/components/Photo";
+import Lightbox from "@/components/Lightbox";
 import Reveal from "@/components/Reveal";
 import { Icon } from "@/components/Icons";
 import { Stats, Bridge, CtaBand, SectionHead } from "@/components/Sections";
@@ -129,13 +129,7 @@ export default async function CasePage({
         <section className="sec">
           <div className="container">
             <SectionHead eyebrow="Bilder" title="Så ser det ut." />
-            <div className="work reveal-group">
-              {c.gallery.map((g) => (
-                <Reveal key={g.url}>
-                  <Photo src={g.url} alt={g.alt} ratio="4 / 3" sizes="(max-width: 580px) 100vw, (max-width: 900px) 50vw, 33vw" />
-                </Reveal>
-              ))}
-            </div>
+            <Lightbox images={c.gallery} />
           </div>
         </section>
       )}
