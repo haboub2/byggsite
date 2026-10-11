@@ -66,7 +66,6 @@ export default async function AboutPage() {
         title="Ett företag. Två sätt att bygga."
         lead="Vi renoverar och bygger hem i södra och västra Sverige, och vi bygger system som driver verksamheter. Samma team, samma standard — oavsett om resultatet är ett badrum eller ett internt verktyg."
         image="about-workshop"
-        dimH="Verkstad"
         caption="Hantverk och kod under samma tak"
       >
         <Link href="/" className="btn btn-primary">

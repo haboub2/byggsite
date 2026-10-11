@@ -1,5 +1,7 @@
 import { ViewTransition } from "react";
+import { preload } from "react-dom";
 import Link from "next/link";
+import { getImageProps } from "next/image";
 import Photo from "./Photo";
 import Blueprint from "./Blueprint";
 import WorkCard from "./WorkCard";
@@ -8,7 +10,7 @@ import { Icon } from "./Icons";
 import { Stats, SectionHead, Register, Steps, Faq, Bridge, CtaBand, type RegisterItem } from "./Sections";
 import { Craft, PhotoBand } from "./PhotoSections";
 import { PricingSection } from "./Pricing";
-import { hasImage } from "@/lib/images";
+import { hasImage, resolveImage } from "@/lib/images";
 import { listPublishedProjects, resolve } from "@/lib/projects";
 import { SIDES, type Side } from "@/lib/sides";
 import { services, processSteps, responsibility, faq as byggFaq } from "@/lib/placeholder";
@@ -24,9 +26,21 @@ import {
 
 /** Landing page for one side. Both sides share this template; the two
  *  headline lines double as the Bygg / Software switch. */
+const HERO_SIZES = "(max-width: 900px) 100vw, 44vw";
+
+/** Warm the other side's hero photo, so switching Bygg ⇄ Software doesn't
+ *  wait for it to download (the page itself is already prefetched). */
+function preloadHero(side: Side) {
+  const src = resolveImage(SIDES[side].hero.image);
+  if (!src) return;
+  const { props } = getImageProps({ src, alt: "", fill: true, sizes: HERO_SIZES });
+  preload(props.src, { as: "image", imageSrcSet: props.srcSet, imageSizes: props.sizes, fetchPriority: "low" });
+}
+
 export default async function Landing({ side }: { side: Side }) {
   const cfg = SIDES[side];
   const isBygg = side === "bygg";
+  preloadHero(isBygg ? "mjukvara" : "bygg");
   const [{ company, warranty }, projects, cases] = await Promise.all([getContent(), listPublishedProjects(), listPublishedCases()]);
   const w = isBygg ? warranty.bygg : warranty.software;
   const stats = [...(isBygg ? company.byggStats : company.softwareStats), { value: w.short, label: "garanti" }];
@@ -96,7 +110,7 @@ export default async function Landing({ side }: { side: Side }) {
                       <span className="sr-only"> {cfg.topic}.</span>
                     </h1>
                   ) : (
-                    <Link key={l.key} href={l.href} scroll={false} className="lhero-line">
+                    <Link key={l.key} href={l.href} scroll={false} transitionTypes={["side-switch"]} className="lhero-line">
                       Vi bygger <span className="lhero-word">{l.word}</span>.{" "}
                       <span className="lhero-go">
                         Visa {SIDES[l.key].label}
@@ -125,8 +139,8 @@ export default async function Landing({ side }: { side: Side }) {
 
           <ViewTransition name="hero-media" share="auto" default="none">
             <div className="lhero-media">
-              <Blueprint dimH={cfg.hero.dimH} dimV={cfg.hero.dimV} caption={cfg.hero.caption}>
-                <Photo slot={cfg.hero.image} ratio="4 / 5" tone="dark" preload parallax sizes="(max-width: 900px) 100vw, 44vw" />
+              <Blueprint>
+                <Photo slot={cfg.hero.image} ratio="4 / 5" tone="dark" preload sizes={HERO_SIZES} />
               </Blueprint>
             </div>
           </ViewTransition>

@@ -49,6 +49,7 @@ export default function Header({ showProjects = false }: { showProjects?: boolea
         <nav className="side-marker" aria-label="Välj verksamhet">
           <Link
             href={counterpartPath(pathname, "bygg", showProjects)}
+            transitionTypes={["side-switch"]}
             aria-current={side === "bygg" ? "true" : undefined}
           >
             Bygg
@@ -56,6 +57,7 @@ export default function Header({ showProjects = false }: { showProjects?: boolea
           <span className="dot" aria-hidden="true">·</span>
           <Link
             href={counterpartPath(pathname, "mjukvara")}
+            transitionTypes={["side-switch"]}
             aria-current={side === "mjukvara" ? "true" : undefined}
           >
             Software

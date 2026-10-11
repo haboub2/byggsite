@@ -55,10 +55,13 @@ export default function Motion() {
 
 /** Large photos ([data-parallax]) drift a little against the scroll. Sets
  *  --py, which the CSS applies with `translate` so it never fights the
- *  curtain's `transform`. */
+ *  curtain's `transform`. Photos in the first screen of the page (heroes)
+ *  follow the scroll position, so they sit at exactly 0 at the top and never
+ *  jump on arrival; photos further down drift as they cross the screen. */
 function parallax(): () => void {
   const els = Array.from(document.querySelectorAll<HTMLElement>("[data-parallax]"));
   if (!els.length) return () => {};
+  const MAX = 36;
   let raf = 0;
   const update = () => {
     raf = 0;
@@ -66,8 +69,11 @@ function parallax(): () => void {
     for (const el of els) {
       const r = el.getBoundingClientRect();
       if (r.bottom < -100 || r.top > vh + 100) continue;
-      const progress = (r.top + r.height / 2 - vh / 2) / vh; // -1 … 1 across the screen
-      el.style.setProperty("--py", `${(progress * -36).toFixed(1)}px`);
+      const inFirstScreen = r.top + window.scrollY < vh;
+      const py = inFirstScreen
+        ? Math.min(MAX, window.scrollY * 0.08)
+        : ((r.top + r.height / 2 - vh / 2) / vh) * -MAX; // -1 … 1 across the screen
+      el.style.setProperty("--py", `${py.toFixed(1)}px`);
     }
   };
   const onScroll = () => {

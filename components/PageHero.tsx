@@ -14,8 +14,6 @@ export default function PageHero({
   image,
   imageSrc,
   imageAlt,
-  dimH,
-  dimV,
   caption,
   children,
 }: {
@@ -31,8 +29,6 @@ export default function PageHero({
   /** …or an uploaded photo. */
   imageSrc?: string | null;
   imageAlt?: string;
-  dimH?: string;
-  dimV?: string;
   caption?: string;
   children?: React.ReactNode;
 }) {
@@ -51,7 +47,7 @@ export default function PageHero({
             {children && <div className="phero-actions">{children}</div>}
           </div>
           {(image || imageSrc) && (
-            <Blueprint dimH={dimH} dimV={dimV} caption={caption}>
+            <Blueprint caption={caption}>
               <Photo
                 slot={image}
                 src={imageSrc}
