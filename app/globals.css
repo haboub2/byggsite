@@ -672,6 +672,9 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .monogram::after { content: ""; position: absolute; left: 24px; right: 24px; bottom: 24px; height: 2px; background: var(--orange); }
 .team-card h3 { margin-top: 16px; font-size: 20px; letter-spacing: -0.025em; }
 .team-role { display: block; margin-top: 4px; font-size: 14.5px; color: var(--ink-3); }
+.team-contact { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; font-size: 14.5px; }
+.team-contact a { color: var(--ink-2); text-decoration: none; overflow-wrap: anywhere; }
+.team-contact a:hover { color: var(--ink); text-decoration: underline; }
 .team-side { display: inline-block; margin-top: 10px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--orange-text); }
 @media (max-width: 760px) { .team { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 480px) { .team { grid-template-columns: 1fr; } }

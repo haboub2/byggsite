@@ -7,20 +7,19 @@ export const site = {
   legalName: "Binaafy",
   domain: "binaafy.se",
   contact: {
-    person: "Mohamed Al Haboub",
     hours: "Mån–Fre, 07:00–16:00",
     phone: "+46793049737",
     phoneDisplay: "079-304 97 37",
     email: "info@binaafy.se",
-    address: "Montörgatan 7, 302 62 Halmstad",
+    address: "Uppstigen 130, 412 80 Göteborg",
   },
   areasServed: ["Halmstad", "Laholm", "Falkenberg", "Hallands län"],
 };
 
 export const team = [
-  { name: "Mohamed Al Haboub", role: "Byggingenjör", division: "bygg" as const, image: "team-mohamed" },
-  { name: "Abdulmalek Alnajjar", role: "Byggingenjör", division: "bygg" as const, image: "team-abdulmalek" },
-  { name: "Ibrahim Al Haboub", role: "Dataingenjör", division: "01" as const, image: "team-ibrahim" },
+  { name: "Mohamed Al Haboub", role: "Byggingenjör", division: "bygg" as const, image: "team-mohamed", email: "haboub@binaafy.se" },
+  { name: "Abdulmalek Alnajjar", role: "Byggingenjör", division: "bygg" as const, image: "team-abdulmalek", email: "malek@binaafy.se" },
+  { name: "Ibrahim Al Haboub", role: "Dataingenjör", division: "01" as const, image: "team-ibrahim", email: "ibra@binaafy.se" },
 ];
 
 export const values = [

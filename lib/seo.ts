@@ -27,7 +27,7 @@ const address = (c: Company) => ({
   streetAddress: c.street,
   postalCode: c.postalCode,
   addressLocality: c.city,
-  addressRegion: "Hallands län",
+  addressRegion: "Västra Götalands län",
   addressCountry: "SE",
 });
 

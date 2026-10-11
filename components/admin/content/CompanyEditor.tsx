@@ -112,7 +112,6 @@ export default function CompanyEditor({
             placeholder="559123-4567"
             hint="Lämna tomt tills bolaget är registrerat."
           />
-          <TextField label="Kontaktperson" path="contactPerson" value={c.contactPerson} onChange={set("contactPerson")} />
           <TextField label="Öppettider" path="hours" value={c.hours} onChange={set("hours")} placeholder="Mån–Fre, 07:00–16:00" />
         </div>
       </fieldset>

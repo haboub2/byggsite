@@ -17,7 +17,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function KontaktPage() {
   const { company } = await getContent();
   const rows = [
-    { icon: "user", label: "Kontaktperson", value: company.contactPerson },
     {
       icon: "phone",
       label: "Ring oss",

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { companySchema, contentSchemas, fillWarranty, CONTENT_KEYS } from "./schema";
+import { companySchema, contentSchemas, fillWarranty, teamSchema, telHref, CONTENT_KEYS } from "./schema";
 import { defaultContent } from "./defaults";
 import { services } from "../placeholder";
 import { softwareAreas } from "../software-content";
@@ -41,4 +41,21 @@ test("company validation catches the mistakes people actually make", () => {
   assert.ok(bad({ orgNr: "5591234567" }), "org.nr needs the dash");
   assert.ok(!bad({ orgNr: "" }), "org.nr may be empty until registered");
   assert.ok(!bad({ orgNr: "559123-4567" }), "valid org.nr");
+});
+
+test("team rows saved before email/phone existed still load, and bad contacts are caught", () => {
+  const old = { members: [{ name: "Anna Andersson", role: "Snickare", side: "bygg", photo: null }] };
+  const r = teamSchema.safeParse(old);
+  assert.ok(r.success, "old row parses");
+  assert.equal(r.data.members[0].email, "");
+  assert.equal(r.data.members[0].phone, "");
+  const member = (patch: object) => teamSchema.safeParse({ members: [{ ...old.members[0], ...patch }] }).success;
+  assert.ok(member({ email: "anna@binaafy.se", phone: "070-123 45 67" }));
+  assert.ok(!member({ email: "anna@" }), "email");
+  assert.ok(!member({ phone: "ring mig" }), "phone");
+});
+
+test("tel links get the +46 form", () => {
+  assert.equal(telHref("070-123 45 67"), "+46701234567");
+  assert.equal(telHref("+46 70 123 45 67"), "+46701234567");
 });

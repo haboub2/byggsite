@@ -9,6 +9,7 @@ import { SectionHead, CtaBand } from "@/components/Sections";
 import { breadcrumbJsonLd, pageMetadata, abs } from "@/lib/seo";
 import { ogImage } from "@/lib/images";
 import { publicUrl } from "@/lib/storage";
+import { telHref } from "@/lib/content/schema";
 import { values, trustPoints } from "@/lib/placeholder";
 import { getContent } from "@/lib/content/store";
 
@@ -98,6 +99,12 @@ export default async function AboutPage() {
                 <span className="team-side">{p.side === "bygg" ? "Bygg" : "Software"}</span>
                 <h3>{p.name}</h3>
                 <span className="team-role">{p.role}</span>
+                {(p.email || p.phone) && (
+                  <span className="team-contact">
+                    {p.email && <a href={`mailto:${p.email}`}>{p.email}</a>}
+                    {p.phone && <a href={`tel:${telHref(p.phone)}`}>{p.phone}</a>}
+                  </span>
+                )}
               </Reveal>
             ))}
           </div>

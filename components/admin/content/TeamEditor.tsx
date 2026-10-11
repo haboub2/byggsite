@@ -37,6 +37,8 @@ function Member({
         <div className="member-fields">
           <TextField label="Namn" path={`members.${i}.name`} value={m.name} onChange={(v) => onChange({ ...m, name: v })} />
           <TextField label="Roll" path={`members.${i}.role`} value={m.role} onChange={(v) => onChange({ ...m, role: v })} placeholder="Byggingenjör" />
+          <TextField label="E-post" path={`members.${i}.email`} value={m.email} onChange={(v) => onChange({ ...m, email: v })} placeholder="namn@binaafy.se" inputMode="email" />
+          <TextField label="Telefon (arbete)" path={`members.${i}.phone`} value={m.phone} onChange={(v) => onChange({ ...m, phone: v })} placeholder="070-123 45 67" inputMode="tel" />
           <div className="efield">
             <label htmlFor={`side-${i}`}>Verksamhet</label>
             <select id={`side-${i}`} value={m.side} onChange={(e) => onChange({ ...m, side: e.target.value as TeamMember["side"] })}>
@@ -88,7 +90,7 @@ export default function TeamEditor({ initial, lastSaved }: { initial: Team; last
       <button
         type="button"
         className="btn btn-ghost"
-        onClick={() => setMembers([...members, { name: "", role: "", side: "bygg", photo: null }])}
+        onClick={() => setMembers([...members, { name: "", role: "", side: "bygg", email: "", phone: "", photo: null }])}
       >
         Lägg till person
       </button>
