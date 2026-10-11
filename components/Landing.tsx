@@ -7,8 +7,15 @@ import Blueprint from "./Blueprint";
 import WorkCard from "./WorkCard";
 import Reveal from "./Reveal";
 import { Icon } from "./Icons";
-import { Stats, SectionHead, Register, Steps, Faq, Bridge, CtaBand, type RegisterItem } from "./Sections";
-import { Craft, PhotoBand } from "./PhotoSections";
+import { Stats, SectionHead, Register, Faq, Bridge, CtaBand, type RegisterItem } from "./Sections";
+import { Craft } from "./PhotoSections";
+import ExpandBand from "./scroll/ExpandBand";
+import ProcessStory from "./scroll/ProcessStory";
+import LightText from "./scroll/LightText";
+import WorkStrip from "./scroll/WorkStrip";
+import StackCards from "./scroll/StackCards";
+import ScrollWipe from "./scroll/ScrollWipe";
+import Marquee from "./scroll/Marquee";
 import { PricingSection } from "./Pricing";
 import { hasImage, resolveImage } from "@/lib/images";
 import { listPublishedProjects, resolve } from "@/lib/projects";
@@ -28,6 +35,12 @@ import {
  *  headline lines double as the Bygg / Software switch. */
 const HERO_SIZES = "(max-width: 900px) 100vw, 44vw";
 
+/** One photo per process step (lib/images.ts slots), in step order. */
+const STEP_SLOTS = {
+  bygg: ["projektledning-hero", "detail-pencil", "detail-timber", "totalrenovering-hero"],
+  mjukvara: ["detail-sketch", "interna-system-hero", "hero-software", "automation-hero"],
+} as const;
+
 /** Warm the other side's hero photo, so switching Bygg ⇄ Software doesn't
  *  wait for it to download (the page itself is already prefetched). */
 function preloadHero(side: Side) {
@@ -44,7 +57,11 @@ export default async function Landing({ side }: { side: Side }) {
   const [{ company, warranty }, projects, cases] = await Promise.all([getContent(), listPublishedProjects(), listPublishedCases()]);
   const w = isBygg ? warranty.bygg : warranty.software;
   const stats = [...(isBygg ? company.byggStats : company.softwareStats), { value: w.short, label: "garanti" }];
-  const steps = (isBygg ? processSteps : softwareProcess).map((s) => ({ ...s, body: fillWarranty(s.body, w) }));
+  const steps = (isBygg ? processSteps : softwareProcess).map((s, i) => ({
+    ...s,
+    body: fillWarranty(s.body, w),
+    slot: STEP_SLOTS[side][i] ?? STEP_SLOTS[side][0],
+  }));
   const faq = (isBygg ? byggFaq : softwareFaq).map((f) => ({ ...f, a: fillWarranty(f.a, w) }));
   const secondary =
     isBygg && projects.length === 0 ? { label: "Se vad det kostar", href: "#priser" } : cfg.heroSecondary;
@@ -68,7 +85,7 @@ export default async function Landing({ side }: { side: Side }) {
   const shownWork = isBygg
     ? projects
         .filter((p) => p.featured)
-        .slice(0, 3)
+        .slice(0, 8)
         .map((p) => ({
           href: `/bygg/projekt/${p.slug}`,
           src: resolve(p.cover)?.url,
@@ -79,7 +96,7 @@ export default async function Landing({ side }: { side: Side }) {
         }))
     : cases
         .filter((c) => c.featured && (c.cover || (c.image && hasImage(c.image))))
-        .slice(0, 3)
+        .slice(0, 8)
         .map((c) => ({
           href: `/mjukvara/case/${c.slug}`,
           image: c.image,
@@ -89,6 +106,18 @@ export default async function Landing({ side }: { side: Side }) {
           title: c.title,
           desc: c.summary,
         }));
+
+  // Before/after wipe: the first featured project that has both photos.
+  const wipeProject = isBygg ? projects.find((p) => p.featured && p.before && p.after) : undefined;
+  const wipe = wipeProject && {
+    before: resolve(wipeProject.before),
+    after: resolve(wipeProject.after),
+    title: wipeProject.title,
+    href: `/bygg/projekt/${wipeProject.slug}`,
+  };
+  // Four or more pieces of work slide sideways; fewer stay a grid of three.
+  const useStrip = shownWork.length >= 4;
+  const gridWork = shownWork.slice(0, 3);
 
   const lines: { key: Side; word: string; href: string }[] = [
     { key: "bygg", word: SIDES.bygg.word, href: SIDES.bygg.home },
@@ -154,27 +183,29 @@ export default async function Landing({ side }: { side: Side }) {
       <section className="sec">
         <div className="container">
           <SectionHead eyebrow={cfg.register.eyebrow} title={cfg.register.title} aside={cfg.register.aside} />
-          <Register items={register} name={`reg-${side}`} />
+          {isBygg ? (
+            <Register items={register} name={`reg-${side}`} />
+          ) : (
+            <StackCards items={register.map((r, i) => ({ ...r, slot: `${softwareAreas[i].slug}-hero` }))} />
+          )}
         </div>
       </section>
+
+      {isBygg && <Marquee words={services.map((s) => s.title)} />}
 
       <Craft {...cfg.craft} />
 
-      <section className="sec sec--alt">
-        <div className="container">
-          <SectionHead
-            eyebrow="Så går det till"
-            title={isBygg ? "Fyra steg, inga överraskningar." : "Från brief till drift."}
-          />
-          <Steps items={steps} />
-        </div>
-      </section>
+      <ProcessStory
+        eyebrow="Så går det till"
+        title={isBygg ? "Fyra steg, inga överraskningar." : "Från brief till drift."}
+        steps={steps}
+      />
 
       {isBygg && (
         <section className="sec">
           <div className="container">
             <SectionHead eyebrow={responsibility.eyebrow} title={responsibility.title} />
-            <p className="lede-text">{responsibility.body}</p>
+            <LightText className="lede-text" text={responsibility.body} highlight={responsibility.highlight} />
             <ul className="values values--3 reveal-group">
               {responsibility.points.map((p) => (
                 <Reveal as="li" key={p.title}>
@@ -189,7 +220,20 @@ export default async function Landing({ side }: { side: Side }) {
 
       {isBygg && <PricingSection />}
 
-      {(shownWork.length > 0 || !isBygg) && (
+      {wipe?.before && wipe.after && <ScrollWipe before={wipe.before} after={wipe.after} title={wipe.title} href={wipe.href} />}
+
+      {useStrip ? (
+        <WorkStrip
+          title={<SectionHead eyebrow={cfg.work.eyebrow} title={cfg.work.title} />}
+          aside={
+            <Link href={cfg.work.all.href} className="link-arrow">
+              {cfg.work.all.label}
+              <Icon name="arrow" strokeWidth={2} />
+            </Link>
+          }
+          items={shownWork}
+        />
+      ) : (shownWork.length > 0 || !isBygg) && (
         <section className="sec">
           <div className="container">
             <SectionHead
@@ -203,7 +247,7 @@ export default async function Landing({ side }: { side: Side }) {
               }
             />
             <div className="work reveal-group">
-              {shownWork.map((w) => (
+              {gridWork.map((w) => (
                 <Reveal key={w.href}>
                   <WorkCard {...w} />
                 </Reveal>
@@ -223,7 +267,7 @@ export default async function Landing({ side }: { side: Side }) {
         </section>
       )}
 
-      <PhotoBand {...cfg.band} />
+      <ExpandBand {...cfg.band} />
 
       <section className="sec">
         <div className="container split">

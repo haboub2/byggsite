@@ -42,10 +42,12 @@ export default function Motion() {
     const settle = root.dataset.settled ? undefined : window.setTimeout(() => (root.dataset.settled = "1"), 1800);
     const stopParallax = parallax();
     const stopMagnetic = magnetic();
+    const stopScrollFx = scrollFx();
     return () => {
       io.disconnect();
       stopParallax();
       stopMagnetic();
+      stopScrollFx();
       if (settle) window.clearTimeout(settle);
     };
   }, [pathname]);
@@ -112,5 +114,123 @@ function magnetic(): () => void {
   return () => {
     document.removeEventListener("pointermove", onMove);
     document.removeEventListener("pointerout", onOut);
+  };
+}
+
+/**
+ * Scroll-driven sections (components/scroll/*). Each sets CSS variables the
+ * stylesheet animates; nothing here touches layout except the strip's height.
+ *
+ * - [data-scroll="pin"]   --p 0 → 1 while a tall section scrolls past its sticky stage
+ * - [data-scroll="cross"] --p 0 → 1 while an element crosses the screen
+ * - [data-story]          marks the active step (.on) from its --p
+ * - [data-strip]          sideways track: measures --dist and sizes the section
+ * - [data-stack]          cards get --cover as the next card slides over them
+ * - [data-marquee]        drifts sideways, faster while the page scrolls
+ */
+function scrollFx(): () => void {
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  const pins = Array.from(document.querySelectorAll<HTMLElement>('[data-scroll="pin"]'));
+  const crosses = Array.from(document.querySelectorAll<HTMLElement>('[data-scroll="cross"]'));
+  const stories = Array.from(document.querySelectorAll<HTMLElement>("[data-story]"));
+  const strips = Array.from(document.querySelectorAll<HTMLElement>("[data-strip]"));
+  const stacks = Array.from(document.querySelectorAll<HTMLElement>("[data-stack]"));
+  const marquees = Array.from(document.querySelectorAll<HTMLElement>("[data-marquee]"));
+  if (!pins.length && !crosses.length && !stacks.length && !marquees.length) return () => {};
+
+  const sizeStrips = () => {
+    for (const s of strips) {
+      const track = s.querySelector<HTMLElement>("[data-strip-track]");
+      if (!track) continue;
+      const stage = s.firstElementChild as HTMLElement | null;
+      const dist = Math.max(0, track.scrollWidth - window.innerWidth + 40);
+      s.style.setProperty("--dist", `${dist}px`);
+      s.style.height = `${(stage?.offsetHeight ?? window.innerHeight) + dist}px`;
+    }
+  };
+  sizeStrips();
+
+  let raf = 0;
+  const update = () => {
+    raf = 0;
+    const vh = window.innerHeight;
+    for (const el of pins) {
+      const r = el.getBoundingClientRect();
+      if (r.bottom < -vh || r.top > 2 * vh) continue;
+      // The sticky stage sits under the header: progress runs from the moment
+      // it sticks until the section's end pushes it up again.
+      const stage = el.firstElementChild as HTMLElement | null;
+      const top = stage ? parseFloat(getComputedStyle(stage).top) || 0 : 0;
+      const run = r.height - (stage ? stage.offsetHeight : vh);
+      el.style.setProperty("--p", (run > 0 ? clamp((top - r.top) / run) : 0).toFixed(4));
+    }
+    for (const el of crosses) {
+      const r = el.getBoundingClientRect();
+      if (r.bottom < -vh || r.top > 2 * vh) continue;
+      el.style.setProperty("--p", clamp((vh * 0.88 - r.top) / (vh * 0.5 + r.height * 0.5)).toFixed(4));
+    }
+    for (const el of stories) {
+      const steps = el.querySelectorAll("[data-step]");
+      const p = Number(el.style.getPropertyValue("--p") || 0);
+      const active = Math.min(steps.length - 1, Math.floor(p * steps.length));
+      el.querySelectorAll("[data-step], [data-shot]").forEach((n) => n.classList.toggle("on", Number((n as HTMLElement).dataset.i) === active));
+    }
+    for (const el of stacks) {
+      const cards = Array.from(el.querySelectorAll<HTMLElement>("[data-stack-card]"));
+      cards.forEach((c, i) => {
+        const next = cards[i + 1];
+        if (!next) return;
+        const cr = c.getBoundingClientRect();
+        const nr = next.getBoundingClientRect();
+        c.style.setProperty("--cover", clamp(1 - (nr.top - cr.top) / cr.height).toFixed(3));
+      });
+    }
+  };
+  const onScroll = () => {
+    if (!raf) raf = requestAnimationFrame(update);
+  };
+  const onResize = () => {
+    sizeStrips();
+    onScroll();
+  };
+  update();
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onResize);
+
+  // Marquee: only animates while on screen.
+  let mraf = 0;
+  let lastY = window.scrollY;
+  let speed = 0;
+  const visible = new Set<HTMLElement>();
+  const offsets = new Map<HTMLElement, number>();
+  const mio = new IntersectionObserver((entries) => {
+    entries.forEach((e) => (e.isIntersecting ? visible.add(e.target as HTMLElement) : visible.delete(e.target as HTMLElement)));
+    if (visible.size && !mraf) mraf = requestAnimationFrame(loop);
+  });
+  const loop = () => {
+    mraf = 0;
+    const dy = Math.abs(window.scrollY - lastY);
+    lastY = window.scrollY;
+    speed += (Math.min(dy, 60) - speed) * 0.08;
+    for (const m of visible) {
+      const row = m.querySelector<HTMLElement>("[data-marquee-row]");
+      if (!row) continue;
+      const half = row.scrollWidth / 2;
+      let x = (offsets.get(m) ?? 0) - (0.35 + speed * 0.3);
+      if (-x > half) x += half;
+      offsets.set(m, x);
+      row.style.transform = `translate3d(${x.toFixed(1)}px, 0, 0)`;
+    }
+    if (visible.size) mraf = requestAnimationFrame(loop);
+  };
+  marquees.forEach((m) => mio.observe(m));
+
+  return () => {
+    window.removeEventListener("scroll", onScroll);
+    window.removeEventListener("resize", onResize);
+    cancelAnimationFrame(raf);
+    cancelAnimationFrame(mraf);
+    mio.disconnect();
+    strips.forEach((s) => (s.style.height = ""));
   };
 }
