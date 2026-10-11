@@ -8,7 +8,7 @@ import JsonLd from "@/components/JsonLd";
 import { Icon } from "@/components/Icons";
 import { CtaBand } from "@/components/Sections";
 import { services } from "@/lib/placeholder";
-import { softwareCases } from "@/lib/software-content";
+import { listPublishedCases } from "@/lib/cases";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 import { listPublishedProjects, resolve } from "@/lib/projects";
 
@@ -42,9 +42,9 @@ function EmptySlot({ side }: { side: "bygg" | "software" }) {
 }
 
 export default async function ReferencesPage() {
-  const projects = await listPublishedProjects();
+  const [projects, cases] = await Promise.all([listPublishedProjects(), listPublishedCases()]);
   const byggSlots = Math.max(0, MIN_PER_SIDE - projects.length);
-  const softwareSlots = Math.max(0, MIN_PER_SIDE - softwareCases.length);
+  const softwareSlots = Math.max(0, MIN_PER_SIDE - cases.length);
 
   return (
     <>
@@ -76,14 +76,16 @@ export default async function ReferencesPage() {
               {Array.from({ length: byggSlots }, (_, i) => (
                 <EmptySlot key={`bs-${i}`} side="bygg" />
               ))}
-              {softwareCases.map((c) => (
+              {cases.map((c) => (
                 <Reveal key={`s-${c.slug}`} className="ref-card" data-side="software">
                   <WorkCard
                     href={`/mjukvara/case/${c.slug}`}
                     image={c.image}
+                    src={c.cover?.url}
+                    alt={c.cover?.alt}
                     tag={["Software", c.tag, c.client].filter(Boolean).join(" · ")}
                     title={c.title}
-                    desc={c.summary}
+                    desc={c.testimonial?.quote ? `”${c.testimonial.quote}”` : c.summary}
                   />
                 </Reveal>
               ))}

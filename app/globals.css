@@ -877,6 +877,8 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .chips-edit button { width: 22px; height: 22px; border-radius: 50%; font-size: 15px; line-height: 1; color: var(--ink-3); }
 .chips-edit button:hover { background: var(--bg-deep); color: var(--danger); }
 .chips-add { display: flex; gap: 8px; margin-top: 6px; }
+.metric-edit { grid-template-columns: 140px 1fr auto; align-items: end; margin-bottom: 10px; }
+@media (max-width: 560px) { .metric-edit { grid-template-columns: 1fr; } }
 .chips-add .btn { min-height: 42px; padding: 8px 14px; font-size: 14px; }
 .stats-edit { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .stat-edit { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); }

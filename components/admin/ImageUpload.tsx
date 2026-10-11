@@ -4,7 +4,7 @@ import { useId, useRef, useState } from "react";
 import { publicUrl } from "@/lib/storage-url";
 
 export type StoredImage = { path: string; alt: string };
-type Folder = "projects" | "team";
+type Folder = "projects" | "team" | "cases";
 
 const MAX_SIDE = 2400;
 
