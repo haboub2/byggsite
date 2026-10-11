@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PageHero from "@/components/PageHero";
+import BlueprintDraw from "@/components/scroll/BlueprintDraw";
 import JsonLd from "@/components/JsonLd";
 import Photo from "@/components/Photo";
 import Reveal from "@/components/Reveal";
@@ -66,7 +67,6 @@ export default async function AboutPage() {
         title="Ett företag. Två sätt att bygga."
         lead="Vi renoverar och bygger hem i södra och västra Sverige, och vi bygger system som driver verksamheter. Samma team, samma standard — oavsett om resultatet är ett badrum eller ett internt verktyg."
         image="about-workshop"
-        dimH="Verkstad"
         caption="Hantverk och kod under samma tak"
       >
         <Link href="/" className="btn btn-primary">
@@ -78,6 +78,12 @@ export default async function AboutPage() {
           <Icon name="arrow" strokeWidth={2} />
         </Link>
       </PageHero>
+
+      <BlueprintDraw
+        eyebrow="Fasad · skala 1:100"
+        title="Från första skiss till sista detalj."
+        body="Varje projekt börjar som en ritning: mått, material och en plan som håller. Samma noggrannhet följer med hela vägen till sista listen – och till sista raden kod."
+      />
 
       <section className="sec">
         <div className="container">

@@ -19,7 +19,7 @@ export type SideConfig = {
   heroSecondary: Link;
   cta: Link;
   nav: Link[];
-  hero: { image: string; dimV: string; dimH: string; caption: string };
+  hero: { image: string };
   register: { eyebrow: string; title: string; aside: string };
   work: { eyebrow: string; title: string; all: Link };
   craft: { title: string; body: string; images: { slot: string; caption: string }[] };
@@ -46,7 +46,7 @@ export const SIDES: Record<Side, SideConfig> = {
       { label: "Om oss", href: "/om-oss" },
       { label: "Kontakt", href: "/kontakt" },
     ],
-    hero: { image: "hero-bygg", dimV: "2,7 m", dimH: "Fönsterparti", caption: "Material. Ljus. Funktion." },
+    hero: { image: "hero-bygg" },
     register: {
       eyebrow: "Register — vad vi gör",
       title: "Nio tjänster, ett team.",
@@ -95,7 +95,7 @@ export const SIDES: Record<Side, SideConfig> = {
       { label: "Om oss", href: "/om-oss" },
       { label: "Kontakt", href: "/kontakt" },
     ],
-    hero: { image: "hero-software", dimV: "Flöde", dimH: "Steg 2 — portal", caption: "Struktur. Flöde. Funktion." },
+    hero: { image: "hero-software" },
     register: {
       eyebrow: "Register — vad vi gör",
       title: "Tre sätt att ta bort dubbelarbete.",

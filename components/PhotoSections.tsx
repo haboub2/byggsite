@@ -35,26 +35,3 @@ export function Craft({
     </section>
   );
 }
-
-/** Full-bleed photograph with one statement set in a solid panel. */
-export function PhotoBand({
-  slot,
-  statement,
-  caption,
-}: {
-  slot: string;
-  statement: string;
-  caption: string;
-}) {
-  return (
-    <section className="band">
-      <Photo slot={slot} ratio="auto" tone="dark" sizes="100vw" className="band-photo" parallax />
-      <div className="container band-inner">
-        <Reveal className="band-panel">
-          <p className="band-statement">{statement}</p>
-          <span className="band-cap">{caption}</span>
-        </Reveal>
-      </div>
-    </section>
-  );
-}

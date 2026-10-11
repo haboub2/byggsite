@@ -84,8 +84,6 @@ export default async function ServiceTemplate({
         titleContext={seoTitle && seoTitle !== title ? seoTitle : undefined}
         lead={lead}
         image={serviceImage[slug]}
-        dimH={title}
-        caption={side === "bygg" ? "Koncept — material och ljus" : "Koncept — struktur och flöde"}
       >
         <Link href={cta.href} className="btn btn-primary">
           {cta.label}

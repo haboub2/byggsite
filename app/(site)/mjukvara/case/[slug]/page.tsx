@@ -76,7 +76,6 @@ export default async function CasePage({
         image={c.cover ? undefined : c.image}
         imageSrc={c.cover?.url}
         imageAlt={c.cover?.alt}
-        dimH="Resultat"
         caption={c.stack.join(" · ")}
       >
         {c.url && (

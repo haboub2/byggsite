@@ -19,7 +19,8 @@ const EXTS = ["avif", "webp", "jpg", "jpeg", "png"];
  *  or cases, which must show our own work. Photo page: unsplash.com/photos/<id>. */
 const STOCK: Record<string, string> = {
   "hero-bygg": "1774477178005-bff823e43be8",
-  "hero-software": "1611269154421-4e27233ac5c7",
+  // Code on a monitor. Replace by adding public/images/hero-software.jpg.
+  "hero-software": "1555066931-4365d14bab8c",
   "totalrenovering-hero": "1762545352529-1e624dad0548",
   "badrum-hero": "1661107259637-4e1c55462428",
   "kok-hero": "1721824288165-c1210e6e9898",
@@ -66,7 +67,7 @@ export function ogImage(slot: string): string | undefined {
 /** Alt text per slot. Describes the scene; never claims the photo is our work. */
 export const imageAlt: Record<string, string> = {
   "hero-bygg": "Fåtölj och golvlampa i ljuset från ett stort fönster",
-  "hero-software": "Enkelt skrivbord i trä vid en ljus vägg",
+  "hero-software": "Programkod på en datorskärm",
   "totalrenovering-hero": "Öppen planlösning med kök och matplats i trä",
   "badrum-hero": "Badrum i natursten med kommod i ek",
   "kok-hero": "Kök i svart och ek vid ett fönster",

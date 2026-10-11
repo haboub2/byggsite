@@ -33,6 +33,8 @@ export const values = [
 export const responsibility = {
   eyebrow: "Ett ansvar – hela vägen",
   title: "Egen personal där vi kan, behöriga specialister där det krävs.",
+  /** Phrase in `body` that lights up in orange on scroll. */
+  highlight: "en kontaktperson och ett avtal med oss",
   body: "Merparten av arbetet utför vi med egen personal. För specialistmoment som el, VVS och våtrumsarbeten anlitar vi noggrant utvalda och behöriga underentreprenörer som vi har arbetat med länge. Du har alltid en kontaktperson och ett avtal med oss – vi samordnar, kvalitetssäkrar och tar fullt ansvar för helheten, inklusive garantin.",
   points: [
     { title: "Egen personal", body: "Rivning, stomme, snickerier, golv, kakel och montering gör vi själva. Det ger kortare beslutsvägar och en jämn kvalitet." },
