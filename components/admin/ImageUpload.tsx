@@ -50,7 +50,7 @@ export default function ImageUpload({
   error,
   altError,
   ratio = "4 / 3",
-  altPlaceholder = "Nytt kök med köksö i villa i Söndrum",
+  altPlaceholder = "Nytt kök med köksö i villa i Kungsbacka",
 }: {
   label: string;
   folder: Folder;

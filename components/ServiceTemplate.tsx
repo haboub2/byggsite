@@ -39,7 +39,7 @@ export default async function ServiceTemplate({
   index: number;
   total: number;
   title: string;
-  /** Full search phrase, e.g. "Badrumsrenovering i Halmstad". */
+  /** Full search phrase, e.g. "Badrumsrenovering med fast pris". */
   seoTitle?: string;
   lead: string;
   facts: { value: string; label: string }[];

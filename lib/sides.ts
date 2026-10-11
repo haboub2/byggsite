@@ -34,8 +34,8 @@ export const SIDES: Record<Side, SideConfig> = {
     label: "Bygg",
     home: "/",
     word: "hus",
-    topic: "Bygg och renovering i Halmstad",
-    lead: "Renovering, ombyggnad och nybygg i Halmstad. Ett team, en kontaktperson, från första skiss till sista detalj.",
+    topic: "Bygg och renovering i södra och västra Sverige",
+    lead: "Renovering, ombyggnad och nybygg i södra och västra Sverige. Ett team, en kontaktperson, från första skiss till sista detalj.",
     heroCta: { label: "Berätta om ditt projekt", href: "/bygg/offert" },
     heroSecondary: { label: "Se våra projekt", href: "/bygg/projekt" },
     cta: { label: "Begär offert", href: "/bygg/offert" },
@@ -52,7 +52,7 @@ export const SIDES: Record<Side, SideConfig> = {
       title: "Nio tjänster, ett team.",
       aside: "Välj en rad för att läsa mer. Allt görs av samma team, under samma projektansvar.",
     },
-    work: { eyebrow: "Utvalda projekt", title: "Nyligen byggt i Halland.", all: { label: "Alla projekt", href: "/bygg/projekt" } },
+    work: { eyebrow: "Utvalda projekt", title: "Nyligen byggt.", all: { label: "Alla projekt", href: "/bygg/projekt" } },
     craft: {
       title: "Detaljerna ingen ser — förrän de saknas.",
       body: "Ett golv som ligger rakt, en fog som håller tätt, en list som möter väggen utan glipa. Det är där skillnaden syns efter tio år, och det är där vi lägger tiden.",
@@ -64,7 +64,7 @@ export const SIDES: Record<Side, SideConfig> = {
     },
     band: {
       slot: "band-bygg",
-      statement: "Vi bygger för hur Halland ser ut i november — inte bara i juli.",
+      statement: "Vi bygger för hur Sverige ser ut i november — inte bara i juli.",
       caption: "Vind, salt och fukt. Västkustens villkor.",
     },
     bridge: {
@@ -118,7 +118,7 @@ export const SIDES: Record<Side, SideConfig> = {
     },
     bridge: {
       title: "Byggt av folk som bygger.",
-      body: "Vår andra halva renoverar hus i Halmstad. Vi vet hur en arbetsdag på bygget ser ut — och vad ett system måste klara där.",
+      body: "Vår andra halva renoverar hus. Vi vet hur en arbetsdag på bygget ser ut — och vad ett system måste klara där.",
       link: { label: "Till Bygg", href: "/" },
       icon: "house",
     },

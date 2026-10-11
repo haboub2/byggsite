@@ -13,7 +13,7 @@ export default async function Footer() {
       <div className="container ftr-grid">
         <div className="ftr-brand">
           <img src="/brand/binaafy-light.svg" alt="Binaafy" width={121} height={28} />
-          <p>Ett företag, två verksamheter. Vi bygger hus i Halland och system för verksamheter i hela Sverige.</p>
+          <p>Ett företag, två verksamheter. Vi bygger och renoverar hem i södra och västra Sverige och bygger system för verksamheter i hela Sverige.</p>
         </div>
 
         <div className="ftr-col">

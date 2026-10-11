@@ -33,7 +33,6 @@ export const companySchema = z.object({
   phoneDisplay: text(20, "Telefon som den visas"),
   email: text(80, "E-post").email("Ange en giltig e-postadress."),
   hours: text(60, "Öppettider"),
-  contactPerson: text(60, "Kontaktperson"),
   areasServed: z.array(text(40, "Område")).min(1, "Minst ett område.").max(10),
   byggStats: z.array(stat).length(3),
   softwareStats: z.array(stat).length(3),
@@ -81,9 +80,22 @@ export const teamMemberSchema = z.object({
   name: text(60, "Namn"),
   role: text(60, "Roll"),
   side: z.enum(["bygg", "software"]),
+  // Optional, and defaulted so team rows saved before these fields existed still load.
+  email: optionalText(80, "E-post")
+    .refine((v) => v === "" || z.string().email().safeParse(v).success, "Ange en giltig e-postadress.")
+    .default(""),
+  phone: optionalText(20, "Telefon")
+    .refine((v) => v === "" || /^\+?[\d\s-]{7,}$/.test(v), "Telefon skrivs t.ex. 070-123 45 67.")
+    .default(""),
   photo: z.object({ path: z.string().min(1), alt: optionalText(160, "Bildtext") }).nullable(),
 });
 export type TeamMember = z.infer<typeof teamMemberSchema>;
+
+/** "070-123 45 67" → "+46701234567", for tel: links. */
+export function telHref(display: string): string {
+  const digits = display.replace(/[^\d+]/g, "");
+  return digits.startsWith("0") ? `+46${digits.slice(1)}` : digits;
+}
 
 export const teamSchema = z.object({
   members: z.array(teamMemberSchema).max(24, "Högst 24 personer."),

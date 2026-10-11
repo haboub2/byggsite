@@ -19,11 +19,11 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Binaafy — bygg och software i Halmstad",
+    default: "Binaafy — bygg och software under ett tak",
     template: "%s | Binaafy",
   },
   description:
-    "Binaafy är ett företag med två verksamheter: vi bygger och renoverar hem i Halmstad, och vi bygger system som tar bort dubbelarbete.",
+    "Binaafy är ett företag med två verksamheter: vi bygger och renoverar hem i södra och västra Sverige, och vi bygger system som tar bort dubbelarbete.",
   applicationName: "Binaafy",
   openGraph: {
     type: "website",

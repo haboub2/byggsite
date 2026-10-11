@@ -68,7 +68,6 @@ async function main() {
       certs: [] as string[],
     },
     contact: {
-      person: legacyContent.contact?.person ?? site.contact.person,
       hours: legacyContent.contact?.hours ?? site.contact.hours,
       phone: legacyContent.contact?.phone ?? site.contact.phone,
       phoneDisplay: legacyContent.contact?.phoneDisplay ?? site.contact.phoneDisplay,
