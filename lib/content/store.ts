@@ -38,7 +38,7 @@ function mergeBlock<K extends ContentKey>(key: K, stored: unknown): ContentMap[K
   let merged: unknown;
   if (key === "company") {
     merged = { ...def, ...stored };
-  } else if (key === "team") {
+  } else if (key === "team" || key === "reviews") {
     merged = stored;
   } else if (key === "pricing") {
     const d = def as ContentMap["pricing"];
@@ -83,6 +83,7 @@ export const getContent = cache(async (): Promise<ContentMap> => {
     pricing: mergeBlock("pricing", stored.pricing),
     warranty: mergeBlock("warranty", stored.warranty),
     team: mergeBlock("team", stored.team),
+    reviews: mergeBlock("reviews", stored.reviews),
   };
 });
 

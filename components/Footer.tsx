@@ -40,6 +40,7 @@ export default async function Footer() {
           <h4>Företaget</h4>
           <Link href="/om-oss">Om oss</Link>
           <Link href="/referenser">Referenser</Link>
+          <Link href="/omdomen">Omdömen</Link>
           <Link href="/guider">Guider</Link>
           {(await projectsReady()) && <Link href="/bygg/projekt">Projekt</Link>}
           <Link href="/kontakt">Kontakt</Link>
