@@ -14,9 +14,9 @@ import { values, trustPoints } from "@/lib/placeholder";
 import { getContent } from "@/lib/content/store";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Om Binaafy — bygg och mjukvara i Halmstad",
+  title: "Om Binaafy — bygg och mjukvara under ett tak",
   description:
-    "Binaafy är ett företag i Halmstad med två verksamheter: vi bygger och renoverar hem i Halland, och bygger system som tar bort dubbelarbete för företag.",
+    "Binaafy är ett företag med två verksamheter: vi bygger och renoverar hem i södra och västra Sverige, och bygger system som tar bort dubbelarbete för företag.",
   path: "/om-oss",
   image: ogImage("about-workshop"),
 });
@@ -29,7 +29,7 @@ function initials(name: string) {
 const STORY = [
   {
     heading: "Varför två verksamheter",
-    body: "Vi startade som en bygg- och renoveringsfirma i Halmstad. Efter hand blev det tydligt att samma sak som gör ett bygge bra — tydlig planering, rätt verktyg, en person som tar ansvar för helheten — även löser problem som inte har med betong och kakel att göra: krångliga interna processer, manuellt dubbelarbete, system som inte pratar med varandra. Software föddes ur det, som en egen verksamhet inom samma företag.",
+    body: "Vi startade som en bygg- och renoveringsfirma. Efter hand blev det tydligt att samma sak som gör ett bygge bra — tydlig planering, rätt verktyg, en person som tar ansvar för helheten — även löser problem som inte har med betong och kakel att göra: krångliga interna processer, manuellt dubbelarbete, system som inte pratar med varandra. Software föddes ur det, som en egen verksamhet inom samma företag.",
   },
   {
     heading: "Hur vi jobbar",
@@ -63,7 +63,7 @@ export default async function AboutPage() {
         crumbs={[{ label: "Om oss" }]}
         eyebrow="Om Binaafy"
         title="Ett företag. Två sätt att bygga."
-        lead="Vi renoverar och bygger hem i Halmstad, och vi bygger system som driver verksamheter. Samma team, samma standard — oavsett om resultatet är ett badrum eller ett internt verktyg."
+        lead="Vi renoverar och bygger hem i södra och västra Sverige, och vi bygger system som driver verksamheter. Samma team, samma standard — oavsett om resultatet är ett badrum eller ett internt verktyg."
         image="about-workshop"
         dimH="Verkstad"
         caption="Hantverk och kod under samma tak"

@@ -8,8 +8,8 @@ import { getContent } from "@/lib/content/store";
 export async function generateMetadata(): Promise<Metadata> {
   const { company } = await getContent();
   return pageMetadata({
-    title: "Kontakta Binaafy i Halmstad",
-    description: `Kontakta Binaafy i Halmstad om bygg, renovering eller mjukvara. Ring ${company.phoneDisplay} eller mejla ${company.email}. ${company.hours}.`,
+    title: "Kontakta Binaafy",
+    description: `Kontakta Binaafy om bygg, renovering eller mjukvara. Ring ${company.phoneDisplay} eller mejla ${company.email}. ${company.hours}.`,
     path: "/kontakt",
   });
 }

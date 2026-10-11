@@ -233,7 +233,7 @@ export default function ProjectEditor({
             label="Titel"
             path="title"
             value={p.title}
-            placeholder="Villa i Söndrum"
+            placeholder="Villa i Kungsbacka"
             onChange={(v) => setP((prev) => ({ ...prev, title: v, slug: slugTouched ? prev.slug : slugify(v) }))}
           />
           <TextField
@@ -247,7 +247,7 @@ export default function ProjectEditor({
             }}
           />
           <ServiceSelect value={p.service} onChange={set("service")} services={services} />
-          <TextField label="Ort" path="location" value={p.location} onChange={set("location")} placeholder="Söndrum, Halmstad" />
+          <TextField label="Ort" path="location" value={p.location} onChange={set("location")} placeholder="Kungsbacka" />
           <TextField
             label="År"
             path="year"
@@ -293,7 +293,7 @@ export default function ProjectEditor({
             path="testimonial.author"
             value={p.testimonial?.author ?? ""}
             onChange={(v) => set("testimonial")({ quote: p.testimonial?.quote ?? "", author: v })}
-            placeholder="Anna, Söndrum"
+            placeholder="Anna, Kungsbacka"
           />
         </div>
       </fieldset>

@@ -5,7 +5,7 @@ photos can be uploaded from `/admin` at any point.
 
 | Step | What | Status |
 |---|---|---|
-| 1 | Company details, contact page, team contacts | **In progress** (see open questions) |
+| 1 | Company details, contact page, team contacts, no city in the copy | **Done** (org.nr and phones: owners, in `/admin`) |
 | 2 | Subcontractor wording + rich text across the site | To do |
 | 3 | References page (Bygg + Software) | To do |
 | 4 | Trustpilot page | To do |
@@ -32,12 +32,16 @@ photos can be uploaded from `/admin` at any point.
 `info@` is what they expect. `support@` signals after-sales help; add it later for software clients
 if needed. Make sure the `info@binaafy.se` mailbox exists and is in `MAIL_TO`.
 
-**Waiting on answers**
-- Göteborg: does the whole business move, or only the address? "Halmstad" appears in about 50
-  places (page titles, SEO text, guides, service areas "Halmstad, Laholm, Falkenberg, Hallands län",
-  the footer line "Vi bygger hus i Halland"). These stay until we know which areas to serve.
-- Work phone numbers for each person, and whether the main number (079-304 97 37) stays.
-- Org.nr (shown in the footer once set in `/admin → Företaget`).
+- **No city in the copy.** Binaafy works from Malmö to Borås, so titles and texts name no town.
+  Descriptions say "södra och västra Sverige"; the FAQ names Skåne, Halland and Västra Götaland
+  ("från Malmö till Borås"). Göteborg appears only as the postal address.
+- Structured data `areaServed`: Skåne län, Hallands län, Västra Götalands län (editable in
+  `/admin → Företaget → Områden`).
+- Phone stays 079-304 97 37 until the company numbers are issued.
+
+**Owners to do**
+- Enter the **org.nr** in `/admin → Företaget` (shown in the footer and structured data).
+- Add each person's work phone in `/admin → Team` when the numbers are issued.
 
 > If company details or the team were already saved from `/admin`, the saved version wins over the
 > new defaults: update the address there too, and add the emails under `/admin → Team`.

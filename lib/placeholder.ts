@@ -13,7 +13,7 @@ export const site = {
     email: "info@binaafy.se",
     address: "Uppstigen 130, 412 80 Göteborg",
   },
-  areasServed: ["Halmstad", "Laholm", "Falkenberg", "Hallands län"],
+  areasServed: ["Skåne län", "Hallands län", "Västra Götalands län"],
 };
 
 export const team = [
@@ -64,7 +64,7 @@ export const featuredProjects = [
     image: "projekt-villa-sondrum",
     tag: "Totalrenovering",
     service: "totalrenovering",
-    title: "Villa i Söndrum",
+    title: "Villa från 1970-talet",
     desc: "Genomgående renovering av 1970-talsvilla — nytt kök, två badrum och öppen planlösning.",
   },
   {
@@ -72,7 +72,7 @@ export const featuredProjects = [
     image: "projekt-radhus-vallas",
     tag: "Badrum",
     service: "badrumsrenovering",
-    title: "Radhus på Vallås",
+    title: "Radhus med två våtrum",
     desc: "Två våtrum med tätskikt enligt Säker Vatten, helkaklat och med golvvärme.",
   },
   {
@@ -80,14 +80,14 @@ export const featuredProjects = [
     image: "projekt-tillbyggnad-fyllinge",
     tag: "Tillbyggnad",
     service: "tillbyggnad",
-    title: "Tillbyggnad i Fyllinge",
+    title: "Tillbyggnad på 24 m²",
     desc: "24 m² tillbyggnad med sadeltak, matplats och stora skjutpartier mot trädgården.",
   },
 ];
 
 export const faq = [
   { q: "Erbjuder ni kostnadsfri offert?", a: "Ja. Vi tar fram en kostnadsfri och detaljerad offert utan förpliktelser. Fyll i formuläret så återkommer vi inom 24 timmar." },
-  { q: "Vilka områden arbetar ni i?", a: "Vi utför bygg- och renoveringsprojekt i Halmstad med omnejd, inklusive Laholm, Falkenberg och övriga Hallands län." },
+  { q: "Vilka områden arbetar ni i?", a: "Vi utför bygg- och renoveringsprojekt i södra och västra Sverige – i Skåne, Halland och Västra Götaland, från Malmö till Borås. Hör av dig så berättar vi om vi kan ta ditt projekt." },
   { q: "Kan jag använda ROT-avdrag?", a: "Ja, för de flesta renoverings- och byggarbeten i hemmet kan du nyttja ROT-avdraget på arbetskostnaden. Vi hjälper dig med uppgifterna och drar av direkt på fakturan." },
   { q: "Hur lång tid tar ett projekt?", a: "Det beror på omfattningen. Ett badrum tar ofta 3–5 veckor, medan en totalrenovering kan ta flera månader. Du får en tydlig tidplan i offerten." },
   { q: "Lämnar ni garanti på arbetet?", a: "Ja, vi lämnar {garanti}. Vi är dessutom licensierade och försäkrade för din trygghet." },

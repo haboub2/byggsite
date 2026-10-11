@@ -389,42 +389,42 @@ export const serviceExtras: Record<string, ServiceExtras> = {
 };
 
 /** Search titles and descriptions: the phrase people actually search for,
- *  the town, and the reasons to click. Descriptions stay under ~155 chars. */
+ *  and the reasons to click (no town: we work across several regions). Descriptions stay under ~155 chars. */
 export const serviceSeo: Record<string, { title: string; description: string }> = {
   totalrenovering: {
-    title: "Totalrenovering i Halmstad",
-    description: "Totalrenovering av hus och lägenhet i Halmstad — rivning, el, VVS, ytskikt och snickerier. Ett team, fast pris, ROT-avdrag och {garanti}.",
+    title: "Totalrenovering med fast pris och ROT-avdrag",
+    description: "Totalrenovering av hus och lägenhet — rivning, el, VVS, ytskikt och snickerier. Ett team, fast pris, ROT-avdrag och {garanti}.",
   },
   badrumsrenovering: {
-    title: "Badrumsrenovering i Halmstad",
-    description: "Badrumsrenovering i Halmstad med tätskikt enligt branschregler, kakel, golvvärme och VVS. Fast pris, ROT på fakturan och {garanti}.",
+    title: "Badrumsrenovering med tätskikt enligt branschregler",
+    description: "Badrumsrenovering med tätskikt enligt branschregler, kakel, golvvärme och VVS. Fast pris, ROT på fakturan och {garanti}.",
   },
   koksrenovering: {
-    title: "Köksrenovering i Halmstad",
-    description: "Köksrenovering i Halmstad — planlösning, montage av alla större köksmärken, bänkskivor, el och VVS. Fast pris och ROT-avdrag direkt på fakturan.",
+    title: "Köksrenovering — planering, montage och installation",
+    description: "Köksrenovering — planlösning, montage av alla större köksmärken, bänkskivor, el och VVS. Fast pris och ROT-avdrag direkt på fakturan.",
   },
   tillbyggnad: {
-    title: "Tillbyggnad i Halmstad",
-    description: "Tillbyggnad, inredd vind eller ny planlösning i Halmstad. Vi tar fram bygglovsunderlag och bygger nyckelfärdigt, från grund till tak.",
+    title: "Tillbyggnad och inredd vind, nyckelfärdigt",
+    description: "Tillbyggnad, inredd vind eller ny planlösning. Vi tar fram bygglovsunderlag och bygger nyckelfärdigt, från grund till tak.",
   },
   tak: {
-    title: "Takbyte och takarbeten i Halmstad",
-    description: "Takomläggning, reparation och tätning i Halmstad och Halland. Tegel, betong, plåt eller papp. Kostnadsfri takbesiktning, akuta läckage prioriteras.",
+    title: "Takbyte och takarbeten",
+    description: "Takomläggning, reparation och tätning. Tegel, betong, plåt eller papp. Kostnadsfri takbesiktning, akuta läckage prioriteras.",
   },
   golv: {
-    title: "Golvläggning i Halmstad",
-    description: "Golvläggning i Halmstad — trä, laminat, klinker och vinyl med avjämning, fuktspärr och golvvärme. Fast pris och ROT-avdrag på arbetet.",
+    title: "Golvläggning — trä, klinker, laminat och vinyl",
+    description: "Golvläggning — trä, laminat, klinker och vinyl med avjämning, fuktspärr och golvvärme. Fast pris och ROT-avdrag på arbetet.",
   },
   maleri: {
-    title: "Målare i Halmstad — måleri och puts",
-    description: "Målning inomhus, fasadmålning och putsarbeten i Halmstad. Ordentligt underarbete och förstklassiga färgsystem. ROT-avdrag på arbetet.",
+    title: "Målare — måleri, fasad och puts",
+    description: "Målning inomhus, fasadmålning och putsarbeten. Ordentligt underarbete och förstklassiga färgsystem. ROT-avdrag på arbetet.",
   },
   "el-vvs": {
-    title: "Elektriker och rörmokare i Halmstad",
-    description: "El och VVS i Halmstad — ny el, elcentral, laddbox, vatten och avlopp, golvvärme. Certifierade installatörer, akuta ärenden prioriteras.",
+    title: "Elektriker och rörmokare — el och VVS",
+    description: "El och VVS — ny el, elcentral, laddbox, vatten och avlopp, golvvärme. Certifierade installatörer, akuta ärenden prioriteras.",
   },
   projektledning: {
-    title: "Projektledning för bygg i Halmstad",
-    description: "Byggprojektledning i Halmstad: en kontaktperson som samordnar yrkesgrupper, tidplan och budget, med öppen uppföljning hela vägen.",
+    title: "Projektledning för bygg",
+    description: "Byggprojektledning: en kontaktperson som samordnar yrkesgrupper, tidplan och budget, med öppen uppföljning hela vägen.",
   },
 };
