@@ -48,7 +48,7 @@ export function PhotoBand({
 }) {
   return (
     <section className="band">
-      <Photo slot={slot} ratio="auto" tone="dark" sizes="100vw" className="band-photo" />
+      <Photo slot={slot} ratio="auto" tone="dark" sizes="100vw" className="band-photo" parallax />
       <div className="container band-inner">
         <Reveal className="band-panel">
           <p className="band-statement">{statement}</p>

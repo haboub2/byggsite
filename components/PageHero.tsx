@@ -1,6 +1,7 @@
 import Photo from "./Photo";
 import Blueprint from "./Blueprint";
 import { Crumbs } from "./Sections";
+import Words from "./Words";
 
 /** Dark hero for every subpage: breadcrumb, kicker, title, lead, and an
  *  optional photo with the blueprint marks. */
@@ -42,8 +43,8 @@ export default function PageHero({
         <div className="phero-grid swap">
           <div>
             {eyebrow && <span className="eyebrow eyebrow--accent">{eyebrow}</span>}
-            <h1>
-              {title}
+            <h1 data-motion="rise">
+              <Words text={title} />
               {titleContext && <span className="sr-only"> — {titleContext}</span>}
             </h1>
             {lead && <p className="phero-lead">{lead}</p>}
@@ -58,6 +59,7 @@ export default function PageHero({
                 ratio="4 / 3"
                 tone="dark"
                 preload
+                parallax
                 sizes="(max-width: 900px) 100vw, 45vw"
               />
             </Blueprint>
