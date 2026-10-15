@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const projects = await listPublishedProjects();
   return pageMetadata({
     title: "Projekt — bygg och renovering i Halland",
-    description: "Ett urval av bygg- och renoveringsprojekt vi genomfört i Halmstad och Halland, med före- och efterbilder.",
+    description: "Ett urval av bygg- och renoveringsprojekt vi genomfört i Göteborg och Halland, med före- och efterbilder.",
     path: "/bygg/projekt",
     image: resolve(projects[0]?.cover ?? null)?.url,
     // Kept out of search until there is a real project to show.

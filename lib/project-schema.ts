@@ -78,7 +78,7 @@ export function emptyProject(sort = 0): Project {
     slug: "",
     title: "",
     service: null,
-    location: "Halmstad",
+    location: "Göteborg",
     year: new Date().getFullYear(),
     duration: "",
     summary: "",

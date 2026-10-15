@@ -110,7 +110,7 @@ export const guides: Guide[] = [
     ],
     related: [
       { label: "Räkna på ditt projekt", href: "/#priser" },
-      { label: "Badrumsrenovering i Halmstad", href: "/bygg/tjanster/badrumsrenovering" },
+      { label: "Badrumsrenovering i Göteborg", href: "/bygg/tjanster/badrumsrenovering" },
       { label: "Checklista inför renovering", href: "/guider/checklista-infor-renovering" },
     ],
     sources: [
@@ -201,7 +201,7 @@ export const guides: Guide[] = [
       },
     ],
     related: [
-      { label: "Badrumsrenovering i Halmstad", href: "/bygg/tjanster/badrumsrenovering" },
+      { label: "Badrumsrenovering i Göteborg", href: "/bygg/tjanster/badrumsrenovering" },
       { label: "ROT-avdrag 2026", href: "/guider/rot-avdrag-2026" },
       { label: "Begär offert", href: "/bygg/offert?tjanst=Badrum" },
     ],

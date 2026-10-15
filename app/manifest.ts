@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Binaafy — bygg och software",
     short_name: "Binaafy",
-    description: "Bygg och renovering i Halmstad, och system som tar bort dubbelarbete.",
+    description: "Bygg och renovering i Göteborg, och system som tar bort dubbelarbete.",
     lang: "sv",
     start_url: "/",
     display: "browser",

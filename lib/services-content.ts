@@ -392,39 +392,39 @@ export const serviceExtras: Record<string, ServiceExtras> = {
  *  the town, and the reasons to click. Descriptions stay under ~155 chars. */
 export const serviceSeo: Record<string, { title: string; description: string }> = {
   totalrenovering: {
-    title: "Totalrenovering i Halmstad",
-    description: "Totalrenovering av hus och lägenhet i Halmstad — rivning, el, VVS, ytskikt och snickerier. Ett team, fast pris, ROT-avdrag och {garanti}.",
+    title: "Totalrenovering i Göteborg",
+    description: "Totalrenovering av hus och lägenhet i Göteborg — rivning, el, VVS, ytskikt och snickerier. Ett team, fast pris, ROT-avdrag och {garanti}.",
   },
   badrumsrenovering: {
-    title: "Badrumsrenovering i Halmstad",
-    description: "Badrumsrenovering i Halmstad med tätskikt enligt branschregler, kakel, golvvärme och VVS. Fast pris, ROT på fakturan och {garanti}.",
+    title: "Badrumsrenovering i Göteborg",
+    description: "Badrumsrenovering i Göteborg med tätskikt enligt branschregler, kakel, golvvärme och VVS. Fast pris, ROT på fakturan och {garanti}.",
   },
   koksrenovering: {
-    title: "Köksrenovering i Halmstad",
-    description: "Köksrenovering i Halmstad — planlösning, montage av alla större köksmärken, bänkskivor, el och VVS. Fast pris och ROT-avdrag direkt på fakturan.",
+    title: "Köksrenovering i Göteborg",
+    description: "Köksrenovering i Göteborg — planlösning, montage av alla större köksmärken, bänkskivor, el och VVS. Fast pris och ROT-avdrag direkt på fakturan.",
   },
   tillbyggnad: {
-    title: "Tillbyggnad i Halmstad",
-    description: "Tillbyggnad, inredd vind eller ny planlösning i Halmstad. Vi tar fram bygglovsunderlag och bygger nyckelfärdigt, från grund till tak.",
+    title: "Tillbyggnad i Göteborg",
+    description: "Tillbyggnad, inredd vind eller ny planlösning i Göteborg. Vi tar fram bygglovsunderlag och bygger nyckelfärdigt, från grund till tak.",
   },
   tak: {
-    title: "Takbyte och takarbeten i Halmstad",
-    description: "Takomläggning, reparation och tätning i Halmstad och Halland. Tegel, betong, plåt eller papp. Kostnadsfri takbesiktning, akuta läckage prioriteras.",
+    title: "Takbyte och takarbeten i Göteborg",
+    description: "Takomläggning, reparation och tätning i Göteborg och Halland. Tegel, betong, plåt eller papp. Kostnadsfri takbesiktning, akuta läckage prioriteras.",
   },
   golv: {
-    title: "Golvläggning i Halmstad",
-    description: "Golvläggning i Halmstad — trä, laminat, klinker och vinyl med avjämning, fuktspärr och golvvärme. Fast pris och ROT-avdrag på arbetet.",
+    title: "Golvläggning i Göteborg",
+    description: "Golvläggning i Göteborg — trä, laminat, klinker och vinyl med avjämning, fuktspärr och golvvärme. Fast pris och ROT-avdrag på arbetet.",
   },
   maleri: {
-    title: "Målare i Halmstad — måleri och puts",
-    description: "Målning inomhus, fasadmålning och putsarbeten i Halmstad. Ordentligt underarbete och förstklassiga färgsystem. ROT-avdrag på arbetet.",
+    title: "Målare i Göteborg — måleri och puts",
+    description: "Målning inomhus, fasadmålning och putsarbeten i Göteborg. Ordentligt underarbete och förstklassiga färgsystem. ROT-avdrag på arbetet.",
   },
   "el-vvs": {
-    title: "Elektriker och rörmokare i Halmstad",
-    description: "El och VVS i Halmstad — ny el, elcentral, laddbox, vatten och avlopp, golvvärme. Certifierade installatörer, akuta ärenden prioriteras.",
+    title: "Elektriker och rörmokare i Göteborg",
+    description: "El och VVS i Göteborg — ny el, elcentral, laddbox, vatten och avlopp, golvvärme. Certifierade installatörer, akuta ärenden prioriteras.",
   },
   projektledning: {
-    title: "Projektledning för bygg i Halmstad",
-    description: "Byggprojektledning i Halmstad: en kontaktperson som samordnar yrkesgrupper, tidplan och budget, med öppen uppföljning hela vägen.",
+    title: "Projektledning för bygg i Göteborg",
+    description: "Byggprojektledning i Göteborg: en kontaktperson som samordnar yrkesgrupper, tidplan och budget, med öppen uppföljning hela vägen.",
   },
 };

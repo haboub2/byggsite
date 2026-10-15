@@ -3,9 +3,9 @@ import { pageMetadata } from "@/lib/seo";
 import FormPage from "@/components/FormPage";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Begär offert på bygg eller renovering i Halmstad",
+  title: "Begär offert på bygg eller renovering i Göteborg",
   description:
-    "Kostnadsfri, specificerad offert med fast pris på ditt bygg- eller renoveringsprojekt i Halmstad. Svar inom 24 timmar och kostnadsfritt hembesök.",
+    "Kostnadsfri, specificerad offert med fast pris på ditt bygg- eller renoveringsprojekt i Göteborg. Svar inom 24 timmar och kostnadsfritt hembesök.",
   path: "/bygg/offert",
 });
 

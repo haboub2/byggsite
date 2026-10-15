@@ -29,7 +29,7 @@ export async function llmsTxt(): Promise<string> {
   const lines = [
     `# ${site.brand}`,
     "",
-    `> ${site.brand} är ett företag i Halmstad med två verksamheter: bygg och renovering av hem i Halland, och mjukvara — webbplatser, kundportaler, automation och interna system — för företag i hela Sverige.`,
+    `> ${site.brand} är ett företag i Göteborg med två verksamheter: bygg och renovering av hem i Halland, och mjukvara — webbplatser, kundportaler, automation och interna system — för företag i hela Sverige.`,
     "",
     ...facts(content).map((f) => `- ${f}`),
     "",
