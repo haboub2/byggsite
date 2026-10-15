@@ -241,7 +241,7 @@ export function QuotePdf({ quote, company, settings }: { quote: Quote; company: 
             {persons.map((person, i) => t.rot && (
               <View key={i} style={s.rotLine}>
                 <Text style={s.p}>
-                  {clean(person.name || (i === 0 ? c.name : `Person ${i + 1}`))}
+                  {clean(person.name || (i === 0 && c.name) || `Person ${i + 1}`)}
                   {person.personalNumber ? ` (${person.personalNumber})` : ""}
                 </Text>
                 <Text style={s.p}>-{sek(t.rot.perOwner[i] ?? 0)} SEK</Text>

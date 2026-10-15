@@ -989,7 +989,10 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .qsum .qsum-pay { font-weight: 600; font-size: 16px; border-top: 2px solid var(--orange); border-bottom: 0; margin-top: 2px; }
 .qsum .qsum-pay dt { color: var(--ink); }
 .rot-person { grid-column: 1 / -1; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); }
-.tpl-group { margin-top: 28px; }
+.tpl-division { margin-top: 36px; }
+.tpl-division + .tpl-division { padding-top: 28px; border-top: 1px solid var(--line); }
+.admin-h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 4px; }
+.tpl-group { margin-top: 22px; }
 .tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
 .tpl-card { display: grid; gap: 6px; align-content: start; padding: 16px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); }
 .tpl-card strong { font-size: 16px; }
