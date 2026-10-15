@@ -247,7 +247,7 @@ export default function ProjectEditor({
             }}
           />
           <ServiceSelect value={p.service} onChange={set("service")} services={services} />
-          <TextField label="Ort" path="location" value={p.location} onChange={set("location")} placeholder="Söndrum, Halmstad" />
+          <TextField label="Ort" path="location" value={p.location} onChange={set("location")} placeholder="Majorna, Göteborg" />
           <TextField
             label="År"
             path="year"

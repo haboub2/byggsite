@@ -12,9 +12,9 @@ export const site = {
     phone: "+46793049737",
     phoneDisplay: "079-304 97 37",
     email: "info@binaafy.se",
-    address: "Montörgatan 7, 302 62 Halmstad",
+    address: "Uppstigen 130, 412 80 Göteborg",
   },
-  areasServed: ["Halmstad", "Laholm", "Falkenberg", "Hallands län"],
+  areasServed: ["Göteborg", "Laholm", "Falkenberg", "Hallands län"],
 };
 
 export const team = [
@@ -88,7 +88,7 @@ export const featuredProjects = [
 
 export const faq = [
   { q: "Erbjuder ni kostnadsfri offert?", a: "Ja. Vi tar fram en kostnadsfri och detaljerad offert utan förpliktelser. Fyll i formuläret så återkommer vi inom 24 timmar." },
-  { q: "Vilka områden arbetar ni i?", a: "Vi utför bygg- och renoveringsprojekt i Halmstad med omnejd, inklusive Laholm, Falkenberg och övriga Hallands län." },
+  { q: "Vilka områden arbetar ni i?", a: "Vi utför bygg- och renoveringsprojekt i Göteborg med omnejd, inklusive Laholm, Falkenberg och övriga Hallands län." },
   { q: "Kan jag använda ROT-avdrag?", a: "Ja, för de flesta renoverings- och byggarbeten i hemmet kan du nyttja ROT-avdraget på arbetskostnaden. Vi hjälper dig med uppgifterna och drar av direkt på fakturan." },
   { q: "Hur lång tid tar ett projekt?", a: "Det beror på omfattningen. Ett badrum tar ofta 3–5 veckor, medan en totalrenovering kan ta flera månader. Du får en tydlig tidplan i offerten." },
   { q: "Lämnar ni garanti på arbetet?", a: "Ja, vi lämnar {garanti}. Vi är dessutom licensierade och försäkrade för din trygghet." },

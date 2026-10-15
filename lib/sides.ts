@@ -24,7 +24,8 @@ export type SideConfig = {
   work: { eyebrow: string; title: string; all: Link };
   craft: { title: string; body: string; images: { slot: string; caption: string }[] };
   band: { slot: string; statement: string; caption: string };
-  bridge: { title: string; body: string; link: Link; icon: string };
+  /** The box near the bottom that sorts the visitor: one or two choices. */
+  bridge: { title: string; body: string; links: Link[]; icon: string };
   closing: { eyebrow: string; title: string; body: string };
 };
 
@@ -34,8 +35,8 @@ export const SIDES: Record<Side, SideConfig> = {
     label: "Bygg",
     home: "/",
     word: "hus",
-    topic: "Bygg och renovering i Halmstad",
-    lead: "Renovering, ombyggnad och nybygg i Halmstad. Ett team, en kontaktperson, från första skiss till sista detalj.",
+    topic: "Bygg och renovering i Göteborg",
+    lead: "Renovering, ombyggnad och nybygg i Göteborg. Ett team, en kontaktperson, från första skiss till sista detalj.",
     heroCta: { label: "Berätta om ditt projekt", href: "/bygg/offert" },
     heroSecondary: { label: "Se våra projekt", href: "/bygg/projekt" },
     cta: { label: "Begär offert", href: "/bygg/offert" },
@@ -68,10 +69,13 @@ export const SIDES: Record<Side, SideConfig> = {
       caption: "Vind, salt och fukt. Västkustens villkor.",
     },
     bridge: {
-      title: "Driver du själv ett byggföretag?",
-      body: "Samma team bygger webb, automation och interna verktyg — med en byggares blick för hur en arbetsdag faktiskt ser ut.",
-      link: { label: "Till Software", href: "/mjukvara" },
-      icon: "code",
+      title: "Är du privatperson eller egen företagare?",
+      body: "Privatpersoner får fast pris och ROT-avdraget direkt på fakturan. Företagare får samma team till lokaler, webb och interna verktyg.",
+      links: [
+        { label: "Privatperson", href: "/bygg/offert" },
+        { label: "Egen företagare", href: "/mjukvara" },
+      ],
+      icon: "user",
     },
     closing: {
       eyebrow: "En fråga, inte ett formulär",
@@ -118,8 +122,8 @@ export const SIDES: Record<Side, SideConfig> = {
     },
     bridge: {
       title: "Byggt av folk som bygger.",
-      body: "Vår andra halva renoverar hus i Halmstad. Vi vet hur en arbetsdag på bygget ser ut — och vad ett system måste klara där.",
-      link: { label: "Till Bygg", href: "/" },
+      body: "Vår andra halva renoverar hus i Göteborg. Vi vet hur en arbetsdag på bygget ser ut — och vad ett system måste klara där.",
+      links: [{ label: "Till Bygg", href: "/" }],
       icon: "house",
     },
     closing: {

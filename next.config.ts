@@ -6,6 +6,8 @@ const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // The PDF renderer (quotes in /admin) ships its own Node build; bundling it breaks it.
+  serverExternalPackages: ["@react-pdf/renderer"],
   // Stock mood photography (lib/images.ts). Phase 2: add the Supabase Storage host too.
   images: {
     remotePatterns: [

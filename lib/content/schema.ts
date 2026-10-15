@@ -90,7 +90,36 @@ export const teamSchema = z.object({
 });
 export type Team = z.infer<typeof teamSchema>;
 
-export const CONTENT_KEYS = ["company", "pricing", "warranty", "team"] as const;
+/** What a quote PDF prints besides the company details: payment data and
+ *  the default texts per side. Edited at /admin/innehall/offert. */
+const quoteDefaultsSchema = z.object({
+  intro: optionalText(2000, "Inledning"),
+  payment: optionalText(600, "Betalningsvillkor"),
+  warranty: optionalText(600, "Garanti"),
+  excluded: optionalText(1200, "Ingår inte"),
+  notes: optionalText(1500, "Övrigt"),
+});
+export type QuoteDefaults = z.infer<typeof quoteDefaultsSchema>;
+
+export const quoteSettingsSchema = z.object({
+  bankgiro: optionalText(12, "Bankgiro"),
+  plusgiro: optionalText(12, "Plusgiro"),
+  iban: optionalText(34, "IBAN"),
+  bic: optionalText(11, "BIC"),
+  vatNumber: optionalText(16, "Momsregistreringsnummer"),
+  fSkatt: z.boolean(),
+  insurance: optionalText(120, "Försäkring"),
+  validDays: z.coerce.number().int().min(1, "Minst 1 dag.").max(365, "Högst 365 dagar."),
+  paymentDays: z.coerce.number().int().min(0, "Minst 0 dagar.").max(120, "Högst 120 dagar."),
+  lateInterest: optionalText(30, "Dröjsmålsränta"),
+  signerName: optionalText(60, "Undertecknare"),
+  signerTitle: optionalText(60, "Titel"),
+  bygg: quoteDefaultsSchema,
+  software: quoteDefaultsSchema,
+});
+export type QuoteSettings = z.infer<typeof quoteSettingsSchema>;
+
+export const CONTENT_KEYS = ["company", "pricing", "warranty", "team", "quote"] as const;
 export type ContentKey = (typeof CONTENT_KEYS)[number];
 
 export const contentSchemas = {
@@ -98,15 +127,23 @@ export const contentSchemas = {
   pricing: pricingSchema,
   warranty: warrantySchema,
   team: teamSchema,
+  quote: quoteSettingsSchema,
 } as const;
 
-export type ContentMap = { company: Company; pricing: Pricing; warranty: WarrantyBlock; team: Team };
+export type ContentMap = {
+  company: Company;
+  pricing: Pricing;
+  warranty: WarrantyBlock;
+  team: Team;
+  quote: QuoteSettings;
+};
 
 export const CONTENT_LABEL: Record<ContentKey, string> = {
   company: "Företaget",
   pricing: "Priser",
   warranty: "Garanti",
   team: "Team",
+  quote: "Offertuppgifter",
 };
 
 /** Put the warranty into a text that contains the {garanti} token. */

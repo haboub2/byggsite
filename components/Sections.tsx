@@ -126,12 +126,12 @@ export function Faq({ items, name }: { items: { q: string; a: string }[]; name: 
 export function Bridge({
   title,
   body,
-  link,
+  links,
   icon,
 }: {
   title: string;
   body: string;
-  link: { label: string; href: string };
+  links: { label: string; href: string }[];
   icon: string;
 }) {
   return (
@@ -143,10 +143,14 @@ export function Bridge({
         <strong>{title}</strong>
         <span>{body}</span>
       </div>
-      <Link href={link.href} className="link-arrow">
-        {link.label}
-        <Icon name="arrow" strokeWidth={2} />
-      </Link>
+      <div className="bridge-links">
+        {links.map((l) => (
+          <Link key={l.href} href={l.href} className="link-arrow">
+            {l.label}
+            <Icon name="arrow" strokeWidth={2} />
+          </Link>
+        ))}
+      </div>
     </Reveal>
   );
 }

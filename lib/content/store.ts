@@ -40,6 +40,14 @@ function mergeBlock<K extends ContentKey>(key: K, stored: unknown): ContentMap[K
     merged = { ...def, ...stored };
   } else if (key === "team") {
     merged = stored;
+  } else if (key === "quote") {
+    const d = def as ContentMap["quote"];
+    merged = {
+      ...d,
+      ...stored,
+      bygg: { ...d.bygg, ...(isObj(stored.bygg) ? stored.bygg : {}) },
+      software: { ...d.software, ...(isObj(stored.software) ? stored.software : {}) },
+    };
   } else if (key === "pricing") {
     const d = def as ContentMap["pricing"];
     merged = { services: { ...d.services, ...(isObj(stored.services) ? stored.services : {}) } };
@@ -83,6 +91,7 @@ export const getContent = cache(async (): Promise<ContentMap> => {
     pricing: mergeBlock("pricing", stored.pricing),
     warranty: mergeBlock("warranty", stored.warranty),
     team: mergeBlock("team", stored.team),
+    quote: mergeBlock("quote", stored.quote),
   };
 });
 

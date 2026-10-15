@@ -17,9 +17,9 @@ export const defaultContent: ContentMap = {
   company: {
     legalName: site.legalName,
     orgNr: "",
-    street: "Montörgatan 7",
-    postalCode: "302 62",
-    city: "Halmstad",
+    street: "Uppstigen 130",
+    postalCode: "412 80",
+    city: "Göteborg",
     phone: site.contact.phone,
     phoneDisplay: site.contact.phoneDisplay,
     email: site.contact.email,
@@ -52,6 +52,37 @@ export const defaultContent: ContentMap = {
       side: m.division === "01" ? ("software" as const) : ("bygg" as const),
       photo: null,
     })),
+  },
+  quote: {
+    bankgiro: "",
+    plusgiro: "",
+    iban: "",
+    bic: "",
+    vatNumber: "",
+    fSkatt: true,
+    insurance: "Ansvarsförsäkring",
+    validDays: 30,
+    paymentDays: 30,
+    lateInterest: "Referensränta + 8 %",
+    signerName: site.contact.person,
+    signerTitle: "Byggingenjör",
+    bygg: {
+      intro: "Tack för att vi fick komma på hembesök. Nedan följer vår offert enligt det vi gick igenom tillsammans.",
+      payment:
+        "Faktureras enligt betalplan: 30 % vid start, 40 % vid halva arbetet och 30 % efter godkänd slutbesiktning. ROT-avdraget dras direkt på fakturan när ni lämnat personnummer och fastighetsbeteckning. Tillkommande arbete (ÄTA) utförs först efter ert godkännande och debiteras enligt överenskommelse.",
+      warranty: `${byggWarranty.sentence}. Vi innehar F-skattsedel och ansvarsförsäkring.`,
+      excluded:
+        "Bygglov, anmälan till bostadsrättsförening och arbeten som inte nämns ovan ingår inte. Tillkommande arbete offereras separat innan det påbörjas.",
+      notes:
+        "Priserna gäller under offertens giltighetstid. Vi kommer gärna förbi igen om något är oklart innan ni bestämmer er.",
+    },
+    software: {
+      intro: "Tack för ett bra möte. Nedan följer vårt förslag på upplägg och pris. Vi arbetar i etapper med fast pris, så att ni alltid vet vad nästa steg kostar.",
+      payment: "Varje etapp faktureras när den är godkänd av er. Arbete utanför offerten utförs först efter ert godkännande och debiteras per timme eller enligt separat offert.",
+      warranty: `${softwareWarranty.sentence}. Ni äger all kod och allt innehåll vi tar fram.`,
+      excluded: "Licenser och tjänster hos tredje part (domän, hosting, betaltjänster) faktureras av respektive leverantör och ingår inte.",
+      notes: "Priserna anges exklusive moms och gäller under offertens giltighetstid.",
+    },
   },
   warranty: {
     bygg: byggWarranty,
