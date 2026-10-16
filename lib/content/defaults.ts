@@ -24,7 +24,6 @@ export const defaultContent: ContentMap = {
     phoneDisplay: site.contact.phoneDisplay,
     email: site.contact.email,
     hours: site.contact.hours,
-    contactPerson: site.contact.person,
     areasServed: [...site.areasServed],
     // The fourth figure on each landing page is the warranty.
     byggStats: byggStats.filter((s) => !s.label.includes("garanti")).slice(0, 3),
@@ -50,9 +49,13 @@ export const defaultContent: ContentMap = {
       name: m.name,
       role: m.role,
       side: m.division === "01" ? ("software" as const) : ("bygg" as const),
+      email: m.email,
+      phone: "",
       photo: null,
     })),
   },
+  // Empty until the owners add their platforms in /admin: no invented scores.
+  reviews: { platforms: [], quotes: [], trustbox: { businessUnitId: "", templateId: "" } },
   quote: {
     bankgiro: "",
     plusgiro: "",
@@ -64,7 +67,7 @@ export const defaultContent: ContentMap = {
     validDays: 30,
     paymentDays: 30,
     lateInterest: "Referensränta + 8 %",
-    signerName: site.contact.person,
+    signerName: team[0].name,
     signerTitle: "Byggingenjör",
     bygg: {
       intro: "Tack för att vi fick komma på hembesök. Nedan följer vår offert enligt det vi gick igenom tillsammans.",

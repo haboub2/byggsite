@@ -133,7 +133,7 @@ export function QuotePdf({ quote, company, settings }: { quote: Quote; company: 
   const incl = d.pricesInclVat;
   const sideName = d.division === "bygg" ? "Bygg" : "Software";
   const number = String(quote.number);
-  const ourRef = settings.signerName || company.contactPerson;
+  const ourRef = settings.signerName || company.legalName;
   const customerLabel = isBusiness && c.company ? c.company : c.name;
   const persons = d.rotPersons.length > 0 ? d.rotPersons : [{ name: "", personalNumber: "" }];
 

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
 import Analytics from "@/components/Analytics";
 import CookieConsent from "@/components/CookieConsent";
 import JsonLd from "@/components/JsonLd";
@@ -18,11 +19,11 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Binaafy — bygg och software i Göteborg",
+    default: "Binaafy — bygg och software under ett tak",
     template: "%s | Binaafy",
   },
   description:
-    "Binaafy är ett företag med två verksamheter: vi bygger och renoverar hem i Göteborg, och vi bygger system som tar bort dubbelarbete.",
+    "Binaafy är ett företag med två verksamheter: vi bygger och renoverar hem i södra och västra Sverige, och vi bygger system som tar bort dubbelarbete.",
   applicationName: "Binaafy",
   openGraph: {
     type: "website",
@@ -54,6 +55,7 @@ export default async function RootLayout({
         {children}
         <CookieConsent />
         <Analytics />
+        <VercelAnalytics />
       </body>
     </html>
   );

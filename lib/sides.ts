@@ -19,7 +19,7 @@ export type SideConfig = {
   heroSecondary: Link;
   cta: Link;
   nav: Link[];
-  hero: { image: string; dimV: string; dimH: string; caption: string };
+  hero: { image: string };
   register: { eyebrow: string; title: string; aside: string };
   work: { eyebrow: string; title: string; all: Link };
   craft: { title: string; body: string; images: { slot: string; caption: string }[] };
@@ -35,25 +35,25 @@ export const SIDES: Record<Side, SideConfig> = {
     label: "Bygg",
     home: "/",
     word: "hus",
-    topic: "Bygg och renovering i Göteborg",
-    lead: "Renovering, ombyggnad och nybygg i Göteborg. Ett team, en kontaktperson, från första skiss till sista detalj.",
+    topic: "Bygg och renovering i södra och västra Sverige",
+    lead: "Renovering, ombyggnad och nybygg i södra och västra Sverige. Ett team, en kontaktperson, från första skiss till sista detalj.",
     heroCta: { label: "Berätta om ditt projekt", href: "/bygg/offert" },
-    heroSecondary: { label: "Se våra projekt", href: "/bygg/projekt" },
+    heroSecondary: { label: "Se referenser", href: "/referenser" },
     cta: { label: "Begär offert", href: "/bygg/offert" },
     nav: [
       { label: "Tjänster", href: "/bygg/tjanster" },
-      { label: "Projekt", href: "/bygg/projekt" },
+      { label: "Referenser", href: "/referenser" },
       { label: "Guider", href: "/guider" },
       { label: "Om oss", href: "/om-oss" },
       { label: "Kontakt", href: "/kontakt" },
     ],
-    hero: { image: "hero-bygg", dimV: "2,7 m", dimH: "Fönsterparti", caption: "Material. Ljus. Funktion." },
+    hero: { image: "hero-bygg" },
     register: {
       eyebrow: "Register — vad vi gör",
       title: "Nio tjänster, ett team.",
-      aside: "Välj en rad för att läsa mer. Allt görs av samma team, under samma projektansvar.",
+      aside: "Välj en rad för att läsa mer. Allt sker under samma projektansvar – med egen personal och behöriga specialister där det krävs.",
     },
-    work: { eyebrow: "Utvalda projekt", title: "Nyligen byggt i Halland.", all: { label: "Alla projekt", href: "/bygg/projekt" } },
+    work: { eyebrow: "Utvalda projekt", title: "Nyligen byggt.", all: { label: "Alla referenser", href: "/referenser" } },
     craft: {
       title: "Detaljerna ingen ser — förrän de saknas.",
       body: "Ett golv som ligger rakt, en fog som håller tätt, en list som möter väggen utan glipa. Det är där skillnaden syns efter tio år, och det är där vi lägger tiden.",
@@ -65,7 +65,7 @@ export const SIDES: Record<Side, SideConfig> = {
     },
     band: {
       slot: "band-bygg",
-      statement: "Vi bygger för hur Halland ser ut i november — inte bara i juli.",
+      statement: "Vi bygger för hur Sverige ser ut i november — inte bara i juli.",
       caption: "Vind, salt och fukt. Västkustens villkor.",
     },
     bridge: {
@@ -95,11 +95,11 @@ export const SIDES: Record<Side, SideConfig> = {
     cta: { label: "Skicka brief", href: "/mjukvara/brief" },
     nav: [
       { label: "Tjänster", href: "/mjukvara/tjanster" },
-      { label: "Case", href: "/mjukvara/case" },
+      { label: "Referenser", href: "/referenser" },
       { label: "Om oss", href: "/om-oss" },
       { label: "Kontakt", href: "/kontakt" },
     ],
-    hero: { image: "hero-software", dimV: "Flöde", dimH: "Steg 2 — portal", caption: "Struktur. Flöde. Funktion." },
+    hero: { image: "hero-software" },
     register: {
       eyebrow: "Register — vad vi gör",
       title: "Tre sätt att ta bort dubbelarbete.",
@@ -122,7 +122,7 @@ export const SIDES: Record<Side, SideConfig> = {
     },
     bridge: {
       title: "Byggt av folk som bygger.",
-      body: "Vår andra halva renoverar hus i Göteborg. Vi vet hur en arbetsdag på bygget ser ut — och vad ett system måste klara där.",
+      body: "Vår andra halva renoverar hus. Vi vet hur en arbetsdag på bygget ser ut — och vad ett system måste klara där.",
       links: [{ label: "Till Bygg", href: "/" }],
       icon: "house",
     },

@@ -37,7 +37,9 @@ export async function notify(input: {
 }) {
   const resend = client();
   const { company } = await getContent();
-  const to = process.env.MAIL_TO || company.email;
+  // MAIL_TO may list several addresses, comma-separated.
+  const listed = (process.env.MAIL_TO ?? "").split(",").map((a) => a.trim()).filter(Boolean);
+  const to = listed.length ? listed : company.email;
 
   if (!resend) {
     console.warn(`[mail] RESEND_API_KEY not set — internal notify skipped for ${input.kind} lead (${input.email}).`);

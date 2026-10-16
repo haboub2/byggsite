@@ -1,13 +1,14 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/env";
 import { services } from "@/lib/placeholder";
-import { softwareAreas, softwareCases } from "@/lib/software-content";
+import { softwareAreas } from "@/lib/software-content";
+import { listPublishedCases } from "@/lib/cases";
 import { listPublishedProjects } from "@/lib/projects";
 import { CONTENT_UPDATED } from "@/lib/seo";
 import { guides } from "@/lib/guides";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const projects = await listPublishedProjects();
+  const [projects, cases] = await Promise.all([listPublishedProjects(), listPublishedCases()]);
   // A fixed content date: a lastmod that changes on every build gets ignored.
   const updated = new Date(CONTENT_UPDATED);
   const entry = (
@@ -33,10 +34,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry("/mjukvara/tjanster", 0.7),
     ...softwareAreas.map((a) => entry(`/mjukvara/tjanster/${a.slug}`, 0.7)),
     entry("/mjukvara/case", 0.5),
-    ...softwareCases.map((c) => entry(`/mjukvara/case/${c.slug}`, 0.5)),
+    ...cases.map((c) => entry(`/mjukvara/case/${c.slug}`, 0.5)),
     entry("/mjukvara/brief", 0.6),
     entry("/guider", 0.7, "weekly"),
     ...guides.map((g) => ({ ...entry(`/guider/${g.slug}`, 0.8), lastModified: new Date(g.updated) })),
+    entry("/referenser", 0.7, "weekly"),
+    entry("/omdomen", 0.6, "weekly"),
     entry("/om-oss", 0.5),
     entry("/kontakt", 0.6),
   ];

@@ -38,7 +38,7 @@ const sections = (email: string) => [
   },
   {
     heading: "Cookies",
-    body: "Webbplatsen använder i dagsläget inga spårningscookies. Om analysverktyg (t.ex. Google Analytics) aktiveras i framtiden kommer det föregås av ett samtyckesbanner där du aktivt kan välja bort icke-nödvändig spårning, och den här policyn uppdateras i samband med det.",
+    body: "Webbplatsen använder i dagsläget inga spårningscookies. För besöksstatistik används Vercel Web Analytics, som inte sätter några cookies och bara samlar in anonymiserad, sammanställd data (t.ex. vilka sidor som besöks och från vilket land). Om andra analysverktyg (t.ex. Google Analytics) aktiveras i framtiden kommer det föregås av ett samtyckesbanner där du aktivt kan välja bort icke-nödvändig spårning, och den här policyn uppdateras i samband med det.",
   },
 ];
 

@@ -4,7 +4,7 @@ import { useId, useRef, useState } from "react";
 import { publicUrl } from "@/lib/storage-url";
 
 export type StoredImage = { path: string; alt: string };
-type Folder = "projects" | "team";
+type Folder = "projects" | "team" | "cases";
 
 const MAX_SIDE = 2400;
 
@@ -50,7 +50,7 @@ export default function ImageUpload({
   error,
   altError,
   ratio = "4 / 3",
-  altPlaceholder = "Nytt kök med köksö i villa i Söndrum",
+  altPlaceholder = "Nytt kök med köksö i villa i Kungsbacka",
 }: {
   label: string;
   folder: Folder;

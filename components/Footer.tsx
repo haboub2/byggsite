@@ -13,7 +13,7 @@ export default async function Footer() {
       <div className="container ftr-grid">
         <div className="ftr-brand">
           <img src="/brand/binaafy-light.svg" alt="Binaafy" width={121} height={28} />
-          <p>Ett företag, två verksamheter. Vi bygger hus i Halland och system för verksamheter i hela Sverige.</p>
+          <p>Ett företag, två verksamheter. Vi bygger och renoverar hem i södra och västra Sverige och bygger system för verksamheter i hela Sverige.</p>
         </div>
 
         <div className="ftr-col">
@@ -39,6 +39,8 @@ export default async function Footer() {
         <div className="ftr-col">
           <h4>Företaget</h4>
           <Link href="/om-oss">Om oss</Link>
+          <Link href="/referenser">Referenser</Link>
+          <Link href="/omdomen">Omdömen</Link>
           <Link href="/guider">Guider</Link>
           {(await projectsReady()) && <Link href="/bygg/projekt">Projekt</Link>}
           <Link href="/kontakt">Kontakt</Link>
@@ -59,7 +61,7 @@ export default async function Footer() {
       <div className="container ftr-bottom">
         <span>
           © {year} {company.legalName}
-          {company.orgNr ? `, org.nr ${company.orgNr}` : ""}. F-skatt, ansvarsförsäkring och ID06.
+          {company.orgNr ? `, org.nr ${company.orgNr}` : ""}.
         </span>
         <Link href="/integritetspolicy">Integritetspolicy</Link>
       </div>

@@ -32,7 +32,7 @@ Tidsåtgång: cirka 20 minuter.
 1. Skapa ett konto på [resend.com](https://resend.com) med den e-postadress som ska få
    förfrågningarna.
 2. **API Keys → Create API Key** (behörighet: *Sending access*) → `RESEND_API_KEY`.
-3. `MAIL_TO` = samma adress som kontot. Innan domänen är verifierad kan Resend bara
+3. `MAIL_TO` = samma adress som kontot. Flera mottagare: separera med komma, t.ex. `a@binaafy.se,b@binaafy.se,c@binaafy.se`. Innan domänen är verifierad kan Resend bara
    skicka till kontots egen adress.
 
 **När `binaafy.se` är köpt:**

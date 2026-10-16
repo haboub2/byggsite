@@ -26,7 +26,7 @@ export async function sendQuoteMail(quote: Quote, message: string): Promise<void
   const d = quote.data;
   const pdf = await renderQuotePdf(quote);
   const firstName = d.customer.name.split(" ")[0];
-  const signer = settings.signerName || company.contactPerson;
+  const signer = settings.signerName || company.legalName;
   const side = d.division === "bygg" ? "Bygg" : "Software";
 
   const body = message.trim()

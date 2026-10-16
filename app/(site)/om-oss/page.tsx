@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PageHero from "@/components/PageHero";
+import BlueprintDraw from "@/components/scroll/BlueprintDraw";
 import JsonLd from "@/components/JsonLd";
 import Photo from "@/components/Photo";
 import Reveal from "@/components/Reveal";
@@ -9,13 +10,14 @@ import { SectionHead, CtaBand } from "@/components/Sections";
 import { breadcrumbJsonLd, pageMetadata, abs } from "@/lib/seo";
 import { ogImage } from "@/lib/images";
 import { publicUrl } from "@/lib/storage";
+import { telHref } from "@/lib/content/schema";
 import { values, trustPoints } from "@/lib/placeholder";
 import { getContent } from "@/lib/content/store";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Om Binaafy — bygg och mjukvara i Göteborg",
+  title: "Om Binaafy — bygg och mjukvara under ett tak",
   description:
-    "Binaafy är ett företag i Göteborg med två verksamheter: vi bygger och renoverar hem i Halland, och bygger system som tar bort dubbelarbete för företag.",
+    "Binaafy är ett företag med två verksamheter: vi bygger och renoverar hem i södra och västra Sverige, och bygger system som tar bort dubbelarbete för företag.",
   path: "/om-oss",
   image: ogImage("about-workshop"),
 });
@@ -28,20 +30,21 @@ function initials(name: string) {
 const STORY = [
   {
     heading: "Varför två verksamheter",
-    body: "Vi startade som en bygg- och renoveringsfirma i Göteborg. Efter hand blev det tydligt att samma sak som gör ett bygge bra — tydlig planering, rätt verktyg, en person som tar ansvar för helheten — även löser problem som inte har med betong och kakel att göra: krångliga interna processer, manuellt dubbelarbete, system som inte pratar med varandra. Software föddes ur det, som en egen verksamhet inom samma företag.",
+    body: "Vi startade som en bygg- och renoveringsfirma. Efter hand blev det tydligt att samma sak som gör ett bygge bra — tydlig planering, rätt verktyg, en person som tar ansvar för helheten — även löser problem som inte har med betong och kakel att göra: krångliga interna processer, manuellt dubbelarbete, system som inte pratar med varandra. Software föddes ur det, som en egen verksamhet inom samma företag.",
   },
   {
     heading: "Hur vi jobbar",
-    body: "Oavsett sida gäller samma princip: en kontaktperson, ett fast pris innan arbetet startar, och en tidplan vi håller. På byggsidan tar vi helhetsansvar — egen personal plus kvalitetssäkrade underentreprenörer där det behövs. På mjukvarusidan levererar vi system i drift, inte bara demos, och står kvar efter lansering.",
+    body: "Oavsett sida gäller samma princip: en kontaktperson, ett fast pris innan arbetet startar, och en tidplan vi håller. På byggsidan utför vi merparten av arbetet med egen personal. För specialistmoment som el, VVS och våtrumsarbeten anlitar vi behöriga underentreprenörer som vi har arbetat med länge — men du har alltid ett avtal och en kontaktperson hos oss, och vi tar fullt ansvar för helheten, inklusive garantin. På mjukvarusidan levererar vi system i drift, inte bara demos, och står kvar efter lansering.",
   },
   {
-    heading: "Legala uppgifter",
-    body: "Binaafy innehar F-skattsedel, ansvarsförsäkring och ID06 för samtliga byggarbetsplatser. Organisationsnummer publiceras här så snart bolagsregistreringen är klar.",
+    // The one place the company's registrations are listed (not in the footer).
+    heading: "Företagsuppgifter",
+    body: "Binaafy har F-skatt och ansvarsförsäkring, och alla som arbetar på våra byggarbetsplatser är registrerade i ID06.",
   },
 ];
 
 export default async function AboutPage() {
-  const { warranty, team } = await getContent();
+  const { warranty, team, company } = await getContent();
   // The warranty chip follows the Bygg warranty set in /admin.
   const trust = [...trustPoints.filter((t) => !t.includes("garanti")), `Garanti ${warranty.bygg.short}`];
   return (
@@ -62,9 +65,8 @@ export default async function AboutPage() {
         crumbs={[{ label: "Om oss" }]}
         eyebrow="Om Binaafy"
         title="Ett företag. Två sätt att bygga."
-        lead="Vi renoverar och bygger hem i Göteborg, och vi bygger system som driver verksamheter. Samma team, samma standard — oavsett om resultatet är ett badrum eller ett internt verktyg."
+        lead="Vi renoverar och bygger hem i södra och västra Sverige, och vi bygger system som driver verksamheter. Samma team, samma standard — oavsett om resultatet är ett badrum eller ett internt verktyg."
         image="about-workshop"
-        dimH="Verkstad"
         caption="Hantverk och kod under samma tak"
       >
         <Link href="/" className="btn btn-primary">
@@ -76,6 +78,12 @@ export default async function AboutPage() {
           <Icon name="arrow" strokeWidth={2} />
         </Link>
       </PageHero>
+
+      <BlueprintDraw
+        eyebrow="Fasad · skala 1:100"
+        title="Från första skiss till sista detalj."
+        body="Varje projekt börjar som en ritning: mått, material och en plan som håller. Samma noggrannhet följer med hela vägen till sista listen – och till sista raden kod."
+      />
 
       <section className="sec">
         <div className="container">
@@ -98,6 +106,12 @@ export default async function AboutPage() {
                 <span className="team-side">{p.side === "bygg" ? "Bygg" : "Software"}</span>
                 <h3>{p.name}</h3>
                 <span className="team-role">{p.role}</span>
+                {(p.email || p.phone) && (
+                  <span className="team-contact">
+                    {p.email && <a href={`mailto:${p.email}`}>{p.email}</a>}
+                    {p.phone && <a href={`tel:${telHref(p.phone)}`}>{p.phone}</a>}
+                  </span>
+                )}
               </Reveal>
             ))}
           </div>
@@ -128,6 +142,7 @@ export default async function AboutPage() {
                     {s.body}
                     {i === STORY.length - 1 && (
                       <>
+                        {company.orgNr && ` Organisationsnummer: ${company.orgNr}.`}
                         {" "}Läs mer i vår <Link href="/integritetspolicy" className="link-quiet">integritetspolicy</Link>.
                       </>
                     )}

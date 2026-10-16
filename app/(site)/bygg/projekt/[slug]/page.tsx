@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
 import PageHero from "@/components/PageHero";
-import Photo from "@/components/Photo";
+import BeforeAfter from "@/components/BeforeAfter";
+import Lightbox from "@/components/Lightbox";
 import Reveal from "@/components/Reveal";
 import { Icon } from "@/components/Icons";
 import { Stats, CtaBand, Checklist, SectionHead } from "@/components/Sections";
@@ -81,17 +82,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
       {before && after && (
         <section className="sec">
           <div className="container">
-            <SectionHead eyebrow="Före och efter" title="Samma rum, två veckor isär." aside="Före till vänster, efter till höger." />
-            <div className="work work--2">
-              <Reveal>
-                <Photo src={before.url} alt={before.alt} ratio="4 / 3" sizes="(max-width: 580px) 100vw, 50vw" />
-                <span className="work-tag">Före</span>
-              </Reveal>
-              <Reveal>
-                <Photo src={after.url} alt={after.alt} ratio="4 / 3" sizes="(max-width: 580px) 100vw, 50vw" />
-                <span className="work-tag">Efter</span>
-              </Reveal>
-            </div>
+            <SectionHead eyebrow="Före och efter" title="Samma rum, före och efter." aside="Dra i reglaget för att jämföra." />
+            <Reveal>
+              <BeforeAfter before={before} after={after} />
+            </Reveal>
           </div>
         </section>
       )}
@@ -123,13 +117,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         <section className="sec">
           <div className="container">
             <SectionHead eyebrow="Bilder" title="Från bygget." />
-            <div className="work reveal-group">
-              {gallery.map((g) => (
-                <Reveal key={g.url}>
-                  <Photo src={g.url} alt={g.alt} ratio="4 / 3" sizes="(max-width: 580px) 100vw, (max-width: 900px) 50vw, 33vw" />
-                </Reveal>
-              ))}
-            </div>
+            <Lightbox images={gallery} />
           </div>
         </section>
       )}

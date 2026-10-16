@@ -39,7 +39,7 @@ export default async function ServiceTemplate({
   index: number;
   total: number;
   title: string;
-  /** Full search phrase, e.g. "Badrumsrenovering i Göteborg". */
+  /** Full search phrase, e.g. "Badrumsrenovering med fast pris". */
   seoTitle?: string;
   lead: string;
   facts: { value: string; label: string }[];
@@ -84,8 +84,6 @@ export default async function ServiceTemplate({
         titleContext={seoTitle && seoTitle !== title ? seoTitle : undefined}
         lead={lead}
         image={serviceImage[slug]}
-        dimH={title}
-        caption={side === "bygg" ? "Koncept — material och ljus" : "Koncept — struktur och flöde"}
       >
         <Link href={cta.href} className="btn btn-primary">
           {cta.label}

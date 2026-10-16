@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
 import ServiceTemplate from "@/components/ServiceTemplate";
+import Reveal from "@/components/Reveal";
 import { Checklist } from "@/components/Sections";
 import { serviceJsonLd, faqJsonLd, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 import { ogImage, serviceImage } from "@/lib/images";
 import { getContent } from "@/lib/content/store";
-import { softwareAreas, softwareProcess, softwareCases } from "@/lib/software-content";
+import { softwareAreas, softwareProcess } from "@/lib/software-content";
+import { listPublishedCases } from "@/lib/cases";
 
 export function generateStaticParams() {
   return softwareAreas.map((a) => ({ slug: a.slug }));
@@ -37,9 +39,10 @@ export default async function SoftwareServicePage({
   const index = softwareAreas.findIndex((a) => a.slug === slug);
   const area = softwareAreas[index];
   if (!area) notFound();
-  const { company } = await getContent();
+  const [{ company }, cases] = await Promise.all([getContent(), listPublishedCases()]);
 
-  const kase = slug === "webb" ? softwareCases[0] : undefined;
+  // The first published case in this area, if there is one.
+  const kase = cases.find((c) => c.area === slug);
   const briefHref = `/mjukvara/brief?typ=${encodeURIComponent(area.title)}`;
 
   return (
@@ -78,6 +81,7 @@ export default async function SoftwareServicePage({
           kase && {
             href: `/mjukvara/case/${kase.slug}`,
             image: kase.image,
+            src: kase.cover?.url,
             tag: kase.tag,
             title: kase.title,
             desc: kase.summary,
@@ -99,6 +103,25 @@ export default async function SoftwareServicePage({
                 <strong>{area.engagement.label}</strong>
                 <p>{area.engagement.body}</p>
               </div>
+            </div>
+          </div>
+        </section>
+        <section className="sec sec--alt">
+          <div className="container split split--sticky">
+            <div className="split-aside">
+              <span className="eyebrow">Så arbetar vi</span>
+              <h2>Det ni behöver veta om {area.title.toLowerCase()}.</h2>
+            </div>
+            <div className="article-sections">
+              {area.sections.map((s, i) => (
+                <Reveal as="section" key={s.heading}>
+                  <span className="n">{String(i + 1).padStart(2, "0")}</span>
+                  <div>
+                    <h2>{s.heading}</h2>
+                    <p>{s.body}</p>
+                  </div>
+                </Reveal>
+              ))}
             </div>
           </div>
         </section>

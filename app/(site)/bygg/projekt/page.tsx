@@ -11,8 +11,8 @@ import { listPublishedProjects, resolve } from "@/lib/projects";
 export async function generateMetadata(): Promise<Metadata> {
   const projects = await listPublishedProjects();
   return pageMetadata({
-    title: "Projekt — bygg och renovering i Halland",
-    description: "Ett urval av bygg- och renoveringsprojekt vi genomfört i Göteborg och Halland, med före- och efterbilder.",
+    title: "Projekt — bygg och renovering",
+    description: "Ett urval av bygg- och renoveringsprojekt vi genomfört i södra och västra Sverige, med före- och efterbilder.",
     path: "/bygg/projekt",
     image: resolve(projects[0]?.cover ?? null)?.url,
     // Kept out of search until there is a real project to show.
@@ -28,7 +28,7 @@ export default async function ProjectsIndex() {
       <PageHero
         crumbs={[{ label: "Bygg", href: "/" }, { label: "Projekt" }]}
         eyebrow="Vårt arbete"
-        title="Nyligen byggt i Halland."
+        title="Nyligen byggt."
         lead={
           projects.length
             ? "Ett urval av våra jobb, med före- och efterbilder där vi har dem."

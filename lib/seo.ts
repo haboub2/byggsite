@@ -27,7 +27,7 @@ const address = (c: Company) => ({
   streetAddress: c.street,
   postalCode: c.postalCode,
   addressLocality: c.city,
-  addressRegion: "Hallands län",
+  addressRegion: "Västra Götalands län",
   addressCountry: "SE",
 });
 
@@ -101,7 +101,7 @@ export function organizationJsonLd(c: Company) {
     logo: { "@type": "ImageObject", url: abs("/brand/binaafy-logo.png"), width: 1200, height: 406 },
     image: abs("/brand/binaafy-mark.png"),
     description:
-      "Binaafy är ett företag i Göteborg med två verksamheter: bygg och renovering av hem i Halland, och mjukvara — webb, automation och interna system — för företag i hela Sverige.",
+      "Binaafy är ett företag med två verksamheter: bygg och renovering av hem i södra och västra Sverige, och mjukvara — webb, automation och interna system — för företag i hela Sverige.",
     foundingDate: "2026",
     email: c.email,
     telephone: c.phone,
@@ -134,7 +134,7 @@ export function businessJsonLd(c: Company, w: Warranty) {
     name: `${site.brand} Bygg`,
     parentOrganization: ORG,
     description:
-      "Bygg- och renoveringsfirma i Göteborg: totalrenovering, badrum, kök, tillbyggnad, tak, golv, måleri samt el och VVS. Kostnadsfri offert, fast pris, ROT-avdrag på fakturan och " + w.sentence + ".",
+      "Bygg- och renoveringsfirma i södra och västra Sverige: totalrenovering, badrum, kök, tillbyggnad, tak, golv, måleri samt el och VVS. Kostnadsfri offert, fast pris, ROT-avdrag på fakturan och " + w.sentence + ".",
     url: abs("/"),
     image: abs("/opengraph-image.png"),
     logo: abs("/brand/binaafy-mark.png"),

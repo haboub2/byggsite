@@ -27,7 +27,15 @@ export const servicesContent: Record<string, ServiceContent> = {
       },
       {
         heading: "Material och garanti",
-        body: "Vi arbetar med material från etablerade svenska leverantörer och följer branschens våtrumsnormer (GVK/Säker Vatten) där det är relevant. Alla totalrenoveringar omfattas av {garanti}, och du är licensierad och försäkrad genom oss under hela byggtiden.",
+        body: "Vi arbetar med material från etablerade svenska leverantörer och följer branschens våtrumsnormer (GVK/Säker Vatten) där det är relevant. Alla totalrenoveringar omfattas av {garanti}.",
+      },
+      {
+        heading: "Vad påverkar priset",
+        body: "Det som styr kostnaden mest är hur mycket som ska rivas och byggas om, om planlösning eller bärande väggar ändras, och hur mycket el och VVS som behöver dras nytt. Därefter kommer materialvalen: golv, kakel, köksluckor och vitvaror kan skilja flera hundra tusen kronor mellan två i övrigt lika projekt. Vi går igenom alternativen med dig innan offerten skrivs, så att du kan välja var pengarna gör mest nytta. ROT-avdraget dras direkt på fakturan och gäller arbetskostnaden.",
+      },
+      {
+        heading: "Vem gör vad i projektet",
+        body: "Rivning, stomme, isolering, golv, väggar, snickerier och montering gör vi med egen personal. El, VVS och våtrumsarbeten utförs av behöriga specialister som vi har arbetat med länge och som följer branschens regelverk. Du har ändå bara ett avtal och en kontaktperson — vi planerar ordningen mellan yrkesgrupperna, kontrollerar varje moment och ansvarar för helheten, inklusive garantin.",
       },
     ],
     faq: [
@@ -53,6 +61,14 @@ export const servicesContent: Record<string, ServiceContent> = {
         heading: "Vanliga badrumsprojekt",
         body: "De flesta uppdrag är antingen en komplett rivning och nybyggnation, eller en delrenovering där stommen är i gott skick men ytskikt och inredning ska bytas. Vi bedömer vilket som är rätt för ditt badrum vid det kostnadsfria besöket, och offererar därefter.",
       },
+      {
+        heading: "Vad påverkar priset",
+        body: "Badrummets storlek och skick är grunden: ett badrum där golvet måste byggas om för rätt fall mot brunnen, eller där gamla rör behöver bytas, tar längre tid än ett där stommen håller. Kakel och klinker i stort format, inbyggda lösningar och golvvärme påverkar också priset, liksom valet mellan dusch och badkar. Du får en specificerad offert där arbete och material står var för sig, så att det är lätt att se vad ROT-avdraget gäller.",
+      },
+      {
+        heading: "Vem gör vad i projektet",
+        body: "Rivning, underarbete, tätskikt, kakel och klinker samt montering av inredning gör vi själva. VVS-installationerna utförs av auktoriserade VVS-montörer och elarbetet av behöriga elinstallatörer — det är ett krav enligt reglerna, inte ett val. Vi samordnar dem i rätt ordning, ser till att allt dokumenteras och lämnar över ett badrum med ett samlat ansvar och en garanti från oss.",
+      },
     ],
     faq: [
       { q: "Hur lång tid tar en badrumsrenovering?", a: "Ett normalstort badrum (5–8 kvm) tar vanligtvis 3–5 veckor från rivning till klart, inklusive torktider för tätskikt." },
@@ -75,7 +91,15 @@ export const servicesContent: Record<string, ServiceContent> = {
       },
       {
         heading: "El och VVS i köket",
-        body: "Nya kök kräver ofta fler eluttag, ny köksfläkt med korrekt ventilation, och omdragning av vatten och avlopp om diskbänken flyttas. Våra certifierade elektriker och rörmokare gör det arbetet som en del av samma projekt, med ett samlat ansvar och en tidplan.",
+        body: "Nya kök kräver ofta fler eluttag, ny köksfläkt med korrekt ventilation, och omdragning av vatten och avlopp om diskbänken flyttas. Behöriga elinstallatörer och auktoriserade VVS-montörer som vi har arbetat med länge gör det arbetet som en del av samma projekt, med ett samlat ansvar och en tidplan.",
+      },
+      {
+        heading: "Vad påverkar priset",
+        body: "Störst skillnad gör om köket behåller sin planlösning eller flyttas: när diskbänk, spis eller köksö byter plats behöver vatten, avlopp, el och ventilation dras om. Därefter avgör valet av luckor, bänkskivor och vitvaror. En bänkskiva i sten kostar mer än laminat men håller i decennier. Vi tar fram ett förslag i två prisnivåer om du vill, så att du ser vad varje val betyder för helheten.",
+      },
+      {
+        heading: "Vem gör vad i projektet",
+        body: "Rivning, väggar, golv, montering av stommar, luckor och bänkskivor och alla snickerier gör vi med egen personal. Ny el, flyttade eluttag och anslutning av vitvaror utförs av behöriga elinstallatörer, och flyttade vatten- och avloppsledningar av auktoriserade VVS-montörer. Allt ingår i samma offert och samma tidplan, med oss som ansvarig hela vägen.",
       },
     ],
     faq: [
@@ -101,12 +125,20 @@ export const servicesContent: Record<string, ServiceContent> = {
         heading: "Inredda vindar och öppna planlösningar",
         body: "Utöver traditionella tillbyggnader inreder vi även vindsutrymmen och river väggar för öppnare planlösningar, med de förstärkningar av bärande konstruktion som krävs. Vi bedömer alltid bärighet innan vi offererar, så att du vet vad som är möjligt innan projektet startar.",
       },
+      {
+        heading: "Vad påverkar priset",
+        body: "Ytan är en del, men grundläggningen, takets konstruktion och hur tillbyggnaden ansluter till det befintliga huset väger ofta tyngre. Stora glaspartier, takkupor och våtrum i tillbyggnaden höjer kostnaden, medan en enkel och rak konstruktion håller den nere. Bygglovsavgiften tas ut av kommunen och ligger utanför vår offert, men vi tar fram underlaget och hjälper dig genom ansökan.",
+      },
+      {
+        heading: "Vem gör vad i projektet",
+        body: "Stomme, tak, isolering, fönster, invändiga ytskikt och snickerier gör vi själva. Mark- och grundarbeten, el och VVS utförs av specialister som vi samordnar och kontrollerar. Konstruktionsberäkningar tas fram av en konstruktör när det behövs. Du har en kontaktperson genom hela projektet — från ritning och bygglov till slutbesiktning.",
+      },
     ],
     faq: [
       { q: "Behöver jag bygglov för en tillbyggnad?", a: "I de flesta fall ja, men mindre tillbyggnader kan omfattas av attefallsreglerna och kräva enbart en anmälan. Vi hjälper till att reda ut vad som gäller för just ditt hus." },
       { q: "Hur lång tid tar en tillbyggnad?", a: "Från bygglov till inflyttningsklart tar en normalstor tillbyggnad (20–30 kvm) vanligtvis 3–5 månader, inklusive handläggningstid hos kommunen." },
       { q: "Kan ni bygga på en befintlig grund eller altan?", a: "Det beror på grundens skick och dimensionering. Vi besiktigar alltid den befintliga konstruktionen innan vi bedömer om den kan återanvändas." },
-      { q: "Ingår el och VVS i tillbyggnaden?", a: "Ja, vi kopplar in tillbyggnaden mot husets befintliga el- och VVS-system som en del av projektet, utfört av certifierade elektriker och rörmokare." },
+      { q: "Ingår el och VVS i tillbyggnaden?", a: "Ja, vi kopplar in tillbyggnaden mot husets befintliga el- och VVS-system som en del av projektet, utfört av behöriga elinstallatörer och auktoriserade VVS-montörer som vi samordnar." },
     ],
   },
 
@@ -124,6 +156,14 @@ export const servicesContent: Record<string, ServiceContent> = {
       {
         heading: "Säkerhet och årstidsanpassning",
         body: "Allt takarbete görs med fallskydd och rätt utrustning enligt Arbetsmiljöverkets krav. Vi planerar större takarbeten efter väder och årstid för att minimera risken för fuktskador under själva arbetet, och skyddar alltid öppna ytor vid oväntat väderomslag.",
+      },
+      {
+        heading: "Vad påverkar priset",
+        body: "Takets yta och lutning, materialet och hur mycket av underlaget som behöver bytas avgör priset. Ett tak där råspont och läkt är friska går snabbare att lägga om än ett där fukt har kommit in. Ställning, bortforsling och plåtdetaljer runt skorsten och takfönster ingår alltid i vår offert, så att det inte tillkommer något efteråt. ROT-avdraget gäller arbetskostnaden även för takarbeten.",
+      },
+      {
+        heading: "Vem gör vad i projektet",
+        body: "Rivning, underlag, läkt, takpannor och de flesta tätningsarbeten gör vi med egen personal. Plåtarbeten och vissa specialtak, till exempel plåttak eller papptak på låglutande tak, kan utföras av en specialiserad partner som vi har arbetat med länge. Oavsett vem som lägger varje del ansvarar vi för hela taket och garantin.",
       },
     ],
     faq: [
@@ -149,6 +189,14 @@ export const servicesContent: Record<string, ServiceContent> = {
         heading: "Golvvärme och fall mot golvbrunn",
         body: "Vid renovering av badrum och våtutrymmen installerar vi golvvärme och ser till att golvet har rätt fall mot golvbrunn enligt GVK:s branschregler. I övriga rum kan golvvärme läggas in vid renovering för ett behagligare inomhusklimat.",
       },
+      {
+        heading: "Vad påverkar priset",
+        body: "Golvets yta och vilket material du väljer är grunden, men underarbetet gör ofta störst skillnad: ett ojämnt undergolv behöver avjämnas, och på betong krävs fuktspärr. Golvvärme, trösklar och lister ingår i en komplett offert. Massivt trä och stora klinkerplattor tar längre tid att lägga än laminat och vinyl, och det syns i priset — men också i hur länge golvet håller.",
+      },
+      {
+        heading: "Vem gör vad i projektet",
+        body: "Rivning, avjämning, fuktspärr och läggning av alla golvtyper gör vi själva. Elektrisk golvvärme kopplas in av en behörig elinstallatör, och vattenburen golvvärme av en auktoriserad VVS-montör. Du har en kontakt och ett avtal, och vi ser till att golvet läggs först när underlaget är torrt och klart.",
+      },
     ],
     faq: [
       { q: "Vilket golv håller bäst i hallen?", a: "Klinker eller ett tåligt vinylgolv rekommenderas ofta för hallar med mycket slitage och fukt utifrån, men vi utgår alltid från dina önskemål och budget." },
@@ -173,6 +221,14 @@ export const servicesContent: Record<string, ServiceContent> = {
         heading: "Materialval",
         body: "Vi arbetar med förstklassiga färgsystem från etablerade tillverkare och rekommenderar produkter utifrån underlag och önskad livslängd, snarare än det billigaste alternativet i stunden — det är det som gör att resultatet håller.",
       },
+      {
+        heading: "Vad påverkar priset",
+        body: "Underarbetet avgör både priset och resultatet. Väggar med sprickor, gamla tapeter eller flagnande färg behöver spacklas, slipas och ibland grundas innan de målas. På fasader styr husets höjd, behovet av ställning och träets skick. Vi lägger hellre tid på underarbetet än att måla två gånger, och det framgår tydligt i offerten vad som ingår.",
+      },
+      {
+        heading: "Vem gör vad i projektet",
+        body: "Invändig målning, spackling och tapetsering gör vi med egen personal. Större fasad- och putsarbeten kan utföras tillsammans med en målerifirma som vi har arbetat med länge, när det krävs fler händer eller särskild utrustning. Du har ändå bara oss att hålla kontakten med, och vi ansvarar för resultatet.",
+      },
     ],
     faq: [
       { q: "Hur ofta behöver en fasad målas om?", a: "Beroende på material och väderexponering håller en fasadmålning normalt 8–15 år. Vi bedömer skicket vid besiktning och rekommenderar rätt tidpunkt." },
@@ -183,23 +239,31 @@ export const servicesContent: Record<string, ServiceContent> = {
   },
 
   "el-vvs": {
-    lead: "El och VVS är den del av hemmet du märker minst när det fungerar — och mest när det inte gör det. Våra certifierade elektriker och rörmokare gör säkra installationer och uppgraderingar enligt gällande normer.",
+    lead: "El och VVS är den del av hemmet du märker minst när det fungerar — och mest när det inte gör det. Behöriga elinstallatörer och auktoriserade VVS-montörer gör säkra installationer och uppgraderingar enligt gällande normer.",
     sections: [
       {
         heading: "Elinstallationer",
-        body: "Vi drar ny el, byter säkringsskåp, installerar jordfelsbrytare och sätter upp belysning och eluttag — allt utfört av certifierade elektriker enligt Elsäkerhetsverkets föreskrifter. Vanliga uppdrag är omdragning vid renovering, uppgradering av äldre elcentraler, och installation av laddbox för elbil.",
+        body: "Vi drar ny el, byter säkringsskåp, installerar jordfelsbrytare och sätter upp belysning och eluttag — allt utfört av behöriga elinstallatörer enligt Elsäkerhetsverkets föreskrifter. Vanliga uppdrag är omdragning vid renovering, uppgradering av äldre elcentraler, och installation av laddbox för elbil.",
       },
       {
         heading: "VVS-installationer",
-        body: "Våra rörmokare gör allt från byte av blandare och toaletter till komplett omdragning av vatten och avlopp vid en renovering, samt installation av golvvärme och bergvärme. Allt VVS-arbete i våtutrymmen görs enligt Säker Vatten, vilket är en förutsättning för att din försäkring ska gälla fullt ut.",
+        body: "VVS-montörerna vi samarbetar med gör allt från byte av blandare och toaletter till komplett omdragning av vatten och avlopp vid en renovering, samt installation av golvvärme och bergvärme. Allt VVS-arbete i våtutrymmen görs enligt Säker Vatten, vilket är en förutsättning för att din försäkring ska gälla fullt ut.",
       },
       {
         heading: "Kombinerat vid renovering",
         body: "Vid en badrums-, köks- eller totalrenovering samordnar vi el och VVS som en del av samma projekt, med ett samlat ansvar istället för att du själv behöver anlita och koordinera separata hantverkare.",
       },
+      {
+        heading: "Vad påverkar priset",
+        body: "Omfattningen styr: ett byte av blandare eller en ny laddbox är ett kort uppdrag, medan ny el i hela huset eller omdragning av vatten och avlopp vid en renovering tar betydligt längre tid. Husets ålder spelar in, eftersom äldre installationer ofta behöver uppgraderas för att klara dagens krav. Du får ett fast pris efter att vi har sett installationen, och akuta ärenden prioriteras.",
+      },
+      {
+        heading: "Vem gör vad i projektet",
+        body: "El- och VVS-arbeten är reglerade yrken. Elarbetet utförs av behöriga elinstallatörer och VVS-arbetet av auktoriserade montörer enligt Säker Vatten — partners som vi har arbetat med länge. Vi beställer, samordnar och kontrollerar arbetet, och du får ett avtal, en faktura och en garanti från oss. Behöver väggar, golv eller tak öppnas och återställas gör vi det själva.",
+      },
     ],
     faq: [
-      { q: "Är era elektriker och rörmokare certifierade?", a: "Ja, alla el- och VVS-installationer utförs av certifierad personal enligt Elsäkerhetsverkets respektive Säker Vattens regelverk." },
+      { q: "Är elektrikerna och rörmokarna behöriga?", a: "Ja. Alla el- och VVS-installationer utförs av behöriga elinstallatörer respektive auktoriserade VVS-montörer enligt Elsäkerhetsverkets och Säker Vattens regelverk. Vi samordnar dem och ansvarar för helheten gentemot dig." },
       { q: "Kan ni installera laddbox för elbil?", a: "Ja, vi installerar laddboxar med rätt säkring och jordfelsbrytare enligt gällande föreskrifter." },
       { q: "Gör ni akuta VVS-jobb, som vattenläckor?", a: "Vi prioriterar akuta ärenden som vattenläckor och strömavbrott och rycker ut så snart vi kan." },
       { q: "Kan ni göra bara el eller bara VVS, inte båda?", a: "Absolut, du kan anlita oss för endera delen eller båda tillsammans — vad som passar ditt projekt." },
@@ -220,6 +284,14 @@ export const servicesContent: Record<string, ServiceContent> = {
       {
         heading: "Passar för",
         body: "Projektledning är särskilt värdefullt vid större renoveringar eller nybyggnation där flera yrkesgrupper är inblandade samtidigt, eller om du inte har möjlighet att själv vara på plats regelbundet under byggtiden.",
+      },
+      {
+        heading: "Vad påverkar priset",
+        body: "Projektledning prissätts efter projektets storlek och hur mycket samordning som krävs: hur många yrkesgrupper som är inblandade, hur lång byggtiden är och om vi även tar hand om upphandling, bygglov och besiktningar. Du får ett fast arvode eller ett tak för kostnaden, aldrig en öppen räkning, och kan välja om vi även utför delar av arbetet själva.",
+      },
+      {
+        heading: "Vem gör vad i projektet",
+        body: "Vi är din enda kontakt och företräder dig gentemot alla som arbetar i projektet. Vi upphandlar och kvalitetssäkrar de underentreprenörer som behövs, skriver avtal med tydliga krav, följer upp tidplan och budget varje vecka och kontrollerar varje moment innan nästa tar vid. Mycket av arbetet kan vi dessutom utföra med egen personal, vilket ger kortare beslutsvägar.",
       },
     ],
     faq: [
@@ -389,42 +461,42 @@ export const serviceExtras: Record<string, ServiceExtras> = {
 };
 
 /** Search titles and descriptions: the phrase people actually search for,
- *  the town, and the reasons to click. Descriptions stay under ~155 chars. */
+ *  and the reasons to click (no town: we work across several regions). Descriptions stay under ~155 chars. */
 export const serviceSeo: Record<string, { title: string; description: string }> = {
   totalrenovering: {
-    title: "Totalrenovering i Göteborg",
-    description: "Totalrenovering av hus och lägenhet i Göteborg — rivning, el, VVS, ytskikt och snickerier. Ett team, fast pris, ROT-avdrag och {garanti}.",
+    title: "Totalrenovering med fast pris och ROT-avdrag",
+    description: "Totalrenovering av hus och lägenhet — rivning, el, VVS, ytskikt och snickerier. Ett team, fast pris, ROT-avdrag och {garanti}.",
   },
   badrumsrenovering: {
-    title: "Badrumsrenovering i Göteborg",
-    description: "Badrumsrenovering i Göteborg med tätskikt enligt branschregler, kakel, golvvärme och VVS. Fast pris, ROT på fakturan och {garanti}.",
+    title: "Badrumsrenovering med tätskikt enligt branschregler",
+    description: "Badrumsrenovering med tätskikt enligt branschregler, kakel, golvvärme och VVS. Fast pris, ROT på fakturan och {garanti}.",
   },
   koksrenovering: {
-    title: "Köksrenovering i Göteborg",
-    description: "Köksrenovering i Göteborg — planlösning, montage av alla större köksmärken, bänkskivor, el och VVS. Fast pris och ROT-avdrag direkt på fakturan.",
+    title: "Köksrenovering — planering, montage och installation",
+    description: "Köksrenovering — planlösning, montage av alla större köksmärken, bänkskivor, el och VVS. Fast pris och ROT-avdrag direkt på fakturan.",
   },
   tillbyggnad: {
-    title: "Tillbyggnad i Göteborg",
-    description: "Tillbyggnad, inredd vind eller ny planlösning i Göteborg. Vi tar fram bygglovsunderlag och bygger nyckelfärdigt, från grund till tak.",
+    title: "Tillbyggnad och inredd vind, nyckelfärdigt",
+    description: "Tillbyggnad, inredd vind eller ny planlösning. Vi tar fram bygglovsunderlag och bygger nyckelfärdigt, från grund till tak.",
   },
   tak: {
-    title: "Takbyte och takarbeten i Göteborg",
-    description: "Takomläggning, reparation och tätning i Göteborg och Halland. Tegel, betong, plåt eller papp. Kostnadsfri takbesiktning, akuta läckage prioriteras.",
+    title: "Takbyte och takarbeten",
+    description: "Takomläggning, reparation och tätning. Tegel, betong, plåt eller papp. Kostnadsfri takbesiktning, akuta läckage prioriteras.",
   },
   golv: {
-    title: "Golvläggning i Göteborg",
-    description: "Golvläggning i Göteborg — trä, laminat, klinker och vinyl med avjämning, fuktspärr och golvvärme. Fast pris och ROT-avdrag på arbetet.",
+    title: "Golvläggning — trä, klinker, laminat och vinyl",
+    description: "Golvläggning — trä, laminat, klinker och vinyl med avjämning, fuktspärr och golvvärme. Fast pris och ROT-avdrag på arbetet.",
   },
   maleri: {
-    title: "Målare i Göteborg — måleri och puts",
-    description: "Målning inomhus, fasadmålning och putsarbeten i Göteborg. Ordentligt underarbete och förstklassiga färgsystem. ROT-avdrag på arbetet.",
+    title: "Målare — måleri, fasad och puts",
+    description: "Målning inomhus, fasadmålning och putsarbeten. Ordentligt underarbete och förstklassiga färgsystem. ROT-avdrag på arbetet.",
   },
   "el-vvs": {
-    title: "Elektriker och rörmokare i Göteborg",
-    description: "El och VVS i Göteborg — ny el, elcentral, laddbox, vatten och avlopp, golvvärme. Certifierade installatörer, akuta ärenden prioriteras.",
+    title: "Elektriker och rörmokare — el och VVS",
+    description: "El och VVS — ny el, elcentral, laddbox, vatten och avlopp, golvvärme. Certifierade installatörer, akuta ärenden prioriteras.",
   },
   projektledning: {
-    title: "Projektledning för bygg i Göteborg",
-    description: "Byggprojektledning i Göteborg: en kontaktperson som samordnar yrkesgrupper, tidplan och budget, med öppen uppföljning hela vägen.",
+    title: "Projektledning för bygg",
+    description: "Byggprojektledning: en kontaktperson som samordnar yrkesgrupper, tidplan och budget, med öppen uppföljning hela vägen.",
   },
 };

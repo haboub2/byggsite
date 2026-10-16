@@ -1,6 +1,7 @@
 import Photo from "./Photo";
 import Blueprint from "./Blueprint";
 import { Crumbs } from "./Sections";
+import Words from "./Words";
 
 /** Dark hero for every subpage: breadcrumb, kicker, title, lead, and an
  *  optional photo with the blueprint marks. */
@@ -13,8 +14,6 @@ export default function PageHero({
   image,
   imageSrc,
   imageAlt,
-  dimH,
-  dimV,
   caption,
   children,
 }: {
@@ -30,8 +29,6 @@ export default function PageHero({
   /** …or an uploaded photo. */
   imageSrc?: string | null;
   imageAlt?: string;
-  dimH?: string;
-  dimV?: string;
   caption?: string;
   children?: React.ReactNode;
 }) {
@@ -42,15 +39,15 @@ export default function PageHero({
         <div className="phero-grid swap">
           <div>
             {eyebrow && <span className="eyebrow eyebrow--accent">{eyebrow}</span>}
-            <h1>
-              {title}
+            <h1 data-motion="rise">
+              <Words text={title} />
               {titleContext && <span className="sr-only"> — {titleContext}</span>}
             </h1>
             {lead && <p className="phero-lead">{lead}</p>}
             {children && <div className="phero-actions">{children}</div>}
           </div>
           {(image || imageSrc) && (
-            <Blueprint dimH={dimH} dimV={dimV} caption={caption}>
+            <Blueprint caption={caption}>
               <Photo
                 slot={image}
                 src={imageSrc}
@@ -58,6 +55,7 @@ export default function PageHero({
                 ratio="4 / 3"
                 tone="dark"
                 preload
+                parallax
                 sizes="(max-width: 900px) 100vw, 45vw"
               />
             </Blueprint>

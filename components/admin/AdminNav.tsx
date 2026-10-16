@@ -10,7 +10,9 @@ const LINKS = [
   { href: "/admin/innehall/priser", label: "Priser" },
   { href: "/admin/innehall/garanti", label: "Garanti" },
   { href: "/admin/innehall/projekt", label: "Projekt" },
+  { href: "/admin/innehall/case", label: "Case" },
   { href: "/admin/innehall/team", label: "Team" },
+  { href: "/admin/innehall/omdomen", label: "Omdömen" },
   { href: "/admin/innehall/offert", label: "Offertuppgifter" },
 ];
 

@@ -33,7 +33,6 @@ export const companySchema = z.object({
   phoneDisplay: text(20, "Telefon som den visas"),
   email: text(80, "E-post").email("Ange en giltig e-postadress."),
   hours: text(60, "Öppettider"),
-  contactPerson: text(60, "Kontaktperson"),
   areasServed: z.array(text(40, "Område")).min(1, "Minst ett område.").max(10),
   byggStats: z.array(stat).length(3),
   softwareStats: z.array(stat).length(3),
@@ -81,14 +80,83 @@ export const teamMemberSchema = z.object({
   name: text(60, "Namn"),
   role: text(60, "Roll"),
   side: z.enum(["bygg", "software"]),
+  // Optional, and defaulted so team rows saved before these fields existed still load.
+  email: optionalText(80, "E-post")
+    .refine((v) => v === "" || z.string().email().safeParse(v).success, "Ange en giltig e-postadress.")
+    .default(""),
+  phone: optionalText(20, "Telefon")
+    .refine((v) => v === "" || /^\+?[\d\s-]{7,}$/.test(v), "Telefon skrivs t.ex. 070-123 45 67.")
+    .default(""),
   photo: z.object({ path: z.string().min(1), alt: optionalText(160, "Bildtext") }).nullable(),
 });
 export type TeamMember = z.infer<typeof teamMemberSchema>;
+
+/** "070-123 45 67" → "+46701234567", for tel: links. */
+export function telHref(display: string): string {
+  const digits = display.replace(/[^\d+]/g, "");
+  return digits.startsWith("0") ? `+46${digits.slice(1)}` : digits;
+}
 
 export const teamSchema = z.object({
   members: z.array(teamMemberSchema).max(24, "Högst 24 personer."),
 });
 export type Team = z.infer<typeof teamSchema>;
+
+/** A review platform the company is on. Numbers are typed in by the owners
+ *  from the platform itself, with the date they were read. */
+export const reviewPlatformSchema = z.object({
+  name: text(30, "Plattform"),
+  url: z
+    .string()
+    .trim()
+    .max(300, "Länken: högst 300 tecken.")
+    .refine((v) => /^https:\/\/\S+\.\S+$/.test(v), "Länken ska börja med https://."),
+  reviewUrl: z
+    .string()
+    .trim()
+    .max(300, "Länken: högst 300 tecken.")
+    .refine((v) => v === "" || /^https:\/\/\S+\.\S+$/.test(v), "Länken ska börja med https://."),
+  rating: z.number().min(1, "Betyg 1–5.").max(5, "Betyg 1–5.").nullable(),
+  count: z.number().int().min(0, "Antal kan inte vara negativt.").max(100000).nullable(),
+  /** When the numbers were read, YYYY-MM-DD. */
+  updated: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), "Datum skrivs 2026-10-12."),
+}).superRefine((p, ctx) => {
+  if ((p.rating !== null || p.count !== null) && !p.updated) {
+    ctx.addIssue({ code: "custom", path: ["updated"], message: "Ange när siffrorna lästes av." });
+  }
+});
+export type ReviewPlatform = z.infer<typeof reviewPlatformSchema>;
+
+export const reviewQuoteSchema = z.object({
+  quote: text(500, "Citat"),
+  author: text(80, "Namn"),
+  platform: optionalText(30, "Plattform"),
+  rating: z.number().int().min(1).max(5).nullable(),
+});
+export type ReviewQuote = z.infer<typeof reviewQuoteSchema>;
+
+const trustpilotId = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || /^[a-f0-9]{24}$/.test(v), "Ogiltigt id. Klistra in TrustBox-koden igen.");
+
+export const reviewsSchema = z.object({
+  platforms: z.array(reviewPlatformSchema).max(4, "Högst fyra plattformar."),
+  quotes: z.array(reviewQuoteSchema).max(12, "Högst tolv citat."),
+  /** From the TrustBox snippet the owners paste in /admin. Empty = no widget. */
+  trustbox: z.object({ businessUnitId: trustpilotId, templateId: trustpilotId }),
+});
+export type Reviews = z.infer<typeof reviewsSchema>;
+
+/** Pull the two ids out of a TrustBox snippet copied from Trustpilot Business. */
+export function parseTrustBox(snippet: string): { businessUnitId: string; templateId: string } | null {
+  const bu = snippet.match(/data-businessunit-id=["']([a-f0-9]{24})["']/)?.[1];
+  const tpl = snippet.match(/data-template-id=["']([a-f0-9]{24})["']/)?.[1];
+  return bu && tpl ? { businessUnitId: bu, templateId: tpl } : null;
+}
 
 /** What a quote PDF prints besides the company details: payment data and
  *  the default texts per side. Edited at /admin/innehall/offert. */
@@ -119,7 +187,8 @@ export const quoteSettingsSchema = z.object({
 });
 export type QuoteSettings = z.infer<typeof quoteSettingsSchema>;
 
-export const CONTENT_KEYS = ["company", "pricing", "warranty", "team", "quote"] as const;
+export const CONTENT_KEYS = ["company", "pricing", "warranty", "team", "reviews", "quote"] as const;
+
 export type ContentKey = (typeof CONTENT_KEYS)[number];
 
 export const contentSchemas = {
@@ -127,6 +196,7 @@ export const contentSchemas = {
   pricing: pricingSchema,
   warranty: warrantySchema,
   team: teamSchema,
+  reviews: reviewsSchema,
   quote: quoteSettingsSchema,
 } as const;
 
@@ -135,6 +205,7 @@ export type ContentMap = {
   pricing: Pricing;
   warranty: WarrantyBlock;
   team: Team;
+  reviews: Reviews;
   quote: QuoteSettings;
 };
 
@@ -143,6 +214,7 @@ export const CONTENT_LABEL: Record<ContentKey, string> = {
   pricing: "Priser",
   warranty: "Garanti",
   team: "Team",
+  reviews: "Omdömen",
   quote: "Offertuppgifter",
 };
 

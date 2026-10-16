@@ -8,6 +8,7 @@ import { SIDES, sideFromPath, counterpartPath } from "@/lib/sides";
 const SHARED_NAV = [
   { label: "Bygg", href: "/" },
   { label: "Software", href: "/mjukvara" },
+  { label: "Referenser", href: "/referenser" },
   { label: "Guider", href: "/guider" },
   { label: "Om oss", href: "/om-oss" },
   { label: "Kontakt", href: "/kontakt" },
@@ -48,6 +49,7 @@ export default function Header({ showProjects = false }: { showProjects?: boolea
         <nav className="side-marker" aria-label="Välj verksamhet">
           <Link
             href={counterpartPath(pathname, "bygg", showProjects)}
+            transitionTypes={["side-switch"]}
             aria-current={side === "bygg" ? "true" : undefined}
           >
             Bygg
@@ -55,6 +57,7 @@ export default function Header({ showProjects = false }: { showProjects?: boolea
           <span className="dot" aria-hidden="true">·</span>
           <Link
             href={counterpartPath(pathname, "mjukvara")}
+            transitionTypes={["side-switch"]}
             aria-current={side === "mjukvara" ? "true" : undefined}
           >
             Software
