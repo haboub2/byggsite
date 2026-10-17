@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/admin", label: "Förfrågningar", match: (p: string) => p === "/admin" || p.startsWith("/admin/leads") },
+  { href: "/admin/offerter", label: "Offerter" },
   { href: "/admin/innehall/foretaget", label: "Företaget" },
   { href: "/admin/innehall/priser", label: "Priser" },
   { href: "/admin/innehall/garanti", label: "Garanti" },
@@ -12,6 +13,7 @@ const LINKS = [
   { href: "/admin/innehall/case", label: "Case" },
   { href: "/admin/innehall/team", label: "Team" },
   { href: "/admin/innehall/omdomen", label: "Omdömen" },
+  { href: "/admin/innehall/offert", label: "Offertuppgifter" },
 ];
 
 export default function AdminNav() {

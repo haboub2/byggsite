@@ -29,7 +29,7 @@ Verified against the repo:
 |---|---|
 | Company / brand | **Byggly 01** (wordmark). "Byggly" = bygg division, "01" = software division. One legal company. |
 | Legal name / org.nr | **Placeholder** — do not print a fake org.nr in schema; show "org.nr tillkommer" on `/om-oss` or omit |
-| Address | **Montörgatan 7, 302 62 Halmstad** *(temporary — to be confirmed)* |
+| Address | **Uppstigen 130, 412 80 Göteborg** (changed 2026-10-15; was Montörgatan 7, Halmstad) |
 | Phone | **+46 79 304 97 37** / `079-304 97 37` *(temporary — to be confirmed)* |
 | Founded | **2026** |
 | Domain | **Not purchased.** Everything derives from one `NEXT_PUBLIC_SITE_URL` env var; changing it later is a one-line change + redeploy. |

@@ -56,6 +56,9 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
                 Mejla
               </a>
             )}
+            <Link href={`/admin/offerter/ny?lead=${lead.id}`} className="btn btn-ghost">
+              Skriv offert
+            </Link>
           </div>
         </div>
 

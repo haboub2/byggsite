@@ -107,7 +107,7 @@ async function main() {
     slug: p.slug,
     title: p.title,
     service_slug: null,
-    location: "Halmstad",
+    location: "Göteborg",
     year: new Date().getFullYear(),
     summary: p.desc,
     scope: [],
