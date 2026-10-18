@@ -8,9 +8,9 @@ import { getContent } from "@/lib/content/store";
 export async function generateMetadata(): Promise<Metadata> {
   const { warranty } = await getContent();
   return pageMetadata({
-    title: "Binaafy — bygg och renovering med fast pris",
+    title: "Binaafy — byggfirma i Göteborg, fast pris och ROT",
     absoluteTitle: true,
-    description: `Byggfirma i södra och västra Sverige: renovering, badrum, kök, tillbyggnad och tak. Ett team, fast pris, ROT-avdrag på fakturan och ${warranty.bygg.sentence}.`,
+    description: `Byggfirma i Göteborg för renovering, badrum, kök, tillbyggnad och tak i Väst- och Sydsverige. Fast pris, ROT på fakturan och ${warranty.bygg.sentence}.`,
     path: "/",
     image: ogImage("hero-bygg"),
   });
