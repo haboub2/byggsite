@@ -1,0 +1,44 @@
+<!-- Supabase → Authentication → Email Templates → Reauthentication
+     Subject: Din bekräftelsekod: {{ .Token }} -->
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>Din bekräftelsekod</title>
+</head>
+<body style="margin:0;padding:0;background:#eeeae3;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Koden är {{ .Token }} och gäller i några minuter.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eeeae3;">
+  <tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fbfaf7;border-radius:4px;overflow:hidden;font-family:'Plus Jakarta Sans',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#1e2c37;">
+
+      <tr><td style="background:#18232c;padding:22px 32px;">
+        <span style="font-size:20px;font-weight:700;letter-spacing:-0.02em;color:#f5f2ed;">Binaafy</span>
+      </td></tr>
+
+      <tr><td style="padding:32px 32px 8px;">
+        <h1 style="margin:0 0 12px;font-size:24px;line-height:1.25;letter-spacing:-0.02em;font-weight:600;">Bekräfta att det är du</h1>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#4b5763;">Du håller på att göra en ändring som kräver en extra kontroll, till exempel ett nytt lösenord. Skriv koden där du blev ombedd.</p>
+      </td></tr>
+
+      <tr><td align="center" style="padding:20px 32px 8px;">
+        <div style="display:inline-block;padding:16px 28px;background:#f5f2ed;border:1px solid #d9d2c7;border-radius:4px;font-size:34px;font-weight:600;letter-spacing:.28em;color:#1e2c37;">{{ .Token }}</div>
+        <p style="margin:10px 0 0;font-size:13px;color:#5e6a76;">Koden gäller i några minuter.</p>
+      </td></tr>
+
+      <tr><td style="padding:20px 32px 28px;">
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#5e6a76;border-top:1px solid #e3ddd3;padding-top:18px;">
+          Har du inte begärt någon kod? Då kan du bortse från mejlet. Ingenting ändras utan koden.
+        </p>
+      </td></tr>
+
+      <tr><td style="background:#f5f2ed;padding:18px 32px;font-size:12px;line-height:1.6;color:#5e6a76;">
+        Binaafy · Uppstigen 130, 412 80 Göteborg · <a href="https://binaafy.se" style="color:#a94c0c;text-decoration:none;">binaafy.se</a>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
