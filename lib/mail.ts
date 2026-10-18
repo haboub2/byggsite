@@ -113,3 +113,36 @@ export async function autoreply(input: { kind: LeadKind; division: Division; nam
     console.error("[mail] autoreply failed", err);
   }
 }
+
+/* ---------- Kundportalen ---------- */
+
+const PORTAL_URL = `${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") || "https://binaafy.se"}/mitt-projekt`;
+
+/** A customer who already had an account was added to another project. Never throws. */
+export async function portalAddedMail(input: { to: string; name: string; projectTitle: string }) {
+  const resend = client();
+  if (!resend || !process.env.MAIL_FROM) {
+    console.warn(`[mail] Resend/MAIL_FROM not set — portal notice skipped for ${input.to}.`);
+    return;
+  }
+  const { company } = await getContent();
+  try {
+    await resend.emails.send({
+      from: process.env.MAIL_FROM,
+      to: input.to,
+      replyTo: company.email,
+      subject: `${esc(input.projectTitle)} finns nu under Mitt projekt`,
+      html: `
+        <div style="font-family:sans-serif;font-size:14px;color:#14161a">
+          <p>Hej${input.name ? ` ${esc(input.name.split(" ")[0])}` : ""},</p>
+          <p>Ditt projekt <strong>${esc(input.projectTitle)}</strong> finns nu i kundportalen. Där följer du tidplanen, ser foton från bygget och hittar dokumenten.</p>
+          <p><a href="${PORTAL_URL}" style="display:inline-block;padding:10px 18px;background:#f7802e;color:#18232c;text-decoration:none;border-radius:4px;font-weight:600">Öppna Mitt projekt</a></p>
+          <p style="color:#6b7280">Logga in med din e-postadress; du får en engångskod i mejlen.</p>
+          <p>Vänliga hälsningar,<br>${site.brand} Bygg</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("[mail] portalAddedMail failed", err);
+  }
+}
