@@ -2,14 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fileHref } from "@/lib/portal/files-href";
 import { formatLongDay, formatRange } from "@/lib/portal/format";
-import { currentPhase } from "@/lib/portal/schema";
+import { currentPhase, formatKr, pendingChangeOrders } from "@/lib/portal/schema";
 import { getProjectBundle } from "@/lib/portal/store";
 
 export default async function PortalOverview({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const bundle = await getProjectBundle(id);
   if (!bundle) notFound();
-  const { project, phases, updates } = bundle;
+  const { project, phases, updates, changeOrders } = bundle;
+  const pending = pendingChangeOrders(changeOrders);
   const phase = currentPhase(phases);
   const next = phase ? phases[phases.indexOf(phase) + 1] : null;
   const latest = updates[0];
@@ -17,6 +18,32 @@ export default async function PortalOverview({ params }: { params: Promise<{ id:
 
   return (
     <div className="portal-stack">
+      {pending.length > 0 && (
+        <section className="portal-card portal-card--attention">
+          <h2>
+            <span className="portal-badge" aria-hidden="true">
+              {pending.length}
+            </span>
+            Väntar på ditt svar
+          </h2>
+          <ul className="portal-attention-list">
+            {pending.map((o) => (
+              <li key={o.id}>
+                <Link href={`/mitt-projekt/${project.id}/andringar#ata-${o.number}`}>
+                  <strong>
+                    ÄTA {o.number}: {o.title}
+                  </strong>
+                  <span>{formatKr(o.amount)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Link href={`/mitt-projekt/${project.id}/andringar`} className="portal-more">
+            Godkänn eller avböj →
+          </Link>
+        </section>
+      )}
+
       {(project.this_week || phase) && (
         <section className="portal-card">
           <h2>Den här veckan</h2>

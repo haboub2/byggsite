@@ -1,9 +1,14 @@
 import "server-only";
 import { createClient as createSessionClient } from "../supabase/server";
+import { createAdminClient } from "../supabase/admin";
 import { isDemo } from "../leads";
 import {
+  CHANGE_ORDER_STATUSES,
   DOCUMENT_KINDS,
   PROJECT_STATUSES,
+  type ChangeOrder,
+  type ChangeOrderForm,
+  type ChangeOrderStatus,
   type DocumentKind,
   type PortalProject,
   type ProjectBundle,
@@ -37,6 +42,12 @@ const fromDocumentRow = (r: ProjectDocument): ProjectDocument => ({
   kind: DOCUMENT_KINDS.includes(r.kind) ? r.kind : "other",
 });
 
+const fromChangeOrderRow = (r: ChangeOrder): ChangeOrder => ({
+  ...r,
+  description: r.description ?? "",
+  status: CHANGE_ORDER_STATUSES.includes(r.status) ? r.status : "pending",
+});
+
 /** Empty dates go to the database as null. */
 const dateOrNull = (d: string) => d || null;
 
@@ -52,6 +63,7 @@ type Demo = {
   phases: ProjectPhase[];
   updates: ProjectUpdate[];
   documents: ProjectDocument[];
+  changeOrders: ChangeOrder[];
 };
 const g = globalThis as unknown as { __binaafyPortal?: Demo };
 
@@ -98,6 +110,36 @@ function demo(): Demo {
       { id: "u2", project_id: projectId, body: "Nya rör och golvvärme är på plats. Elektrikern har dragit uttag och belysning.", photos: [], created_by: "demo@localhost", created_at: iso(-3) },
     ],
     documents: [{ id: "d1", project_id: projectId, kind: "quote", title: "Offert 1001 — Badrumsrenovering", path: "quote:demo", created_at: iso(-15) }],
+    changeOrders: [
+      {
+        id: "c1",
+        project_id: projectId,
+        number: 1,
+        title: "Extra eluttag vid handfatet",
+        description: "Två extra uttag med jordfelsbrytare, inklusive dragning från befintlig dosa.",
+        amount: 3200,
+        labor_amount: 2400,
+        status: "approved",
+        answered_by: "kund@example.se",
+        answered_name: "Anna Exempel",
+        answered_at: iso(-6),
+        created_at: iso(-7),
+      },
+      {
+        id: "c2",
+        project_id: projectId,
+        number: 2,
+        title: "Golvvärme även i hallen",
+        description: "Elgolvvärme på 3 m² i hallen utanför badrummet, med egen termostat. Görs samtidigt som badrumsgolvet så att vi slipper riva igen.",
+        amount: 9800,
+        labor_amount: 6500,
+        status: "pending",
+        answered_by: null,
+        answered_name: null,
+        answered_at: null,
+        created_at: iso(-1),
+      },
+    ],
   };
   return g.__binaafyPortal;
 }
@@ -142,22 +184,25 @@ export async function getProjectBundle(id: string): Promise<ProjectBundle | null
       updates: d.updates.filter((u) => u.project_id === id).sort((a, b) => b.created_at.localeCompare(a.created_at)),
       documents: d.documents.filter((x) => x.project_id === id).sort((a, b) => b.created_at.localeCompare(a.created_at)),
       members: d.members.filter((m) => m.project_id === id),
+      changeOrders: d.changeOrders.filter((c) => c.project_id === id).sort((a, b) => b.number - a.number),
     };
   }
   const supabase = await createSessionClient();
-  const [phases, updates, documents, members] = await Promise.all([
+  const [phases, updates, documents, members, changeOrders] = await Promise.all([
     supabase.from("project_phases").select("*").eq("project_id", id).order("sort"),
     supabase.from("project_updates").select("*").eq("project_id", id).order("created_at", { ascending: false }),
     supabase.from("project_documents").select("*").eq("project_id", id).order("created_at", { ascending: false }),
     supabase.from("project_members").select("*").eq("project_id", id).order("invited_at"),
+    supabase.from("change_orders").select("*").eq("project_id", id).order("number", { ascending: false }),
   ]);
-  for (const r of [phases, updates, documents, members]) if (r.error) fail("Kunde inte hämta projektet", r.error.message);
+  for (const r of [phases, updates, documents, members, changeOrders]) if (r.error) fail("Kunde inte hämta projektet", r.error.message);
   return {
     project,
     phases: phases.data as ProjectPhase[],
     updates: updates.data as ProjectUpdate[],
     documents: (documents.data as ProjectDocument[]).map(fromDocumentRow),
     members: members.data as ProjectMember[],
+    changeOrders: (changeOrders.data as ChangeOrder[]).map(fromChangeOrderRow),
   };
 }
 
@@ -208,6 +253,7 @@ export async function removeProject(id: string): Promise<void> {
     d.updates = d.updates.filter((p) => p.project_id !== id);
     d.documents = d.documents.filter((p) => p.project_id !== id);
     d.members = d.members.filter((p) => p.project_id !== id);
+    d.changeOrders = d.changeOrders.filter((p) => p.project_id !== id);
     return;
   }
   const supabase = await createSessionClient();
@@ -345,6 +391,104 @@ export async function removeDocument(id: string): Promise<void> {
   const supabase = await createSessionClient();
   const { error } = await supabase.from("project_documents").delete().eq("id", id);
   if (error) fail("Kunde inte ta bort dokumentet", error.message);
+}
+
+/* ---------- change orders (ÄTA) ---------- */
+
+/** The admin writes a change order; it starts as "pending" and gets the next number in the project. */
+export async function addChangeOrder(projectId: string, form: ChangeOrderForm): Promise<ChangeOrder> {
+  if (isDemo()) {
+    const d = demo();
+    const number = Math.max(0, ...d.changeOrders.filter((c) => c.project_id === projectId).map((c) => c.number)) + 1;
+    const order: ChangeOrder = {
+      ...form,
+      id: crypto.randomUUID(),
+      project_id: projectId,
+      number,
+      status: "pending",
+      answered_by: null,
+      answered_name: null,
+      answered_at: null,
+      created_at: new Date().toISOString(),
+    };
+    d.changeOrders.push(order);
+    await touch(projectId);
+    return order;
+  }
+  const supabase = await createSessionClient();
+  // Two admins adding at once could pick the same number; the unique index
+  // rejects the second, who simply gets the next number on the retry.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: last } = await supabase.from("change_orders").select("number").eq("project_id", projectId).order("number", { ascending: false }).limit(1).maybeSingle();
+    const number = ((last?.number as number | undefined) ?? 0) + 1;
+    const { data, error } = await supabase.from("change_orders").insert({ project_id: projectId, number, ...form }).select("*").single();
+    if (!error) {
+      await touch(projectId);
+      return fromChangeOrderRow(data as ChangeOrder);
+    }
+    if (error.code !== "23505") fail("Kunde inte spara ändringen", error.message);
+  }
+  return fail("Kunde inte spara ändringen", "numreringen krockade, försök igen");
+}
+
+export async function removeChangeOrder(id: string): Promise<void> {
+  if (isDemo()) {
+    demo().changeOrders = demo().changeOrders.filter((c) => c.id !== id);
+    return;
+  }
+  const supabase = await createSessionClient();
+  const { error } = await supabase.from("change_orders").delete().eq("id", id);
+  if (error) fail("Kunde inte ta bort ändringen", error.message);
+}
+
+/**
+ * The customer's answer. Members may only read change_orders under RLS, so
+ * the write goes through the service-role client after this function has
+ * checked that the user is a member of the order's project. Only a pending
+ * order can be answered, and only once.
+ */
+export async function answerChangeOrder(input: {
+  orderId: string;
+  userId: string;
+  userName: string;
+  status: Exclude<ChangeOrderStatus, "pending">;
+}): Promise<ChangeOrder> {
+  const answeredAt = new Date().toISOString();
+  if (isDemo()) {
+    const d = demo();
+    const order = d.changeOrders.find((c) => c.id === input.orderId);
+    if (!order) throw new Error("Ändringen finns inte längre.");
+    if (!d.members.some((m) => m.project_id === order.project_id && m.user_id === input.userId)) throw new Error("Du har inte tillgång till det här projektet.");
+    if (order.status !== "pending") throw new Error("Ändringen är redan besvarad.");
+    Object.assign(order, { status: input.status, answered_by: input.userId, answered_name: input.userName, answered_at: answeredAt });
+    await touch(order.project_id);
+    return order;
+  }
+  const admin = createAdminClient();
+  const { data: order, error } = await admin.from("change_orders").select("*").eq("id", input.orderId).maybeSingle();
+  if (error) fail("Kunde inte hämta ändringen", error.message);
+  if (!order) throw new Error("Ändringen finns inte längre.");
+  const { data: member } = await admin.from("project_members").select("user_id").eq("project_id", order.project_id).eq("user_id", input.userId).maybeSingle();
+  if (!member) throw new Error("Du har inte tillgång till det här projektet.");
+  const { data: updated, error: updateError } = await admin
+    .from("change_orders")
+    .update({ status: input.status, answered_by: input.userId, answered_name: input.userName, answered_at: answeredAt })
+    .eq("id", input.orderId)
+    .eq("status", "pending")
+    .select("*")
+    .maybeSingle();
+  if (updateError) fail("Kunde inte spara svaret", updateError.message);
+  if (!updated) throw new Error("Ändringen är redan besvarad.");
+  await admin.from("portal_projects").update({ updated_at: answeredAt }).eq("id", order.project_id);
+  return fromChangeOrderRow(updated as ChangeOrder);
+}
+
+/** The members' e-mail addresses, for notices. Read with the caller's session (admin). */
+export async function listMemberEmails(projectId: string): Promise<{ email: string; name: string }[]> {
+  if (isDemo()) return demo().members.filter((m) => m.project_id === projectId).map((m) => ({ email: m.email, name: m.name }));
+  const supabase = await createSessionClient();
+  const { data } = await supabase.from("project_members").select("email,name").eq("project_id", projectId);
+  return ((data ?? []) as { email: string; name: string }[]).map((m) => ({ email: m.email, name: m.name ?? "" }));
 }
 
 /* ---------- members ---------- */

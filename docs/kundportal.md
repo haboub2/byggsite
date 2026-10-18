@@ -1,8 +1,12 @@
 # Kundportalen "Mitt projekt" — plan
 
-Status: **version 1 byggd 2026-10-17** (inloggning, Översikt, Tidplan, Foton,
-Dokument, `/admin/projekt`). ÄTA och mejlnotiser är kvar (version 2). Planen
-nedan är uppdaterad för Vercel och för koden som finns i dag.
+Status: **version 2 byggd 2026-10-18.** Version 1 (2026-10-17) gav inloggning,
+Översikt, Tidplan, Foton, Dokument och `/admin/projekt`. Version 2 lade till
+fliken **Ändringar (ÄTA)** med Godkänn/Avböj, det orange märket på Översikt
+och fliken, ÄTA-sektionen i `/admin/projekt/[id]` och mejlnotiserna (kund:
+ny uppdatering, nytt dokument, ny ÄTA; admin: kunden svarade). Kvar är punkt 3
+under *Ordning*. Planen nedan är uppdaterad för Vercel och för koden som finns
+i dag.
 
 Var koden ligger: `supabase/migrations/0010_portal.sql`, `lib/portal/*`,
 `app/(portal)/mitt-projekt/*`, `app/admin/(dashboard)/projekt/*`,
@@ -123,11 +127,18 @@ under `projects/{project_id}/` om hen är medlem.
   `ny/page.tsx` (från offert), `[id]/page.tsx` (redigera, uppdateringar, ÄTA,
   dokument, medlemmar).
 - Server actions: `app/admin/portal-actions.ts` (admin) och
-  `app/(portal)/actions.ts` (kundens ÄTA-svar, inloggning).
+  `app/(portal)/portal-actions.ts` (inloggning och kundens ÄTA-svar). Svaret
+  skrivs med service role i `answerChangeOrder` (`lib/portal/store.ts`) efter
+  kontroll av medlemskap; bara en `pending` ÄTA kan besvaras, och bara en gång.
+  ROT-effekten räknas i `changeOrderRot` (30 % av arbetsdelen, `lib/rot.ts`).
 - Datalager: `lib/portal/schema.ts` (zod), `lib/portal/store.ts` med demoläge
   som `lib/quotes/store.ts`.
-- Mejl: nya funktioner i `lib/mail.ts` — inbjudan, "ny uppdatering",
-  "ny ÄTA att svara på", "kunden svarade på ÄTA".
+- Mejl i `lib/mail.ts`: `portalAddedMail` (befintligt konto lades till),
+  `portalNoticeMail` (kund: ny uppdatering, nytt dokument, ny ÄTA — ett mejl
+  per medlem med länk till rätt flik; kräver `MAIL_FROM`) och
+  `changeOrderAnsweredMail` (till `MAIL_TO`, annars företagets adress, när
+  kunden svarat). Inget mejlfel får fälla själva åtgärden: funktionerna loggar
+  och går vidare.
 - Uppladdning: `app/admin/upload/route.ts` utökas med bucket `portal` och
   mappen `projects/{id}`; dokument-PDF:er samma väg.
 
@@ -164,7 +175,8 @@ exempelprojekt.
 1. **Version 1:** migration + bucket, proxy-ändringen, inloggning med kod,
    Översikt, Tidplan, Foton, Dokument, och `/admin/projekt` med skapa från
    offert, bjud in, uppdateringar, faser, dokument.
-2. **Version 2:** ÄTA med godkännande, mejlnotiser till kund och admin.
+2. **Version 2 (klar 2026-10-18):** ÄTA med godkännande, mejlnotiser till
+   kund och admin.
 3. **Senare:** felanmälan under garantitiden (med foto), betalplan och
    fakturastatus, BankID-signering, Software-variant (etapper och leveranser
    i stället för byggfaser).

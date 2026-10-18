@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ROT_RATE } from "../rot";
 
 /**
  * Kundportalen "Mitt projekt" (docs/kundportal.md): the data model shared by
@@ -23,6 +24,14 @@ export const DOCUMENT_KIND_LABEL: Record<DocumentKind, string> = {
   warranty: "Garantibevis",
   care: "Skötselråd",
   other: "Övrigt",
+};
+
+export const CHANGE_ORDER_STATUSES = ["pending", "approved", "declined"] as const;
+export type ChangeOrderStatus = (typeof CHANGE_ORDER_STATUSES)[number];
+export const CHANGE_ORDER_STATUS_LABEL: Record<ChangeOrderStatus, string> = {
+  pending: "Väntar på svar",
+  approved: "Godkänd",
+  declined: "Avböjd",
 };
 
 /** Phases suggested when a project is created; the admin edits them freely. */
@@ -64,6 +73,17 @@ export const documentFormSchema = z.object({
   title: text(120, "Rubrik"),
   path: z.string().min(1, "Ingen fil laddades upp.").max(300),
 });
+
+/** An ÄTA as the admin writes it. Amounts are whole kronor incl. VAT. */
+export const changeOrderFormSchema = z
+  .object({
+    title: text(120, "Rubrik"),
+    description: optionalText(3000, "Beskrivning"),
+    amount: z.coerce.number({ invalid_type_error: "Pris skrivs i hela kronor." }).int("Pris skrivs i hela kronor.").min(-10_000_000).max(10_000_000),
+    labor_amount: z.coerce.number({ invalid_type_error: "Arbetskostnad skrivs i hela kronor." }).int("Arbetskostnad skrivs i hela kronor.").min(0).max(10_000_000),
+  })
+  .refine((c) => c.labor_amount <= Math.max(c.amount, 0), { message: "Arbetskostnaden kan inte vara större än priset.", path: ["labor_amount"] });
+export type ChangeOrderForm = z.infer<typeof changeOrderFormSchema>;
 
 export type PortalProject = ProjectForm & {
   id: string;
@@ -109,6 +129,21 @@ export type ProjectMember = {
   invited_at: string;
 };
 
+export type ChangeOrder = {
+  id: string;
+  project_id: string;
+  number: number;
+  title: string;
+  description: string;
+  amount: number;
+  labor_amount: number;
+  status: ChangeOrderStatus;
+  answered_by: string | null;
+  answered_name: string | null;
+  answered_at: string | null;
+  created_at: string;
+};
+
 /** Everything one project page needs. */
 export type ProjectBundle = {
   project: PortalProject;
@@ -116,7 +151,28 @@ export type ProjectBundle = {
   updates: ProjectUpdate[];
   documents: ProjectDocument[];
   members: ProjectMember[];
+  changeOrders: ChangeOrder[];
 };
+
+/** How a change order moves the ROT deduction: 30 % of its labour part,
+ *  whole kronor. A negative ÄTA (less work) gives less ROT. The yearly cap
+ *  is not applied here; the invoice settles that. */
+export function changeOrderRot(order: Pick<ChangeOrder, "amount" | "labor_amount">): { rot: number; pay: number } {
+  const labor = Number.isFinite(order.labor_amount) ? Math.trunc(order.labor_amount) : 0;
+  const rot = Math.trunc(labor * ROT_RATE);
+  return { rot, pay: Math.trunc(order.amount) - rot };
+}
+
+/** The change orders still waiting for the customer: drives the orange badge. */
+export function pendingChangeOrders(orders: ChangeOrder[]): ChangeOrder[] {
+  return orders.filter((o) => o.status === "pending");
+}
+
+/** "12 500 kr", with a minus for negative amounts. Safe on client and server. */
+export function formatKr(n: number): string {
+  const digits = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 }).format(n).replace(/−/g, "-");
+  return `${digits} kr`;
+}
 
 /** 0–100 from the phases: done ones count fully, the current one half. */
 export function progressPercent(phases: ProjectPhase[]): number {

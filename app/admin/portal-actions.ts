@@ -4,10 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkAdmin } from "@/lib/admin";
 import { getQuote } from "@/lib/quotes/store";
+import { portalNoticeMail } from "@/lib/mail";
 import { inviteMember } from "@/lib/portal/invite";
 import { removePortalFile } from "@/lib/portal/files";
 import {
   DEFAULT_PHASES,
+  changeOrderFormSchema,
   documentFormSchema,
   phaseFormSchema,
   projectFormSchema,
@@ -15,6 +17,7 @@ import {
   type ProjectForm,
 } from "@/lib/portal/schema";
 import {
+  addChangeOrder,
   addDocument,
   addPhase,
   addUpdate,
@@ -22,7 +25,9 @@ import {
   findProjectByQuote,
   getProject,
   getProjectBundle,
+  listMemberEmails,
   movePhase,
+  removeChangeOrder,
   removeDocument,
   removeMember,
   removePhase,
@@ -65,6 +70,17 @@ function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Record
 }
 
 const str = (formData: FormData, key: string, max = 4000) => String(formData.get(key) ?? "").trim().slice(0, max);
+
+/** Mail the project's customers about something new. Never throws — a lost mail must not fail the save. */
+async function notifyMembers(projectId: string, kind: "update" | "document" | "change_order", summary?: string): Promise<void> {
+  try {
+    const [project, to] = await Promise.all([getProject(projectId), listMemberEmails(projectId)]);
+    if (!project) return;
+    await portalNoticeMail({ kind, to, projectId, projectTitle: project.title, summary });
+  } catch (err) {
+    console.error(`[portal] ${kind} notice failed`, err);
+  }
+}
 
 function refresh(id?: string) {
   revalidatePath(LIST, "layout");
@@ -237,6 +253,7 @@ export async function postUpdate(_prev: ContentActionState, formData: FormData):
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Kunde inte spara." };
   }
+  await notifyMembers(id, "update", parsed.data.body || `${parsed.data.photos.length} nya foton`);
   refresh(id);
   return { ok: true, savedAt: new Date().toISOString() };
 }
@@ -268,6 +285,7 @@ export async function addDocumentAction(_prev: ContentActionState, formData: For
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Kunde inte spara." };
   }
+  await notifyMembers(id, "document", parsed.data.title);
   refresh(id);
   return { ok: true, savedAt: new Date().toISOString() };
 }
@@ -283,6 +301,38 @@ export async function removeDocumentAction(formData: FormData): Promise<void> {
   }
   refresh(id);
   redirect(projectUrl(id) + "#dokument");
+}
+
+/* ---------- ÄTA ---------- */
+
+/** A new change order for the customer to answer; the customer is mailed. */
+export async function addChangeOrderAction(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = str(formData, "project");
+  const parsed = changeOrderFormSchema.safeParse({
+    title: str(formData, "title", 120),
+    description: str(formData, "description", 3000),
+    amount: str(formData, "amount", 12).replace(/\s/g, ""),
+    labor_amount: str(formData, "labor_amount", 12).replace(/\s/g, "") || "0",
+  });
+  if (!parsed.success) redirect(projectUrl(id, { fel: parsed.error.issues[0].message }) + "#ata");
+  try {
+    const order = await addChangeOrder(id, parsed.data);
+    await notifyMembers(id, "change_order", `ÄTA ${order.number}: ${order.title}`);
+  } catch (err) {
+    if (err instanceof Error && "digest" in err) throw err;
+    redirect(projectUrl(id, { fel: err instanceof Error ? err.message : "Kunde inte spara ändringen." }) + "#ata");
+  }
+  refresh(id);
+  redirect(projectUrl(id, { sparat: "ata" }) + "#ata");
+}
+
+export async function removeChangeOrderAction(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = str(formData, "project");
+  await removeChangeOrder(str(formData, "order"));
+  refresh(id);
+  redirect(projectUrl(id) + "#ata");
 }
 
 /* ---------- members ---------- */

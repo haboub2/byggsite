@@ -3,7 +3,7 @@ import PortalTabs from "@/components/portal/PortalTabs";
 import { portalSignOut } from "@/app/(portal)/portal-actions";
 import { getPortalUser } from "@/lib/portal/auth";
 import { formatRange } from "@/lib/portal/format";
-import { currentPhase, PROJECT_STATUS_LABEL, progressPercent } from "@/lib/portal/schema";
+import { currentPhase, pendingChangeOrders, PROJECT_STATUS_LABEL, progressPercent } from "@/lib/portal/schema";
 import { getProjectBundle } from "@/lib/portal/store";
 
 /** Dark header with name, address and progress; tabs below (desktop) or at the bottom (phone). */
@@ -16,7 +16,7 @@ export default async function PortalProjectLayout({
   const { id } = await params;
   const bundle = await getProjectBundle(id);
   if (!bundle) notFound();
-  const { project, phases } = bundle;
+  const { project, phases, changeOrders } = bundle;
   const pct = progressPercent(phases);
   const phase = project.current_phase || currentPhase(phases)?.name || (project.status === "active" ? "Pågår" : PROJECT_STATUS_LABEL[project.status]);
 
@@ -50,7 +50,7 @@ export default async function PortalProjectLayout({
       </header>
       <div className="portal-body">
         <div className="portal-wrap portal-grid">
-          <PortalTabs id={project.id} />
+          <PortalTabs id={project.id} pending={pendingChangeOrders(changeOrders).length} />
           <main className="portal-main" id="main">
             {children}
           </main>
