@@ -68,7 +68,12 @@ type Demo = {
 const g = globalThis as unknown as { __binaafyPortal?: Demo };
 
 function demo(): Demo {
-  if (g.__binaafyPortal) return g.__binaafyPortal;
+  if (g.__binaafyPortal) {
+    // A dev server that was running before a collection was added still
+    // holds the old object; fill the gap instead of crashing on hot reload.
+    g.__binaafyPortal.changeOrders ??= [];
+    return g.__binaafyPortal;
+  }
   const now = new Date();
   const iso = (daysFromNow: number) => new Date(now.getTime() + daysFromNow * 86_400_000).toISOString();
   const day = (daysFromNow: number) => iso(daysFromNow).slice(0, 10);
