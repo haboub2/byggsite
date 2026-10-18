@@ -11,7 +11,7 @@ const MAX_SIDE = 2400;
 /** Resize to at most 2400 px on the long side and re-encode, so a 5 MB phone
  *  photo becomes a few hundred kB before it leaves the browser. Safari can't
  *  encode WebP from a canvas (it silently returns PNG), so fall back to JPEG. */
-async function compress(file: File): Promise<File> {
+export async function compressImage(file: File): Promise<File> {
   const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -31,7 +31,7 @@ async function compress(file: File): Promise<File> {
 
 export async function uploadPhoto(file: File, folder: Folder): Promise<string> {
   if (!file.type.startsWith("image/")) throw new Error("Välj en bildfil.");
-  const small = await compress(file);
+  const small = await compressImage(file);
   const body = new FormData();
   body.append("file", small);
   body.append("folder", folder);

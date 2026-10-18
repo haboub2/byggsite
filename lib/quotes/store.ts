@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient as createSessionClient } from "../supabase/server";
+import { createAdminClient } from "../supabase/admin";
 import { isDemo } from "../leads";
 import { quoteTotals } from "./math";
 import {
@@ -14,7 +15,7 @@ import {
 
 /**
  * Quotes and saved templates: the `quotes` and `quote_templates` tables
- * (supabase/migrations/0007_quotes.sql), read and written with the admin's
+ * (supabase/migrations/0008_quotes.sql), read and written with the admin's
  * session so RLS decides. Demo mode keeps everything in memory.
  */
 
@@ -142,6 +143,16 @@ export async function getQuote(id: string): Promise<Quote | null> {
   }
   const supabase = await createSessionClient();
   const { data, error } = await supabase.from("quotes").select("*").eq("id", id).maybeSingle();
+  if (error) throw new Error(`Kunde inte hämta offerten: ${error.message}`);
+  return data ? fromRow(data as Row) : null;
+}
+
+/** A quote read for the customer portal, where the caller is a customer and
+ *  RLS would hide the quotes table. The portal route has already checked that
+ *  the caller is a member of the project the quote belongs to. */
+export async function getQuoteForPortal(id: string): Promise<Quote | null> {
+  if (isDemo()) return getQuote(id);
+  const { data, error } = await createAdminClient().from("quotes").select("*").eq("id", id).maybeSingle();
   if (error) throw new Error(`Kunde inte hämta offerten: ${error.message}`);
   return data ? fromRow(data as Row) : null;
 }

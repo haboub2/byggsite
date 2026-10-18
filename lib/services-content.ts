@@ -460,43 +460,43 @@ export const serviceExtras: Record<string, ServiceExtras> = {
   },
 };
 
-/** Search titles and descriptions: the phrase people actually search for,
- *  and the reasons to click (no town: we work across several regions). Descriptions stay under ~155 chars. */
+/** Search titles and descriptions: the phrase people search for plus Göteborg (where most searches come from),
+ *  and a concrete reason to click. Titles stay under ~50 chars (" | Binaafy" is appended), descriptions under ~155. */
 export const serviceSeo: Record<string, { title: string; description: string }> = {
   totalrenovering: {
-    title: "Totalrenovering med fast pris och ROT-avdrag",
-    description: "Totalrenovering av hus och lägenhet — rivning, el, VVS, ytskikt och snickerier. Ett team, fast pris, ROT-avdrag och {garanti}.",
+    title: "Totalrenovering i Göteborg — fast pris, ROT",
+    description: "Totalrenovering av hus och lägenhet i Göteborg och Västsverige. Ett team från rivning till slutstäd, fast pris och {garanti}.",
   },
   badrumsrenovering: {
-    title: "Badrumsrenovering med tätskikt enligt branschregler",
-    description: "Badrumsrenovering med tätskikt enligt branschregler, kakel, golvvärme och VVS. Fast pris, ROT på fakturan och {garanti}.",
+    title: "Badrumsrenovering i Göteborg — fast pris",
+    description: "Badrum i Göteborg med tätskikt enligt branschregler, kakel och golvvärme. Fast pris, ROT dras direkt på fakturan och {garanti}.",
   },
   koksrenovering: {
-    title: "Köksrenovering — planering, montage och installation",
-    description: "Köksrenovering — planlösning, montage av alla större köksmärken, bänkskivor, el och VVS. Fast pris och ROT-avdrag direkt på fakturan.",
+    title: "Köksrenovering i Göteborg — montage till el",
+    description: "Köksrenovering i Göteborg: montage av alla större köksmärken, el och VVS. Fast pris, ROT på fakturan, kostnadsfritt hembesök.",
   },
   tillbyggnad: {
-    title: "Tillbyggnad och inredd vind, nyckelfärdigt",
-    description: "Tillbyggnad, inredd vind eller ny planlösning. Vi tar fram bygglovsunderlag och bygger nyckelfärdigt, från grund till tak.",
+    title: "Tillbyggnad i Göteborg — nyckelfärdigt",
+    description: "Tillbyggnad eller inredd vind i Göteborg. Vi tar fram bygglovsunderlaget och bygger nyckelfärdigt, från grund till tak. Fast pris per etapp.",
   },
   tak: {
-    title: "Takbyte och takarbeten",
-    description: "Takomläggning, reparation och tätning. Tegel, betong, plåt eller papp. Kostnadsfri takbesiktning, akuta läckage prioriteras.",
+    title: "Takbyte i Göteborg — gratis takbesiktning",
+    description: "Takbyte och takomläggning i Göteborg: tegel, betong, plåt eller papp. Kostnadsfri takbesiktning, akuta läckage prioriteras. ROT på arbetet.",
   },
   golv: {
-    title: "Golvläggning — trä, klinker, laminat och vinyl",
-    description: "Golvläggning — trä, laminat, klinker och vinyl med avjämning, fuktspärr och golvvärme. Fast pris och ROT-avdrag på arbetet.",
+    title: "Golvläggning i Göteborg — fast pris, ROT",
+    description: "Golvläggning i Göteborg: trä, laminat, klinker och vinyl, med avjämning, fuktspärr och golvvärme. Fast pris och ROT direkt på fakturan.",
   },
   maleri: {
-    title: "Målare — måleri, fasad och puts",
-    description: "Målning inomhus, fasadmålning och putsarbeten. Ordentligt underarbete och förstklassiga färgsystem. ROT-avdrag på arbetet.",
+    title: "Målare i Göteborg — inne, fasad och puts",
+    description: "Målare i Göteborg för rum, fasad och puts. Ordentligt underarbete och förstklassiga färgsystem. Kostnadsfritt hembesök och ROT på arbetet.",
   },
   "el-vvs": {
-    title: "Elektriker och rörmokare — el och VVS",
-    description: "El och VVS — ny el, elcentral, laddbox, vatten och avlopp, golvvärme. Certifierade installatörer, akuta ärenden prioriteras.",
+    title: "Elektriker och rörmokare i Göteborg",
+    description: "Elektriker och rörmokare i Göteborg: ny el, elcentral, laddbox, vatten, avlopp och golvvärme. Certifierade installatörer, akut prioriteras.",
   },
   projektledning: {
-    title: "Projektledning för bygg",
-    description: "Byggprojektledning: en kontaktperson som samordnar yrkesgrupper, tidplan och budget, med öppen uppföljning hela vägen.",
+    title: "Byggprojektledning i Göteborg",
+    description: "Byggprojektledning i Göteborg: en kontaktperson för alla yrkesgrupper, tidplan och budget, med öppen uppföljning hela vägen.",
   },
 };
