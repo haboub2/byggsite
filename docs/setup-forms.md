@@ -17,7 +17,7 @@ Tidsåtgång: cirka 20 minuter.
 2. Vänta tills projektet är klart (ett par minuter).
 3. Säg till Claude att projektet finns. Tabellerna (`supabase/migrations/0001`–`0007`)
    kan då köras direkt härifrån. Vill ni göra det själva: öppna **SQL Editor** och kör
-   filerna i ordning, `0001` → `0007`.
+   filerna i ordning, `0001` → `0010`.
 4. Hämta nycklarna under **Project Settings → API**:
    - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
    - **anon / publishable** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`

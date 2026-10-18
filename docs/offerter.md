@@ -40,7 +40,7 @@ den enskilda offerten går allt att ändra.
 - `lib/quotes/schema.ts` — datamodellen (zod), delad av redigeraren och servern.
 - `lib/quotes/math.ts` — summor, moms per sats och ROT (återanvänder `lib/rot.ts`). Testad i `math.test.ts`.
 - `lib/quotes/templates.ts` — de inbyggda mallarna. Lägg till en mall genom att lägga till ett objekt i listan.
-- `lib/quotes/store.ts` — tabellerna `quotes` och `quote_templates` (`supabase/migrations/0007_quotes.sql`). Demo-läge i minnet utan Supabase.
+- `lib/quotes/store.ts` — tabellerna `quotes` och `quote_templates` (`supabase/migrations/0008_quotes.sql`). Demo-läge i minnet utan Supabase.
 - `lib/pdf/QuotePdf.tsx` — PDF-layouten med `@react-pdf/renderer`; `lib/pdf/render.tsx` renderar till bytes.
 - `app/admin/(dashboard)/offerter/[id]/pdf/route.ts` — PDF:en, bara för inloggade admins.
 - `app/admin/quote-actions.ts` — spara, status, duplicera, mallar, skicka.
