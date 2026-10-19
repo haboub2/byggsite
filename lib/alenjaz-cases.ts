@@ -2,8 +2,8 @@ import { emptyCase, type Case } from "./case-schema";
 
 /**
  * Software cases brought over from the Alenjaz portfolio (al-enjaz.vercel.app/en/work),
- * rewritten in Swedish. They are drafts: nothing here shows on the site until
- * someone opens the case in /admin, adds a cover photo and publishes it.
+ * rewritten in Swedish, with the Alenjaz screenshots in public/images/cases. They
+ * are drafts: nothing here shows on the site until someone publishes it in /admin.
  *
  * Used by the local demo store (lib/cases.ts) and by `npm run db:import-cases`,
  * which adds them to Supabase without touching cases that already exist.
@@ -19,6 +19,8 @@ const draft = (sort: number, c: Partial<Case> & Pick<Case, "slug" | "title" | "c
 export const alenjazCases: Case[] = [
   draft(100, {
     slug: "auto-bazar-app",
+    cover: { path: "/images/cases/auto-bazar-app.jpg", alt: "Två mobiler med Auto Bazar-appen på arabiska: startsidan med kategorier och en lista med bilannonser" },
+    gallery: [{ path: "/images/cases/autobazar-mobile.jpg", alt: "Appens startsida med sökfält, kategorier och utvalda annonser" }],
     title: "Auto Bazar — appen",
     client: "Auto Bazar",
     area: "plattformar",
@@ -50,6 +52,8 @@ export const alenjazCases: Case[] = [
   }),
   draft(110, {
     slug: "auto-bazar-webb",
+    cover: { path: "/images/cases/auto-bazar-web.jpg", alt: "Auto Bazars startsida i en webbläsare och i en mobil, med sökformulär för bilar, delar och bostäder" },
+    gallery: [{ path: "/images/cases/autobazar-mobile.jpg", alt: "Marknadsplatsen i mobilen: sökfält, kategorier och utvalda annonser" }],
     title: "Auto Bazar — marknadsplatsen",
     client: "Auto Bazar",
     area: "plattformar",
@@ -82,6 +86,8 @@ export const alenjazCases: Case[] = [
   }),
   draft(120, {
     slug: "ostazi",
+    cover: { path: "/images/cases/ostazi-cover.jpg", alt: "Ostazis startsida på arabiska i en webbläsare och i en mobil, med sökning efter lärare på ämne och årskurs" },
+    gallery: [{ path: "/images/cases/ostazi-mobile.jpg", alt: "Ostazi i mobilen: rubrik, knappar för att hitta en lärare och sökformulär" }],
     title: "Ostazi",
     client: "Ostazi",
     area: "plattformar",
@@ -138,6 +144,7 @@ export const alenjazCases: Case[] = [
   }),
   draft(140, {
     slug: "hhm-kabelverlegung",
+    cover: { path: "/images/cases/hhm-kabelverlegung.jpg", alt: "HHM Kabelverlegungs tyska startsida i en webbläsare och i en mobil, med knappen Kontakt uns" },
     title: "HHM Kabelverlegung",
     client: "HHM Kabelverlegung",
     area: "webb",
@@ -158,6 +165,7 @@ export const alenjazCases: Case[] = [
   }),
   draft(150, {
     slug: "walla-matchning",
+    cover: { path: "/images/cases/wallajobb.jpg", alt: "Walla Matchnings startsida i en webbläsare, med rubriken Rätt person på rätt plats och knappar för jobbsökare och arbetsgivare" },
     title: "Walla Matchning",
     client: "Walla Matchning AB",
     area: "webb",
