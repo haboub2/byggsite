@@ -9,6 +9,7 @@ import { Icon } from "@/components/Icons";
 import { CtaBand } from "@/components/Sections";
 import { services } from "@/lib/placeholder";
 import { listPublishedCases } from "@/lib/cases";
+import { statusTitle } from "@/lib/case-schema";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 import { listPublishedProjects, resolve } from "@/lib/projects";
 
@@ -84,6 +85,7 @@ export default async function ReferencesPage() {
                     src={c.cover?.url}
                     alt={c.cover?.alt}
                     tag={["Software", c.tag, c.client].filter(Boolean).join(" · ")}
+                    badge={c.status === "dev" ? statusTitle(c.status) : undefined}
                     title={c.title}
                     desc={c.testimonial?.quote ? `”${c.testimonial.quote}”` : c.summary}
                   />

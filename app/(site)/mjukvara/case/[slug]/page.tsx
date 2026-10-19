@@ -8,6 +8,8 @@ import Reveal from "@/components/Reveal";
 import { Icon } from "@/components/Icons";
 import { Stats, Bridge, CtaBand, SectionHead } from "@/components/Sections";
 import { getPublishedCase, listPublishedCases } from "@/lib/cases";
+import { statusTitle } from "@/lib/case-schema";
+import { caseMorph } from "@/components/WorkCard";
 import { SIDES } from "@/lib/sides";
 import { articleJsonLd, breadcrumbJsonLd, pageMetadata, CONTENT_UPDATED } from "@/lib/seo";
 import { ogImage } from "@/lib/images";
@@ -39,15 +41,18 @@ export default async function CasePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const c = await getPublishedCase(slug);
+  const all = await listPublishedCases();
+  const c = all.find((x) => x.slug === slug);
   if (!c) notFound();
   const cfg = SIDES.mjukvara;
+  const next = all.length > 1 ? all[(all.indexOf(c) + 1) % all.length] : null;
 
+  type Part = { heading: string; body: string; list?: string[] };
   const sections = [
     c.situation && { heading: "Situationen", body: c.situation },
-    c.solution && { heading: "Vad vi byggde", body: c.solution },
+    (c.solution || c.features.length > 0) && { heading: "Vad vi byggde", body: c.solution, list: c.features },
     c.stack.length > 0 && { heading: "Tekniken bakom", body: `Byggt med ${c.stack.join(", ")}.` },
-  ].filter((s): s is { heading: string; body: string } => Boolean(s));
+  ].filter((s): s is Part => Boolean(s));
 
   return (
     <>
@@ -70,17 +75,29 @@ export default async function CasePage({
       />
       <PageHero
         crumbs={[{ label: "Software", href: "/mjukvara" }, { label: "Case", href: "/mjukvara/case" }, { label: c.title }]}
-        eyebrow={[c.tag, c.client].filter(Boolean).join(" · ")}
+        eyebrow={[c.tag, c.client, c.country, c.year].filter(Boolean).join(" · ")}
         title={c.title}
         lead={c.summary}
         image={c.cover ? undefined : c.image}
         imageSrc={c.cover?.url}
         imageAlt={c.cover?.alt}
         caption={c.stack.join(" · ")}
+        morph={caseMorph(c.slug)}
       >
+        {c.status === "dev" && <span className="status-pill">{statusTitle(c.status)}</span>}
         {c.url && (
           <a href={c.url} target="_blank" rel="noopener noreferrer" className="link-quiet">
             Besök {c.url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+          </a>
+        )}
+        {c.appStore && (
+          <a href={c.appStore} target="_blank" rel="noopener noreferrer" className="link-quiet">
+            App Store
+          </a>
+        )}
+        {c.playStore && (
+          <a href={c.playStore} target="_blank" rel="noopener noreferrer" className="link-quiet">
+            Google Play
           </a>
         )}
       </PageHero>
@@ -104,7 +121,14 @@ export default async function CasePage({
                   <span className="n">{String(i + 1).padStart(2, "0")}</span>
                   <div>
                     <h2>{s.heading}</h2>
-                    <p>{s.body}</p>
+                    {s.body && <p>{s.body}</p>}
+                    {s.list && s.list.length > 0 && (
+                      <ul className="built-list">
+                        {s.list.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </Reveal>
               ))}
@@ -135,10 +159,21 @@ export default async function CasePage({
 
       <section className="sec sec--tight">
         <div className="container">
-          <Link href="/referenser" className="link-arrow">
-            Alla referenser
-            <Icon name="arrow" strokeWidth={2} />
-          </Link>
+          <div className="case-nav">
+            {next && (
+              <Link href={`/mjukvara/case/${next.slug}`} className="case-next">
+                <span className="eyebrow">Nästa case</span>
+                <span className="case-next-title">
+                  {next.title}
+                  <Icon name="arrow" strokeWidth={2} />
+                </span>
+              </Link>
+            )}
+            <Link href="/mjukvara/case" className="link-arrow">
+              Alla case
+              <Icon name="arrow" strokeWidth={2} />
+            </Link>
+          </div>
         </div>
       </section>
 

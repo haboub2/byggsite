@@ -44,3 +44,22 @@ test("area labels", () => {
   assert.equal(areaTitle("interna-system"), "Interna system");
   assert.equal(areaTitle(null), null);
 });
+
+test("case details: store links, year and feature list are checked", () => {
+  assert.deepEqual(errorPaths({ ...valid(), appStore: "apps.apple.com/app/id1" }), ["appStore"]);
+  assert.deepEqual(errorPaths({ ...valid(), playStore: "https://play.google.com/store/apps/details?id=x" }), []);
+  assert.deepEqual(errorPaths({ ...valid(), year: 1999 }), ["year"]);
+  assert.deepEqual(errorPaths({ ...valid(), status: "dev", platform: "both", area: "plattformar" }), []);
+  assert.deepEqual(errorPaths({ ...valid(), features: Array.from({ length: 11 }, (_, i) => `Punkt ${i}`) }), ["features"]);
+});
+
+test("the imported Alenjaz cases are valid drafts with unique addresses", async () => {
+  const { alenjazCases } = await import("./alenjaz-cases");
+  for (const c of alenjazCases) {
+    assert.deepEqual(errorPaths(c), [], c.slug);
+    assert.equal(c.published, false, c.slug);
+  }
+  assert.equal(new Set(alenjazCases.map((c) => c.slug)).size, alenjazCases.length);
+  // Publishing one needs nothing more than ticking the box (a cover photo is optional).
+  for (const c of alenjazCases) assert.deepEqual(errorPaths({ ...c, published: true }), [], c.slug);
+});

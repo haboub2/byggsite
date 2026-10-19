@@ -6,6 +6,7 @@ import Reveal from "@/components/Reveal";
 import { Icon } from "@/components/Icons";
 import { CtaBand } from "@/components/Sections";
 import { listPublishedCases } from "@/lib/cases";
+import { statusTitle } from "@/lib/case-schema";
 import { SIDES } from "@/lib/sides";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
@@ -40,6 +41,7 @@ export default async function CaseIndex() {
                 src={c.cover?.url}
                 alt={c.cover?.alt}
                 tag={[c.tag, c.client].filter(Boolean).join(" · ")}
+                badge={c.status === "dev" ? statusTitle(c.status) : undefined}
                 title={c.title}
                 desc={c.summary}
               />

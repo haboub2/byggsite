@@ -7,7 +7,8 @@ import { isDemo } from "./leads";
 import { resolve, type ResolvedImage } from "./projects";
 import { softwareCases } from "./software-content";
 import { areaTitle, type Case } from "./case-schema";
-import type { ProjectImage } from "./project-schema";
+import { fromRow, toRow, type Row } from "./case-rows";
+import { alenjazCases } from "./alenjaz-cases";
 
 /**
  * Software cases: the `cases` table, edited from /admin (same pattern as
@@ -16,77 +17,21 @@ import type { ProjectImage } from "./project-schema";
  * replaces the built-in one.
  */
 
-type Row = {
-  slug: string;
-  title: string;
-  client: string | null;
-  area: string | null;
-  url: string | null;
-  summary: string | null;
-  situation: string | null;
-  solution: string | null;
-  metrics: { value?: string; label?: string }[] | null;
-  stack: string[] | null;
-  testimonial: { quote?: string; author?: string } | null;
-  cover_path: string | null;
-  cover_alt: string | null;
-  gallery: { path: string; alt?: string }[] | null;
-  featured: boolean | null;
-  published: boolean | null;
-  sort: number | null;
-};
-
-const AREAS = ["webb", "automation", "interna-system"] as const;
-const img = (path: string | null, alt: string | null): ProjectImage | null => (path ? { path, alt: alt ?? "" } : null);
-
-function fromRow(r: Row): Case {
-  return {
-    slug: r.slug,
-    title: r.title,
-    client: r.client ?? "",
-    area: (AREAS as readonly string[]).includes(r.area ?? "") ? (r.area as Case["area"]) : null,
-    url: r.url ?? "",
-    summary: r.summary ?? "",
-    situation: r.situation ?? "",
-    solution: r.solution ?? "",
-    metrics: (r.metrics ?? []).map((m) => ({ value: m.value ?? "", label: m.label ?? "" })),
-    stack: r.stack ?? [],
-    testimonial: r.testimonial?.quote ? { quote: r.testimonial.quote, author: r.testimonial.author ?? "" } : null,
-    cover: img(r.cover_path, r.cover_alt),
-    gallery: (r.gallery ?? []).map((g) => ({ path: g.path, alt: g.alt ?? "" })),
-    featured: Boolean(r.featured),
-    published: Boolean(r.published),
-    sort: r.sort ?? 0,
-  };
-}
-
-function toRow(c: Case): Row {
-  return {
-    slug: c.slug,
-    title: c.title,
-    client: c.client,
-    area: c.area,
-    url: c.url || null,
-    summary: c.summary,
-    situation: c.situation || null,
-    solution: c.solution || null,
-    metrics: c.metrics,
-    stack: c.stack,
-    testimonial: c.testimonial?.quote ? c.testimonial : null,
-    cover_path: c.cover?.path ?? null,
-    cover_alt: c.cover?.alt ?? null,
-    gallery: c.gallery,
-    featured: c.featured,
-    published: c.published,
-    sort: c.sort,
-  };
-}
-
 const byOrder = (a: Case, b: Case) => a.sort - b.sort || a.title.localeCompare(b.title, "sv");
 
 /* ---------- demo store ---------- */
-const g = globalThis as unknown as { __binaafyCases?: Case[] };
-const demo = () => (g.__binaafyCases ??= []);
+// Local development without Supabase starts with the imported drafts, so the
+// admin has real cases to edit and publish.
+// Added once per process, also to a store that survived a hot reload.
+const g = globalThis as unknown as { __binaafyCases?: Case[]; __binaafyCasesImported?: boolean };
+const demo = () => {
+  const list = (g.__binaafyCases ??= []);
+  if (!g.__binaafyCasesImported) {
+    g.__binaafyCasesImported = true;
+    for (const c of alenjazCases) if (!list.some((x) => x.slug === c.slug)) list.push({ ...c });
+  }
+  return list;
+};
 
 /* ---------- public ---------- */
 
@@ -98,12 +43,19 @@ export type CaseView = {
   /** Software service area slug, for linking cases from the service pages. */
   area: Case["area"];
   tag: string;
+  status: Case["status"];
+  platform: Case["platform"];
+  country: string;
+  year: number | null;
   summary: string;
   situation: string;
   solution: string;
   metrics: { value: string; label: string }[];
+  features: string[];
   stack: string[];
   url: string;
+  appStore: string;
+  playStore: string;
   featured: boolean;
   /** Image slot (built-in cases) or an uploaded cover. */
   image?: string;
@@ -119,12 +71,19 @@ function viewOf(c: Case): CaseView {
     client: c.client,
     area: c.area,
     tag: areaTitle(c.area) ?? "Software",
+    status: c.status,
+    platform: c.platform,
+    country: c.country,
+    year: c.year,
     summary: c.summary,
     situation: c.situation,
     solution: c.solution,
     metrics: c.metrics,
+    features: c.features,
     stack: c.stack,
     url: c.url,
+    appStore: c.appStore,
+    playStore: c.playStore,
     featured: c.featured,
     cover: resolve(c.cover),
     gallery: c.gallery.map(resolve).filter((x): x is ResolvedImage => x !== null),
@@ -138,12 +97,19 @@ const builtIn: CaseView[] = softwareCases.map((c) => ({
   client: c.client,
   area: "webb",
   tag: c.tag,
+  status: "live",
+  platform: "web",
+  country: "Sverige",
+  year: null,
   summary: c.summary,
   situation: c.situation,
   solution: c.insats,
   metrics: c.resultat.map((r) => ({ value: r.label, label: r.desc })),
+  features: [],
   stack: c.stack,
   url: "",
+  appStore: "",
+  playStore: "",
   featured: true,
   image: c.image,
   cover: null,

@@ -5,7 +5,7 @@ import { EditorForm, TextArea, TextField, useFieldError } from "./EditorForm";
 import ImageUpload from "../ImageUpload";
 import { Gallery, ListField, useFieldErrorsFor } from "./fields";
 import { saveCase } from "@/app/admin/case-actions";
-import { CASE_AREAS, slugify, type Case } from "@/lib/case-schema";
+import { CASE_AREAS, CASE_PLATFORMS, CASE_STATUSES, slugify, type Case } from "@/lib/case-schema";
 
 function AreaSelect({ value, onChange }: { value: Case["area"]; onChange: (v: Case["area"]) => void }) {
   return (
@@ -20,6 +20,36 @@ function AreaSelect({ value, onChange }: { value: Case["area"]; onChange: (v: Ca
         ))}
       </select>
       <span className="efield-hint">Visas som etikett på kortet.</span>
+    </div>
+  );
+}
+
+function Choice<T extends string>({
+  id,
+  label,
+  hint,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  value: T;
+  options: readonly { slug: T; title: string }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="efield">
+      <label htmlFor={id}>{label}</label>
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value as T)}>
+        {options.map((o) => (
+          <option key={o.slug} value={o.slug}>
+            {o.title}
+          </option>
+        ))}
+      </select>
+      <span className="efield-hint">{hint}</span>
     </div>
   );
 }
@@ -116,6 +146,34 @@ export default function CaseEditor({ initial, original }: { initial: Case; origi
           />
           <TextField label="Kund" path="client" value={c.client} onChange={set("client")} placeholder="Autobazar" />
           <AreaSelect value={c.area} onChange={set("area")} />
+          <Choice
+            id="c-platform"
+            label="Typ av produkt"
+            hint="Visas på casesidan."
+            value={c.platform}
+            options={CASE_PLATFORMS}
+            onChange={set("platform")}
+          />
+          <Choice
+            id="c-status"
+            label="Status"
+            hint="”Under utveckling” visas som en etikett på kortet."
+            value={c.status}
+            options={CASE_STATUSES}
+            onChange={set("status")}
+          />
+          <TextField label="Land (valfritt)" path="country" value={c.country} onChange={set("country")} placeholder="Sverige" />
+          <TextField
+            label="År (valfritt)"
+            path="year"
+            value={c.year === null ? "" : String(c.year)}
+            inputMode="numeric"
+            placeholder="2026"
+            onChange={(v) => {
+              const digits = v.replace(/\D/g, "").slice(0, 4);
+              set("year")(digits ? Number(digits) : null);
+            }}
+          />
           <TextField
             label="Länk (valfritt)"
             path="url"
@@ -123,6 +181,20 @@ export default function CaseEditor({ initial, original }: { initial: Case; origi
             onChange={set("url")}
             placeholder="https://www.exempel.se"
             hint="Till sajten eller tjänsten, om den är publik."
+          />
+          <TextField
+            label="App Store (valfritt)"
+            path="appStore"
+            value={c.appStore}
+            onChange={set("appStore")}
+            placeholder="https://apps.apple.com/…"
+          />
+          <TextField
+            label="Google Play (valfritt)"
+            path="playStore"
+            value={c.playStore}
+            onChange={set("playStore")}
+            placeholder="https://play.google.com/…"
           />
           <TextArea
             label="Kort beskrivning"
@@ -154,6 +226,14 @@ export default function CaseEditor({ initial, original }: { initial: Case; origi
             rows={6}
             placeholder="Hur löste ni det, och hur gick projektet till?"
             hint="Krävs för att publicera."
+          />
+          <ListField
+            id="c-features"
+            label="Det här byggde vi (valfritt)"
+            placeholder="Chatt i realtid mellan köpare och säljare"
+            hint="En funktion per rad, högst tio. Visas som en lista under ”Vad vi byggde”."
+            value={c.features}
+            onChange={set("features")}
           />
           <Metrics value={c.metrics} onChange={set("metrics")} />
           <ListField

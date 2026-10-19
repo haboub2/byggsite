@@ -1,3 +1,4 @@
+import { ViewTransition } from "react";
 import Photo from "./Photo";
 import Blueprint from "./Blueprint";
 import { Crumbs } from "./Sections";
@@ -15,6 +16,7 @@ export default function PageHero({
   imageSrc,
   imageAlt,
   caption,
+  morph,
   children,
 }: {
   crumbs: { label: string; href?: string }[];
@@ -30,10 +32,27 @@ export default function PageHero({
   imageSrc?: string | null;
   imageAlt?: string;
   caption?: string;
+  /** View transition name shared with the card that links here (WorkCard
+   *  caseMorph), so the card photo grows into this one. */
+  morph?: string;
   children?: React.ReactNode;
 }) {
+  const photo = (
+    <Photo
+      slot={image}
+      src={imageSrc}
+      alt={imageAlt}
+      ratio="4 / 3"
+      tone="dark"
+      preload
+      parallax={!morph}
+      sizes="(max-width: 900px) 100vw, 45vw"
+    />
+  );
   return (
-    <section className={`phero${image || imageSrc ? "" : " phero--text"}`}>
+    // With a morph, the photo arrives from the card already uncovered, so the
+    // curtain and drawn corners only play on a direct visit (data-settled).
+    <section className={`phero${image || imageSrc ? "" : " phero--text"}`} data-motion-nav={morph ? "instant" : undefined}>
       <div className="container">
         <Crumbs items={crumbs} />
         <div className="phero-grid swap">
@@ -48,16 +67,13 @@ export default function PageHero({
           </div>
           {(image || imageSrc) && (
             <Blueprint caption={caption}>
-              <Photo
-                slot={image}
-                src={imageSrc}
-                alt={imageAlt}
-                ratio="4 / 3"
-                tone="dark"
-                preload
-                parallax
-                sizes="(max-width: 900px) 100vw, 45vw"
-              />
+              {morph ? (
+                <ViewTransition name={morph} share="morph" default="none">
+                  {photo}
+                </ViewTransition>
+              ) : (
+                photo
+              )}
             </Blueprint>
           )}
         </div>
