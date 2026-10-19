@@ -1,6 +1,7 @@
 # Kundportalen version 3 — tidplan, dokumentation, kalkyl och faktura
 
-Status: **plan, skriven 2026-10-19. Inget är byggt än.** Version 1 och 2 av
+Status: **plan, skriven 2026-10-19.** Fas A och B är byggda (B beskrivs i
+`kundportal.md` under *Tidplan 2.0*); C och D återstår. Version 1 och 2 av
 portalen beskrivs i `kundportal.md`. Det här dokumentet samlar ägarnas idéer
 från oktober 2026 och gör dem till en byggordning.
 
@@ -257,7 +258,7 @@ del.
 | Fas | Innehåll | Ungefärlig tid |
 |---|---|---|
 | A, snabba vinster | Kalkyltexten, mejlkonfiguration och test, privat kontra företag på offert-PDF:en. **Kod klar 2026-10-19**; mejlnycklarna i Vercel och ett skarpt test återstår. | 1 dag |
-| B, Tidplan 2.0 | Arbetsdagskalender, varaktigheter, mallar, förseningar, ÄTA med tid som läggs in i tidplanen, påminnelser, kundens tidplan, och `project_photos` med fas och dag på varje foto. Migration `0012`. | 1,5 vecka |
+| B, Tidplan 2.0 | Arbetsdagskalender, varaktigheter, mallar, förseningar, ÄTA med tid som läggs in i tidplanen, påminnelser, kundens tidplan, och `project_photos` med fas och dag på varje foto. Migration `0012`. **Kod klar 2026-10-19**; migrationen ska köras mot produktion. | 1,5 vecka |
 | C, Dokumentation | Fliken Dokumentation i admin och portal, bildtexter, sammanfattningar, rapport-PDF, låsning, zip-överlämning, arkivfilter. Migration `0013`. | 1,5 vecka |
 | D, Faktura | Egen fakturering som produktkärna, se `fakturering.md` (version 2) | se den planen |
 

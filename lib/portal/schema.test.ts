@@ -11,6 +11,7 @@ const order = (patch: Partial<ChangeOrder>): ChangeOrder => ({
   amount: 0,
   labor_amount: 0,
   status: "pending",
+  duration_days: 0,
   answered_by: null,
   answered_name: null,
   answered_at: null,

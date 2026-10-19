@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useId, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { addDocumentAction, postUpdate } from "@/app/admin/portal-actions";
 import type { ContentActionState } from "@/app/admin/content-actions";
 import { compressImage } from "@/components/admin/ImageUpload";
@@ -19,9 +19,34 @@ async function uploadToPortal(project: string, kind: "image" | "document", file:
   return json.path;
 }
 
-/** "Ny uppdatering": a short text and any number of photos, straight from the phone camera. */
-export function UpdateComposer({ project }: { project: string }) {
+/**
+ * "Dagens uppdatering": photos straight from the phone camera, a line of
+ * text, Publicera. The phase and the day are filled in (today, and the
+ * phase the calendar has running); one tap on a chip picks another phase.
+ * Every photo is stored in that phase and day.
+ */
+export function UpdateComposer({
+  project,
+  phases,
+  defaultPhase,
+  today,
+}: {
+  project: string;
+  phases: { id: string; name: string }[];
+  defaultPhase: string | null;
+  today: string;
+}) {
   const id = useId();
+  const [phase, setPhase] = useState<string | null>(defaultPhase);
+  const [day, setDay] = useState(today);
+  const chips = useRef<HTMLDivElement>(null);
+
+  // On a phone the chip row scrolls sideways; start with today's phase in view.
+  useEffect(() => {
+    const row = chips.current;
+    const chip = row?.querySelector<HTMLElement>('[aria-checked="true"]');
+    if (row && chip) row.scrollLeft = chip.offsetLeft - row.offsetLeft - 16;
+  }, []);
   const form = useRef<HTMLFormElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -58,6 +83,16 @@ export function UpdateComposer({ project }: { project: string }) {
     <form key={doneAt ?? "new"} ref={form} action={action} className="portal-compose" noValidate>
       <input type="hidden" name="project" value={project} />
       <input type="hidden" name="photos" value={JSON.stringify(photos)} />
+      <input type="hidden" name="phase" value={phase ?? ""} />
+      {phases.length > 0 && (
+        <div ref={chips} className="compose-phases" role="radiogroup" aria-label="Fas">
+          {phases.map((p) => (
+            <button key={p.id} type="button" role="radio" aria-checked={phase === p.id} className="compose-chip" onClick={() => setPhase(p.id)}>
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
       <div className={`efield${state.fieldErrors?.body ? " has-error" : ""}`}>
         <label htmlFor={`${id}-body`}>Vad har hänt?</label>
         <textarea id={`${id}-body`} name="body" rows={3} maxLength={3000} placeholder="Tätskiktet är klart i duschzonen. Torktid till torsdag." />
@@ -80,6 +115,10 @@ export function UpdateComposer({ project }: { project: string }) {
         <input ref={input} id={`${id}-photos`} type="file" accept="image/*" multiple capture="environment" className="sr-only" onChange={(e) => take(e.target.files)} />
         <label htmlFor={`${id}-photos`} className="btn btn-ghost">
           {busy ? `Laddar upp (${busy})…` : "Lägg till foton"}
+        </label>
+        <label className="compose-day">
+          <span>{day === today ? "I dag" : "Dag"}</span>
+          <input type="date" name="day" value={day} max={today} onChange={(e) => setDay(e.target.value || today)} aria-label="Dagen fotona gäller" />
         </label>
         <button type="submit" className="btn btn-primary" disabled={pending || busy > 0}>
           {pending ? "Publicerar…" : "Publicera"}

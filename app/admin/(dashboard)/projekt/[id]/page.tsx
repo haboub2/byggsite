@@ -2,31 +2,44 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   addChangeOrderAction,
-  addPhaseAction,
   deleteProject,
   inviteMemberAction,
-  movePhaseAction,
   removeChangeOrderAction,
   removeDocumentAction,
   removeMemberAction,
-  removePhaseAction,
   removeUpdateAction,
-  savePhaseAction,
-  togglePhaseAction,
+  savePhaseTemplateAction,
+  scheduleChangeOrderAction,
 } from "@/app/admin/portal-actions";
 import ProjectDetailsForm from "@/components/admin/portal/ProjectDetailsForm";
 import { DocumentUploader, UpdateComposer } from "@/components/admin/portal/PortalUploads";
+import TimelineEditor from "@/components/admin/portal/TimelineEditor";
 import { formatDateTime, formatWhen } from "@/lib/admin-format";
 import { fileHref } from "@/lib/portal/files-href";
+import { formatDay, formatWeekday, todayIso } from "@/lib/portal/format";
+import { BUILT_IN_PHASE_TEMPLATES } from "@/lib/portal/phase-templates";
 import { CHANGE_ORDER_STATUS_LABEL, changeOrderRot, DOCUMENT_KIND_LABEL, formatKr, PROJECT_STATUS_LABEL, progressPercent } from "@/lib/portal/schema";
+import { changeOrdersToSchedule, phaseForDay, shiftLine } from "@/lib/portal/timeline";
 import { getProjectBundle } from "@/lib/portal/store";
+import { formatDays, isIsoDate } from "@/lib/workdays";
 
 const FLASH: Record<string, string> = {
-  skapat: "Projektet är skapat. Fyll i det kunden ska se, och bjud sedan in kunden längst ner.",
+  skapat: "Projektet är skapat med mallens faser. Sätt startdatum och justera dagarna under Tidplan, och bjud sedan in kunden längst ner.",
   inbjuden: "Kunden är inbjuden och har fått ett mejl med inloggningslänk.",
   tillagd: "Kunden hade redan ett konto och har lagts till i projektet.",
   ata: "Ändringen är upplagd och kunden har fått ett mejl om att svara.",
+  tidplan: "Tidplanen är sparad. Kunden ser de nya datumen direkt.",
+  mall: "Tidplanen är sparad som mall och kan väljas för nästa projekt.",
 };
+
+/** "Nytt beräknat slut: 14 nov (var 12 nov)." after a delay or an ÄTA. */
+function endFlash(kind: string, after: unknown, before: unknown): string | undefined {
+  if (kind !== "forsening" && kind !== "ata-tid") return undefined;
+  const lead = kind === "forsening" ? "Förseningen är sparad." : "ÄTA:n ligger nu i tidplanen.";
+  if (typeof after !== "string" || !isIsoDate(after)) return lead;
+  const was = typeof before === "string" && isIsoDate(before) && before !== after ? ` (var ${formatWeekday(before)})` : "";
+  return `${lead} Nytt beräknat slut: ${formatWeekday(after)}${was}. Godta det, eller korta senare faser nedan och spara.`;
+}
 
 export default async function PortalProjectAdmin({
   params,
@@ -38,8 +51,15 @@ export default async function PortalProjectAdmin({
   const [{ id }, q] = await Promise.all([params, searchParams]);
   const bundle = await getProjectBundle(id);
   if (!bundle) notFound();
-  const { project, phases, updates, documents, members, changeOrders } = bundle;
-  const flash = typeof q.sparat === "string" ? FLASH[q.sparat] : undefined;
+  const { project, phases, updates, documents, members, changeOrders, shifts } = bundle;
+  const flash = typeof q.sparat === "string" ? (FLASH[q.sparat] ?? endFlash(q.sparat, q.slut, q.var)) : undefined;
+  // Timeline actions land on #tidplan; show their message there instead of at the top.
+  const inTimeline = q.vid === "tidplan";
+  const today = todayIso();
+  const todaysPhase = phaseForDay(phases, today);
+  const toSchedule = changeOrdersToSchedule(changeOrders, phases);
+  const phaseName = (id: string | null) => phases.find((p) => p.id === id)?.name;
+  const openDelay = typeof q.forsening === "string" ? q.forsening : undefined;
   const error = typeof q.fel === "string" ? q.fel : undefined;
   const hidden = <input type="hidden" name="project" value={project.id} />;
 
@@ -61,91 +81,128 @@ export default async function PortalProjectAdmin({
           </Link>
         </div>
 
-        {flash && <p className="admin-flash">{flash}</p>}
-        {error && (
+        {flash && !inTimeline && <p className="admin-flash">{flash}</p>}
+        {error && !inTimeline && (
           <p className="form-feedback error" role="alert" style={{ marginTop: 14 }}>
             {error}
           </p>
         )}
 
-        <ProjectDetailsForm project={project} />
+        {toSchedule.map((o) => (
+          <form key={o.id} action={scheduleChangeOrderAction} className="tl-schedule">
+            {hidden}
+            <input type="hidden" name="order" value={o.id} />
+            <p>
+              <strong>
+                ÄTA {o.number} är godkänd ({formatDays(o.duration_days)}).
+              </strong>{" "}
+              {o.title}
+            </p>
+            <label>
+              <span>Lägg in i tidplanen efter</span>
+              <select name="after" defaultValue={todaysPhase?.id ?? phases[phases.length - 1]?.id ?? ""}>
+                <option value="">Först</option>
+                {phases.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" className="btn btn-primary">
+              Lägg in
+            </button>
+          </form>
+        ))}
 
-        {/* ---- Faser ---- */}
-        <h2 className="admin-h2" id="faser" style={{ marginTop: 44 }}>
+        <h2 className="admin-h2" id="ny-uppdatering" style={{ marginTop: 32 }}>
+          Dagens uppdatering
+        </h2>
+        <p className="admin-shown">Ta foton, skriv en rad, tryck Publicera. Fas och dag är ifyllda; tryck på en annan fas om det behövs.</p>
+        <UpdateComposer project={project.id} phases={phases.map((p) => ({ id: p.id, name: p.name }))} defaultPhase={todaysPhase?.id ?? null} today={today} />
+
+        <div style={{ marginTop: 44 }}>
+          <ProjectDetailsForm project={project} />
+        </div>
+
+        {/* ---- Tidplan ---- */}
+        <h2 className="admin-h2" id="tidplan" style={{ marginTop: 44 }}>
           Tidplan
         </h2>
-        <p className="admin-shown">Bocka av fasen när den är klar. Den första obockade visas som pågående.</p>
-        <ol className="portal-phases-edit">
-          {phases.map((ph, i) => (
-            <li key={ph.id} data-done={ph.done_at ? "1" : undefined}>
-              <form action={togglePhaseAction} className="portal-phase-done">
-                {hidden}
-                <input type="hidden" name="phase" value={ph.id} />
-                <input type="hidden" name="done" value={ph.done_at ? "0" : "1"} />
-                <button type="submit" aria-label={ph.done_at ? `Markera ${ph.name} som inte klar` : `Markera ${ph.name} som klar`} aria-pressed={Boolean(ph.done_at)}>
-                  {ph.done_at ? "✓" : ""}
-                </button>
-              </form>
-              <form action={savePhaseAction} className="portal-phase-fields">
-                {hidden}
-                <input type="hidden" name="phase" value={ph.id} />
-                <input name="name" defaultValue={ph.name} maxLength={80} aria-label="Fasens namn" />
-                <input name="starts_on" type="date" defaultValue={ph.starts_on ?? ""} aria-label="Start" />
-                <input name="ends_on" type="date" defaultValue={ph.ends_on ?? ""} aria-label="Slut" />
-                <button type="submit" className="link-quiet">
-                  Spara
-                </button>
-              </form>
-              <div className="portal-phase-tools">
-                <form action={movePhaseAction}>
-                  {hidden}
-                  <input type="hidden" name="phase" value={ph.id} />
-                  <input type="hidden" name="dir" value="up" />
-                  <button type="submit" aria-label="Flytta upp" disabled={i === 0}>
-                    ↑
-                  </button>
-                </form>
-                <form action={movePhaseAction}>
-                  {hidden}
-                  <input type="hidden" name="phase" value={ph.id} />
-                  <input type="hidden" name="dir" value="down" />
-                  <button type="submit" aria-label="Flytta ner" disabled={i === phases.length - 1}>
-                    ↓
-                  </button>
-                </form>
-                <form action={removePhaseAction}>
-                  {hidden}
-                  <input type="hidden" name="phase" value={ph.id} />
-                  <button type="submit" aria-label="Ta bort fasen">
-                    ×
-                  </button>
-                </form>
-              </div>
-            </li>
-          ))}
-        </ol>
-        <form action={addPhaseAction} className="portal-phase-add">
-          {hidden}
-          <input name="name" placeholder="Ny fas, t.ex. Målning" maxLength={80} required aria-label="Ny fas" />
-          <input name="starts_on" type="date" aria-label="Start" />
-          <input name="ends_on" type="date" aria-label="Slut" />
-          <button type="submit" className="btn btn-ghost">
-            Lägg till fas
-          </button>
-        </form>
+        <p className="admin-shown">
+          Startdatum och dagar per fas; datumen räknas fram. Slutdatumet flyttas bara av en försening eller en godkänd ÄTA, och kunden ser varför.
+        </p>
+        {flash && inTimeline && <p className="admin-flash">{flash}</p>}
+        {error && inTimeline && (
+          <p className="form-feedback error" role="alert" style={{ marginTop: 14 }}>
+            {error}
+          </p>
+        )}
+        <TimelineEditor
+          key={`${project.updated_at}-${openDelay ?? ""}`}
+          project={project}
+          phases={phases}
+          shifts={shifts}
+          changeOrders={changeOrders}
+          hasMembers={members.length > 0}
+          openDelay={openDelay}
+        />
+        {shifts.length > 0 && (
+          <div className="tl-shifts">
+            <h3>Förskjutningar som kunden ser</h3>
+            <p className="inbox-meta">
+              Ursprungligen klart {formatWeekday(project.planned_ends_on)}, nu {formatWeekday(project.ends_on)}.
+            </p>
+            <ul>
+              {shifts.map((s) => (
+                <li key={s.id}>
+                  <span>{shiftLine(s)}</span>
+                  <span className="inbox-meta">
+                    {phaseName(s.phase_id) ?? ""} · {formatDay(s.created_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <details className="tl-template">
+          <summary>Spara tidplanen som mall</summary>
+          <form action={savePhaseTemplateAction} className="portal-phase-add">
+            {hidden}
+            <input name="name" placeholder="Mallens namn, t.ex. Badrum litet" maxLength={80} required aria-label="Mallens namn" />
+            <select name="job_type" aria-label="Jobbtyp" defaultValue="">
+              <option value="">Jobbtyp</option>
+              {[...new Set(BUILT_IN_PHASE_TEMPLATES.map((t) => t.job_type))].map((j) => (
+                <option key={j} value={j}>
+                  {j}
+                </option>
+              ))}
+            </select>
+            <button type="submit" className="btn btn-ghost">
+              Spara som mall
+            </button>
+          </form>
+          <p className="inbox-meta">Faserna och deras dagar sparas, inte ÄTA-faserna. Mallen kan väljas när nästa projekt skapas.</p>
+        </details>
 
         {/* ---- Uppdateringar ---- */}
         <h2 className="admin-h2" id="uppdateringar" style={{ marginTop: 44 }}>
-          Uppdateringar och foton
+          Alla uppdateringar
         </h2>
         <p className="admin-shown">Korta lägesrapporter med bilder från bygget. Kunden ser den nyaste överst.</p>
-        <UpdateComposer project={project.id} />
         {updates.length > 0 && (
           <ul className="portal-diary portal-diary--admin">
             {updates.map((u) => (
               <li key={u.id}>
                 <div className="portal-diary-head">
-                  <time dateTime={u.created_at}>{formatDateTime(u.created_at)}</time>
+                  <span>
+                    <time dateTime={u.created_at}>{formatDateTime(u.created_at)}</time>
+                    <span className="inbox-meta">
+                      {" "}
+                      · {phaseName(u.phase_id) ?? "Ingen fas"}
+                      {u.day !== todayIso(new Date(u.created_at)) ? ` · gäller ${formatWeekday(u.day)}` : ""}
+                    </span>
+                  </span>
                   <form action={removeUpdateAction}>
                     {hidden}
                     <input type="hidden" name="update" value={u.id} />
@@ -201,6 +258,11 @@ export default async function PortalProjectAdmin({
               <input id="ata-labor" name="labor_amount" inputMode="numeric" pattern="[0-9 ]*" placeholder="6500" />
               <span className="efield-hint">Den del ROT räknas på. Lämna tom om bara material.</span>
             </div>
+            <div className="efield">
+              <label htmlFor="ata-days">Tid (arbetsdagar)</label>
+              <input id="ata-days" name="duration_days" inputMode="decimal" placeholder="0" />
+              <span className="efield-hint">Hur mycket längre projektet blir, i hela eller halva dagar. 0 om tiden inte påverkas. Kunden ser det innan hen svarar.</span>
+            </div>
           </div>
           <div className="portal-compose-bar">
             <span className="inbox-meta">Kunden får ett mejl med länk till portalen.</span>
@@ -228,7 +290,7 @@ export default async function PortalProjectAdmin({
                   </h3>
                   {o.description && <p className="portal-ata-desc">{o.description}</p>}
                   <p className="inbox-meta">
-                    Arbete {formatKr(o.labor_amount)} · ROT {formatKr(rot)}
+                    Arbete {formatKr(o.labor_amount)} · ROT {formatKr(rot)} · {o.duration_days > 0 ? `+${formatDays(o.duration_days)}` : "ingen tid"}
                     {o.status !== "pending" && o.answered_at
                       ? ` · ${o.status === "approved" ? "Godkänd" : "Avböjd"} av ${o.answered_name || "kunden"} ${formatDateTime(o.answered_at)}`
                       : ""}
