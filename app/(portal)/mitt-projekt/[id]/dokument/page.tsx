@@ -4,6 +4,7 @@ import { fileHref } from "@/lib/portal/files-href";
 import { formatDay } from "@/lib/portal/format";
 import { DOCUMENT_KIND_LABEL } from "@/lib/portal/schema";
 import { getProjectBundle } from "@/lib/portal/store";
+import ReportDownload from "@/components/portal/ReportDownload";
 
 export const metadata: Metadata = { title: "Dokument" };
 
@@ -17,6 +18,7 @@ export default async function PortalDocuments({ params }: { params: Promise<{ id
     <div className="portal-stack">
       <section className="portal-card">
         <h2>Dokument</h2>
+        <ReportDownload project={project} />
         {documents.length === 0 ? (
           <p>Inga dokument än. Offert, fakturor, intyg och garantibevis samlas här.</p>
         ) : (

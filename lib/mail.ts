@@ -155,7 +155,7 @@ type PortalRecipient = { email: string; name: string };
 type PortalNoticeKind = "update" | "document" | "change_order" | "delay";
 
 const PORTAL_NOTICE: Record<PortalNoticeKind, { subject: (title: string) => string; lead: string; tab: string; button: string }> = {
-  update: { subject: (t) => `Nytt från bygget — ${t}`, lead: "Vi har lagt upp en ny uppdatering från bygget.", tab: "foton", button: "Se uppdateringen" },
+  update: { subject: (t) => `Nytt från bygget — ${t}`, lead: "Vi har lagt upp en ny uppdatering från bygget.", tab: "dokumentation", button: "Se uppdateringen" },
   document: { subject: (t) => `Nytt dokument — ${t}`, lead: "Ett nytt dokument finns nu under Dokument i kundportalen.", tab: "dokument", button: "Öppna dokumenten" },
   change_order: { subject: (t) => `Ändring att godkänna — ${t}`, lead: "Vi har lagt upp ett tilläggs- eller ändringsarbete (ÄTA) som väntar på ditt svar.", tab: "andringar", button: "Svara på ändringen" },
   delay: { subject: (t) => `Ändrad tidplan — ${t}`, lead: "Tidplanen har flyttats. Här är orsaken och det nya beräknade slutdatumet.", tab: "tidplan", button: "Se tidplanen" },

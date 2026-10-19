@@ -1,9 +1,23 @@
 import Link from "next/link";
 import { togglePhaseAction } from "@/app/admin/portal-actions";
 import { formatWhen } from "@/lib/admin-format";
-import { formatRange, formatWeekday } from "@/lib/portal/format";
-import { PROJECT_STATUSES, PROJECT_STATUS_LABEL, type ProjectStatus } from "@/lib/portal/schema";
-import { listOverduePhases, listProjects } from "@/lib/portal/store";
+import { documentationHealth, missingPhotosLine } from "@/lib/portal/documentation";
+import { formatDay, formatRange, formatWeekday, todayIso } from "@/lib/portal/format";
+import { PROJECT_STATUSES, PROJECT_STATUS_LABEL, type PortalProject, type ProjectStatus } from "@/lib/portal/schema";
+import { listDocumentationOverview, listOverduePhases, listProjects } from "@/lib/portal/store";
+
+/** The year an archived project belongs to: when it was done (locked), else when it started. */
+const yearOf = (p: PortalProject) => (p.archived_at || p.starts_on || p.created_at).slice(0, 4);
+
+/** Archive search: every word must be found in the customer, the address or the title. */
+function matches(p: PortalProject, q: string): boolean {
+  const hay = [p.customer_name, p.address, p.title].join(" ").toLocaleLowerCase("sv");
+  return q
+    .toLocaleLowerCase("sv")
+    .split(/s+/)
+    .filter(Boolean)
+    .every((w) => hay.includes(w));
+}
 
 export default async function PortalProjectsList({
   searchParams,
@@ -11,10 +25,34 @@ export default async function PortalProjectsList({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const status = PROJECT_STATUSES.includes(params.status as ProjectStatus) ? (params.status as ProjectStatus) : undefined;
+  const archive = params.arkiv === "1";
+  const status = !archive && PROJECT_STATUSES.includes(params.status as ProjectStatus) ? (params.status as ProjectStatus) : undefined;
   const error = typeof params.fel === "string" ? params.fel : undefined;
+  const search = typeof params.q === "string" ? params.q.trim().slice(0, 80) : "";
+  const year = typeof params.ar === "string" && /^d{4}$/.test(params.ar) ? params.ar : "";
   const [all, overdue] = await Promise.all([listProjects(), listOverduePhases()]);
-  const shown = status ? all.filter((p) => p.status === status) : all;
+  const archived = all.filter((p) => p.archived_at);
+  const years = [...new Set(archived.map(yearOf))].sort().reverse();
+  const shown = archive
+    ? archived.filter((p) => (!year || yearOf(p) === year) && (!search || matches(p, search))).sort((a, b) => (b.archived_at ?? "").localeCompare(a.archived_at ?? ""))
+    : status
+      ? all.filter((p) => p.status === status)
+      : all;
+  // Photo health for the projects still being documented.
+  const today = todayIso();
+  const open = shown.filter((p) => !p.archived_at);
+  const overview = archive ? { phases: [], photos: [] } : await listDocumentationOverview(open.map((p) => p.id));
+  const health = new Map(
+    open.map((p) => [
+      p.id,
+      documentationHealth(
+        p,
+        overview.phases.filter((ph) => ph.project_id === p.id),
+        overview.photos.filter((ph) => ph.project_id === p.id),
+        today
+      ),
+    ])
+  );
   const count = (s?: ProjectStatus) => (s ? all.filter((p) => p.status === s).length : all.length);
   const byId = new Map(all.map((p) => [p.id, p]));
   const nudges = overdue.filter((ph) => byId.has(ph.project_id));
@@ -80,7 +118,7 @@ export default async function PortalProjectsList({
         )}
 
         <nav className="inbox-tabs" aria-label="Status">
-          <Link href="/admin/projekt" aria-current={!status ? "page" : undefined}>
+          <Link href="/admin/projekt" aria-current={!status && !archive ? "page" : undefined}>
             Alla <span>{count()}</span>
           </Link>
           {PROJECT_STATUSES.map((s) => (
@@ -88,16 +126,67 @@ export default async function PortalProjectsList({
               {PROJECT_STATUS_LABEL[s]} <span>{count(s)}</span>
             </Link>
           ))}
+          <Link href="/admin/projekt?arkiv=1" aria-current={archive ? "page" : undefined}>
+            Arkiv <span>{archived.length}</span>
+          </Link>
         </nav>
+
+        {archive && (
+          <form className="doc-archive-search" action="/admin/projekt" role="search">
+            <input type="hidden" name="arkiv" value="1" />
+            <input name="q" defaultValue={search} placeholder="Sök kund, adress eller projekt" aria-label="Sök i arkivet" />
+            <select name="ar" defaultValue={year} aria-label="År">
+              <option value="">Alla år</option>
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+            <button type="submit" className="btn btn-ghost">
+              Sök
+            </button>
+          </form>
+        )}
 
         {shown.length === 0 ? (
           <div className="inbox-empty">
-            <p>{all.length === 0 ? "Inga projekt än. Skapa det första från en accepterad offert." : "Inga projekt med den statusen."}</p>
+            <p>
+              {all.length === 0
+                ? "Inga projekt än. Skapa det första från en accepterad offert."
+                : archive
+                  ? archived.length === 0
+                    ? "Arkivet är tomt. Ett projekt hamnar här när dess dokumentation låses."
+                    : "Inget i arkivet matchar sökningen."
+                  : "Inga projekt med den statusen."}
+            </p>
           </div>
         ) : (
           <ul className="inbox-list">
             {shown.map((p) => {
               const moved = p.planned_ends_on && p.ends_on && p.planned_ends_on !== p.ends_on;
+              if (archive) {
+                return (
+                  <li key={p.id} className="doc-archive-row">
+                    <a href={`/admin/projekt/${p.id}/rapport`} target="_blank" rel="noreferrer" className="inbox-row" data-status={p.status}>
+                      <span className="inbox-status">{yearOf(p)}</span>
+                      <span className="inbox-main">
+                        <strong>{p.title}</strong>
+                        <span className="inbox-meta">{[p.customer_name, p.address].filter(Boolean).join(" · ")}</span>
+                      </span>
+                      <span className="inbox-side">
+                        <strong>Öppna rapporten</strong>
+                        <span className="inbox-meta">låst {formatDay(p.archived_at)}</span>
+                      </span>
+                    </a>
+                    <Link href={`/admin/projekt/${p.id}`} className="link-quiet doc-archive-open">
+                      Till projektet
+                    </Link>
+                  </li>
+                );
+              }
+              const h = health.get(p.id);
+              const docLine = h && h.daysSoFar > 0 ? `Foton ${h.daysWithPhotos} av ${h.daysSoFar} dagar` : "";
               return (
                 <li key={p.id}>
                   <Link href={`/admin/projekt/${p.id}`} className="inbox-row" data-status={p.status}>
@@ -105,6 +194,13 @@ export default async function PortalProjectsList({
                     <span className="inbox-main">
                       <strong>{p.title}</strong>
                       <span className="inbox-meta">{[p.customer_name, p.address].filter(Boolean).join(" · ")}</span>
+                      {docLine || h?.missing.length ? (
+                        <span className="inbox-meta doc-row-health">
+                          {docLine}
+                          {h?.missing.length ? <span className="doc-warn">{missingPhotosLine(h.missing)}</span> : null}
+                        </span>
+                      ) : null}
+                      {p.archived_at && <span className="inbox-meta">Dokumentationen låst {formatDay(p.archived_at)}</span>}
                     </span>
                     <span className="inbox-side">
                       <strong>{formatRange(p.starts_on, p.ends_on) || "Inga datum"}</strong>

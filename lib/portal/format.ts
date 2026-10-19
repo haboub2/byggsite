@@ -7,7 +7,8 @@ export function formatDay(value: string | null | undefined, now = new Date()): s
   if (!value) return "";
   const d = new Date(value.length === 10 ? `${value}T12:00:00` : value);
   const sameYear = d.getFullYear() === now.getFullYear();
-  return new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) }).format(d);
+  // Intl writes "15 okt."; the abbreviation dot doubles up before a full stop.
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) }).format(d).replace(/\./g, "");
 }
 
 /** "15 okt – 3 nov", or just one side when the other is missing. */

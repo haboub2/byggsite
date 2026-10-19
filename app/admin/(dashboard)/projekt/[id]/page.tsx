@@ -22,6 +22,10 @@ import { CHANGE_ORDER_STATUS_LABEL, changeOrderRot, DOCUMENT_KIND_LABEL, formatK
 import { changeOrdersToSchedule, phaseForDay, shiftLine } from "@/lib/portal/timeline";
 import { getProjectBundle } from "@/lib/portal/store";
 import { formatDays, isIsoDate } from "@/lib/workdays";
+import { documentationHealth, missingPhotosLine } from "@/lib/portal/documentation";
+
+/** Server actions on this page may render the report afterwards (after()). */
+export const maxDuration = 60;
 
 const FLASH: Record<string, string> = {
   skapat: "Projektet är skapat med mallens faser. Sätt startdatum och justera dagarna under Tidplan, och bjud sedan in kunden längst ner.",
@@ -51,7 +55,9 @@ export default async function PortalProjectAdmin({
   const [{ id }, q] = await Promise.all([params, searchParams]);
   const bundle = await getProjectBundle(id);
   if (!bundle) notFound();
-  const { project, phases, updates, documents, members, changeOrders, shifts } = bundle;
+  const { project, phases, updates, documents, members, changeOrders, shifts, photos } = bundle;
+  const locked = Boolean(project.archived_at);
+  const health = documentationHealth(project, phases, photos, todayIso());
   const flash = typeof q.sparat === "string" ? (FLASH[q.sparat] ?? endFlash(q.sparat, q.slut, q.var)) : undefined;
   // Timeline actions land on #tidplan; show their message there instead of at the top.
   const inTimeline = q.vid === "tidplan";
@@ -118,8 +124,35 @@ export default async function PortalProjectAdmin({
         <h2 className="admin-h2" id="ny-uppdatering" style={{ marginTop: 32 }}>
           Dagens uppdatering
         </h2>
-        <p className="admin-shown">Ta foton, skriv en rad, tryck Publicera. Fas och dag är ifyllda; tryck på en annan fas om det behövs.</p>
-        <UpdateComposer project={project.id} phases={phases.map((p) => ({ id: p.id, name: p.name }))} defaultPhase={todaysPhase?.id ?? null} today={today} />
+        {locked ? (
+          <p className="admin-shown">Dokumentationen är låst, så inga nya foton eller anteckningar kan läggas till. Lås upp den under Dokumentation om det behövs.</p>
+        ) : (
+          <>
+            <p className="admin-shown">Ta foton, skriv en rad, tryck Publicera. Fas och dag är ifyllda; tryck på en annan fas om det behövs.</p>
+            <UpdateComposer project={project.id} phases={phases.map((p) => ({ id: p.id, name: p.name }))} defaultPhase={todaysPhase?.id ?? null} today={today} />
+          </>
+        )}
+
+        {/* ---- Dokumentation ---- */}
+        <div className="doc-panel" id="dokumentation">
+          <div className="doc-panel-facts">
+            <strong>Dokumentation</strong>
+            <span>
+              Foton {health.daysWithPhotos} av {health.daysSoFar} dagar hittills
+            </span>
+            {health.missing.length > 0 && <span className="doc-warn">{missingPhotosLine(health.missing)}</span>}
+            {locked && <span>Låst {formatDay(project.archived_at)}</span>}
+          </div>
+          <div className="doc-panel-actions">
+            <Link href={`/admin/projekt/${project.id}/dokumentation`} className="btn btn-primary">
+              Öppna dokumentationen
+            </Link>
+            <a href={`/admin/projekt/${project.id}/rapport`} target="_blank" rel="noreferrer" className="btn btn-ghost">
+              Visa PDF
+            </a>
+          </div>
+          <p className="inbox-meta">Flytta foton, skriv bildtexter och sammanfattningar, och lås dokumentationen när projektet är klart.</p>
+        </div>
 
         <div style={{ marginTop: 44 }}>
           <ProjectDetailsForm project={project} />
@@ -130,7 +163,8 @@ export default async function PortalProjectAdmin({
           Tidplan
         </h2>
         <p className="admin-shown">
-          Startdatum och dagar per fas; datumen räknas fram. Slutdatumet flyttas bara av en försening eller en godkänd ÄTA, och kunden ser varför.
+          Startdatum och dagar per fas; datumen räknas fram. Slutdatumet flyttas bara av en försening eller en godkänd ÄTA, och kunden ser varför. Kameran på
+          en fas betyder att den inte kan bockas av utan minst ett foto.
         </p>
         {flash && inTimeline && <p className="admin-flash">{flash}</p>}
         {error && inTimeline && (
@@ -138,6 +172,7 @@ export default async function PortalProjectAdmin({
             {error}
           </p>
         )}
+        <fieldset className="doc-fieldset" disabled={locked}>
         <TimelineEditor
           key={`${project.updated_at}-${openDelay ?? ""}`}
           project={project}
@@ -147,6 +182,7 @@ export default async function PortalProjectAdmin({
           hasMembers={members.length > 0}
           openDelay={openDelay}
         />
+        </fieldset>
         {shifts.length > 0 && (
           <div className="tl-shifts">
             <h3>Förskjutningar som kunden ser</h3>
@@ -203,13 +239,15 @@ export default async function PortalProjectAdmin({
                       {u.day !== todayIso(new Date(u.created_at)) ? ` · gäller ${formatWeekday(u.day)}` : ""}
                     </span>
                   </span>
-                  <form action={removeUpdateAction}>
-                    {hidden}
-                    <input type="hidden" name="update" value={u.id} />
-                    <button type="submit" className="link-quiet">
-                      Ta bort
-                    </button>
-                  </form>
+                  {!locked && (
+                    <form action={removeUpdateAction}>
+                      {hidden}
+                      <input type="hidden" name="update" value={u.id} />
+                      <button type="submit" className="link-quiet">
+                        Ta bort
+                      </button>
+                    </form>
+                  )}
                 </div>
                 {u.body && <p>{u.body}</p>}
                 {u.photos.length > 0 && (
@@ -377,14 +415,20 @@ export default async function PortalProjectAdmin({
         <div className="danger-zone">
           <div>
             <strong>Ta bort projektet</strong>
-            <span className="inbox-meta">Tar bort tidplan, uppdateringar, foton och dokument. Offerten påverkas inte.</span>
+            <span className="inbox-meta">
+              {locked
+                ? "Dokumentationen är låst och arkiverad (spara minst tio år). Lås upp den under Dokumentation först om projektet verkligen ska bort."
+                : "Tar bort tidplan, uppdateringar, foton och dokument. Offerten påverkas inte."}
+            </span>
           </div>
-          <form action={deleteProject}>
-            <input type="hidden" name="id" value={project.id} />
-            <button type="submit" className="btn btn-ghost">
-              Ta bort
-            </button>
-          </form>
+          {!locked && (
+            <form action={deleteProject}>
+              <input type="hidden" name="id" value={project.id} />
+              <button type="submit" className="btn btn-ghost">
+                Ta bort
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </section>

@@ -2,7 +2,9 @@ import "server-only";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createClient as createSessionClient } from "../supabase/server";
+import { createAdminClient } from "../supabase/admin";
 import { isDemo } from "../leads";
+import { demoPhotoNumber, drawDemoPhoto } from "./demo-photos";
 
 /**
  * Photos and documents in the portal live in the PRIVATE `portal` bucket
@@ -65,30 +67,73 @@ export async function uploadPortalFile(projectId: string, kind: PortalFileKind, 
 
 export type ResolvedFile = { redirect: string } | { bytes: Buffer; contentType: string };
 
-/** Where to send a caller who may see the key: a signed URL, or the bytes in demo mode. */
-export async function resolvePortalFile(key: string): Promise<ResolvedFile | null> {
+const contentTypeOf = (key: string) => {
+  const ext = key.split(".").pop() ?? "";
+  return ext === "pdf" ? "application/pdf" : ext === "zip" ? "application/zip" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+};
+
+/** Demo mode: the file on disk, and the example project's photos drawn on first use. */
+async function readDemoFile(key: string): Promise<Buffer | null> {
+  try {
+    return await fs.readFile(demoDir(key));
+  } catch {
+    const n = demoPhotoNumber(key);
+    if (n === null) return null;
+    const bytes = await drawDemoPhoto(n);
+    await fs.mkdir(path.dirname(demoDir(key)), { recursive: true });
+    await fs.writeFile(demoDir(key), bytes);
+    return bytes;
+  }
+}
+
+/**
+ * Where to send a caller who may see the key: a signed URL, or the bytes in
+ * demo mode. With `downloadName` the browser saves the file under that name.
+ */
+export async function resolvePortalFile(key: string, opts: { downloadName?: string } = {}): Promise<ResolvedFile | null> {
   if (isDemo()) {
-    try {
-      const bytes = await fs.readFile(demoDir(key));
-      const ext = key.split(".").pop() ?? "";
-      const contentType =
-        ext === "pdf" ? "application/pdf" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
-      return { bytes, contentType };
-    } catch {
-      return null;
-    }
+    const bytes = await readDemoFile(key);
+    return bytes ? { bytes, contentType: contentTypeOf(key) } : null;
   }
   const supabase = await createSessionClient();
-  const { data, error } = await supabase.storage.from(PORTAL_BUCKET).createSignedUrl(key, SIGNED_URL_SECONDS);
+  const { data, error } = await supabase.storage
+    .from(PORTAL_BUCKET)
+    .createSignedUrl(key, SIGNED_URL_SECONDS, opts.downloadName ? { download: opts.downloadName } : undefined);
   if (error || !data) return null;
   return { redirect: data.signedUrl };
 }
 
-export async function removePortalFile(key: string): Promise<void> {
+/** The bytes of a stored file, or null if it is missing: the report and the zip read the originals. */
+export async function readPortalFile(key: string): Promise<Buffer | null> {
+  if (isDemo()) return readDemoFile(key);
+  const supabase = await createSessionClient();
+  const { data, error } = await supabase.storage.from(PORTAL_BUCKET).download(key);
+  if (error || !data) return null;
+  return Buffer.from(await data.arrayBuffer());
+}
+
+/**
+ * Store a file the app made (the report, the zip), replacing an older one.
+ * Customers may only read the bucket, so a file rendered on a customer's
+ * request is written with the service role (`serviceRole`).
+ */
+export async function writePortalFile(key: string, bytes: Buffer, opts: { serviceRole?: boolean } = {}): Promise<void> {
+  if (isDemo()) {
+    const target = demoDir(key);
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, bytes);
+    return;
+  }
+  const supabase = opts.serviceRole ? createAdminClient() : await createSessionClient();
+  const { error } = await supabase.storage.from(PORTAL_BUCKET).upload(key, bytes, { contentType: contentTypeOf(key), cacheControl: "60", upsert: true });
+  if (error) throw new Error(`Kunde inte spara filen: ${error.message}`);
+}
+
+export async function removePortalFile(key: string, opts: { serviceRole?: boolean } = {}): Promise<void> {
   if (isDemo()) {
     await fs.rm(demoDir(key), { force: true });
     return;
   }
-  const supabase = await createSessionClient();
+  const supabase = opts.serviceRole ? createAdminClient() : await createSessionClient();
   await supabase.storage.from(PORTAL_BUCKET).remove([key]);
 }

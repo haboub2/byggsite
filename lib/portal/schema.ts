@@ -15,7 +15,7 @@ export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
   warranty: "Garantitid",
 };
 
-export const DOCUMENT_KINDS = ["quote", "invoice", "rot", "certificate", "warranty", "care", "other"] as const;
+export const DOCUMENT_KINDS = ["quote", "invoice", "rot", "certificate", "warranty", "care", "report", "other"] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 export const DOCUMENT_KIND_LABEL: Record<DocumentKind, string> = {
   quote: "Offert",
@@ -24,6 +24,7 @@ export const DOCUMENT_KIND_LABEL: Record<DocumentKind, string> = {
   certificate: "Intyg",
   warranty: "Garantibevis",
   care: "Skötselråd",
+  report: "Projektdokumentation",
   other: "Övrigt",
 };
 
@@ -77,6 +78,7 @@ export const timelineFormSchema = z.object({
         id: z.string().max(60).nullable(),
         name: text(80, "Fasens namn"),
         duration_days: halfDays("Varaktigheten"),
+        photo_required: z.boolean().default(false),
       })
     )
     .max(60, "Högst 60 faser."),
@@ -95,6 +97,26 @@ export const updateFormSchema = z.object({
   phase_id: z.string().max(60).nullable(),
   day: z.string().refine(isIsoDate, "Datum skrivs 2026-10-15."),
 }).refine((u) => u.body || u.photos.length, { message: "Skriv något eller lägg till ett foto.", path: ["body"] });
+
+/** A photo edited in the documentation: caption, report switch, phase and day. */
+export const photoEditSchema = z.object({
+  caption: optionalText(300, "Bildtexten"),
+  in_report: z.boolean(),
+  phase_id: z.string().max(60).nullable(),
+  day: z.string().refine(isIsoDate, "Datum skrivs 2026-10-15."),
+});
+export type PhotoEdit = z.infer<typeof photoEditSchema>;
+
+/** The day's note edited afterwards: its text, phase and day. */
+export const noteEditSchema = z.object({
+  body: optionalText(3000, "Texten"),
+  phase_id: z.string().max(60).nullable(),
+  day: z.string().refine(isIsoDate, "Datum skrivs 2026-10-15."),
+});
+export type NoteEdit = z.infer<typeof noteEditSchema>;
+
+/** A phase's summary or the project's "Slutdokumentation". */
+export const summarySchema = optionalText(6000, "Texten");
 
 export const phaseTemplateFormSchema = z.object({
   name: text(80, "Mallens namn"),
@@ -128,6 +150,12 @@ export type PortalProject = ProjectForm & {
   /** The original end, kept once a delay or ÄTA has moved ends_on. */
   planned_ends_on: string;
   works_saturdays: boolean;
+  /** "Slutdokumentation": the team's text about the finished result. */
+  final_summary: string;
+  /** Set by "Lås dokumentationen"; from then on the documentation is read-only. */
+  archived_at: string | null;
+  /** Fingerprint of the content the cached report PDF was rendered from. */
+  report_hash: string | null;
   quote_id: string | null;
   created_by: string | null;
   created_at: string;
@@ -147,6 +175,10 @@ export type ProjectPhase = {
   /** Set on a phase that an approved ÄTA added. */
   change_order_id: string | null;
   done_at: string | null;
+  /** The chapter's introduction in the documentation, optional. */
+  summary: string;
+  /** Can't be ticked done without at least one photo (Tätskikt, El och VVS). */
+  photo_required: boolean;
 };
 
 export type ProjectUpdate = {
@@ -197,7 +229,7 @@ export type SavedPhaseTemplate = {
   id: string;
   name: string;
   job_type: string;
-  phases: { name: string; days: number }[];
+  phases: { name: string; days: number; photo?: boolean }[];
   created_at: string;
 };
 

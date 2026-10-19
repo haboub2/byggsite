@@ -8,6 +8,7 @@ import { portalNoticeMail } from "@/lib/mail";
 import { inviteMember } from "@/lib/portal/invite";
 import { removePortalFile } from "@/lib/portal/files";
 import { formatDay } from "@/lib/portal/format";
+import { scheduleReportRefresh } from "@/lib/portal/report";
 import { guessPhaseTemplate, resolvePhaseTemplate } from "@/lib/portal/phase-templates";
 import {
   changeOrderFormSchema,
@@ -96,9 +97,13 @@ async function notifyMembers(projectId: string, kind: "update" | "document" | "c
   }
 }
 
+/** Revalidate the pages, and render the cached documentation report again after the response. */
 function refresh(id?: string) {
   revalidatePath(LIST, "layout");
-  if (id) revalidatePath(`/mitt-projekt/${id}`, "layout");
+  if (id) {
+    revalidatePath(`/mitt-projekt/${id}`, "layout");
+    scheduleReportRefresh(id);
+  }
   revalidatePath("/mitt-projekt");
 }
 
@@ -195,8 +200,15 @@ export async function deleteProject(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = str(formData, "id");
   const bundle = await getProjectBundle(id);
+  // The archive is kept for ten years; unlocking first is a deliberate second step.
+  if (bundle?.project.archived_at) redirect(projectUrl(id, { fel: "Dokumentationen är låst. Lås upp den först om projektet verkligen ska tas bort." }));
   if (bundle) {
-    const keys = [...bundle.photos.map((p) => p.path), ...bundle.documents.map((d) => d.path).filter((p) => !p.startsWith("quote:"))];
+    const keys = [
+      ...bundle.photos.map((p) => p.path),
+      ...bundle.documents.map((d) => d.path).filter((p) => !p.startsWith("quote:")),
+      ...(bundle.project.report_hash ? [`projects/${id}/rapport-${bundle.project.report_hash}.pdf`] : []),
+      `projects/${id}/dokumentation.zip`,
+    ];
     await Promise.all(keys.map((k) => removePortalFile(k).catch(() => undefined)));
     await removeProject(id);
   }
@@ -232,11 +244,16 @@ export async function saveTimelineAction(formData: FormData): Promise<void> {
   redirect(tidplanUrl(id, { sparat: "tidplan" }));
 }
 
-/** "Klar" on a phase, from the project or from the nudge on the list. */
+/** "Klar" on a phase, from the project or from the nudge on the list. A phase that must be documented needs a photo first. */
 export async function togglePhaseAction(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = str(formData, "project");
-  await setPhaseDone(id, str(formData, "phase"), formData.get("done") === "1");
+  try {
+    await setPhaseDone(id, str(formData, "phase"), formData.get("done") === "1");
+  } catch (err) {
+    if (isRedirect(err)) throw err;
+    redirect(phaseBack(formData, id, { fel: err instanceof Error ? err.message : "Kunde inte spara fasen." }));
+  }
   refresh(id);
   redirect(phaseBack(formData, id));
 }
@@ -345,7 +362,7 @@ export async function removeUpdateAction(formData: FormData): Promise<void> {
   if (bundle && update) {
     const keys = bundle.photos.filter((p) => p.update_id === update.id).map((p) => p.path);
     await Promise.all(keys.map((k) => removePortalFile(k).catch(() => undefined)));
-    await removeUpdate(update.id);
+    await removeUpdate(id, update.id);
   }
   refresh(id);
   redirect(projectUrl(id) + "#uppdateringar");

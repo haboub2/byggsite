@@ -4,7 +4,8 @@ import { createAdminClient } from "../supabase/admin";
 import { isDemo } from "../leads";
 import { roundHalf, shiftWorkdays } from "../workdays";
 import { formatDay, todayIso } from "./format";
-import type { TemplatePhase } from "./phase-templates";
+import { cannotFinishReason } from "./documentation";
+import { photoRequiredByDefault, type TemplatePhase } from "./phase-templates";
 import {
   CHANGE_ORDER_STATUSES,
   DOCUMENT_KINDS,
@@ -23,6 +24,8 @@ import {
   type ProjectPhoto,
   type ProjectStatus,
   type ProjectUpdate,
+  type NoteEdit,
+  type PhotoEdit,
   type SavedPhaseTemplate,
   type ShiftKind,
   type TimelineForm,
@@ -42,12 +45,15 @@ import { changeOrderPhaseName, computeTimeline, movePlannedEnd } from "./timelin
  * which computes them (lib/portal/timeline.ts) and stores the result.
  */
 
-type ProjectRow = Omit<PortalProject, "status" | "starts_on" | "ends_on" | "planned_ends_on" | "works_saturdays"> & {
+type ProjectRow = Omit<PortalProject, "status" | "starts_on" | "ends_on" | "planned_ends_on" | "works_saturdays" | "final_summary" | "archived_at" | "report_hash"> & {
   status: string;
   starts_on: string | null;
   ends_on: string | null;
   planned_ends_on: string | null;
   works_saturdays: boolean | null;
+  final_summary?: string | null;
+  archived_at?: string | null;
+  report_hash?: string | null;
 };
 type UpdateRow = Omit<ProjectUpdate, "photos">;
 
@@ -58,10 +64,19 @@ const fromProjectRow = (r: ProjectRow): PortalProject => ({
   ends_on: r.ends_on ?? "",
   planned_ends_on: r.planned_ends_on ?? "",
   works_saturdays: Boolean(r.works_saturdays),
+  final_summary: r.final_summary ?? "",
+  archived_at: r.archived_at ?? null,
+  report_hash: r.report_hash ?? null,
 });
 
 // numeric columns may arrive as strings; never let one through as text.
-const fromPhaseRow = (r: ProjectPhase): ProjectPhase => ({ ...r, duration_days: roundHalf(Number(r.duration_days)), change_order_id: r.change_order_id ?? null });
+const fromPhaseRow = (r: ProjectPhase): ProjectPhase => ({
+  ...r,
+  duration_days: roundHalf(Number(r.duration_days)),
+  change_order_id: r.change_order_id ?? null,
+  summary: r.summary ?? "",
+  photo_required: Boolean(r.photo_required),
+});
 
 const fromDocumentRow = (r: ProjectDocument): ProjectDocument => ({
   ...r,
@@ -114,13 +129,16 @@ type Demo = {
   changeOrders: ChangeOrder[];
   shifts: TimelineShift[];
   templates: SavedPhaseTemplate[];
+  version: number;
 };
 const g = globalThis as unknown as { __binaafyPortal?: Demo };
 
+const DEMO_VERSION = 3;
+
 function demo(): Demo {
-  // A dev server that was running before Tidplan 2.0 holds an object without
-  // durations, shifts or photos; start over rather than patch it.
-  if (g.__binaafyPortal?.shifts) return g.__binaafyPortal;
+  // A dev server that was running before the documentation system holds an
+  // older object; start over rather than patch it.
+  if (g.__binaafyPortal?.version === DEMO_VERSION) return g.__binaafyPortal;
   const now = new Date();
   const iso = (daysFromNow: number) => new Date(now.getTime() + daysFromNow * 86_400_000).toISOString();
   const today = todayIso(now);
@@ -149,6 +167,8 @@ function demo(): Demo {
     duration_days,
     change_order_id: null,
     done_at: null,
+    summary: "",
+    photo_required: photoRequiredByDefault(name),
   }));
   const shifts: TimelineShift[] = [
     {
@@ -179,30 +199,69 @@ function demo(): Demo {
     ends_on: null,
     planned_ends_on: null,
     works_saturdays: false,
+    final_summary: "",
+    archived_at: null,
+    report_hash: null,
     created_by: "demo@localhost",
     created_at: iso(-15),
     updated_at: iso(-1),
   };
   applyTimeline(project, phases, shifts);
   for (const ph of phases.slice(0, 3)) ph.done_at = `${ph.ends_on}T15:00:00.000Z`;
-  const update = (id: string, phase: ProjectPhase, body: string): UpdateRow => ({
+  phases[2].summary =
+    "Nya tappvattenrör i PEX och golvvärme i hela badrummet. Elcentralen byttes innan golvvärmen kopplades in, därav en dags försening. Allt är provtryckt och fotograferat innan gjutning.";
+  // A documentation to look at: notes and photos per phase and day. Tätskikt
+  // has started but has no photo yet, so the quality warning shows.
+  const dayIn = (phase: ProjectPhase, n: number) => shiftWorkdays(phase.starts_on!, n);
+  const update = (id: string, phase: ProjectPhase, day: string, body: string): UpdateRow => ({
     id,
     project_id: projectId,
     body,
     phase_id: phase.id,
-    day: phase.ends_on!,
+    day,
     created_by: "demo@localhost",
-    created_at: `${phase.ends_on}T15:00:00.000Z`,
+    created_at: `${day}T15:00:00.000Z`,
+  });
+  const updates: UpdateRow[] = [
+    update("u0", phases[0], phases[0].starts_on!, "Vi har skyddat golv och dörrkarmar på vägen in och satt upp dammvägg vid badrummet."),
+    update("u1", phases[1], phases[1].ends_on!, "Rivningen är klar och allt gammalt är bortforslat. Golvet är rent och torrt inför VVS-arbetet."),
+    update("u2", phases[2], dayIn(phases[2], 1), "Nya rör är dragna i väggen och golvbrunnen är bytt."),
+    update("u3", phases[2], phases[2].ends_on!, "Nya rör och golvvärme är på plats. Elektrikern har dragit uttag och belysning."),
+  ];
+  // [update, caption, in report]: the files are drawn on first view (demo-photos.ts).
+  const shots: [string, string, boolean][] = [
+    ["u0", "Golvskydd i hallen", true],
+    ["u1", "", true],
+    ["u1", "Gammalt tätskikt bortrivet ner till betongen", true],
+    ["u1", "", false],
+    ["u2", "", true],
+    ["u2", "Ny golvbrunn", true],
+    ["u3", "Golvvärmeslingan före gjutning", true],
+    ["u3", "", true],
+    ["u3", "", true],
+  ];
+  const photos: ProjectPhoto[] = shots.map(([updateId, caption, in_report], i) => {
+    const u = updates.find((x) => x.id === updateId)!;
+    return {
+      id: `ph${i + 1}`,
+      project_id: projectId,
+      phase_id: u.phase_id,
+      update_id: u.id,
+      day: u.day,
+      path: `projects/${projectId}/demo-${i + 1}.jpg`,
+      caption,
+      in_report,
+      sort: shots.slice(0, i).filter(([x]) => x === updateId).length,
+      created_by: "demo@localhost",
+      created_at: u.created_at,
+    };
   });
   g.__binaafyPortal = {
     projects: [project],
     members: [{ project_id: projectId, user_id: "kund@example.se", email: "kund@example.se", name: "Anna Exempel", invited_at: iso(-15) }],
     phases,
-    updates: [
-      update("u1", phases[1], "Rivningen är klar och allt gammalt är bortforslat. Golvet är rent och torrt inför VVS-arbetet."),
-      update("u2", phases[2], "Nya rör och golvvärme är på plats. Elektrikern har dragit uttag och belysning."),
-    ],
-    photos: [],
+    updates,
+    photos,
     documents: [{ id: "d1", project_id: projectId, kind: "quote", title: "Offert 1001 — Badrumsrenovering", path: "quote:demo", created_at: iso(-15) }],
     changeOrders: [
       {
@@ -238,6 +297,7 @@ function demo(): Demo {
     ],
     shifts,
     templates: [],
+    version: DEMO_VERSION,
   };
   return g.__binaafyPortal;
 }
@@ -335,12 +395,12 @@ export async function createProject(
   extra: { quote_id: string | null; created_by: string | null; phases: TemplatePhase[]; starts_on: string; works_saturdays: boolean }
 ): Promise<string> {
   const row = { ...form, starts_on: dateOrNull(extra.starts_on), works_saturdays: extra.works_saturdays, quote_id: extra.quote_id, created_by: extra.created_by };
-  const phaseRows = extra.phases.map((p, i) => ({ name: p.name.slice(0, 80), duration_days: roundHalf(p.days), sort: i }));
+  const phaseRows = extra.phases.map((p, i) => ({ name: p.name.slice(0, 80), duration_days: roundHalf(p.days), photo_required: Boolean(p.photo), sort: i }));
   if (isDemo()) {
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
-    demo().projects.push({ ...row, ends_on: null, planned_ends_on: null, id, created_at: now, updated_at: now });
-    for (const p of phaseRows) demo().phases.push({ ...p, id: crypto.randomUUID(), project_id: id, starts_on: null, ends_on: null, change_order_id: null, done_at: null });
+    demo().projects.push({ ...row, ends_on: null, planned_ends_on: null, final_summary: "", archived_at: null, report_hash: null, id, created_at: now, updated_at: now });
+    for (const p of phaseRows) demo().phases.push({ ...p, id: crypto.randomUUID(), project_id: id, starts_on: null, ends_on: null, change_order_id: null, done_at: null, summary: "" });
     await recomputeTimeline(id);
     return id;
   }
@@ -456,6 +516,7 @@ export async function recomputeTimeline(projectId: string): Promise<{ before: st
  * delays); new ones are inserted; ones left out are removed.
  */
 export async function saveTimeline(projectId: string, form: TimelineForm): Promise<void> {
+  await assertOpen(projectId);
   const keep = new Set(form.phases.map((p) => p.id).filter(Boolean));
   if (isDemo()) {
     const d = demo();
@@ -469,8 +530,21 @@ export async function saveTimeline(projectId: string, form: TimelineForm): Promi
     for (const x of [...d.photos, ...d.updates]) if (x.phase_id && removed.has(x.phase_id)) x.phase_id = null;
     form.phases.forEach((p, sort) => {
       const existing = p.id ? d.phases.find((x) => x.id === p.id && x.project_id === projectId) : undefined;
-      if (existing) Object.assign(existing, { name: p.name, duration_days: p.duration_days, sort });
-      else d.phases.push({ id: crypto.randomUUID(), project_id: projectId, name: p.name, duration_days: p.duration_days, sort, starts_on: null, ends_on: null, change_order_id: null, done_at: null });
+      if (existing) Object.assign(existing, { name: p.name, duration_days: p.duration_days, photo_required: p.photo_required, sort });
+      else
+        d.phases.push({
+          id: crypto.randomUUID(),
+          project_id: projectId,
+          name: p.name,
+          duration_days: p.duration_days,
+          photo_required: p.photo_required,
+          sort,
+          starts_on: null,
+          ends_on: null,
+          change_order_id: null,
+          done_at: null,
+          summary: "",
+        });
     });
     await recomputeTimeline(projectId);
     return;
@@ -493,16 +567,27 @@ export async function saveTimeline(projectId: string, form: TimelineForm): Promi
   const results = await Promise.all(
     form.phases.map((p, sort) =>
       p.id
-        ? supabase.from("project_phases").update({ name: p.name, duration_days: p.duration_days, sort }).eq("id", p.id).eq("project_id", projectId)
-        : supabase.from("project_phases").insert({ project_id: projectId, name: p.name, duration_days: p.duration_days, sort })
+        ? supabase.from("project_phases").update({ name: p.name, duration_days: p.duration_days, photo_required: p.photo_required, sort }).eq("id", p.id).eq("project_id", projectId)
+        : supabase.from("project_phases").insert({ project_id: projectId, name: p.name, duration_days: p.duration_days, photo_required: p.photo_required, sort })
     )
   );
   for (const r of results) if (r.error) fail("Kunde inte spara faserna", r.error.message);
   await recomputeTimeline(projectId);
 }
 
-/** Tick a phase done (or undo). Dates don't move: they come from the plan. */
+/**
+ * Tick a phase done (or undo). Dates don't move: they come from the plan. A
+ * phase that must be documented (photo_required) needs a photo first.
+ */
 export async function setPhaseDone(projectId: string, phaseId: string, done: boolean): Promise<void> {
+  await assertOpen(projectId);
+  if (done) {
+    const bundle = await getProjectBundle(projectId);
+    const phase = bundle?.phases.find((p) => p.id === phaseId);
+    if (!bundle || !phase) throw new Error("Fasen finns inte längre.");
+    const reason = cannotFinishReason(phase, bundle.photos);
+    if (reason) throw new Error(reason);
+  }
   const done_at = done ? new Date().toISOString() : null;
   if (isDemo()) {
     const p = demo().phases.find((x) => x.id === phaseId && x.project_id === projectId);
@@ -562,6 +647,7 @@ export async function addDelay(
   delay: { days: number; reason: string },
   createdBy: string | null
 ): Promise<{ before: string; after: string; planned: string; phase: string }> {
+  await assertOpen(projectId);
   const bundle = await getProjectBundle(projectId);
   const phase = bundle?.phases.find((p) => p.id === phaseId);
   if (!phase) throw new Error("Fasen finns inte längre.");
@@ -571,6 +657,7 @@ export async function addDelay(
 
 /** Undo a delay reported by mistake. ÄTA time goes by removing the ÄTA's phase instead. */
 export async function removeDelay(projectId: string, shiftId: string): Promise<void> {
+  await assertOpen(projectId);
   if (isDemo()) {
     const d = demo();
     d.shifts = d.shifts.filter((s) => !(s.id === shiftId && s.project_id === projectId && s.kind === "delay"));
@@ -588,6 +675,7 @@ export async function removeDelay(projectId: string, shiftId: string): Promise<v
  * with the reason. Placing the same ÄTA twice does nothing.
  */
 export async function scheduleChangeOrder(projectId: string, orderId: string, afterPhaseId: string, createdBy: string | null): Promise<{ before: string; after: string }> {
+  await assertOpen(projectId);
   const bundle = await getProjectBundle(projectId);
   if (!bundle) throw new Error("Projektet finns inte.");
   const order = bundle.changeOrders.find((o) => o.id === orderId);
@@ -601,7 +689,7 @@ export async function scheduleChangeOrder(projectId: string, orderId: string, af
   if (afterPhaseId && at === 0) throw new Error("Fasen finns inte längre.");
   const answered = order.answered_at ? ` ${formatDay(order.answered_at)}` : "";
   const reason = `ÄTA ${order.number}: ${order.title}, godkänd av kunden${answered}`;
-  const row = { project_id: projectId, name: changeOrderPhaseName(order), duration_days: order.duration_days, change_order_id: order.id };
+  const row = { project_id: projectId, name: changeOrderPhaseName(order), duration_days: order.duration_days, change_order_id: order.id, summary: "", photo_required: false };
 
   let phaseId: string;
   if (isDemo()) {
@@ -669,6 +757,7 @@ export async function addUpdate(
   update: { body: string; photos: string[]; phase_id: string | null; day: string },
   createdBy: string | null
 ): Promise<void> {
+  await assertOpen(projectId);
   const row = { project_id: projectId, body: update.body, phase_id: update.phase_id, day: update.day, created_by: createdBy };
   const photoRow = (update_id: string, path: string, sort: number) => ({
     project_id: projectId,
@@ -701,7 +790,8 @@ export async function addUpdate(
 }
 
 /** Removes the post and, through the foreign key, its photo rows. The caller deletes the files. */
-export async function removeUpdate(id: string): Promise<void> {
+export async function removeUpdate(projectId: string, id: string): Promise<void> {
+  await assertOpen(projectId);
   if (isDemo()) {
     const d = demo();
     d.updates = d.updates.filter((u) => u.id !== id);
@@ -709,8 +799,159 @@ export async function removeUpdate(id: string): Promise<void> {
     return;
   }
   const supabase = await createSessionClient();
-  const { error } = await supabase.from("project_updates").delete().eq("id", id);
+  const { error } = await supabase.from("project_updates").delete().eq("id", id).eq("project_id", projectId);
   if (error) fail("Kunde inte ta bort uppdateringen", error.message);
+}
+
+/* ---------- the documentation ---------- */
+
+/** "Dokumentationen är låst": phases, days, photos and texts are read-only once archived. */
+export const LOCKED_MESSAGE = "Dokumentationen är låst. Lås upp den under Dokumentation om något måste ändras.";
+
+/** Throws when the project's documentation is locked. The database refuses too (0013). */
+async function assertOpen(projectId: string): Promise<void> {
+  const project = await getProject(projectId);
+  if (!project) throw new Error("Projektet finns inte.");
+  if (project.archived_at) throw new Error(LOCKED_MESSAGE);
+}
+
+/** Caption, "ta med i rapporten", and the phase and day a photo belongs to. */
+export async function updatePhoto(projectId: string, photoId: string, edit: PhotoEdit): Promise<void> {
+  await assertOpen(projectId);
+  if (isDemo()) {
+    const d = demo();
+    const photo = d.photos.find((p) => p.id === photoId && p.project_id === projectId);
+    if (!photo) throw new Error("Fotot finns inte längre.");
+    if (edit.phase_id && !d.phases.some((p) => p.id === edit.phase_id && p.project_id === projectId)) throw new Error("Fasen finns inte längre.");
+    Object.assign(photo, edit);
+    return touch(projectId);
+  }
+  const supabase = await createSessionClient();
+  const { data, error } = await supabase.from("project_photos").update(edit).eq("id", photoId).eq("project_id", projectId).select("id");
+  if (error) fail("Kunde inte spara fotot", error.message);
+  if (!data?.length) throw new Error("Fotot finns inte längre.");
+  await touch(projectId);
+}
+
+/** Removes one photo row; the caller deletes the file. Returns its key. */
+export async function removePhoto(projectId: string, photoId: string): Promise<string | null> {
+  await assertOpen(projectId);
+  if (isDemo()) {
+    const d = demo();
+    const photo = d.photos.find((p) => p.id === photoId && p.project_id === projectId);
+    d.photos = d.photos.filter((p) => p !== photo);
+    await touch(projectId);
+    return photo?.path ?? null;
+  }
+  const supabase = await createSessionClient();
+  const { data, error } = await supabase.from("project_photos").delete().eq("id", photoId).eq("project_id", projectId).select("path");
+  if (error) fail("Kunde inte ta bort fotot", error.message);
+  await touch(projectId);
+  return (data?.[0]?.path as string | undefined) ?? null;
+}
+
+/** The day's note edited afterwards. Its photos keep their own phase and day. */
+export async function updateNote(projectId: string, updateId: string, edit: NoteEdit): Promise<void> {
+  await assertOpen(projectId);
+  if (isDemo()) {
+    const d = demo();
+    const note = d.updates.find((u) => u.id === updateId && u.project_id === projectId);
+    if (!note) throw new Error("Anteckningen finns inte längre.");
+    if (edit.phase_id && !d.phases.some((p) => p.id === edit.phase_id && p.project_id === projectId)) throw new Error("Fasen finns inte längre.");
+    Object.assign(note, edit);
+    return touch(projectId);
+  }
+  const supabase = await createSessionClient();
+  const { data, error } = await supabase.from("project_updates").update(edit).eq("id", updateId).eq("project_id", projectId).select("id");
+  if (error) fail("Kunde inte spara anteckningen", error.message);
+  if (!data?.length) throw new Error("Anteckningen finns inte längre.");
+  await touch(projectId);
+}
+
+/** A phase's summary: the chapter's introduction in the report. */
+export async function setPhaseSummary(projectId: string, phaseId: string, summary: string): Promise<void> {
+  await assertOpen(projectId);
+  if (isDemo()) {
+    const phase = demo().phases.find((p) => p.id === phaseId && p.project_id === projectId);
+    if (!phase) throw new Error("Fasen finns inte längre.");
+    phase.summary = summary;
+    return touch(projectId);
+  }
+  const supabase = await createSessionClient();
+  const { data, error } = await supabase.from("project_phases").update({ summary }).eq("id", phaseId).eq("project_id", projectId).select("id");
+  if (error) fail("Kunde inte spara sammanfattningen", error.message);
+  if (!data?.length) throw new Error("Fasen finns inte längre.");
+  await touch(projectId);
+}
+
+/** "Slutdokumentation": the team's text about the finished result. */
+export async function setFinalSummary(projectId: string, text: string): Promise<void> {
+  await assertOpen(projectId);
+  if (isDemo()) {
+    const r = demo().projects.find((p) => p.id === projectId);
+    if (!r) throw new Error("Projektet finns inte.");
+    Object.assign(r, { final_summary: text, updated_at: new Date().toISOString() });
+    return;
+  }
+  const supabase = await createSessionClient();
+  const { error } = await supabase.from("portal_projects").update({ final_summary: text, updated_at: new Date().toISOString() }).eq("id", projectId);
+  if (error) fail("Kunde inte spara slutdokumentationen", error.message);
+}
+
+/** Lock (a time) or unlock (null) the documentation. */
+export async function setArchived(projectId: string, at: string | null): Promise<void> {
+  if (isDemo()) {
+    const r = demo().projects.find((p) => p.id === projectId);
+    if (!r) throw new Error("Projektet finns inte.");
+    Object.assign(r, { archived_at: at, updated_at: new Date().toISOString() });
+    return;
+  }
+  const supabase = await createSessionClient();
+  const { error } = await supabase.from("portal_projects").update({ archived_at: at, updated_at: new Date().toISOString() }).eq("id", projectId);
+  if (error) fail(at ? "Kunde inte låsa dokumentationen" : "Kunde inte låsa upp", error.message);
+}
+
+/**
+ * Remember which content the cached report was rendered from. Written with
+ * the service role when the caller is a customer (members may only read);
+ * lib/portal/report.ts decides. updated_at is left alone so the list order
+ * keeps following real activity.
+ */
+export async function setReportHash(projectId: string, hash: string, opts: { serviceRole?: boolean } = {}): Promise<void> {
+  if (isDemo()) {
+    const r = demo().projects.find((p) => p.id === projectId);
+    if (r) r.report_hash = hash;
+    return;
+  }
+  const supabase = opts.serviceRole ? createAdminClient() : await createSessionClient();
+  const { error } = await supabase.from("portal_projects").update({ report_hash: hash }).eq("id", projectId);
+  if (error) fail("Kunde inte spara rapporten", error.message);
+}
+
+export type DocumentationOverview = {
+  phases: Pick<ProjectPhase, "id" | "project_id" | "name" | "starts_on" | "done_at" | "photo_required">[];
+  photos: Pick<ProjectPhoto, "project_id" | "phase_id" | "day">[];
+};
+
+/** What /admin/projekt needs for "foton 6 av 8 dagar" and "Tätskikt saknar foton", for the given projects. */
+export async function listDocumentationOverview(projectIds: string[]): Promise<DocumentationOverview> {
+  if (!projectIds.length) return { phases: [], photos: [] };
+  if (isDemo()) {
+    const d = demo();
+    const ids = new Set(projectIds);
+    return { phases: d.phases.filter((p) => ids.has(p.project_id)), photos: d.photos.filter((p) => ids.has(p.project_id)) };
+  }
+  const supabase = await createSessionClient();
+  const [phases, photos] = await Promise.all([
+    supabase.from("project_phases").select("id,project_id,name,starts_on,done_at,photo_required").in("project_id", projectIds).eq("photo_required", true),
+    // Three small columns per photo: fine for the projects on one list.
+    supabase.from("project_photos").select("project_id,phase_id,day").in("project_id", projectIds).limit(20000),
+  ]);
+  for (const r of [phases, photos]) if (r.error) fail("Kunde inte hämta dokumentationen", r.error.message);
+  return {
+    phases: (phases.data ?? []) as DocumentationOverview["phases"],
+    photos: (photos.data ?? []) as DocumentationOverview["photos"],
+  };
 }
 
 /* ---------- documents ---------- */

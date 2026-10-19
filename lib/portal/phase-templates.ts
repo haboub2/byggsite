@@ -9,10 +9,20 @@ import type { SavedPhaseTemplate } from "./schema";
  * (phase_templates, see lib/portal/store.ts). To add one, add an object.
  */
 
-export type TemplatePhase = { name: string; days: number };
+/** `photo`: the phase can't be ticked done without a photo (docs/kundportal-v3.md, 2, Kvalitet). */
+export type TemplatePhase = { name: string; days: number; photo?: boolean };
 export type PhaseTemplate = { key: string; job_type: string; name: string; phases: TemplatePhase[] };
 
-const p = (name: string, days: number): TemplatePhase => ({ name, days });
+/**
+ * Work that is hidden once the next phase starts, so photos before it is
+ * covered are the proof in a warranty case: such phases need a photo before
+ * they can be ticked done. Built-in templates follow it, and so does a phase
+ * the admin adds by hand with one of these names.
+ */
+const PHOTO_REQUIRED = /^(tätskikt|el och vvs)$/i;
+export const photoRequiredByDefault = (name: string) => PHOTO_REQUIRED.test(name.trim());
+
+const p = (name: string, days: number): TemplatePhase => (photoRequiredByDefault(name) ? { name, days, photo: true } : { name, days });
 
 export const BUILT_IN_PHASE_TEMPLATES: PhaseTemplate[] = [
   {

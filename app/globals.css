@@ -1582,3 +1582,81 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .portal-ata-amount { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .portal-ata--admin .portal-ata-desc { font-size: 14px; color: var(--ink-2); white-space: pre-wrap; }
 .portal-ata--admin form { justify-self: end; }
+
+/* ---- Dokumentationen (docs/kundportal-v3.md, 2) ---- */
+.doc-panel { margin-top: 28px; padding: 16px 18px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); display: grid; gap: 12px; }
+.doc-panel-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; font-size: 14.5px; }
+.doc-panel-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.doc-panel-actions .btn { min-height: 40px; padding: 8px 16px; font-size: 14px; }
+.doc-warn { color: var(--orange-text); font-weight: 600; }
+.doc-warn::before { content: "⚠ "; }
+.doc-locked { font-size: 14px; padding: 10px 12px; background: var(--bg-alt); border-left: 3px solid var(--dark-2); border-radius: var(--radius-sm); }
+.doc-lock { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px 16px; }
+.doc-lock .inbox-meta { flex: 1 1 320px; }
+.doc-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.doc-fieldset[disabled] { opacity: .65; }
+.tl-photo[aria-pressed="false"] { opacity: .45; }
+.tl-photo[aria-pressed="true"] { color: var(--orange-text) !important; }
+
+.doc-tree { display: grid; gap: 14px; margin-top: 24px; }
+.doc-chapter { padding: 16px 18px 18px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); scroll-margin-top: 90px; }
+.doc-chapter[data-loose] { border-color: var(--orange); }
+.doc-chapter-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.doc-chapter-head h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.doc-tag-warn { background: var(--orange); color: var(--dark); }
+.doc-summary { margin-top: 12px; }
+.doc-summary label { display: flex; gap: 10px; align-items: baseline; }
+.doc-summary-locked, .doc-note { margin-top: 10px; font-size: 14.5px; line-height: 1.55; white-space: pre-wrap; }
+.doc-status { font-size: 12.5px; font-weight: 400; color: var(--ink-3); }
+.doc-status--error { color: var(--danger); }
+.doc-empty { margin-top: 10px; font-size: 13.5px; color: var(--ink-3); }
+.doc-day { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.doc-day h3 { font-size: 14px; font-weight: 600; }
+.doc-note-edit { margin-top: 8px; display: grid; gap: 6px; }
+.doc-note-edit textarea, .doc-caption, .doc-move select, .doc-move input, .doc-archive-search input, .doc-archive-search select {
+  width: 100%; padding: 8px 10px; font-size: 14.5px; line-height: 1.45; background: var(--bg); border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+}
+.doc-note-edit textarea { resize: vertical; }
+.doc-move { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.doc-move select { flex: 1 1 140px; width: auto; }
+.doc-move input { flex: 0 1 150px; width: auto; }
+.doc-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 10px; }
+.doc-photo { display: grid; gap: 6px; align-content: start; }
+.doc-photo-img { position: relative; display: block; }
+.doc-photo img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-sm); background: var(--bg-alt); display: block; }
+.doc-photo[data-out] img { opacity: .45; }
+.doc-photo-out { position: absolute; left: 6px; bottom: 6px; font-size: 11px; padding: 2px 7px; border-radius: 999px; background: var(--dark); color: var(--on-dark); }
+.doc-photo-caption { font-size: 13.5px; color: var(--ink-2); }
+.doc-caption { font-size: 13.5px; padding: 6px 8px; }
+.doc-check { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-2); }
+.doc-photo-bar { display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 13px; }
+.doc-remove { color: var(--ink-3); }
+
+.doc-archive-search { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.doc-archive-search input { flex: 1 1 260px; width: auto; }
+.doc-archive-search select { flex: 0 0 auto; width: auto; }
+.doc-archive-search .btn { min-height: 40px; }
+.doc-archive-row { position: relative; }
+.doc-archive-open { position: absolute; right: 16px; bottom: 6px; font-size: 12.5px; }
+.doc-row-health { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+
+/* customer */
+.doc-portal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.doc-portal-head h2 { margin-bottom: 0; }
+.doc-views { display: inline-flex; padding: 3px; background: var(--bg-alt); border-radius: 999px; }
+.doc-views a { padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink-3); }
+.doc-views a[aria-current] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.doc-download { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.doc-download .btn { min-height: 44px; }
+.doc-download .portal-when { flex-basis: 100%; }
+.doc-portal-chapter { scroll-margin-top: 20px; }
+.doc-portal-chapter h2 { font-size: 17px; letter-spacing: -0.01em; text-transform: none; color: var(--ink); margin-bottom: 2px; }
+.portal-card .doc-portal-summary { margin-top: 10px; white-space: pre-wrap; }
+.doc-portal-day { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.doc-portal-day h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.doc-portal-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+.doc-portal-photos li[data-figure] { grid-column: 1 / -1; }
+.doc-portal-photos img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-sm); background: var(--bg-alt); display: block; }
+.doc-portal-photos li[data-figure] img { aspect-ratio: 4 / 3; }
+.doc-portal-photos span { display: block; margin-top: 4px; font-size: 13.5px; color: var(--ink-2); }
+.portal-phase-doc { display: inline-block; margin-top: 6px; font-size: 13.5px; font-weight: 500; color: var(--orange-text); }

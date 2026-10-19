@@ -6,6 +6,7 @@ import { formatDay, formatWeekday } from "@/lib/portal/format";
 import type { ChangeOrder, PortalProject, ProjectPhase, TimelineShift } from "@/lib/portal/schema";
 import { computeTimeline, shiftDaysLabel } from "@/lib/portal/timeline";
 import { formatDays, roundHalf } from "@/lib/workdays";
+import { photoRequiredByDefault } from "@/lib/portal/phase-templates";
 
 /**
  * Tidplan in admin: a start date, a duration per phase, and the dates as the
@@ -15,7 +16,7 @@ import { formatDays, roundHalf } from "@/lib/workdays";
  * the plan has no unsaved edits.
  */
 
-type Row = { key: string; id: string | null; name: string; days: string; change_order_id: string | null; done_at: string | null };
+type Row = { key: string; id: string | null; name: string; days: string; change_order_id: string | null; done_at: string | null; photo_required: boolean };
 
 /** "1,5" or "1.5" → 1.5; NaN when it isn't a half-day count. */
 function parseDays(value: string): number {
@@ -45,7 +46,7 @@ export default function TimelineEditor({
   openDelay?: string;
 }) {
   const initialRows = useMemo<Row[]>(
-    () => phases.map((p) => ({ key: p.id, id: p.id, name: p.name, days: showDays(p.duration_days), change_order_id: p.change_order_id, done_at: p.done_at })),
+    () => phases.map((p) => ({ key: p.id, id: p.id, name: p.name, days: showDays(p.duration_days), change_order_id: p.change_order_id, done_at: p.done_at, photo_required: p.photo_required })),
     [phases]
   );
   const [start, setStart] = useState(project.starts_on);
@@ -63,7 +64,8 @@ export default function TimelineEditor({
   const dirty =
     start !== project.starts_on ||
     saturdays !== project.works_saturdays ||
-    JSON.stringify(rows.map((r) => [r.id, r.name, parseDays(r.days)])) !== JSON.stringify(initialRows.map((r) => [r.id, r.name, parseDays(r.days)]));
+    JSON.stringify(rows.map((r) => [r.id, r.name, parseDays(r.days), r.photo_required])) !==
+      JSON.stringify(initialRows.map((r) => [r.id, r.name, parseDays(r.days), r.photo_required]));
   const invalid = rows.some((r) => Number.isNaN(parseDays(r.days)) || !r.name.trim());
 
   const preview = computeTimeline({
@@ -87,7 +89,7 @@ export default function TimelineEditor({
   const patch = (key: string, p: Partial<Row>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...p } : r)));
   const add = () => {
     if (!newName.trim() || Number.isNaN(parseDays(newDays))) return;
-    setRows((rs) => [...rs, { key: `new-${nextKey++}`, id: null, name: newName.trim().slice(0, 80), days: newDays, change_order_id: null, done_at: null }]);
+    setRows((rs) => [...rs, { key: `new-${nextKey++}`, id: null, name: newName.trim().slice(0, 80), days: newDays, change_order_id: null, done_at: null, photo_required: photoRequiredByDefault(newName) }]);
     setNewName("");
     setNewDays("1");
   };
@@ -95,7 +97,7 @@ export default function TimelineEditor({
   const payload = JSON.stringify({
     starts_on: start,
     works_saturdays: saturdays,
-    phases: rows.map((r) => ({ id: r.id, name: r.name.trim(), duration_days: parseDays(r.days) })),
+    phases: rows.map((r) => ({ id: r.id, name: r.name.trim(), duration_days: parseDays(r.days), photo_required: r.photo_required })),
   });
   const totalDays = rows.reduce((n, r) => n + (parseDays(r.days) || 0), 0);
   const moved = preview.planned_ends_on && preview.ends_on && preview.planned_ends_on !== preview.ends_on;
@@ -153,6 +155,18 @@ export default function TimelineEditor({
                   {late > 0 && <em className="tl-late">{shiftDaysLabel(late)} försening</em>}
                 </span>
                 <div className="portal-phase-tools">
+                  <button
+                    type="button"
+                    className="tl-photo"
+                    aria-pressed={r.photo_required}
+                    aria-label={r.photo_required ? `Foto krävs för ${r.name}. Tryck för att stänga av.` : `Kräv foto innan ${r.name} bockas av`}
+                    title={r.photo_required ? "Foto krävs innan fasen bockas av" : "Kräv foto innan fasen bockas av"}
+                    onClick={() => patch(r.key, { photo_required: !r.photo_required })}
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M4 7h3l2-3h6l2 3h3v12H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+                    </svg>
+                  </button>
                   <button type="button" aria-label="Flytta upp" disabled={i === 0} onClick={() => move(i, -1)}>
                     ↑
                   </button>

@@ -36,10 +36,10 @@ ligger de i en meny till vänster.
 | Flik | Innehåll |
 |---|---|
 | **Översikt** | Projektnamn och adress, vilken fas ni är i, ett förloppsfält, "Den här veckan", nästa steg och kontaktperson med knappar för att ringa eller sms:a. Ett orange märke visar om något väntar på kunden. |
-| **Tidplan** | Faserna med datum, t.ex. Rivning, Tätskikt, Kakel, Slutbesiktning. Klara faser är bockade, den pågående markerad. Överst "Slut: 16 nov (ursprungligen 12 nov)" och en rad per förskjutning; en försening står på sin fas med orsaken ordagrant. En fas med foton fälls ut till sina dagar med miniatyrer. |
-| **Foton** | En dagbok: korta uppdateringar från er med bilder och datum, nyaste överst. |
+| **Tidplan** | Faserna med datum, t.ex. Rivning, Tätskikt, Kakel, Slutbesiktning. Klara faser är bockade, den pågående markerad. Överst "Slut: 16 nov (ursprungligen 12 nov)" och en rad per förskjutning; en försening står på sin fas med orsaken ordagrant. En fas med foton fälls ut till sina dagar med miniatyrer och länkar till sin del av dokumentationen. |
+| **Dokumentation** | *Dagbok*: korta uppdateringar med bilder och datum, nyaste överst. *Per fas*: samma innehåll ordnat fas → dag med sammanfattningar och bildtexter. Knappen *Ladda ner projektdokumentation (PDF)*, och efter låsningen *Ladda ner allt (zip)*. Se *Dokumentationen* nedan. |
 | **Ändringar (ÄTA)** | Tilläggs- och ändringsarbeten med beskrivning, pris, hur ROT-avdraget påverkas och hur mycket längre projektet blir ("Förlänger projektet med ca 2 dagar"). Kunden trycker *Godkänn* eller *Avböj*; svaret sparas med namn och tidpunkt och blir ert skriftliga underlag. |
-| **Dokument** | Offerten (PDF från offertverktyget), fakturor, ROT-underlag, våtrumsintyg, garantibevis, skötselråd. |
+| **Dokument** | Offerten (PDF från offertverktyget), fakturor, ROT-underlag, våtrumsintyg, garantibevis, skötselråd, och den låsta projektdokumentationen. Samma PDF-knapp som under Dokumentation. |
 
 Kunden ser bara sina egna projekt och kan inte ändra något utom att svara på ÄTA.
 
@@ -57,8 +57,10 @@ Ny sida **/admin/projekt** (ny punkt i sidomenyn, `app/admin/(dashboard)/layout.
      är ifyllda,
    - bocka av faser, eller lägga in en försening,
    - lägga till ÄTA och, när kunden godkänt, lägga in dem i tidplanen,
-   - ladda upp dokument (PDF).
+   - ladda upp dokument (PDF),
+   - i efterhand, om det behövs: flytta foton, skriva bildtexter och sammanfattningar under *Dokumentation*.
 4. Kunden får mejl när något nytt kommer. Ni får mejl när kunden svarar på en ÄTA.
+5. När jobbet är klart: status *Klart*, skriv slutdokumentationen och tryck **Lås dokumentationen**.
 
 ## Tidplan 2.0
 
@@ -131,7 +133,7 @@ förseningsrutan på projektet).
 (`update_id` knyter det till inlägget). `project_updates` har fått `phase_id`
 och `day`. Migrationen flyttar befintliga foton dit (fas tom, dag från
 inlägget i svensk tid). Kolumnen `project_updates.photos` läses och skrivs
-inte längre och tas bort i `0013`.
+inte längre och togs bort i `0013` (fas C, se *Dokumentationen*).
 
 **Migration `0012_timeline.sql`:** `portal_projects.planned_ends_on`,
 `works_saturdays`; `project_phases.duration_days numeric(4,1)` (befintliga
@@ -142,6 +144,126 @@ på halvdagar; RLS som i `0010`: `is_admin()` för allt, medlemmar `select`
 via `is_member()` (mallarna bara admin). Provkörd 2026-10-19 med alla
 migrationer i ordning mot en tom Postgres med exempeldata från version 2.
 **Inte körd mot produktion.**
+
+## Dokumentationen
+
+Byggd 2026-10-19 enligt avsnitt 2 i `kundportal-v3.md` (fas C). Varje projekt
+får en dokumentation som byggs upp medan jobbet pågår, lämnas till kunden som
+PDF när det är klart och sparas i arkivet. Personalens dagliga handling är
+densamma: ta foton, skriv en rad, tryck *Publicera*. Allt annat är valfritt.
+
+**Strukturen** (`lib/portal/documentation.ts`, ren och testad i
+`documentation.test.ts`): `documentationTree` gör fas → dag → anteckningar och
+foton av fotona i `project_photos` och inläggen i `project_updates`. Kapitlen
+följer tidplanen; anteckningar utan fas (gamla inlägg, eller fasen togs bort)
+hamnar sist som *Övrigt från bygget*. Ett inlägg utan text räknas inte som
+anteckning. Samma träd används av admin, kundens *Per fas*, rapporten och zip-filen.
+
+**I admin:**
+
+- `/admin/projekt/[id]` har en ruta *Dokumentation* under dagens uppdatering:
+  "Foton 6 av 8 dagar hittills", varningen "Tätskikt saknar foton", *Öppna
+  dokumentationen* och *Visa PDF*.
+- `/admin/projekt/[id]/dokumentation` är trädet. Varje fält sparar sig självt
+  (bildtext och texter när man lämnar fältet, resten direkt) och skriver
+  *Sparat*: bildtext, *Med i rapporten*, *Flytta* (fas och dag), *Ta bort*,
+  dagens anteckning (text, fas, dag), fasens *Sammanfattning* och
+  *Slutdokumentation*. Ett foto med bildtext blir en stor bild i rapporten,
+  utan bildtext hamnar det i dagens rutnät med tre i bredd.
+- **Lås dokumentationen** visas när projektet har status *Klart* (eller
+  *Garantitid*): rapporten renderas en sista gång, sparas som dokument av typen
+  *Projektdokumentation* (`report`) och `archived_at` sätts. Sedan är faser,
+  dagar, foton och texter skrivskyddade (inga fält, ingen *Publicera*, tidplanen
+  grå); dokument kan fortfarande läggas till, t.ex. en garantiåtgärd. Zip-filen
+  byggs direkt efter svaret. *Lås upp* finns under en utfällbar rad om något
+  blev fel; den låsta rapporten och zip-filen tas då bort och en ny görs vid
+  nästa låsning. Ett låst projekt kan inte tas bort förrän det låsts upp.
+- `/admin/projekt` visar per pågående projekt "Foton 6 av 8 dagar" (dagar
+  hittills = arbetsdagar från start till i dag, plus dagar med foton utanför
+  arbetstid) och "Tätskikt saknar foton". Fliken **Arkiv** listar låsta
+  projekt med sök på kund, adress och projekt och ett års-filter; raden öppnar
+  rapporten direkt.
+
+**Kvalitet:** en fas kan kräva foto (`project_phases.photo_required`). De
+inbyggda mallarna sätter det på *Tätskikt* och *El och VVS*, och en fas med
+de namnen som läggs till för hand får det också (`photoRequiredByDefault`).
+Kameraknappen på fasraden i tidplanen slår av och på. En sådan fas kan inte
+bockas *Klar* utan minst ett foto: varken på projektet eller från *Borde vara
+klart*-rutan, som då visar "Tätskikt saknar foton. Ladda upp minst ett foto
+innan fasen bockas av …".
+
+**Hos kunden:** fliken *Foton* heter **Dokumentation** och har två vyer:
+*Dagbok* (som förut, nyast överst, nu med fasens namn) och *Per fas* (bara
+faser och dagar med innehåll, fasens sammanfattning, bildtexter, och
+slutdokumentationen sist). `/foton` skickar vidare dit, och mejlet om en ny
+uppdatering länkar dit. Tidplanen har "Se fasens dokumentation →" på varje
+fas med innehåll. Knappen **Ladda ner projektdokumentation (PDF)** finns i
+Dokumentation och i Dokument: under bygget ger den "hittills", efter låsningen
+den låsta filen. Efter låsningen finns också **Ladda ner allt (zip)**.
+
+**Rapporten** (`lib/pdf/ReportPdf.tsx`, `lib/portal/report.tsx`): A4 i samma
+utseende som offerten (Plus Jakarta Sans inbäddad, ligaturer av, sidhuvudet i
+flödet). Försättsblad med det senaste fotot, innehållsförteckning med
+klickbara kapitel och sidnummer, ett kapitel per fas (planerat och utfört
+eller beräknat datum, längd, förseningar med orsak, ÄTA-ursprung,
+sammanfattning, sedan dagarna med anteckningar, figurer och rutnät),
+slutdokumentationen och bilagorna A (godkända ÄTA med pris, tid, vem och
+när), B (dokumentlistan) och C (förskjutningar av slutdatumet). Ingen
+marknadsföring. Foton skalas ner med sharp (figur längsta sida 1 200 px,
+rutnät 800 × 600, kvalitet 62); originalen ligger kvar.
+
+- Sidbrytningar: react-pdf klämmer ihop ett odelbart block som inte får plats
+  i stället för att flytta det, och `render`-callbacks i flödande text förstör
+  layouten. Därför renderas rapporten tills layouten står still (oftast två
+  gånger): varje varv läser var allt hamnade (layouten från `Document`
+  `onRender`), skriver sidnumren i innehållet och börjar ett kapitel eller en
+  bilaga på ny sida om rubriken annars blev ensam längst ner.
+- **Cachen:** filen sparas i bucketen som
+  `projects/{id}/rapport-{fingeravtryck}.pdf`, där fingeravtrycket är en
+  sha256 av allt rapporten skriver ut (`reportFingerprintSource`, plus
+  `REPORT_VERSION`), och `portal_projects.report_hash` pekar ut den aktuella.
+  Varje åtgärd som ändrar innehållet (inlägg, foto, text, tidplan, försening,
+  ÄTA-svar, dokument) renderar om den efter svaret med Next `after()`, så den
+  är klar när någon laddar ner. Saknas den eller är inaktuell renderas den en
+  gång i nedladdningen och sparas. Fingeravtrycket i filnamnet gör att två
+  renderingar samtidigt aldrig kan lämna en gammal PDF under ett nytt namn
+  (planen sa `rapport.pdf`; det här är skälet till avvikelsen). Kundens
+  nedladdning skriver cachen med service role, eftersom medlemmar bara får läsa.
+  Höj `REPORT_VERSION` när layouten ändras.
+- Nedladdning: `/mitt-projekt/[id]/dokumentation/pdf` och `/zip` för
+  inloggade medlemmar (RLS avgör, som `/mitt-projekt/fil`), och
+  `/admin/projekt/[id]/rapport` och `/rapport/zip` för admin. Med Supabase blir
+  svaret en omdirigering till en signerad länk med filnamnet
+  `Projektdokumentation-Badrumsrenovering.pdf`.
+- **Zip-filen** (`lib/zip.ts`, testad): PDF:en plus originalfotona i mappar
+  per fas och dag, t.ex. `02 Tätskikt/2026-10-20/01 Duschhörnan.jpg`, med
+  UTF-8-namn så å, ä och ö överlever i Windows, macOS och Linux. Lagrad, inte
+  komprimerad: JPEG och PDF blir inte mindre. Sparas som
+  `projects/{id}/dokumentation.zip`.
+
+**Migration `0013_documentation.sql`:** `project_phases.summary` och
+`photo_required` (sätts på ej klara faser som heter Tätskikt eller El och
+VVS), `portal_projects.final_summary`, `archived_at` (med index) och
+`report_hash`; dokumenttypen `report` (kolumnen är fri text, kommentar
+uppdaterad); `project_updates.photos` tas bort (läses och skrivs inte sedan
+`0012`, som flyttade fotona). **Låset i databasen:** triggers på
+`project_phases`, `project_updates` och `project_photos` vägrar insert,
+update och delete när projektet har `archived_at`, och en trigger på
+`portal_projects` vägrar ändrad `final_summary`; appen kontrollerar samma
+sak först (`assertOpen` i `store.ts`). Att ta bort hela projektet kaskaderar
+fortfarande. Inga nya tabeller, så RLS från `0010` gäller. Provkörd
+2026-10-19 i PGlite med 0001–0013 i ordning, stubbad auth/storage och
+exempeldata från fas B: kolumnerna, att `photos` försvinner, flaggan på
+Tätskikt (inte på en redan klar El och VVS), att låset vägrar tio sorters
+ändringar men släpper igenom dokument, status och `report_hash`, att ett
+låst projekt kan tas bort och att upplåsning gör allt redigerbart igen.
+**Inte körd mot produktion.**
+
+**Demoläge:** exempelprojektet har anteckningar och nio foton i Uppstart,
+Rivning och El och VVS (ritade med sharp första gången de visas,
+`lib/portal/demo-photos.ts`), en sammanfattning på El och VVS, ett foto
+utanför rapporten, och Tätskikt utan foto så att varningen syns. Rapporten,
+låsningen och zip-filen fungerar mot `uploads/portal/` på disk.
 
 ## Utseende
 
@@ -190,15 +312,15 @@ omnumrerade till `0007` och `0008`, cases till `0009`):
 
 | Tabell | Innehåll |
 |---|---|
-| `portal_projects` | `quote_id → quotes`, titel, adress, kund-namn, aktuell fas, start, slut, kontaktperson (namn, telefon), "den här veckan"-text, status (`active`/`done`/`warranty`) |
+| `portal_projects` | `quote_id → quotes`, titel, adress, kund-namn, aktuell fas, start, slut, kontaktperson (namn, telefon), "den här veckan"-text, status (`active`/`done`/`warranty`); `final_summary`, `archived_at`, `report_hash` (`0013`) |
 | `project_members` | `project_id`, `user_id → auth.users`, e-post, namn, inbjuden när |
-| `project_phases` | `project_id`, namn, sort, start/slut (räknas fram), `duration_days`, `change_order_id`, `done_at` |
+| `project_phases` | `project_id`, namn, sort, start/slut (räknas fram), `duration_days`, `change_order_id`, `done_at`, `summary` och `photo_required` (`0013`) |
 | `project_updates` | `project_id`, text, `phase_id`, `day`, skapad av, skapad när (fotona i `project_photos` sedan `0012`) |
 | `change_orders` | `project_id`, löpnummer, titel, beskrivning, belopp, arbetskostnad (för ROT), `duration_days`, status (`pending`/`approved`/`declined`), svarat av (`user_id`, namn), svarat när |
 | `timeline_shifts` (`0012`) | `project_id`, sort (`delay`/`change_order`), fas, `change_order_id`, dagar, orsak för kunden, skapad när och av |
 | `project_photos` (`0012`) | `project_id`, `phase_id`, `update_id`, dag, sökväg, bildtext, `in_report`, sort, skapad av |
 | `phase_templates` (`0012`) | namn, jobbtyp, faser med dagar (`jsonb`) |
-| `project_documents` | `project_id`, typ (`quote`/`invoice`/`rot`/`certificate`/`warranty`/`care`/`other`), titel, sökväg i bucket, uppladdad när |
+| `project_documents` | `project_id`, typ (`quote`/`invoice`/`rot`/`certificate`/`warranty`/`care`/`report`/`other`), titel, sökväg i bucket, uppladdad när |
 
 RLS: `is_admin()` för allt, plus `select` för medlemmar via
 `exists(select 1 from project_members m where m.project_id = X.project_id and m.user_id = auth.uid())`.
@@ -213,10 +335,11 @@ under `projects/{project_id}/` om hen är medlem.
 - Kund: `app/(portal)/mitt-projekt/` — `page.tsx` (lista om flera projekt,
   annars redirect till det enda), `login/page.tsx`, `[id]/` med `layout.tsx`
   (sidhuvud + flikar) och en route per flik: `page.tsx` (Översikt),
-  `tidplan/`, `foton/`, `andringar/`, `dokument/`.
+  `tidplan/`, `dokumentation/` (med `pdf/` och `zip/`; `foton/` skickar vidare), `andringar/`, `dokument/`.
 - Admin: `app/admin/(dashboard)/projekt/` — `page.tsx` (lista),
   `ny/page.tsx` (från offert), `[id]/page.tsx` (redigera, uppdateringar, ÄTA,
-  dokument, medlemmar).
+  dokument, medlemmar), `[id]/dokumentation/page.tsx` och `[id]/rapport/`
+  (PDF och zip). Dokumentationens åtgärder i `app/admin/documentation-actions.ts`.
 - Server actions: `app/admin/portal-actions.ts` (admin) och
   `app/(portal)/portal-actions.ts` (inloggning och kundens ÄTA-svar). Svaret
   skrivs med service role i `answerChangeOrder` (`lib/portal/store.ts`) efter
@@ -271,7 +394,10 @@ exempelprojekt.
 3. **Tidplan 2.0 (klar 2026-10-19, fas B i `kundportal-v3.md`):**
    arbetsdagskalender, varaktigheter, mallar, förseningar, ÄTA med tid,
    påminnelser, kundens tidplan och foton per fas och dag. Migration `0012`.
-4. **Senare:** felanmälan under garantitiden (med foto), betalplan och
+4. **Dokumentationen (klar 2026-10-19, fas C):** trädet fas → dag → foton i
+   admin, kundens Dokumentation-flik, rapport-PDF med cache, låsning, zip,
+   arkiv och fotokrav. Migration `0013`.
+5. **Senare:** felanmälan under garantitiden (med foto), betalplan och
    fakturastatus, BankID-signering, Software-variant (etapper och leveranser
    i stället för byggfaser).
 

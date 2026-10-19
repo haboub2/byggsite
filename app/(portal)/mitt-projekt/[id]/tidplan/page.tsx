@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fileHref } from "@/lib/portal/files-href";
 import { formatDay, formatLongDay, formatWeekday } from "@/lib/portal/format";
@@ -98,6 +99,11 @@ export default async function PortalTimeline({ params }: { params: Promise<{ id:
                           </div>
                         ))}
                       </details>
+                    )}
+                    {(days.length > 0 || p.summary.trim()) && (
+                      <Link href={`/mitt-projekt/${project.id}/dokumentation?vy=fas#fas-${p.id}`} className="portal-phase-doc">
+                        Se fasens dokumentation →
+                      </Link>
                     )}
                   </span>
                 </li>

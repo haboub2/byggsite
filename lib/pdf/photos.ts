@@ -66,3 +66,28 @@ export function loadPdfPhoto(slot: string | null, box: PhotoBox): Promise<PdfPho
   if (!slot) return Promise.resolve(null);
   return cached(`${slot}@${box.width}x${box.height}`, () => load(slot, pdfPhotoSource(slot, box), box));
 }
+
+/* ---------- the documentation report (lib/portal/report.ts) ---------- */
+
+/** A captioned photo is a figure (longest side about 1 200 px, uncropped);
+ *  the rest fill the day's grid of 4:3 cells. The originals stay in the bucket. */
+export const FIGURE_SIDE = 1200;
+export const GRID_BOX: PhotoBox = { width: 800, height: 600 };
+
+export type SizedPdfPhoto = PdfPhoto & { width: number; height: number };
+
+/** An original from the portal bucket, shrunk and re-encoded for the report. Null if it can't be read. */
+export async function compressReportPhoto(raw: Buffer, mode: "figure" | "grid" | "cover"): Promise<SizedPdfPhoto | null> {
+  try {
+    const img = sharp(raw).rotate();
+    const resized =
+      mode === "figure"
+        ? img.resize(FIGURE_SIDE, FIGURE_SIDE, { fit: "inside", withoutEnlargement: true })
+        : img.resize(mode === "grid" ? GRID_BOX.width : COVER_BOX.width, mode === "grid" ? GRID_BOX.height : COVER_BOX.height, { fit: "cover", position: "centre" });
+    const { data, info } = await resized.jpeg({ quality: QUALITY, mozjpeg: true, progressive: true }).toBuffer({ resolveWithObject: true });
+    return { data, format: "jpg", width: info.width, height: info.height };
+  } catch (err) {
+    console.warn("[pdf] report photo left out:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
