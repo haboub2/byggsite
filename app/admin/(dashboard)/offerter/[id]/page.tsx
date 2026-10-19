@@ -8,6 +8,18 @@ import { getQuote } from "@/lib/quotes/store";
 import { getLead } from "@/lib/leads";
 import { QUOTE_DIVISION_LABEL, QUOTE_STATUS_LABEL } from "@/lib/quotes/schema";
 import { formatDateTime } from "@/lib/admin-format";
+import { COVER_CHOICES } from "@/lib/quotes/cover";
+import { resolveImage } from "@/lib/images";
+
+/** Small previews of the cover photos for the picker in the editor. */
+function coverPreviews(): Record<string, string> {
+  return Object.fromEntries(
+    COVER_CHOICES.flatMap((c) => {
+      const src = resolveImage(c.slot);
+      return src ? [[c.slot, src.replace(/w=\d+/, "w=240")]] : [];
+    })
+  );
+}
 
 export default async function EditQuote({
   params,
@@ -58,7 +70,7 @@ export default async function EditQuote({
         {kopia && <p className="admin-flash">Kopian är skapad som ett nytt utkast med dagens datum.</p>}
 
         <div className="quote-layout">
-          <QuoteEditor key={version} id={quote.id} initial={quote.data} />
+          <QuoteEditor key={version} id={quote.id} initial={quote.data} coverPreviews={coverPreviews()} />
 
           <aside className="lead-aside quote-aside">
             <div className="lead-status">

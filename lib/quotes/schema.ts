@@ -47,6 +47,8 @@ export const quoteItemSchema = z.object({
   unitPrice: amount,
   vatRate: z.coerce.number().refine((v) => (VAT_RATES as readonly number[]).includes(v), "Moms: 25, 12, 6 eller 0 %."),
   kind: z.enum(ITEM_KINDS),
+  /** Work step the row belongs to, e.g. "Rivning". Rows with the same step are grouped on the PDF; empty groups by kind. */
+  section: optionalText(60, "Moment"),
 });
 export type QuoteItem = z.infer<typeof quoteItemSchema>;
 
@@ -102,6 +104,8 @@ export const quoteSchema = z.object({
   /** Date on the document; defaults to when it was created. */
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum skrivs 2026-10-15."),
   leadId: z.string().nullable(),
+  /** Cover photo, a slot from lib/images.ts: "" picks one from the title, "none" leaves it out (lib/quotes/cover.ts). */
+  cover: z.string().trim().max(40),
 });
 export type QuoteData = z.infer<typeof quoteSchema>;
 
@@ -148,7 +152,7 @@ export function withQuoteDefaults(raw: QuoteData): QuoteData {
     ...raw,
     intro: r.intro ?? "",
     customer: { ...emptyCustomer, ...(r.customer ?? {}) },
-    items: r.items ?? [],
+    items: (r.items ?? []).map((i) => ({ ...i, section: i.section ?? "" })),
     pricesInclVat: r.pricesInclVat ?? true,
     rot: r.rot ?? false,
     rotPersons: r.rotPersons ?? Array.from({ length: r.rotOwners ?? 0 }, () => ({ name: "", personalNumber: "" })),
@@ -156,6 +160,7 @@ export function withQuoteDefaults(raw: QuoteData): QuoteData {
     paymentDays: r.paymentDays ?? 30,
     terms: { ...emptyTerms, ...(r.terms ?? {}) },
     leadId: r.leadId ?? null,
+    cover: r.cover ?? "",
   };
 }
 

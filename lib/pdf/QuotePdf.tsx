@@ -1,15 +1,20 @@
-import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
+import { Document, Font, Page, Text, View, Image, StyleSheet, Svg, Path } from "@react-pdf/renderer";
+import type { ReactNode } from "react";
 import type { Style } from "@react-pdf/stylesheet";
 import type { Company, QuoteSettings } from "../content/schema";
-import { quoteTotals, sek, qty, validUntil, ROT_RATE, ROT_CAP } from "../quotes/math";
-import { ITEM_KIND_LABEL, type Quote } from "../quotes/schema";
+import { displayUnitPrice, groupItems, priceSummary, quoteTotals, sek, qty, showsInclVat, validUntil, formatDate, ROT_RATE, ROT_CAP } from "../quotes/math";
+import { ITEM_KIND_LABEL, type ItemKind, type Quote } from "../quotes/schema";
+import { BANNER_LINE } from "../quotes/cover";
 import { LOGO_DATA_URI } from "./logo";
+import { JAKARTA_BOLD, JAKARTA_ITALIC, JAKARTA_MEDIUM, JAKARTA_REGULAR } from "./fonts";
+import type { PdfPhoto } from "./photos";
 
 /**
- * The quote as an A4 PDF, laid out like a Swedish "offert" from an
- * accounting system (facts box, item table with two decimals, a totals bar
- * and a four-column company footer) in the site's own look: anthracite ink,
- * one orange accent, the standard Helvetica (no font files, covers åäö).
+ * The quote as an A4 PDF in the site's own look: Plus Jakarta Sans,
+ * anthracite ink, one orange accent, cream panels. Reading order: a photo
+ * cover, the parties, the work grouped by step with subtotals, the price
+ * summary, how the job runs, a photo band, the terms as checklists, and
+ * the signature with our contact and payment details.
  *
  * Two @react-pdf/renderer 4.9 quirks shape the styles below:
  * - lineHeight on the Page hides absolutely positioned fixed children (the
@@ -19,77 +24,171 @@ import { LOGO_DATA_URI } from "./logo";
  *   that sets lineHeight also sets fontSize.
  */
 
+Font.register({
+  family: "Jakarta",
+  fonts: [
+    { src: JAKARTA_REGULAR, fontWeight: 400 },
+    { src: JAKARTA_ITALIC, fontWeight: 400, fontStyle: "italic" },
+    { src: JAKARTA_MEDIUM, fontWeight: 500 },
+    { src: JAKARTA_BOLD, fontWeight: 700 },
+  ],
+});
+// The built-in hyphenation is English and splits Swedish words in odd places
+// ("vä-gen"); whole words wrap instead.
+Font.registerHyphenationCallback((word) => [word]);
+
 const INK = "#1e2c37";
 const INK2 = "#4b5763";
 const INK3 = "#6b7680";
 const ORANGE = "#f7802e";
-const LINE = "#d9d6cf";
+const LINE = "#e3e0d9";
 const PAPER = "#f6f4ef";
-
-const FOOTER_H = 88;
+const WHITE = "#ffffff";
+const X = 46; // page margin
+// Ligatures off: "ff" and "fi" glyphs lose their letters when the PDF text is
+// copied or searched ("Offert" became "Ofert").
+const NO_LIGATURES = { liga: false, clig: false };
 
 const s = StyleSheet.create({
-  page: { paddingTop: 40, paddingBottom: FOOTER_H + 30, paddingHorizontal: 46, fontFamily: "Helvetica", fontSize: 9.5, color: INK },
-  bold: { fontFamily: "Helvetica-Bold" },
-  muted: { color: INK3 },
-  p: { fontSize: 9.5, lineHeight: 1.4 },
-  pMuted: { fontSize: 9.5, lineHeight: 1.4, color: INK2 },
-  small: { fontSize: 8, lineHeight: 1.35, color: INK3 },
-  label: { fontSize: 7.5, letterSpacing: 1.2, textTransform: "uppercase", color: INK3, marginBottom: 4 },
+  page: { paddingTop: 28, paddingBottom: 64, paddingHorizontal: X, fontFamily: "Jakarta", fontFeatureSettings: NO_LIGATURES, fontSize: 9.5, color: INK },
+  bold: { fontWeight: 700 },
+  pMuted: { fontSize: 9.5, lineHeight: 1.5, color: INK2 },
+  small: { fontSize: 8, lineHeight: 1.45, color: INK3 },
+  label: { fontSize: 7, lineHeight: 1.3, letterSpacing: 1.4, textTransform: "uppercase", color: INK3 },
 
-  head: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 },
-  logo: { width: 112, height: 38, objectFit: "contain", objectPosition: "left top" },
-  headRight: { alignItems: "flex-end" },
-  docTitle: { fontFamily: "Helvetica-Bold", fontSize: 22, letterSpacing: 2, lineHeight: 1.1, marginBottom: 2 },
-  pageNo: { fontSize: 8, color: INK3 },
+  // Running header and footer
+  // In the flow, not absolutely positioned: react-pdf leaves images out of
+  // absolutely positioned fixed elements.
+  head: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, paddingBottom: 9, borderBottomWidth: 0.6, borderBottomColor: LINE },
+  headLogo: { width: 76, height: 24, objectFit: "contain", objectPosition: "left top" },
+  headRight: { alignItems: "flex-end", paddingTop: 8 },
+  headText: { fontSize: 8, color: INK3 },
+  foot: { position: "absolute", bottom: 26, left: X, right: X, flexDirection: "row", justifyContent: "space-between", paddingTop: 8, borderTopWidth: 0.6, borderTopColor: LINE },
+  footText: { fontSize: 7.5, lineHeight: 1.2, color: INK3 },
 
-  top: { flexDirection: "row", gap: 20, marginBottom: 22 },
-  customer: { flex: 1.1, padding: 12, backgroundColor: PAPER, borderRadius: 3 },
-  facts: { flex: 1 },
-  fact: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3.5, borderBottomWidth: 0.5, borderBottomColor: LINE },
-  factK: { color: INK3 },
-  factV: { fontFamily: "Helvetica-Bold", textAlign: "right", maxWidth: "60%" },
+  // Section headings
+  section: { marginTop: 24 },
+  h2Row: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+  h2Dash: { width: 14, height: 2, backgroundColor: ORANGE, marginRight: 8 },
+  h2: { fontSize: 13, lineHeight: 1.2, fontWeight: 700, letterSpacing: -0.2 },
+  h2Aside: { marginLeft: "auto", fontSize: 8, lineHeight: 1.2, color: INK3 },
 
-  h1: { fontFamily: "Helvetica-Bold", fontSize: 15, marginBottom: 5, letterSpacing: -0.2 },
-  intro: { marginBottom: 16 },
+  // Title block
+  eyebrow: { fontSize: 7.5, lineHeight: 1.2, letterSpacing: 1.8, color: ORANGE, fontWeight: 700, marginBottom: 6 },
+  h1: { fontSize: 22, lineHeight: 1.15, fontWeight: 700, letterSpacing: -0.5 },
+  meta: { flexDirection: "row", marginTop: 14, paddingTop: 10, borderTopWidth: 0.6, borderTopColor: LINE },
+  metaCell: { flex: 1 },
+  metaV: { fontSize: 9.5, lineHeight: 1.3, fontWeight: 500, marginTop: 3 },
+  intro: { marginTop: 16 },
 
-  th: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: INK, paddingBottom: 4, marginBottom: 1 },
-  thText: { fontFamily: "Helvetica-Bold", fontSize: 9 },
-  tr: { flexDirection: "row", paddingVertical: 5, borderBottomWidth: 0.5, borderBottomColor: LINE, alignItems: "flex-start" },
-  cDesc: { flex: 1, paddingRight: 8 },
-  cQty: { width: 44, textAlign: "right" },
-  cUnit: { width: 36, paddingLeft: 6 },
-  cPrice: { width: 76, textAlign: "right" },
-  cSum: { width: 80, textAlign: "right" },
-  cell: { fontSize: 9.5, lineHeight: 1.3 },
-  kind: { fontSize: 7.5, lineHeight: 1.2, color: INK3 },
+  // Parties
+  parties: { flexDirection: "row", gap: 14 },
+  party: { flex: 1, borderWidth: 0.6, borderColor: LINE, borderRadius: 4 },
+  partyHead: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 8, backgroundColor: PAPER, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  partyNo: { fontSize: 9, lineHeight: 1.2, fontWeight: 700, color: ORANGE, marginRight: 6 },
+  partyTitle: { fontSize: 9.5, lineHeight: 1.2, fontWeight: 700 },
+  partyBody: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 12, paddingTop: 4, paddingBottom: 10 },
+  field: { width: "50%", paddingTop: 7, paddingRight: 8 },
+  fieldWide: { width: "100%", paddingTop: 7 },
+  fieldV: { fontSize: 9, lineHeight: 1.35, marginTop: 2 },
 
-  rotBox: { marginTop: 12, padding: 10, backgroundColor: PAPER, borderRadius: 3 },
-  rotLine: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 1.5 },
+  // Item table
+  th: { flexDirection: "row", paddingBottom: 5, borderBottomWidth: 0.8, borderBottomColor: INK },
+  thText: { fontSize: 7, lineHeight: 1.2, letterSpacing: 1.2, textTransform: "uppercase", color: INK3 },
+  group: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10, paddingVertical: 6, paddingHorizontal: 8, backgroundColor: PAPER, borderRadius: 3 },
+  groupTitle: { fontSize: 9.5, lineHeight: 1.2, fontWeight: 700 },
+  groupSum: { fontSize: 9, lineHeight: 1.2, fontWeight: 500, color: INK2 },
+  tr: { flexDirection: "row", paddingVertical: 6, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: LINE, alignItems: "flex-start" },
+  cDesc: { flex: 1, paddingRight: 10 },
+  cQty: { width: 40, textAlign: "right" },
+  cUnit: { width: 34, paddingLeft: 6 },
+  cPrice: { width: 74, textAlign: "right" },
+  cSum: { width: 78, textAlign: "right" },
+  cell: { fontSize: 9, lineHeight: 1.35 },
+  kind: { fontSize: 7, lineHeight: 1.3, color: INK3, marginTop: 1 },
 
-  bar: { marginTop: 16, flexDirection: "row", borderTopWidth: 1, borderTopColor: INK, borderBottomWidth: 0.5, borderBottomColor: LINE, paddingVertical: 8 },
-  barCell: { flex: 1 },
-  barK: { fontSize: 8, color: INK3, marginBottom: 2 },
-  barV: { fontSize: 10 },
-  barTotal: { flex: 1.3, alignItems: "flex-end" },
-  barTotalV: { fontFamily: "Helvetica-Bold", fontSize: 13 },
-  vatLine: { marginTop: 5, fontSize: 8, color: INK3 },
+  // Price summary
+  sum: { marginTop: 22 },
+  sumHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 8 },
+  sumTitle: { fontSize: 13, lineHeight: 1.2 },
+  sumMode: { fontSize: 8, lineHeight: 1.2, color: INK3, textDecoration: "underline" },
+  sumRows: { backgroundColor: PAPER, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  sumRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6, paddingHorizontal: 14, borderBottomWidth: 0.6, borderBottomColor: WHITE },
+  sumK: { fontSize: 9.5, lineHeight: 1.3 },
+  sumTag: { fontSize: 7.5, lineHeight: 1.3, color: ORANGE, fontStyle: "italic" },
+  sumV: { fontSize: 9.5, lineHeight: 1.3, textAlign: "right" },
+  sumRule: { height: 2.5, backgroundColor: INK },
+  sumTotal: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", paddingTop: 10, paddingHorizontal: 14 },
+  sumTotalK: { fontSize: 12, lineHeight: 1.2, fontWeight: 700 },
+  sumTotalV: { fontSize: 17, lineHeight: 1.2, fontWeight: 700, letterSpacing: -0.3 },
+  sumAfter: { fontSize: 8, lineHeight: 1.4, color: INK3, textAlign: "right", paddingHorizontal: 14, marginTop: 3 },
 
-  terms: { marginTop: 22 },
-  term: { marginBottom: 9 },
-  termH: { fontFamily: "Helvetica-Bold", fontSize: 9.5, marginBottom: 1 },
+  // How the job runs
+  steps: { flexDirection: "row", gap: 12 },
+  step: { flex: 1, paddingTop: 10, borderTopWidth: 2, borderTopColor: INK },
+  stepNo: { fontSize: 18, lineHeight: 1.1, fontWeight: 700, color: ORANGE },
+  stepTitle: { fontSize: 9.5, lineHeight: 1.3, fontWeight: 700, marginTop: 6 },
+  stepText: { fontSize: 8, lineHeight: 1.45, color: INK2, marginTop: 3 },
 
-  sign: { marginTop: 26, flexDirection: "row", gap: 24 },
+  // Photo band
+  band: { marginTop: 26, marginHorizontal: -X, height: 124, position: "relative", backgroundColor: INK },
+  bandPhoto: { position: "absolute", top: 0, left: 0, width: "100%", height: 124, objectFit: "cover" },
+  bandShade: { position: "absolute", top: 0, left: 0, width: "100%", height: 124, backgroundColor: INK, opacity: 0.42 },
+  bandText: { position: "absolute", left: X, right: X, bottom: 22 },
+  accent: { width: 36, height: 3, backgroundColor: ORANGE, marginBottom: 12 },
+  bandLine: { fontSize: 19, lineHeight: 1.2, fontWeight: 700, color: WHITE, letterSpacing: -0.3 },
+
+  // Terms
+  termRow: { flexDirection: "row", gap: 10, marginBottom: 10 },
+  term: { flex: 1, padding: 11, backgroundColor: PAPER, borderRadius: 4 },
+  termWide: { flex: 1, padding: 11, backgroundColor: PAPER, borderRadius: 4 },
+  termH: { fontSize: 9.5, lineHeight: 1.3, fontWeight: 700, marginBottom: 5 },
+  bullet: { flexDirection: "row", alignItems: "flex-start", marginTop: 3 },
+  bulletIcon: { width: 9, height: 9, marginTop: 2.5, marginRight: 6 },
+  bulletText: { flex: 1, fontSize: 8.5, lineHeight: 1.45, color: INK2 },
+  termText: { fontSize: 8.5, lineHeight: 1.45, color: INK2 },
+  rotLine: { flexDirection: "row", justifyContent: "space-between", marginTop: 3 },
+
+  // Signature and contact
+  sign: { flexDirection: "row", gap: 24, marginTop: 18 },
   signBox: { flex: 1 },
-  signLine: { borderBottomWidth: 0.8, borderBottomColor: INK, height: 32, marginBottom: 4 },
+  signLine: { borderBottomWidth: 0.8, borderBottomColor: INK, height: 34, marginBottom: 5 },
+  contact: { flexDirection: "row", gap: 14, marginTop: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: ORANGE },
+  contactCol: { flex: 1 },
+  contactV: { fontSize: 8.5, lineHeight: 1.45, marginTop: 3 },
 
-  footer: { position: "absolute", left: 46, right: 46, bottom: 26, height: FOOTER_H, borderTopWidth: 1, borderTopColor: ORANGE, paddingTop: 8, flexDirection: "row", gap: 14 },
-  fCol: { flex: 1 },
-  fK: { fontSize: 7.5, color: INK3, marginTop: 3 },
-  fV: { fontSize: 8.5, lineHeight: 1.3 },
+  // Cover page
+  cover: { fontFamily: "Jakarta", fontFeatureSettings: NO_LIGATURES, color: INK, backgroundColor: WHITE },
+  coverPhoto: { width: "100%", height: 470, objectFit: "cover" },
+  coverBlock: { width: "100%", height: 470, backgroundColor: INK },
+  coverBody: { paddingHorizontal: X, paddingTop: 34 },
+  coverLabel: { fontSize: 8, lineHeight: 1.2, letterSpacing: 2.4, color: INK3, marginBottom: 8 },
+  coverTitle: { fontSize: 32, lineHeight: 1.12, fontWeight: 700, letterSpacing: -0.9, marginBottom: 10 },
+  coverFor: { fontSize: 11, lineHeight: 1.45, color: INK2 },
+  coverFacts: { flexDirection: "row", marginTop: 26, borderTopWidth: 0.6, borderTopColor: LINE, paddingTop: 12 },
+  coverFact: { flex: 1 },
+  coverFactV: { fontSize: 12.5, lineHeight: 1.2, fontWeight: 700, marginTop: 4 },
+  coverFoot: { position: "absolute", left: X, right: X, bottom: 34, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
+  coverLogo: { width: 104, height: 34, objectFit: "contain", objectPosition: "left bottom" },
+  coverContact: { fontSize: 8, lineHeight: 1.5, color: INK3, textAlign: "right" },
 });
 
-const clean = (t: string) => t.replace(/ /g, " ");
+/* ------------------------------------------------------------ helpers */
+
+/** Keeps a number on the same line as its unit ("40 %", "3 000 kr"). */
+const clean = (t: string) => t.replace(/(\d)[ \u00a0]+(%|kr\b|SEK\b|m\u00b2|m2\b|tim\b|dagar\b|veckor\b)/g, "$1\u00a0$2");
+
+/** Amounts with a plain hyphen for minus, so they read the same everywhere. */
+const signed = (n: number) => (n < 0 ? `-${sek(-n)}` : sek(n));
+
+/** Text as list items: one per line, or one per sentence for a paragraph. */
+function bullets(text: string): string[] {
+  return clean(text)
+    .split(/\n+/)
+    .flatMap((line) => line.split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ0-9])/))
+    .map((x) => x.replace(/^[-•*]\s*/, "").trim())
+    .filter(Boolean);
+}
 
 function Lines({ text, style }: { text: string; style?: Style }) {
   return (
@@ -106,214 +205,523 @@ function Lines({ text, style }: { text: string; style?: Style }) {
   );
 }
 
-function Fact({ k, v }: { k: string; v: string }) {
+/** A section heading, never left alone at the bottom of a page: `keep` is
+ *  how much of what follows must fit below it. */
+function Heading({ children, aside, keep = 120 }: { children: string; aside?: string; keep?: number }) {
   return (
-    <View style={s.fact}>
-      <Text style={s.factK}>{k}</Text>
-      <Text style={s.factV}>{clean(v)}</Text>
+    <View style={s.h2Row} minPresenceAhead={keep}>
+      <View style={s.h2Dash} />
+      <Text style={s.h2}>{children}</Text>
+      {aside ? <Text style={s.h2Aside}>{aside}</Text> : null}
     </View>
   );
 }
 
-function FooterItem({ k, v }: { k: string; v: string }) {
-  if (!v) return null;
+function Check() {
+  return (
+    <Svg style={s.bulletIcon} viewBox="0 0 10 10">
+      <Path d="M1.6 5.3 L4.1 7.7 L8.6 2.5" stroke={ORANGE} strokeWidth={1.6} fill="none" />
+    </Svg>
+  );
+}
+
+function Cross() {
+  return (
+    <Svg style={s.bulletIcon} viewBox="0 0 10 10">
+      <Path d="M2.2 2.2 L7.8 7.8 M7.8 2.2 L2.2 7.8" stroke={INK3} strokeWidth={1.4} fill="none" />
+    </Svg>
+  );
+}
+
+function BulletList({ text, icon }: { text: string; icon: "check" | "cross" }) {
   return (
     <>
-      <Text style={s.fK}>{k}</Text>
-      <Text style={s.fV}>{clean(v)}</Text>
+      {bullets(text).map((line, i) => (
+        <View key={i} style={s.bullet}>
+          {icon === "check" ? <Check /> : <Cross />}
+          <Text style={s.bulletText}>{line}</Text>
+        </View>
+      ))}
     </>
   );
 }
 
-export function QuotePdf({ quote, company, settings }: { quote: Quote; company: Company; settings: QuoteSettings }) {
+function Field({ k, v, wide = false }: { k: string; v: string; wide?: boolean }) {
+  if (!v.trim()) return null;
+  return (
+    <View style={wide ? s.fieldWide : s.field}>
+      <Text style={s.label}>{k}</Text>
+      <Text style={s.fieldV}>{clean(v)}</Text>
+    </View>
+  );
+}
+
+const addressOf = (street: string, postalCode: string, city: string) =>
+  [street, [postalCode, city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+
+/* ------------------------------------------------------------ cover */
+
+/** Page 1: a full-bleed photo over the title, who the quote is for and the
+ *  three figures the customer looks for first. */
+function CoverPage({ quote, company, photo }: { quote: Quote; company: Company; photo: PdfPhoto | null }) {
+  const d = quote.data;
+  const c = d.customer;
+  const p = priceSummary(d);
+  const who = c.type === "foretag" && c.company ? `${c.company}, ${c.name}` : c.name;
+  const where = addressOf(c.street, c.postalCode, c.city);
+  const amountLabel = p.inclVat ? (p.rot > 0 ? "Att betala efter ROT" : "Att betala") : "Totalt exkl. moms";
+  return (
+    <Page size="A4" style={s.cover}>
+      {photo ? (
+        // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt
+        <Image src={photo} style={s.coverPhoto} />
+      ) : (
+        <View style={s.coverBlock} />
+      )}
+      <View style={s.coverBody}>
+        <View style={s.accent} />
+        <Text style={s.coverLabel}>OFFERT {quote.number}</Text>
+        <Text style={s.coverTitle}>{clean(d.title || "Offert")}</Text>
+        {who ? <Text style={s.coverFor}>Avsedd för {clean(who)}</Text> : null}
+        {where ? <Text style={s.coverFor}>{clean(where)}</Text> : null}
+        <View style={s.coverFacts}>
+          <View style={s.coverFact}>
+            <Text style={s.label}>Datum</Text>
+            <Text style={s.coverFactV}>{formatDate(d.date)}</Text>
+          </View>
+          <View style={s.coverFact}>
+            <Text style={s.label}>Giltig till</Text>
+            <Text style={s.coverFactV}>{formatDate(validUntil(d.date, d.validDays))}</Text>
+          </View>
+          <View style={s.coverFact}>
+            <Text style={s.label}>{amountLabel}</Text>
+            <Text style={s.coverFactV}>{sek(p.total).replace(/,00$/, "")} kr</Text>
+          </View>
+        </View>
+      </View>
+      <View style={s.coverFoot}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt */}
+        <Image src={LOGO_DATA_URI} style={s.coverLogo} />
+        <View>
+          <Text style={s.coverContact}>{clean(`${company.legalName} · ${addressOf(company.street, company.postalCode, company.city)}`)}</Text>
+          <Text style={s.coverContact}>{clean([company.phoneDisplay, company.email].filter(Boolean).join(" · "))}</Text>
+        </View>
+      </View>
+    </Page>
+  );
+}
+
+/* ------------------------------------------------------------ sections */
+
+function Parties({ quote, company, settings }: { quote: Quote; company: Company; settings: QuoteSettings }) {
+  const d = quote.data;
+  const c = d.customer;
+  const business = c.type === "foretag";
+  return (
+    <View style={s.section} wrap={false}>
+      <Heading>Parter</Heading>
+      <View style={s.parties}>
+        <View style={s.party}>
+          <View style={s.partyHead}>
+            <Text style={s.partyNo}>01</Text>
+            <Text style={s.partyTitle}>Beställare</Text>
+          </View>
+          <View style={s.partyBody}>
+            {business ? <Field k="Företag" v={c.company} /> : null}
+            {business ? <Field k="Org.nr" v={c.orgNr} /> : null}
+            <Field k={business ? "Kontaktperson" : "Namn"} v={c.name} />
+            <Field k="Telefon" v={c.phone} />
+            <Field k="E-post" v={c.email} wide={c.email.length > 26} />
+            {business ? <Field k="Er referens" v={c.reference} /> : null}
+            <Field k={d.division === "bygg" ? "Arbetsplats" : "Adress"} v={addressOf(c.street, c.postalCode, c.city)} wide />
+          </View>
+        </View>
+        <View style={s.party}>
+          <View style={s.partyHead}>
+            <Text style={s.partyNo}>02</Text>
+            <Text style={s.partyTitle}>Utställare</Text>
+          </View>
+          <View style={s.partyBody}>
+            <Field k="Företag" v={company.legalName} />
+            <Field k="Org.nr" v={company.orgNr} />
+            <Field k="Vår referens" v={settings.signerName} />
+            <Field k="Telefon" v={company.phoneDisplay} />
+            <Field k="E-post" v={company.email} wide={company.email.length > 26} />
+            <Field k="Adress" v={addressOf(company.street, company.postalCode, company.city)} wide />
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function Items({ quote }: { quote: Quote }) {
+  const d = quote.data;
+  if (d.items.length === 0) return null;
+  const t = quoteTotals(d);
+  const incl = showsInclVat(d);
+  const groups = groupItems(d, t);
+  // Grouped by work step, the kind (labour/material) still matters for ROT.
+  const showKind = d.division === "bygg" && d.items.some((i) => i.section.trim());
+  return (
+    <View style={s.section}>
+      <Heading aside={incl ? "Belopp i SEK inkl. moms" : "Belopp i SEK exkl. moms"} keep={160}>
+        {d.division === "bygg" ? "Arbete och material" : "Specifikation"}
+      </Heading>
+      <View style={s.th}>
+        <Text style={[s.cDesc, s.thText, { paddingLeft: 8 }]}>Benämning</Text>
+        <Text style={[s.cQty, s.thText]}>Antal</Text>
+        <Text style={[s.cUnit, s.thText]}>Enhet</Text>
+        <Text style={[s.cPrice, s.thText]}>À-pris</Text>
+        <Text style={[s.cSum, s.thText, { paddingRight: 8 }]}>Summa</Text>
+      </View>
+      {groups.map((g) => (
+        <View key={g.title || "rows"}>
+          {g.title ? (
+            <View style={s.group} minPresenceAhead={40}>
+              <Text style={s.groupTitle}>{clean(g.title)}</Text>
+              <Text style={s.groupSum}>{sek(g.subtotal)}</Text>
+            </View>
+          ) : null}
+          {g.items.map((it) => (
+            <View key={it.id} style={s.tr} wrap={false}>
+              <View style={s.cDesc}>
+                <Text style={s.cell}>{clean(it.description)}</Text>
+                {showKind ? <Text style={s.kind}>{ITEM_KIND_LABEL[it.kind]}</Text> : null}
+              </View>
+              <Text style={[s.cQty, s.cell]}>{qty(it.qty)}</Text>
+              <Text style={[s.cUnit, s.cell]}>{it.unit}</Text>
+              <Text style={[s.cPrice, s.cell]}>{sek(displayUnitPrice(it, d.pricesInclVat, incl))}</Text>
+              <Text style={[s.cSum, s.cell]}>{sek(incl ? t.lines[it.id].gross : t.lines[it.id].net)}</Text>
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const KIND_SUM_LABEL: Record<ItemKind, string> = {
+  labor: "Arbetskostnad",
+  material: "Materialkostnad",
+  other: "Övrigt",
+};
+
+/** "Pris sammanställning": the cost per kind, rounding and ROT down to the
+ *  one figure the customer reads — what a private person pays, or the
+ *  amount excl. VAT for a business — with VAT in small print below. */
+function PriceSummaryBox({ quote }: { quote: Quote }) {
+  const d = quote.data;
+  const p = priceSummary(d);
+  const software = d.division === "01";
+  const vat = p.vatByRate.map((v) => `moms ${v.rate} % ${sek(v.amount)}`).join(", ");
+  // Software has no labour/material split worth showing: one row for it all.
+  const kindRows = software
+    ? [{ k: "Summa enligt specifikation", v: Math.round(p.byKind.reduce((sum, r) => sum + r.amount, 0) * 100) / 100 }]
+    : p.byKind.map((row) => ({
+        k: KIND_SUM_LABEL[row.kind],
+        v: row.amount,
+        tag: row.kind === "labor" && p.rot > 0 ? "Berättigad för ROT-avdrag" : undefined,
+      }));
+  const rows: { k: string; v: number; tag?: string }[] = [
+    ...kindRows,
+    ...(p.rot > 0 ? [{ k: "ROT-avdrag", v: -p.rot }] : []),
+    { k: "Öresavrundning", v: p.rounding },
+  ];
+  const totalLabel = p.inclVat ? (p.rot > 0 ? "Att betala efter ROT" : "Att betala") : "Totalt exkl. moms";
+  const after = p.inclVat
+    ? [p.rot > 0 ? `Totalpris utan avdrag ${sek(p.grossBeforeRot)} SEK.` : "", vat ? `Varav ${vat} SEK.` : "Momsfritt."].filter(Boolean)
+    : [vat ? `Tillkommer ${vat} SEK.` : "Momsfritt.", `Totalt inkl. moms ${sek(p.gross)} SEK.`];
+
+  return (
+    <View style={s.sum} wrap={false}>
+      <View style={s.sumHead}>
+        <Text style={s.sumTitle}>
+          <Text style={s.bold}>Pris </Text>sammanställning
+        </Text>
+        <Text style={s.sumMode}>{p.inclVat ? "inkl. moms" : "exkl. moms"}</Text>
+      </View>
+      <View style={s.sumRows}>
+        {rows.map((row) => (
+          <View key={row.k} style={s.sumRow}>
+            <View>
+              <Text style={s.sumK}>{row.k}</Text>
+              {row.tag ? <Text style={s.sumTag}>{row.tag}</Text> : null}
+            </View>
+            <Text style={s.sumV}>{signed(row.v)}</Text>
+          </View>
+        ))}
+      </View>
+      <View style={s.sumRule} />
+      <View style={s.sumTotal}>
+        <Text style={s.sumTotalK}>{totalLabel}</Text>
+        <Text style={s.sumTotalV}>SEK {sek(p.total)}</Text>
+      </View>
+      {after.map((line) => (
+        <Text key={line} style={s.sumAfter}>
+          {line}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+const STEPS: Record<Quote["data"]["division"], { title: string; text: string }[]> = {
+  bygg: [
+    { title: "Godkännande", text: "Ni godkänner offerten. Vi bokar startdatum och skickar en tidplan." },
+    { title: "Startmöte", text: "Vi går igenom ritningar, materialval och hur hemmet skyddas under arbetet." },
+    { title: "Bygget", text: "Ni följer arbetet i kundportalen med foton och tidplan. Ändringar godkänns där innan de görs." },
+    { title: "Slutbesiktning", text: "Vi går igenom resultatet tillsammans och lämnar dokumentation och garantibevis." },
+  ],
+  "01": [
+    { title: "Godkännande", text: "Ni godkänner offerten och vi bokar uppstart." },
+    { title: "Uppstart", text: "Vi går igenom mål, innehåll och tidplan tillsammans." },
+    { title: "Utveckling", text: "Ni ser arbetet löpande och godkänner varje etapp." },
+    { title: "Lansering", text: "Vi lanserar, lär upp er och tar hand om drift och support." },
+  ],
+};
+
+function Process({ quote }: { quote: Quote }) {
+  return (
+    <View style={s.section} wrap={false}>
+      <Heading>Så går det till</Heading>
+      <View style={s.steps}>
+        {STEPS[quote.data.division].map((step, i) => (
+          <View key={step.title} style={s.step}>
+            <Text style={s.stepNo}>{String(i + 1).padStart(2, "0")}</Text>
+            <Text style={s.stepTitle}>{step.title}</Text>
+            <Text style={s.stepText}>{step.text}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function Terms({ quote }: { quote: Quote }) {
   const d = quote.data;
   const t = quoteTotals(d);
   const c = d.customer;
-  const isBusiness = c.type === "foretag";
-  const incl = d.pricesInclVat;
-  const sideName = d.division === "bygg" ? "Bygg" : "Software";
-  const number = String(quote.number);
-  const ourRef = settings.signerName || company.legalName;
-  const customerLabel = isBusiness && c.company ? c.company : c.name;
   const persons = d.rotPersons.length > 0 ? d.rotPersons : [{ name: "", personalNumber: "" }];
+  const cards: { h: string; body: ReactNode; wide?: boolean }[] = [];
+  if (d.terms.payment.trim()) cards.push({ h: "Betalningsvillkor", body: <Lines text={d.terms.payment} style={s.termText} /> });
+  if (d.terms.start.trim()) cards.push({ h: "Start och leverans", body: <Lines text={d.terms.start} style={s.termText} /> });
+  if (d.terms.warranty.trim()) cards.push({ h: "Garanti och försäkring", body: <BulletList text={d.terms.warranty} icon="check" /> });
+  if (d.terms.excluded.trim()) cards.push({ h: "Ingår inte", body: <BulletList text={d.terms.excluded} icon="cross" /> });
+  if (d.terms.notes.trim()) cards.push({ h: "Övrigt", body: <Lines text={d.terms.notes} style={s.termText} /> });
+  const rot = t.rot;
+  if (rot) {
+    cards.push({
+      h: "ROT-avdrag, preliminärt",
+      wide: true,
+      body: (
+        <>
+          {persons.map((person, i) => (
+            <View key={i} style={s.rotLine}>
+              <Text style={s.termText}>
+                {clean(person.name || (i === 0 && c.name) || `Person ${i + 1}`)}
+                {person.personalNumber ? ` (${person.personalNumber})` : ""}
+              </Text>
+              <Text style={s.termText}>-{sek(rot.perOwner[i] ?? 0)} SEK</Text>
+            </View>
+          ))}
+          <Text style={[s.small, { marginTop: 6 }]}>
+            {Math.round(ROT_RATE * 100)} % av arbetskostnaden inkl. moms ({sek(t.laborGross)} SEK), högst {sek(ROT_CAP)} SEK per
+            person och år{rot.capped ? ", här begränsat av årstaket" : ""}. Avdraget dras på fakturan och förutsätter att ni äger
+            bostaden, har betalat tillräckligt med skatt under året och inte redan använt ert utrymme. Material och resor ger inget
+            avdrag. Vi förbehåller oss rätten att fakturera återstående belopp, motsvarande skattereduktionen, om begäran avslås av
+            Skatteverket.
+          </Text>
+        </>
+      ),
+    });
+  }
+  if (cards.length === 0) return null;
+  // Rows of two half-width cards; a wide card, or a half one left alone, fills its row.
+  const rows: (typeof cards)[] = [];
+  for (const card of cards) {
+    const last = rows[rows.length - 1];
+    if (!card.wide && last && last.length === 1 && !last[0].wide) last.push(card);
+    else rows.push([card]);
+  }
+  const renderRow = (row: typeof cards) => (
+    <View key={row[0].h} style={s.termRow}>
+      {row.map((card) => (
+        <View key={card.h} style={row.length === 2 ? s.term : s.termWide}>
+          <Text style={s.termH}>{card.h}</Text>
+          {card.body}
+        </View>
+      ))}
+    </View>
+  );
+  // The heading travels with the first row, so it is never left alone at a page end.
+  return (
+    <View style={s.section}>
+      <View wrap={false}>
+        <Heading>Villkor</Heading>
+        {renderRow(rows[0])}
+      </View>
+      {rows.slice(1).map((row) => (
+        <View key={row[0].h} wrap={false}>
+          {renderRow(row)}
+        </View>
+      ))}
+    </View>
+  );
+}
 
-  const terms: { h: string; p: string }[] = [
-    { h: "Betalningsvillkor", p: d.terms.payment },
-    { h: "Start och leverans", p: d.terms.start },
-    { h: "Garanti och försäkring", p: d.terms.warranty },
-    { h: "Ingår inte", p: d.terms.excluded },
-    { h: "Övrigt", p: d.terms.notes },
-  ].filter((x) => x.p.trim());
+function Signature({ quote, company, settings }: { quote: Quote; company: Company; settings: QuoteSettings }) {
+  const d = quote.data;
+  const c = d.customer;
+  const customerLabel = c.type === "foretag" && c.company ? c.company : c.name;
+  const ourRef = settings.signerName || company.legalName;
+  return (
+    <View style={s.section}>
+      <Heading>Godkännande</Heading>
+      <Text style={s.pMuted}>
+        Offerten gäller till och med {formatDate(validUntil(d.date, d.validDays))}. Priserna gäller under giltighetstiden.
+        Godkänn genom att skriva under och skicka tillbaka, eller svara på mejlet.
+      </Text>
+      <View style={s.sign}>
+        <View style={s.signBox}>
+          <View style={s.signLine} />
+          <Text style={s.small}>Ort, datum och underskrift{customerLabel ? ` · ${clean(customerLabel)}` : ""}</Text>
+        </View>
+        <View style={s.signBox}>
+          <View style={s.signLine} />
+          <Text style={s.small}>
+            För {clean(company.legalName)} · {clean(ourRef)}
+            {settings.signerTitle ? `, ${clean(settings.signerTitle)}` : ""}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
 
-  const bankLines = [
-    settings.bankgiro ? `Bankgiro ${settings.bankgiro}` : "",
-    settings.plusgiro ? `Plusgiro ${settings.plusgiro}` : "",
-    settings.iban ? `IBAN ${settings.iban}` : "",
-    settings.bic ? `BIC ${settings.bic}` : "",
-  ].filter(Boolean);
+function Contact({ company, settings }: { company: Company; settings: QuoteSettings }) {
+  const cols: { k: string; v: string[] }[] = [
+    { k: "Adress", v: [company.legalName, company.street, `${company.postalCode} ${company.city}`] },
+    { k: "Kontakt", v: [company.phoneDisplay, company.email] },
+    {
+      k: "Betalning",
+      v: [
+        settings.bankgiro ? `Bankgiro ${settings.bankgiro}` : "",
+        settings.plusgiro ? `Plusgiro ${settings.plusgiro}` : "",
+        settings.iban ? `IBAN ${settings.iban}` : "",
+        settings.bic ? `BIC ${settings.bic}` : "",
+      ],
+    },
+    {
+      k: "Företaget",
+      v: [company.orgNr ? `Org.nr ${company.orgNr}` : "", settings.vatNumber ? `Momsreg.nr ${settings.vatNumber}` : "", settings.fSkatt ? "Godkänd för F-skatt" : ""],
+    },
+  ];
+  return (
+    <View style={s.contact}>
+      {cols.map((col) => {
+        const lines = col.v.map((x) => x.trim()).filter(Boolean);
+        return lines.length ? (
+          <View key={col.k} style={s.contactCol}>
+            <Text style={s.label}>{col.k}</Text>
+            <Text style={s.contactV}>{clean(lines.join("\n"))}</Text>
+          </View>
+        ) : null;
+      })}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------ document */
+
+export type QuotePhotos = {
+  cover: PdfPhoto | null;
+  banner: PdfPhoto | null;
+  /** False when the quote is set to "no photo": no cover page and no band. */
+  withCover: boolean;
+};
+
+export function QuotePdf({
+  quote,
+  company,
+  settings,
+  photos = { cover: null, banner: null, withCover: false },
+}: {
+  quote: Quote;
+  company: Company;
+  settings: QuoteSettings;
+  photos?: QuotePhotos;
+}) {
+  const d = quote.data;
+  const number = String(quote.number);
+  // The cover page is not counted in "Sida 1 av 3".
+  const skip = photos.withCover ? 1 : 0;
+  const footLine = [company.legalName, company.orgNr ? `Org.nr ${company.orgNr}` : "", company.phoneDisplay, company.email].filter(Boolean).join("  ·  ");
 
   return (
     <Document title={`Offert ${number} – ${company.legalName}`} author={company.legalName} subject={d.title} language="sv-SE">
+      {photos.withCover ? <CoverPage quote={quote} company={company} photo={photos.cover} /> : null}
       <Page size="A4" style={s.page}>
         <View style={s.head} fixed>
           {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt */}
-          <Image src={LOGO_DATA_URI} style={s.logo} />
+          <Image src={LOGO_DATA_URI} style={s.headLogo} />
           <View style={s.headRight}>
-            <Text style={s.docTitle}>OFFERT</Text>
-            <Text style={s.pageNo} fixed render={({ pageNumber, totalPages }) => `Offert ${number}  ·  Sida ${pageNumber} (${totalPages})`} />
+            <Text style={s.headText} render={({ pageNumber, totalPages }) => `Offert ${number}  ·  Sida ${pageNumber - skip} av ${totalPages - skip}`} />
           </View>
         </View>
-
-        <View style={s.footer} fixed>
-          <View style={s.fCol}>
-            <FooterItem k="Adress" v={`${company.legalName}\n${company.street}\n${company.postalCode} ${company.city}`} />
-          </View>
-          <View style={s.fCol}>
-            <FooterItem k="Telefon" v={company.phoneDisplay} />
-            <FooterItem k="E-post" v={company.email} />
-          </View>
-          <View style={s.fCol}>
-            <FooterItem k="Betalning" v={bankLines.join("\n")} />
-          </View>
-          <View style={s.fCol}>
-            <FooterItem k="Organisationsnr" v={company.orgNr} />
-            <FooterItem k="Momsreg.nr" v={settings.vatNumber} />
-            {settings.fSkatt ? <Text style={[s.fV, s.bold, { marginTop: 4 }]}>Godkänd för F-skatt</Text> : null}
-          </View>
+        <View style={s.foot} fixed>
+          <Text style={s.footText}>{clean(footLine)}</Text>
+          {settings.fSkatt ? <Text style={s.footText}>Godkänd för F-skatt</Text> : null}
         </View>
 
-        <View style={s.top}>
-          <View style={s.customer}>
-            <Text style={s.label}>Till</Text>
-            {isBusiness && c.company ? <Text style={[s.p, s.bold]}>{clean(c.company)}</Text> : null}
-            <Text style={isBusiness && c.company ? s.p : [s.p, s.bold]}>{clean(c.name)}</Text>
-            {c.street ? <Text style={s.p}>{clean(c.street)}</Text> : null}
-            {c.postalCode || c.city ? <Text style={s.p}>{clean(`${c.postalCode} ${c.city}`.trim())}</Text> : null}
-            {c.phone ? <Text style={s.pMuted}>{clean(c.phone)}</Text> : null}
-            {c.email ? <Text style={s.pMuted}>{clean(c.email)}</Text> : null}
-            {isBusiness && c.orgNr ? <Text style={s.pMuted}>Org.nr {c.orgNr}</Text> : null}
+        <Text style={s.eyebrow}>OFFERT {number}</Text>
+        <Text style={s.h1}>{clean(d.title || "Offert")}</Text>
+        <View style={s.meta}>
+          <View style={s.metaCell}>
+            <Text style={s.label}>Offertdatum</Text>
+            <Text style={s.metaV}>{formatDate(d.date)}</Text>
           </View>
-          <View style={s.facts}>
-            <Fact k="Offertdatum" v={d.date} />
-            <Fact k="Offertnr" v={number} />
-            <Fact k="Giltig t.o.m." v={validUntil(d.date, d.validDays)} />
-            <Fact k="Vår referens" v={ourRef} />
-            {c.reference ? <Fact k="Er referens" v={c.reference} /> : null}
-            <Fact k="Betalningsvillkor" v={`${d.paymentDays} dagar`} />
-            {settings.lateInterest ? <Fact k="Dröjsmålsränta" v={settings.lateInterest} /> : null}
-            <Fact k="Verksamhet" v={`${company.legalName} ${sideName}`} />
+          <View style={s.metaCell}>
+            <Text style={s.label}>Giltig till</Text>
+            <Text style={s.metaV}>{formatDate(validUntil(d.date, d.validDays))}</Text>
+          </View>
+          <View style={s.metaCell}>
+            <Text style={s.label}>Betalningsvillkor</Text>
+            <Text style={s.metaV}>{d.paymentDays} dagar</Text>
+          </View>
+          <View style={s.metaCell}>
+            <Text style={s.label}>Verksamhet</Text>
+            <Text style={s.metaV}>{clean(`${company.legalName} ${d.division === "bygg" ? "Bygg" : "Software"}`)}</Text>
           </View>
         </View>
-
-        <Text style={s.h1}>{clean(d.title)}</Text>
         {d.intro.trim() ? (
           <View style={s.intro}>
             <Lines text={d.intro} style={s.pMuted} />
           </View>
         ) : null}
 
-        <View style={s.th}>
-          <Text style={[s.cDesc, s.thText]}>Benämning</Text>
-          <Text style={[s.cQty, s.thText]}>Antal</Text>
-          <Text style={[s.cUnit, s.thText]}>Enhet</Text>
-          <Text style={[s.cPrice, s.thText]}>À-pris</Text>
-          <Text style={[s.cSum, s.thText]}>Summa</Text>
-        </View>
-        {d.items.map((it) => (
-          <View key={it.id} style={s.tr} wrap={false}>
-            <View style={s.cDesc}>
-              <Text style={s.cell}>{clean(it.description)}</Text>
-              {d.division === "bygg" ? <Text style={s.kind}>{ITEM_KIND_LABEL[it.kind]}</Text> : null}
-            </View>
-            <Text style={[s.cQty, s.cell]}>{qty(it.qty)}</Text>
-            <Text style={[s.cUnit, s.cell]}>{it.unit}</Text>
-            <Text style={[s.cPrice, s.cell]}>{sek(it.unitPrice)}</Text>
-            <Text style={[s.cSum, s.cell]}>{sek(incl ? t.lines[it.id].gross : t.lines[it.id].net)}</Text>
-          </View>
-        ))}
-        <Text style={[s.small, { marginTop: 4 }]}>
-          {incl ? "Belopp i SEK, inklusive moms." : "Belopp i SEK, exklusive moms."}
-        </Text>
+        <Parties quote={quote} company={company} settings={settings} />
+        <Items quote={quote} />
+        <PriceSummaryBox quote={quote} />
+        <Process quote={quote} />
 
-        {t.rot ? (
-          <View style={s.rotBox} wrap={false}>
-            <Text style={[s.p, s.bold]}>Preliminär skattereduktion (ROT)</Text>
-            {persons.map((person, i) => t.rot && (
-              <View key={i} style={s.rotLine}>
-                <Text style={s.p}>
-                  {clean(person.name || (i === 0 && c.name) || `Person ${i + 1}`)}
-                  {person.personalNumber ? ` (${person.personalNumber})` : ""}
-                </Text>
-                <Text style={s.p}>-{sek(t.rot.perOwner[i] ?? 0)} SEK</Text>
-              </View>
-            ))}
-            <Text style={[s.small, { marginTop: 4 }]}>
-              {Math.round(ROT_RATE * 100)} % av arbetskostnaden inkl. moms ({sek(t.laborGross)} SEK), högst {sek(ROT_CAP)} SEK per
-              person och år{t.rot.capped ? " – avdraget här begränsas av årstaket" : ""}. Avdraget dras på fakturan och
-              förutsätter att ni äger bostaden, har betalat tillräckligt med skatt under året och inte redan använt ert
-              utrymme. Material och resor ger inget avdrag. Vi förbehåller oss rätten att fakturera återstående belopp,
-              motsvarande skattereduktionen, om begäran avslås av Skatteverket.
-            </Text>
+        {photos.banner ? (
+          <View style={s.band} wrap={false}>
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt */}
+            <Image src={photos.banner} style={s.bandPhoto} />
+            <View style={s.bandShade} />
+            <View style={s.bandText}>
+              <View style={s.accent} />
+              <Text style={s.bandLine}>{BANNER_LINE[d.division]}</Text>
+            </View>
           </View>
         ) : null}
 
-        <View style={s.bar} wrap={false}>
-          <View style={s.barCell}>
-            <Text style={s.barK}>Exkl. moms</Text>
-            <Text style={s.barV}>{sek(t.net)}</Text>
-          </View>
-          <View style={s.barCell}>
-            <Text style={s.barK}>Moms</Text>
-            <Text style={s.barV}>{sek(t.vat)}</Text>
-          </View>
-          <View style={s.barCell}>
-            <Text style={s.barK}>Totalt</Text>
-            <Text style={s.barV}>{sek(t.gross)}</Text>
-          </View>
-          {t.rot ? (
-            <View style={s.barCell}>
-              <Text style={s.barK}>Skattered.</Text>
-              <Text style={s.barV}>-{sek(t.rot.deduction)}</Text>
-            </View>
-          ) : null}
-          <View style={s.barTotal}>
-            <Text style={s.barK}>{t.rot ? "Offertvärde efter ROT" : "Offertvärde"}</Text>
-            <Text style={s.barTotalV}>SEK {sek(t.pay)}</Text>
-          </View>
-        </View>
-        <Text style={s.vatLine}>
-          {t.vatByRate.length > 0
-            ? t.vatByRate.map((v) => `Moms ${v.rate} %  ${sek(v.amount)}  (underlag ${sek(Math.round((v.amount * 100) / v.rate))})`).join("   ·   ")
-            : "Momsfritt."}
-        </Text>
-
-        <View style={s.terms}>
-          {terms.map((x) => (
-            <View key={x.h} style={s.term} wrap={false}>
-              <Text style={s.termH}>{x.h}</Text>
-              <Lines text={x.p} style={s.pMuted} />
-            </View>
-          ))}
-          <View style={s.term} wrap={false}>
-            <Text style={s.termH}>Giltighet</Text>
-            <Text style={s.pMuted}>Offerten gäller till och med {validUntil(d.date, d.validDays)}. Priserna gäller under giltighetstiden.</Text>
-          </View>
-        </View>
-
-        <View style={s.sign} wrap={false}>
-          <View style={s.signBox}>
-            <Text style={s.label}>Godkännande av offert</Text>
-            <View style={s.signLine} />
-            <Text style={s.small}>Ort, datum och underskrift · {clean(customerLabel)}</Text>
-          </View>
-          <View style={s.signBox}>
-            <Text style={s.label}>För {clean(company.legalName)}</Text>
-            <View style={s.signLine} />
-            <Text style={s.small}>
-              {clean(ourRef)}
-              {settings.signerTitle ? `, ${clean(settings.signerTitle)}` : ""}
-            </Text>
-          </View>
+        <Terms quote={quote} />
+        {/* Signature and our details stay together on the last page. */}
+        <View wrap={false}>
+          <Signature quote={quote} company={company} settings={settings} />
+          <Contact company={company} settings={settings} />
         </View>
       </Page>
     </Document>

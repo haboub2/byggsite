@@ -205,6 +205,7 @@ export default function RotCalculator({
         </dl>
         <p className="calc-pay-label">Du betalar</p>
         <p className="calc-pay">{fmt(r.pay)}</p>
+        <p className="calc-disclaimer">Räkneexempel, inte en offert. Det bindande priset står i offerten efter hembesöket.</p>
         <div className="calc-bar" aria-hidden="true">
           <span style={{ width: pct(r.material), background: "var(--dark-4)" }} />
           <span style={{ width: pct(r.labor - r.deduction), background: "var(--on-dark-3)" }} />

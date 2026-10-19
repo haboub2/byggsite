@@ -1,5 +1,6 @@
 import { emptyCustomer, emptyTerms, newItemId, type QuoteData, type QuoteDivision, type QuoteItem } from "./schema";
 import type { QuoteSettings } from "../content/schema";
+import { coverForGroup } from "./cover";
 
 /**
  * Built-in quote templates, several per job: a sensible starting point with
@@ -33,6 +34,7 @@ const row = (description: string, qty: number, unit: string, unitPrice: number, 
   unitPrice,
   vatRate: 25,
   kind,
+  section: "",
 });
 const mat = (description: string, qty: number, unit: string, unitPrice: number) => row(description, qty, unit, unitPrice, "material");
 const other = (description: string, qty: number, unit: string, unitPrice: number) => row(description, qty, unit, unitPrice, "other");
@@ -781,5 +783,6 @@ export function quoteFromTemplate(t: BuiltInTemplate, settings: QuoteSettings, d
     },
     date,
     leadId: null,
+    cover: coverForGroup(t.group),
   };
 }

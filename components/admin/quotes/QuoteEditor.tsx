@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { EditorForm, TextArea, TextField, useFieldError } from "../content/EditorForm";
 import { saveQuote } from "@/app/admin/quote-actions";
 import { kr, quoteTotals, rotApplies, validUntil, ROT_CAP, ROT_RATE } from "@/lib/quotes/math";
+import { COVER_CHOICES, NO_COVER, coverSlot } from "@/lib/quotes/cover";
 import {
   ITEM_KINDS,
   ITEM_KIND_LABEL,
@@ -86,6 +87,16 @@ function ItemRow({
   return (
     <li className="qrow">
       <div className="qrow-desc">
+        <input
+          className="qrow-step"
+          list="quote-steps"
+          value={item.section}
+          maxLength={60}
+          aria-label="Moment"
+          placeholder="Moment (valfritt)"
+          title="Rader med samma moment visas ihop på PDF:en, med en delsumma"
+          onChange={(e) => onChange({ section: e.target.value })}
+        />
         <RowInput
           path={`${p}.description`}
           label="Beskrivning"
@@ -144,7 +155,35 @@ function ItemRow({
   );
 }
 
-export default function QuoteEditor({ id, initial }: { id: string; initial: QuoteData }) {
+/** Cover photo for the PDF: automatic from the title, a chosen job, or none. */
+function CoverPicker({ q, previews, onChange }: { q: QuoteData; previews: Record<string, string>; onChange: (v: string) => void }) {
+  const id = useId();
+  const shown = coverSlot(q);
+  const auto = q.cover ? null : COVER_CHOICES.find((c) => c.slot === shown)?.label;
+  return (
+    <div className="efield efield--wide">
+      <label htmlFor={id}>Omslagsbild på PDF:en</label>
+      <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+        {shown && previews[shown] ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={previews[shown]} alt="" width={96} height={64} style={{ objectFit: "cover", borderRadius: 4, flex: "none" }} />
+        ) : null}
+        <select id={id} value={q.cover} onChange={(e) => onChange(e.target.value)} style={{ flex: 1 }}>
+          <option value="">Automatiskt{auto ? ` (${auto})` : ""}</option>
+          {COVER_CHOICES.filter((c) => c.division === q.division).map((c) => (
+            <option key={c.slot} value={c.slot}>
+              {c.label}
+            </option>
+          ))}
+          <option value={NO_COVER}>Ingen bild, enkel offert utan försättsblad</option>
+        </select>
+      </div>
+      <span className="efield-hint">Visas stort på offertens första sida. Automatiskt väljer bild efter rubriken.</span>
+    </div>
+  );
+}
+
+export default function QuoteEditor({ id, initial, coverPreviews = {} }: { id: string; initial: QuoteData; coverPreviews?: Record<string, string> }) {
   const [q, setQ] = useState(initial);
   const set = <K extends keyof QuoteData>(k: K) => (v: QuoteData[K]) => setQ((prev) => ({ ...prev, [k]: v }));
   const setCustomer = <K extends keyof QuoteCustomer>(k: K) => (v: QuoteCustomer[K]) =>
@@ -181,7 +220,8 @@ export default function QuoteEditor({ id, initial }: { id: string; initial: Quot
       ...prev,
       items: [
         ...prev.items,
-        { id: newItemId(), description: "", qty: 1, unit: isBygg ? "kpl" : "st", unitPrice: 0, vatRate: 25, kind: isBygg ? "labor" : "other" },
+        // A new row continues the work step of the row above it.
+        { id: newItemId(), description: "", qty: 1, unit: isBygg ? "kpl" : "st", unitPrice: 0, vatRate: 25, kind: isBygg ? "labor" : "other", section: prev.items.at(-1)?.section ?? "" },
       ],
     }));
 
@@ -197,8 +237,22 @@ export default function QuoteEditor({ id, initial }: { id: string; initial: Quot
       }),
     }));
 
+  /** Private customers are quoted incl. VAT, businesses excl. VAT (as the
+   *  PDF shows them), so switching customer type also switches how prices
+   *  are typed. The prices are converted, so the totals don't move. */
+  const setCustomerType = (type: QuoteCustomer["type"]) => {
+    setCustomer("type")(type);
+    const nextIncl = type === "privat";
+    if (nextIncl !== incl) togglePrices(nextIncl);
+  };
+
   return (
     <EditorForm action={saveQuote} hidden={{ id }} submitLabel="Spara offerten" value={q} initial={initial}>
+      <datalist id="quote-steps">
+        {[...new Set(q.items.map((i) => i.section.trim()).filter(Boolean))].map((step) => (
+          <option key={step} value={step} />
+        ))}
+      </datalist>
       <datalist id="quote-units">
         {UNITS.map((u) => (
           <option key={u} value={u} />
@@ -227,16 +281,17 @@ export default function QuoteEditor({ id, initial }: { id: string; initial: Quot
             hint="Skrivs som ”30 dagar” i faktarutan. Betalplanen beskrivs under Villkor."
           />
           <TextArea label="Inledning" path="intro" value={q.intro} onChange={set("intro")} rows={4} hint="Några rader om vad ni gick igenom och vad offerten omfattar. Visas under rubriken." />
+          <CoverPicker q={q} previews={coverPreviews} onChange={set("cover")} />
         </div>
       </fieldset>
 
       <fieldset className="efieldset">
         <legend>Kund</legend>
         <div className="calc-seg" role="group" aria-label="Kundtyp" style={{ marginBottom: 14 }}>
-          <button type="button" aria-pressed={!isBusiness} onClick={() => setCustomer("type")("privat")}>
+          <button type="button" aria-pressed={!isBusiness} onClick={() => setCustomerType("privat")}>
             Privatperson
           </button>
-          <button type="button" aria-pressed={isBusiness} onClick={() => setCustomer("type")("foretag")}>
+          <button type="button" aria-pressed={isBusiness} onClick={() => setCustomerType("foretag")}>
             Företag
           </button>
         </div>
@@ -273,8 +328,9 @@ export default function QuoteEditor({ id, initial }: { id: string; initial: Quot
             </button>
           </div>
           <span className="efield-hint">
-            {incl ? "Priserna skrivs och visas inklusive moms, som privatpersoner är vana vid." : "Priserna skrivs och visas exklusive moms, som företag är vana vid."}
-            {isBygg ? " Märk arbete och material: ROT räknas bara på arbete." : ""}
+            {incl ? "Priserna skrivs inklusive moms." : "Priserna skrivs exklusive moms."}
+            {isBusiness ? " PDF:en visar beloppen exklusive moms, som företag bokför dem." : " PDF:en visar beloppen inklusive moms och vad kunden betalar."}
+            {isBygg ? " Märk arbete och material: ROT räknas bara på arbete." : ""} Skriv samma moment på flera rader, t.ex. Rivning, så visas de ihop med en delsumma.
           </span>
         </div>
         {q.items.length > 0 && (

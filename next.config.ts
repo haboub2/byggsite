@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // The PDF renderer (quotes in /admin) ships its own Node build; bundling it breaks it.
   serverExternalPackages: ["@react-pdf/renderer"],
+  // Our own cover photos (public/images/<slot>.jpg) are read from disk when a
+  // quote PDF is rendered or mailed from /admin (lib/pdf/photos.ts).
+  outputFileTracingIncludes: {
+    "/admin/**": ["./public/images/*.{jpg,jpeg,png,webp,avif}"],
+  },
   // Stock mood photography (lib/images.ts). Phase 2: add the Supabase Storage host too.
   images: {
     remotePatterns: [

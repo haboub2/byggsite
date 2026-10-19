@@ -54,8 +54,8 @@ export async function PricingSection() {
             ))}
           </ul>
           <p className="guide-foot">
-            Riktpriserna visar var ett normalt projekt brukar landa. Ditt pris får du i offerten
-            efter hembesöket — fast pris, specificerat.{" "}
+            Riktpriserna är räkneexempel, inte en offert. De visar var ett normalt projekt brukar
+            landa. Ditt pris får du i offerten efter hembesöket — fast pris, specificerat.{" "}
             <Link href="/guider/rot-avdrag-2026" className="link-quiet">
               Så fungerar ROT-avdraget 2026
             </Link>

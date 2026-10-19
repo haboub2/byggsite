@@ -51,6 +51,22 @@ export function resolveImage(slot: string): string | null {
   return id ? `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=2400&q=80` : null;
 }
 
+/**
+ * Where the quote PDF gets a slot's photo: our own file first (any format;
+ * lib/pdf/photos.ts converts it), else the stock photo scaled to the
+ * print width; lib/pdf/photos.ts crops it from the centre.
+ */
+export function pdfPhotoSource(slot: string, box: { width: number; height: number }): { file: string } | { url: string } | null {
+  for (const ext of EXTS) {
+    const file = path.join(DIR, `${slot}.${ext}`);
+    if (fs.existsSync(file)) return { file };
+  }
+  const id = STOCK[slot];
+  return id
+    ? { url: `https://images.unsplash.com/photo-${id}?fm=jpg&w=${box.width}&q=80` }
+    : null;
+}
+
 export function hasImage(slot: string): boolean {
   return resolveImage(slot) !== null;
 }
