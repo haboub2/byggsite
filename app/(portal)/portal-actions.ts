@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { isDemo } from "@/lib/leads";
 import { changeOrderAnsweredMail } from "@/lib/mail";
 import { DEMO_COOKIE, getPortalUser } from "@/lib/portal/auth";
+import { scheduleReportRefresh } from "@/lib/portal/report";
 import { answerChangeOrder, getProjectBundle } from "@/lib/portal/store";
 import { createClient } from "@/lib/supabase/server";
 import { SITE_URL } from "@/lib/env";
@@ -113,5 +114,7 @@ export async function answerChangeOrderAction(formData: FormData): Promise<void>
 
   revalidatePath(`/mitt-projekt/${projectId}`, "layout");
   revalidatePath(`/admin/projekt/${projectId}`);
+  // An approved ÄTA is in the report's appendix; members can't write the cache, so the service role does.
+  if (answer === "approved") scheduleReportRefresh(projectId, { serviceRole: !user.demo });
   redirect(`${back}?svar=${answer === "approved" ? "godkand" : "avbojd"}#ata-${order.number}`);
 }

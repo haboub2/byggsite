@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { seg: "", label: "Översikt", icon: "M3 11 12 3l9 8M5 10v10h14V10" },
   { seg: "tidplan", label: "Tidplan", icon: "M4 6h16M4 12h10M4 18h7" },
-  { seg: "foton", label: "Foton", icon: "M4 7h3l2-3h6l2 3h3v12H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
+  { seg: "dokumentation", label: "Dokumentation", icon: "M4 7h3l2-3h6l2 3h3v12H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
   { seg: "andringar", label: "Ändringar", icon: "M4 20h4l10-10-4-4L4 16zM13 7l4 4M14 20h6" },
   { seg: "fakturor", label: "Fakturor", icon: "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6" },
   { seg: "dokument", label: "Dokument", icon: "M7 3h7l5 5v13H7zM14 3v5h5M9 13h6M9 17h6" },

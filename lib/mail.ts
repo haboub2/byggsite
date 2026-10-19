@@ -152,17 +152,18 @@ export async function portalAddedMail(input: { to: string; name: string; project
 }
 
 type PortalRecipient = { email: string; name: string };
-type PortalNoticeKind = "update" | "document" | "change_order";
+type PortalNoticeKind = "update" | "document" | "change_order" | "delay";
 
 const PORTAL_NOTICE: Record<PortalNoticeKind, { subject: (title: string) => string; lead: string; tab: string; button: string }> = {
-  update: { subject: (t) => `Nytt från bygget — ${t}`, lead: "Vi har lagt upp en ny uppdatering från bygget.", tab: "foton", button: "Se uppdateringen" },
+  update: { subject: (t) => `Nytt från bygget — ${t}`, lead: "Vi har lagt upp en ny uppdatering från bygget.", tab: "dokumentation", button: "Se uppdateringen" },
   document: { subject: (t) => `Nytt dokument — ${t}`, lead: "Ett nytt dokument finns nu under Dokument i kundportalen.", tab: "dokument", button: "Öppna dokumenten" },
   change_order: { subject: (t) => `Ändring att godkänna — ${t}`, lead: "Vi har lagt upp ett tilläggs- eller ändringsarbete (ÄTA) som väntar på ditt svar.", tab: "andringar", button: "Svara på ändringen" },
+  delay: { subject: (t) => `Ändrad tidplan — ${t}`, lead: "Tidplanen har flyttats. Här är orsaken och det nya beräknade slutdatumet.", tab: "tidplan", button: "Se tidplanen" },
 };
 
 /**
  * Tell the customers of a project that something new is in the portal: an
- * update with photos, a document, or a change order to answer. One mail per
+ * update with photos, a document, a change order to answer, or a delay. One mail per
  * member, with a link straight to the right tab. Never throws.
  */
 export async function portalNoticeMail(input: { kind: PortalNoticeKind; to: PortalRecipient[]; projectId: string; projectTitle: string; summary?: string }) {

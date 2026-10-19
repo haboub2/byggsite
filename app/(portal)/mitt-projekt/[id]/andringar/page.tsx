@@ -4,11 +4,12 @@ import { answerChangeOrderAction } from "@/app/(portal)/portal-actions";
 import { formatDay, formatLongDay } from "@/lib/portal/format";
 import { CHANGE_ORDER_STATUS_LABEL, changeOrderRot, formatKr, pendingChangeOrders } from "@/lib/portal/schema";
 import { getProjectBundle } from "@/lib/portal/store";
+import { formatDays } from "@/lib/workdays";
 
 export const metadata: Metadata = { title: "Ändringar" };
 
 const FLASH: Record<string, string> = {
-  godkand: "Tack! Ändringen är godkänd och vi planerar in arbetet.",
+  godkand: "Tack! Ändringen är godkänd. Vi planerar in arbetet och tidplanen visar när det görs.",
   avbojd: "Ändringen är avböjd. Vi fortsätter enligt offerten.",
 };
 
@@ -82,6 +83,10 @@ export default async function PortalChangeOrders({
                     <div className="portal-ata-pay">
                       <dt>Att betala efter ROT</dt>
                       <dd>{formatKr(pay)}</dd>
+                    </div>
+                    <div className="portal-ata-time">
+                      <dt>Tid</dt>
+                      <dd>{o.duration_days > 0 ? `Förlänger projektet med ca ${formatDays(o.duration_days)}` : "Påverkar inte slutdatumet"}</dd>
                     </div>
                   </dl>
                   {isPending ? (

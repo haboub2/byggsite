@@ -38,8 +38,6 @@ export default function ProjectDetailsForm({ project }: { project: PortalProject
           )}
           {field("customer_name", "Kund", <input id="p-customer_name" name="customer_name" defaultValue={project.customer_name} maxLength={120} />)}
           {field("address", "Adress", <input id="p-address" name="address" defaultValue={project.address} maxLength={160} />)}
-          {field("starts_on", "Start", <input id="p-starts_on" name="starts_on" type="date" defaultValue={project.starts_on} />)}
-          {field("ends_on", "Beräknat klart", <input id="p-ends_on" name="ends_on" type="date" defaultValue={project.ends_on} />)}
         </div>
       </fieldset>
 

@@ -85,7 +85,7 @@ export default async function PortalOverview({ params }: { params: Promise<{ id:
               ))}
             </ul>
           )}
-          <Link href={`/mitt-projekt/${project.id}/foton`} className="portal-more">
+          <Link href={`/mitt-projekt/${project.id}/dokumentation`} className="portal-more">
             Alla uppdateringar →
           </Link>
         </section>

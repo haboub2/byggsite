@@ -7,7 +7,8 @@ export function formatDay(value: string | null | undefined, now = new Date()): s
   if (!value) return "";
   const d = new Date(value.length === 10 ? `${value}T12:00:00` : value);
   const sameYear = d.getFullYear() === now.getFullYear();
-  return new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) }).format(d);
+  // Intl writes "15 okt."; the abbreviation dot doubles up before a full stop.
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) }).format(d).replace(/\./g, "");
 }
 
 /** "15 okt – 3 nov", or just one side when the other is missing. */
@@ -22,4 +23,17 @@ export function formatRange(start: string | null | undefined, end: string | null
 export function formatLongDay(iso: string): string {
   const s = new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" }).format(new Date(iso));
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** Today's date in Sweden, "2026-10-19": the day a photo or a nudge belongs to. */
+export function todayIso(now = new Date()): string {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+/** "mån 19 okt" for a "YYYY-MM-DD" day, or "" for none. */
+export function formatWeekday(value: string | null | undefined, now = new Date()): string {
+  if (!value) return "";
+  const d = new Date(`${value}T12:00:00`);
+  const sameYear = d.getFullYear() === now.getFullYear();
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, weekday: "short", day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) }).format(d).replace(/\./g, "");
 }

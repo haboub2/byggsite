@@ -1,6 +1,7 @@
 # Kundportalen version 3 — tidplan, dokumentation, kalkyl och faktura
 
-Status: **plan, skriven 2026-10-19. Inget är byggt än.** Version 1 och 2 av
+Status: **plan, skriven 2026-10-19.** Fas A, B och C är byggda (B och C
+beskrivs i `kundportal.md` under *Tidplan 2.0* och *Dokumentationen*); D återstår. Version 1 och 2 av
 portalen beskrivs i `kundportal.md`. Det här dokumentet samlar ägarnas idéer
 från oktober 2026 och gör dem till en byggordning.
 
@@ -19,7 +20,7 @@ startar. Inget ska kräva två verktyg eller en administrationsstund i veckan.
 | Kalkylen "ingen giltig offert" | `components/RotCalculator.tsx` har en text om skatten men ingen mening om att det inte är en offert. Liten textändring. |
 | Tidplan | `project_phases` med manuellt skrivna start- och slutdatum och en *Klar*-bock. Förloppet räknas på bockade faser. Inga varaktigheter, mallar eller förseningar. |
 | Foton | `project_updates` med text och foton, inte kopplade till fas eller dag. |
-| Dokumentation | Inget utöver dagboken och fliken Dokument. |
+| Dokumentation | Inget utöver dagboken och fliken Dokument. (Byggt i fas C.) |
 | Kundtyper och moms | Offerten har *privat* och *företag*, ROT bara för privat på Bygg, växel inkl./exkl. moms. Ingen typ för byggföretag, ingen faktura alls. |
 
 ## 1. Tidplan 2.0
@@ -257,8 +258,8 @@ del.
 | Fas | Innehåll | Ungefärlig tid |
 |---|---|---|
 | A, snabba vinster | Kalkyltexten, mejlkonfiguration och test, privat kontra företag på offert-PDF:en. **Kod klar 2026-10-19**; mejlnycklarna i Vercel och ett skarpt test återstår. | 1 dag |
-| B, Tidplan 2.0 | Arbetsdagskalender, varaktigheter, mallar, förseningar, ÄTA med tid som läggs in i tidplanen, påminnelser, kundens tidplan, och `project_photos` med fas och dag på varje foto. Migration `0012`. | 1,5 vecka |
-| C, Dokumentation | Fliken Dokumentation i admin och portal, bildtexter, sammanfattningar, rapport-PDF, låsning, zip-överlämning, arkivfilter. Migration `0013`. | 1,5 vecka |
+| B, Tidplan 2.0 | Arbetsdagskalender, varaktigheter, mallar, förseningar, ÄTA med tid som läggs in i tidplanen, påminnelser, kundens tidplan, och `project_photos` med fas och dag på varje foto. Migration `0012`. **Kod klar 2026-10-19**; migrationen ska köras mot produktion. | 1,5 vecka |
+| C, Dokumentation | Fliken Dokumentation i admin och portal, bildtexter, sammanfattningar, rapport-PDF, låsning, zip-överlämning, arkivfilter. Migration `0013`. **Kod klar 2026-10-19**, beslut 4 och 5 tagna som rekommenderat (ÄTA som bilaga, PDF och zip); migrationen ska köras mot produktion efter `0012`. | 1,5 vecka |
 | D, Faktura | Egen fakturering som produktkärna, se `fakturering.md` (version 2) | se den planen |
 
 ## Beslut som väntar
