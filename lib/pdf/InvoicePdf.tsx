@@ -124,9 +124,11 @@ export type InvoicePdfProps = {
   /** Shown as "Vår referens". */
   signer: string;
   customerNumber?: string | null;
+  /** PNG from Swish's QR service, when the invoice is open and has a Swish number. */
+  swishQr?: Buffer | null;
 };
 
-export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer, customerNumber }: InvoicePdfProps) {
+export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer, customerNumber, swishQr = null }: InvoicePdfProps) {
   const sum = customerSummary(doc, totals);
   const rules = rulesAt(doc.issueDate);
   const isCredit = doc.kind === "credit";
@@ -381,8 +383,12 @@ export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer,
             <View style={[s.payCol, { flex: 1.3 }]}>
               <Text style={s.label}>Att betala senast {doc.dueDate}</Text>
               <Text style={s.payV}>{kr(sum.payable)}</Text>
-              {pm.swish ? <Text style={s.payNote}>Swish {pm.swish}, ange {ocr} som meddelande.</Text> : null}
+              {pm.swish ? <Text style={s.payNote}>Swish {pm.swish}, ange {ocr} som meddelande{swishQr ? ", eller skanna koden" : ""}.</Text> : null}
             </View>
+            {swishQr ? (
+              // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt
+              <Image src={{ data: swishQr, format: "png" }} style={{ width: 64, height: 64 }} />
+            ) : null}
           </View>
         ) : null}
 

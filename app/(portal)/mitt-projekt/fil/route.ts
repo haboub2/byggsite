@@ -6,6 +6,7 @@ import { getQuoteForPortal } from "@/lib/quotes/store";
 import { renderQuotePdf, quoteFileName } from "@/lib/pdf/render";
 import { getInvoice } from "@/lib/core/invoices/store";
 import { renderInvoicePdf, invoiceFileName } from "@/lib/pdf/render-invoice";
+import { fetchSwishQrPng } from "@/lib/core/payments/swish";
 
 /**
  * A portal file: /mitt-projekt/fil?p=projects/<id>/<file>  or  ?p=quote:<quote id>.
@@ -37,6 +38,18 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "private, no-store",
       },
     });
+  }
+
+  if (key.startsWith("swish:")) {
+    // The Swish QR for an open invoice on the caller's project.
+    const invoiceId = key.slice(6);
+    const projectId = request.nextUrl.searchParams.get("projekt") ?? "";
+    const project = projectId ? await getProject(projectId) : null;
+    const inv = project ? await getInvoice(invoiceId).catch(() => null) : null;
+    if (!project || !inv || inv.projectId !== project.id || !inv.document.paymentMeans.swish) return new Response("Ingen Swish.", { status: 404 });
+    const png = await fetchSwishQrPng({ payee: inv.document.paymentMeans.swish, amountOre: inv.payableOre - inv.paidOre, message: inv.ocr ?? inv.number ?? "" });
+    if (!png) return new Response("QR-koden kunde inte hämtas.", { status: 502 });
+    return new Response(new Uint8Array(png), { headers: { "Content-Type": "image/png", "Cache-Control": "private, max-age=3600" } });
   }
 
   if (key.startsWith("invoice:")) {

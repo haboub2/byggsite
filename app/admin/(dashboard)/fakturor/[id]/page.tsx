@@ -3,7 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createHash } from "node:crypto";
 import InvoiceEditor from "@/components/admin/invoices/InvoiceEditor";
-import { CreditInvoiceButton, DeleteDraft, IssueInvoiceForm, MarkSentForm, RegisterPaymentForm, SendInvoiceForm } from "@/components/admin/invoices/InvoiceTools";
+import { CreditInvoiceButton, DeleteDraft, IssueInvoiceForm, MarkSentForm, RegisterPaymentForm, SendInvoiceForm, SendReminderForm } from "@/components/admin/invoices/InvoiceTools";
+import { reminderDue, reminderText } from "@/lib/core/reminders/reminders";
+import { reminderSettings } from "@/lib/core/reminders/store";
+import { publicInvoiceUrl } from "@/lib/core/invoices/public";
 import { formatDateTime } from "@/lib/admin-format";
 import { formatOre } from "@/lib/core/money";
 import { CUSTOMER_TYPE_LABEL, LINE_KIND_LABEL, validateForIssue } from "@/lib/core/documents/invoice";
@@ -78,6 +81,10 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const sum = customerSummary(d, totals);
   const overdue = isOverdue(inv, today);
   const remaining = inv.payableOre - inv.paidOre;
+  const plan = overdue
+    ? reminderDue({ payableOre: inv.payableOre, paidOre: inv.paidOre, dueOn: inv.dueOn, issueDate: d.issueDate, reminders: inv.reminders, remindedAt: inv.remindedAt, customerType: d.buyer.type, status: inv.status, kind: inv.kind }, today, { ...reminderSettings(), graceDays: 0, daysBetween: 1 })
+    : null;
+  const publicUrl = publicInvoiceUrl(inv.publicToken);
   const sections = [...new Set(d.lines.map((l) => l.section.trim()))];
   const grouped = sections.some(Boolean);
 
@@ -317,6 +324,9 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                         {e.type === "invoice.issued" && e.data.number ? ` som ${e.data.number}` : ""}
                         {e.type === "invoice.sent" && e.data.to ? ` till ${e.data.to}` : ""}
                         {e.type === "payment.received" && typeof e.data.amount === "number" ? ` ${kr(e.data.amount)}` : ""}
+                        {e.type === "invoice.reminded" && typeof e.data.level === "number" ? ` (${e.data.level})` : ""}
+                        {e.type === "invoice.reminded" && typeof e.data.fee === "number" && e.data.fee > 0 ? ` · avgift ${kr(e.data.fee)}` : ""}
+                        {e.type === "invoice.reminded" && typeof e.data.interest === "number" && e.data.interest > 0 ? ` · ränta ${kr(e.data.interest)}` : ""}
                       </span>
                       <small>
                         {formatDateTime(e.at)}
@@ -330,6 +340,12 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           </div>
 
           <aside className="lead-aside quote-aside">
+            {plan && (
+              <div>
+                <h2 className="lead-h2">Påminnelse {plan.level}</h2>
+                <SendReminderForm id={inv.id} email={d.buyer.email} ready={mailReady} summary={`${reminderText(plan, inv.number ?? "", inv.dueOn ?? "")}${inv.reminders ? ` Tidigare påminnelser: ${inv.reminders}.` : ""}`} />
+              </div>
+            )}
             {isOpen(inv) && (
               <div>
                 <h2 className="lead-h2">Registrera betalning</h2>
@@ -340,6 +356,14 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
               <h2 className="lead-h2">Skicka till kund</h2>
               <SendInvoiceForm id={inv.id} email={d.buyer.email} ready={mailReady} />
               {!inv.sentAt && <MarkSentForm id={inv.id} />}
+              {publicUrl && (
+                <p className="efield-hint" style={{ marginTop: 10, wordBreak: "break-all" }}>
+                  Publik sida utan inloggning:{" "}
+                  <a href={publicUrl} target="_blank" rel="noreferrer" className="link-quiet">
+                    {publicUrl.replace(/^https?:\/\//, "")}
+                  </a>
+                </p>
+              )}
             </div>
             {inv.kind === "invoice" && inv.status !== "credited" && (
               <div>

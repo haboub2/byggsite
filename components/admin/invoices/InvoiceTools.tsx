@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { sendReminderAction } from "@/app/admin/reminder-actions";
 import {
   creditInvoiceAction,
   deleteInvoiceDraft,
@@ -126,6 +127,44 @@ export function RegisterPaymentForm({ id, remainingKronor, today }: { id: string
       <div className="lead-note-foot">
         <button type="submit" className="btn btn-primary" disabled={pending}>
           {pending ? "Registrerar…" : "Registrera betalning"}
+        </button>
+      </div>
+      {(state.error || state.message) && (
+        <span className={`form-feedback ${state.error ? "error" : "success"}`} role="status">
+          {state.error ?? state.message}
+        </span>
+      )}
+    </form>
+  );
+}
+
+/** Påminn: mails the reminder with the PDF, or just records one sent some other way. */
+export function SendReminderForm({ id, email, ready, summary }: { id: string; email: string; ready: boolean; summary: string }) {
+  const [state, action, pending] = useActionState<InvoiceToolState, FormData>(sendReminderAction, {});
+  return (
+    <form
+      action={action}
+      className="lead-note"
+      onSubmit={(e) => {
+        const mode = (e.currentTarget.querySelector("input[name=mode]:checked") as HTMLInputElement | null)?.value;
+        if (!window.confirm(mode === "mail" ? `Mejla påminnelsen till ${email}? Avgift och ränta bokförs.` : "Registrera påminnelsen utan att mejla? Avgift och ränta bokförs.")) e.preventDefault();
+      }}
+    >
+      <input type="hidden" name="id" value={id} />
+      <p className="efield-hint">{summary}</p>
+      <div style={{ display: "grid", gap: 6, margin: "8px 0" }}>
+        <label className="etoggle" style={{ marginTop: 0 }}>
+          <input type="radio" name="mode" value="mail" defaultChecked={ready && Boolean(email)} disabled={!ready || !email} />
+          <span>Mejla påminnelsen med PDF{email ? ` till ${email}` : ""}</span>
+        </label>
+        <label className="etoggle" style={{ marginTop: 0 }}>
+          <input type="radio" name="mode" value="record" defaultChecked={!ready || !email} />
+          <span>Registrera bara (skickad på annat sätt)</span>
+        </label>
+      </div>
+      <div className="lead-note-foot">
+        <button type="submit" className="btn btn-dark" disabled={pending}>
+          {pending ? "Skickar…" : "Påminn"}
         </button>
       </div>
       {(state.error || state.message) && (

@@ -61,6 +61,10 @@ export default async function PortalInvoices({ params }: { params: Promise<{ id:
                 {inv.dueOn && openNow ? ` · förfaller ${formatDay(inv.dueOn)}` : inv.paidAt ? ` · betald ${formatDay(inv.paidAt)}` : ""}
               </p>
 
+              {openNow && d.paymentMeans.swish && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`/mitt-projekt/fil?p=swish:${inv.id}&projekt=${id}`} alt={`Swish-QR: ${kr(remaining)} till ${d.paymentMeans.swish} med meddelande ${inv.ocr}`} width={140} height={140} style={{ borderRadius: 8, border: "1px solid var(--line)", background: "#fff" }} />
+              )}
               {openNow && (
                 <dl className="portal-ata-sums">
                   {d.paymentMeans.bankgiro && (

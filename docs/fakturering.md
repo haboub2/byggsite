@@ -1,6 +1,6 @@
 # Fakturering — en produktkärna, med Binaafy som första kund
 
-Status: **version 2, skriven 2026-10-19. Fas 0 (kärnan) är kodad samma dag,
+Status: **version 2, skriven 2026-10-19. Fas 0–3 är kodade samma dag,
 se *Läge* nedan.** Version 1 samma dag beskrev en fakturamodul för Binaafy. Den här versionen beskriver en
 **kärna som andra företag ska kunna använda i stället för Fortnox**, där
 Binaafy är första kunden och det som byggs för Binaafy (offert → betalplan →
@@ -8,7 +8,7 @@ delfakturor → ÄTA → slutfaktura → ROT) är produktens första säljargume
 Prototypen av gränssnittet finns som design-canvas (sju skärmar: fakturalista,
 faktura, projektekonomi, kundportal i mobil, PDF, ROT-begäran, dashboard).
 
-## Läge 2026-10-19: fas 0 kodad, inte körd mot en databas
+## Läge 2026-10-19: fas 0–3 kodade, migrationerna provkörda lokalt
 
 Byggt, med 64 tester som är gröna (`npm test`, 121 totalt), lint och
 typkontroll rena:
@@ -49,14 +49,59 @@ XML → utbetalning bokförd → kundens flik Fakturor med PDF):
 | ROT-begäran | `lib/core/rot/claim-xml.ts` (Skatteverkets schema v6, kontrollerat mot `Begaran.xsd` och `BegaranCOMPONENT.xsd`; golden-file-test), `lib/core/rot/store.ts`, `app/admin/(dashboard)/rot/*`, `app/admin/rot-actions.ts`, migration `0016_rot_payout.sql` (`register_rot_payout`, `reject_rot_claim`) |
 | Portalen | `app/(portal)/mitt-projekt/[id]/fakturor/page.tsx`, fliken Fakturor med märke för obetalda, fakturans PDF via `/mitt-projekt/fil?p=invoice:<id>` |
 
-Inte gjort i fas 0, 1 och 2, och varför:
+**Fas 3 kodad samma dag** och körd i demo-läget (faktura 10004 daterad
+2026-08-01 → förfallen → *Påminn* bokför 164 kr dröjsmålsränta, ingen avgift
+till privatperson, händelsen i tidslinjen → camt.054-fil inläst, OCR-förslag
+registrerat på 10005 → publik sida och PDF med Swish-QR → cron listar 10006
+som förfallen):
 
-- **Migrationerna är inte körda.** Supabase CLI saknas på maskinen, så 0014
-  och 0015 har bara lästs, inte exekverats. Första körningen görs mot ett
-  tomt lokalt projekt (`supabase start`, `supabase db reset`) innan den går
-  mot produktion; då skrivs också RLS-testerna.
+| Del | Fil |
+|---|---|
+| Databasklient per anropare | `lib/core/db.ts`: `getDb()` ger sessionens klient så att RLS avgör; `asSystem()` ger service role för kod som autentiserat sig själv (cron). Alla stores går via `getDb()` |
+| Påminnelser | `lib/core/reminders/reminders.ts` (när nästa påminnelse är due, avgift bara till företag om inte villkoren säger annat, ränta från förfallodagen eller förra påminnelsen, delbetalningar; testad), `store.ts` (lista, mejla via Resend, registrera), `app/admin/reminder-actions.ts`, panelen *Påminnelse* på fakturasidan (`SendReminderForm` i `components/admin/invoices/InvoiceTools.tsx`) |
+| Daglig körning | `app/api/cron/invoices/route.ts`, `vercel.json` (06:00 UTC): `Authorization: Bearer $CRON_SECRET`, listar förfallna och skickar själv bara med `REMINDERS_AUTO=1`; svaret är JSON med `due`, `sent`, `failed` |
+| Bankfil och matchning | `lib/core/payments/camt054.ts` (ISO 20022 camt.054, poster och transaktionsdetaljer, bara kredit), `matching.ts` (OCR, fakturanummer i meddelandet, belopp och namn, unikt belopp; konfidensen visas), `store.ts`, `app/admin/bank-actions.ts`, `app/admin/(dashboard)/fakturor/bank/page.tsx`. Inget bokförs förrän en person klickar *Registrera* |
+| Swish-QR | `lib/core/payments/swish.ts` hämtar bilden från Swishs publika QR-tjänst (`mpc.getswish.net/qrg-swish/api/v1/prefilled`, minst 300 px) med nummer, belopp och OCR låsta; på PDF:en (`lib/pdf/InvoicePdf.tsx`, `render-invoice.tsx`), i portalen och på den publika sidan. Numret kommer från `SWISH_NUMBER` (`lib/core/invoices/seller.ts`) eller fältet på fakturan |
+| Publik fakturasida | `lib/core/invoices/public.ts`, `app/faktura/[token]/page.tsx`, `pdf/route.ts`, `swish.png/route.ts`: slumpad token (`invoices.public_token`), bara utfärdade fakturor, `noindex`, läses med service role |
+| Dashboarden Ekonomi | `lib/core/dashboard.ts` (nyckeltal, kassaprognos 8 veckor, ålder, månader, moms, största kunder, att göra; testad), `app/admin/(dashboard)/ekonomi/page.tsx` (planerade steg räknas med `stepGross` som i rutan Ekonomi), `lib/core/events-store.ts`, menyn |
+| Migration 0017 | `invoices.public_token`; `register_reminder` (rad, räknare, verifikation för avgift och ränta, händelse i en transaktion); `mark_bank_transaction`; `can_write_org_or_system` så att cron med service role får registrera; `org_id default default_org()` på kärntabellerna som stores skriver direkt (saknades i 0014, så en insert i t.ex. `customers` hade fallit på not null) |
+
+Två beslut i fas 3:
+
+- **Swish-QR hämtas från Swishs publika QR-tjänst**, inte genereras själva.
+  Den kräver inget avtal eller certifikat för bilden, och formatet följer
+  Swishs egen specifikation. Lyckade bilder cachas i processen; ett fel
+  ger fakturan utan QR i stället för att stoppa PDF:en.
+- **Påminnelsekedjan styrs av miljövariabler tills `org_settings` har ett
+  gränssnitt:** `REMINDERS_AUTO=1` (cron skickar själv, annars bara knappen),
+  `REMINDERS_GRACE_DAYS`, `REMINDERS_DAYS_BETWEEN` och
+  `REMINDERS_FEE_TO_CONSUMERS=1` (avgift till privatpersoner, bara om
+  villkoren säger det). Standardvärdena står i `lib/core/reminders/reminders.ts`.
+
+Kontroll: 146 tester gröna (`npm test`), lint och typkontroll rena.
+Migrationerna 0001–0017 är körda i PGlite (Postgres 17 i WebAssembly) med
+Supabase-liknande roller och `auth`-funktioner, följt av 17 RLS- och
+funktionskontroller: medlem utan roll och anon ser inga fakturor,
+påminnelser, verifikationer eller banktransaktioner; anon kan inte köra
+`register_reminder`; personal och service role kan; negativa belopp och
+okänd status avvisas; `org_id` fylls i av default. Skriptet ligger utanför
+repot tills PGlite läggs till som utvecklingsberoende.
+
+Inte gjort i fas 0–3, och varför:
+
+- **Migrationerna mot Supabase.** Inget av de Supabase-projekt som nås
+  härifrån har tabellerna från 0014–0016, och `.env.local` saknas, så appen
+  kör i demo-läget. 0017 ska köras efter 0016 i det projekt där 0014–0016
+  kördes, och `get_advisors` (security) köras efteråt.
 - **Mejlutskick** är inte testat skarpt (kräver `RESEND_API_KEY` och
-  `MAIL_FROM`); knappen *Markera skickad* täcker tills dess.
+  `MAIL_FROM`); knappen *Markera skickad* och *Registrera bara* på
+  påminnelsen täcker tills dess.
+- **Bankfilen läses in för hand.** Automatisk hämtning från bankens
+  filtjänst eller öppen bankdata kommer i fas 5. Betalningen och
+  markeringen av transaktionen är två anrop, inte en transaktion;
+  `payments.bank_transaction_id` sätts inte än.
+- **Swish Handel** (callback som kvitterar betalningen direkt) i fas 5.
+- **Inkasso** som export till inkassobolag är inte byggt.
 - **ROT-XML:en** är skriven mot schemat men inte provad i Skatteverkets
   e-tjänst; första riktiga filen laddas upp och kontrolleras där. Timmar
   tas från arbetsrader i enheten *tim*, materialkostnad från materialrader;
@@ -68,7 +113,6 @@ Inte gjort i fas 0, 1 och 2, och varför:
 - **Kryptering av personnummer** i `rot_buyers`: tabellen har strikt RLS
   (bara owner/admin), kryptering med nyckel i Supabase Vault läggs till när
   en andra organisation finns.
-- **RLS-tester per roll** kräver en databas; de skrivs när 0014 körs lokalt.
 - `lib/rot.ts` (kalkylatorn på sajten och offerten) läser fortfarande sina
   egna konstanter; den byter till `rulesAt()` när offertkoden inte ändras av
   någon annan.

@@ -1,11 +1,11 @@
 import "server-only";
-import { createClient as createSessionClient } from "../../supabase/server";
+import { getDb } from "../db";
 import { isDemo } from "../../leads";
 import { todayIso } from "../../quotes/schema";
 import { postPayment, type Posting } from "../ledger/posting";
 import { makeEvent, type Actor } from "../events";
 import { invoiceTotals } from "../invoices/totals";
-import { listInvoices, type InvoiceRecord } from "../invoices/store";
+import { demoJournalEntries, listInvoices, type InvoiceRecord } from "../invoices/store";
 import { rulesAt } from "../rules";
 import { toTwelveDigitPersonalNumber, type RotCategory, type RotClaimXml, type RotClaimXmlItem } from "./claim-xml";
 
@@ -84,7 +84,7 @@ export async function listRotCandidates(): Promise<RotCandidate[]> {
 
 export async function listClaims(): Promise<RotClaim[]> {
   if (isDemo()) return [...demo().claims].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data: claims, error } = await supabase.from("rot_claims").select("*").order("created_at", { ascending: false });
   if (error) throw new Error(`Kunde inte hämta ROT-begäran: ${error.message}`);
   const ids = (claims ?? []).map((c) => c.id as string);
@@ -163,7 +163,7 @@ export async function createClaim(name: string, invoiceIds: string[], category: 
     demoEvent("rot_claim", claim.id, "rot_claim.created", { name, invoices: items.length }, actor);
     return claim.id;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data: claim, error } = await supabase.from("rot_claims").insert({ status: "draft", note: name, created_by: actor.kind === "user" ? actor.name : null }).select("id, org_id").single();
   if (error) throw new Error(`Kunde inte skapa begäran: ${error.message}`);
   for (const it of items) {
@@ -238,7 +238,7 @@ export async function markClaimSent(id: string, actor: Actor): Promise<void> {
     for (const it of c.items) demoEvent("invoice", it.invoiceId, "rot_claim.sent", { claim: id, amount: it.amountOre }, actor);
     return;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data, error } = await supabase.from("rot_claims").update({ status: "sent", sent_on: todayIso() }).eq("id", id).eq("status", "draft").select("org_id");
   if (error) throw new Error(`Kunde inte markera som skickad: ${error.message}`);
   if (!data?.length) throw new Error("Begäran är redan skickad eller finns inte.");
@@ -261,11 +261,10 @@ export async function registerClaimPayout(id: string, amountOre: number, paidOn:
     for (const it of c.items) it.status = "paid";
     demoEvent("rot_claim", id, "rot_claim.paid", { amount: amountOre, paidOn }, actor);
     for (const it of c.items) demoEvent("invoice", it.invoiceId, "rot_claim.paid", { claim: id, amount: it.amountOre, paidOn }, actor);
-    const { demoJournalEntries } = await import("../invoices/store");
     demoJournalEntries().push({ id: crypto.randomUUID(), number: `${paidOn.slice(0, 4)}-rot`, ...posting });
     return;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { error } = await supabase.rpc("register_rot_payout", { p_claim: id, p_amount: amountOre, p_paid_on: paidOn, p_posting: posting, p_note: "", p_actor: actor });
   if (error) throw new Error(`Kunde inte registrera utbetalningen: ${error.message}`);
 }
@@ -282,7 +281,7 @@ export async function rejectClaim(id: string, note: string, actor: Actor): Promi
     for (const it of c.items) demoEvent("invoice", it.invoiceId, "rot_claim.rejected", { claim: id, amount: it.amountOre, note }, actor);
     return;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { error } = await supabase.rpc("reject_rot_claim", { p_claim: id, p_note: note, p_actor: actor });
   if (error) throw new Error(`Kunde inte markera som avvisad: ${error.message}`);
 }

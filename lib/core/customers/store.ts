@@ -1,5 +1,5 @@
 import "server-only";
-import { createClient as createSessionClient } from "../../supabase/server";
+import { getDb } from "../db";
 import { isDemo } from "../../leads";
 import type { Customer, CustomerInput } from "./schema";
 
@@ -77,7 +77,7 @@ export async function listCustomers(q?: string): Promise<Customer[]> {
       .sort((a, b) => a.name.localeCompare(b.name, "sv"))
       .map(fromRow);
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   let query = supabase.from("customers").select("*").is("deleted_at", null).order("name").limit(1000);
   if (term) {
     const safe = term.replace(/["\\*%,]/g, " ").trim();
@@ -93,7 +93,7 @@ export async function getCustomer(id: string): Promise<Customer | null> {
     const r = demo().find((x) => x.id === id && !x.deleted_at);
     return r ? fromRow(r) : null;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data, error } = await supabase.from("customers").select("*").eq("id", id).maybeSingle();
   if (error) throw new Error(`Kunde inte hämta kunden: ${error.message}`);
   return data ? fromRow(data as Row) : null;
@@ -106,7 +106,7 @@ export async function createCustomer(input: CustomerInput, createdBy: string | n
     demo().push(row);
     return row.id;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data, error } = await supabase.from("customers").insert({ ...toRow(input), created_by: createdBy }).select("id").single();
   if (error) throw new Error(`Kunde inte skapa kunden: ${error.message}`);
   return data.id as string;
@@ -119,7 +119,7 @@ export async function updateCustomer(id: string, input: CustomerInput): Promise<
     Object.assign(r, toRow(input), { updated_at: new Date().toISOString() });
     return;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data, error } = await supabase.from("customers").update(toRow(input)).eq("id", id).select("id");
   if (error) throw new Error(`Kunde inte spara kunden: ${error.message}`);
   if (!data?.length) throw new Error("Kunde inte spara: kunden finns inte eller saknar behörighet.");
@@ -132,7 +132,7 @@ export async function archiveCustomer(id: string): Promise<void> {
     if (r) r.deleted_at = new Date().toISOString();
     return;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { error } = await supabase.from("customers").update({ deleted_at: new Date().toISOString() }).eq("id", id);
   if (error) throw new Error(`Kunde inte ta bort kunden: ${error.message}`);
 }

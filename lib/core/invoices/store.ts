@@ -1,6 +1,6 @@
 import "server-only";
-import { createHash } from "node:crypto";
-import { createClient as createSessionClient } from "../../supabase/server";
+import { createHash, randomBytes } from "node:crypto";
+import { getDb } from "../db";
 import { isDemo } from "../../leads";
 import { invoiceDocumentSchema, validateForIssue, type InvoiceDocument, type InvoiceKind } from "../documents/invoice";
 import { invoiceTotals } from "./totals";
@@ -64,6 +64,7 @@ export type InvoiceRecord = {
   paidAt: string | null;
   remindedAt: string | null;
   reminders: number;
+  publicToken: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -104,6 +105,7 @@ type Row = {
   paid_at: string | null;
   reminded_at: string | null;
   reminders: number;
+  public_token?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -133,6 +135,7 @@ const fromRow = (r: Row): InvoiceRecord => ({
   paidAt: r.paid_at,
   remindedAt: r.reminded_at,
   reminders: r.reminders,
+  publicToken: r.public_token ?? null,
   createdBy: r.created_by,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
@@ -239,7 +242,7 @@ function demoJournal(posting: Posting): string {
 
 async function loadAll(): Promise<InvoiceRecord[]> {
   if (isDemo()) return demo().invoices.map(fromRow);
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data, error } = await supabase.from("invoices").select("*").order("updated_at", { ascending: false }).limit(2000);
   if (error) throw new Error(`Kunde inte hämta fakturor: ${error.message}`);
   return (data as Row[]).map(fromRow);
@@ -274,7 +277,7 @@ export async function getInvoice(id: string): Promise<InvoiceRecord | null> {
     const r = demo().invoices.find((x) => x.id === id);
     return r ? fromRow(r) : null;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data, error } = await supabase.from("invoices").select("*").eq("id", id).maybeSingle();
   if (error) throw new Error(`Kunde inte hämta fakturan: ${error.message}`);
   return data ? fromRow(data as Row) : null;
@@ -287,7 +290,7 @@ export async function listInvoiceEvents(invoiceId: string): Promise<CoreEvent[]>
       .events.filter((e) => (e.aggregateType === "invoice" && e.aggregateId === invoiceId) || (e.aggregateType === "payment" && paymentIds.has(e.aggregateId)))
       .sort((a, b) => b.at.localeCompare(a.at));
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data, error } = await supabase
     .from("events")
     .select("org_id, aggregate_type, aggregate_id, type, data, actor, created_at")
@@ -308,7 +311,7 @@ export async function listInvoiceEvents(invoiceId: string): Promise<CoreEvent[]>
 
 export async function listInvoicePayments(invoiceId: string): Promise<PaymentRecord[]> {
   if (isDemo()) return demo().payments.filter((p) => p.invoiceId === invoiceId);
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data, error } = await supabase
     .from("payment_allocations")
     .select("amount_ore, payments(id, method, paid_on, reference, note, created_by, created_at)")
@@ -358,6 +361,7 @@ export async function createInvoice(
       paid_at: null,
       reminded_at: null,
       reminders: 0,
+      public_token: randomBytes(16).toString("hex"),
       created_by: createdBy,
       created_at: now,
       updated_at: now,
@@ -366,7 +370,7 @@ export async function createInvoice(
     demoEvent("invoice", row.id, "invoice.created", { kind: document.kind, quote: document.references.quoteNumber }, actor);
     return row.id;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data, error } = await supabase
     .from("invoices")
     .insert({
@@ -402,7 +406,7 @@ export async function updateInvoiceDraft(id: string, document: InvoiceDocument):
     Object.assign(r, cols, { updated_at: new Date().toISOString() });
     return;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data, error } = await supabase.from("invoices").update(cols).eq("id", id).eq("status", "draft").select("id");
   if (error) throw new Error(`Kunde inte spara: ${error.message}`);
   if (!data?.length) throw new Error("Kunde inte spara: fakturan är utfärdad, finns inte eller saknar behörighet.");
@@ -415,7 +419,7 @@ export async function deleteDraft(id: string): Promise<void> {
     demo().invoices = demo().invoices.filter((x) => x.id !== id);
     return;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { error } = await supabase.from("invoices").delete().eq("id", id).eq("status", "draft");
   if (error) throw new Error(`Kunde inte ta bort: ${error.message}`);
 }
@@ -467,7 +471,7 @@ export async function issueInvoice(id: string, actor: Actor, prepare?: (doc: Inv
     return { number, ocr };
   }
 
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data, error } = await supabase.rpc("issue_invoice", {
     p_invoice: id,
     p_document: doc,
@@ -490,7 +494,7 @@ async function markCredited(invoiceId: string, creditId: string, actor: Actor): 
     demoEvent("invoice", invoiceId, "invoice.credited", { number: orig.number, creditNumber: credit.number, amount: -credit.payable_ore }, actor);
     return;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { error } = await supabase.rpc("mark_invoice_credited", { p_invoice: invoiceId, p_credit: creditId, p_actor: actor });
   if (error) throw new Error(`Kreditfakturan är utfärdad men originalet kunde inte markeras: ${error.message}`);
 }
@@ -506,7 +510,7 @@ export async function markSent(id: string, to: string, actor: Actor): Promise<vo
     demoEvent("invoice", id, "invoice.sent", { number: r.number, to }, actor);
     return;
   }
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { error } = await supabase.rpc("mark_invoice_sent", { p_invoice: id, p_to: to, p_actor: actor });
   if (error) throw new Error(`Kunde inte markera som skickad: ${error.message}`);
 }
@@ -554,7 +558,7 @@ export async function registerPayment(
     return { status, paidOre: paid };
   }
 
-  const supabase = await createSessionClient();
+  const supabase = await getDb();
   const { data, error } = await supabase.rpc("register_payment", {
     p_invoice: id,
     p_amount: input.amountOre,

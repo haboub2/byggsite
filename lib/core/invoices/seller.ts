@@ -50,7 +50,8 @@ export async function getSellerDefaults(): Promise<{ seller: Seller; paymentMean
       plusgiro: quote.plusgiro,
       iban: quote.iban,
       bic: quote.bic,
-      swish: "",
+      // Until the settings page has a Swish field: SWISH_NUMBER in the environment.
+      swish: (process.env.SWISH_NUMBER ?? "").replace(/\s/g, ""),
       termsDays: quote.paymentDays,
     },
     lateInterestText: quote.lateInterest || "Dröjsmålsränta enligt räntelagen, referensräntan plus 8 procentenheter.",
