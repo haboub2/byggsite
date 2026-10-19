@@ -1,0 +1,356 @@
+import { Fragment } from "react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { createHash } from "node:crypto";
+import InvoiceEditor from "@/components/admin/invoices/InvoiceEditor";
+import { CreditInvoiceButton, DeleteDraft, IssueInvoiceForm, MarkSentForm, RegisterPaymentForm, SendInvoiceForm } from "@/components/admin/invoices/InvoiceTools";
+import { formatDateTime } from "@/lib/admin-format";
+import { formatOre } from "@/lib/core/money";
+import { CUSTOMER_TYPE_LABEL, LINE_KIND_LABEL, validateForIssue } from "@/lib/core/documents/invoice";
+import { customerSummary, invoiceTotals } from "@/lib/core/invoices/totals";
+import { EVENT_LABEL } from "@/lib/core/events";
+import { INVOICE_STATUS_LABEL, getInvoice, invoiceLabel, isOpen, isOverdue, listInvoiceEvents, listInvoicePayments } from "@/lib/core/invoices/store";
+import { applySellerDefaults, getSellerDefaults } from "@/lib/core/invoices/seller";
+import { todayIso } from "@/lib/quotes/schema";
+
+const kr = (ore: number) => formatOre(ore, { decimals: 0, currency: true });
+const sek = (ore: number) => formatOre(ore);
+
+export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ kredit?: string }> }) {
+  const { id } = await params;
+  const { kredit } = await searchParams;
+  const inv = await getInvoice(id);
+  if (!inv) notFound();
+  const isDraft = inv.status === "draft";
+  const d = inv.document;
+  const label = invoiceLabel(inv);
+  const today = todayIso();
+  const mailReady = Boolean(process.env.RESEND_API_KEY && process.env.MAIL_FROM);
+
+  if (isDraft) {
+    const version = createHash("sha1").update(JSON.stringify(d)).digest("hex").slice(0, 12);
+    // The gate checks the document as it will be frozen: with today's seller settings applied.
+    const problems = validateForIssue({ ...applySellerDefaults(d, await getSellerDefaults()), number: null });
+    return (
+      <section className="sec sec--tight">
+        <div className="container">
+          <Link href="/admin/fakturor" className="link-quiet">
+            ← Alla fakturor
+          </Link>
+          <div className="inbox-head" style={{ marginTop: 16 }}>
+            <div>
+              <span className="eyebrow">
+                {label} · {CUSTOMER_TYPE_LABEL[d.buyer.type]}
+                {d.references.quoteNumber ? ` · från offert ${d.references.quoteNumber}` : ""}
+              </span>
+              <h1 className="admin-h1">{d.title || (inv.kind === "credit" ? "Kreditfaktura" : "Faktura utan rubrik")}</h1>
+            </div>
+            <div className="lead-quick">
+              <a href={`/admin/fakturor/${inv.id}/pdf`} target="_blank" rel="noopener" className="btn btn-ghost">
+                Förhandsgranska PDF
+              </a>
+            </div>
+          </div>
+          {kredit && <p className="admin-flash">Kreditfakturan är skapad som utkast och speglar originalet. Ändra rader om bara en del ska krediteras, och utfärda sedan.</p>}
+
+          <div className="quote-layout">
+            <InvoiceEditor key={version} id={inv.id} initial={d} />
+            <aside className="lead-aside quote-aside">
+              <div>
+                <h2 className="lead-h2">Utfärda</h2>
+                <IssueInvoiceForm id={inv.id} problems={problems} isCredit={inv.kind === "credit"} />
+              </div>
+              <div>
+                <h2 className="lead-h2">Att betala</h2>
+                <p style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>{kr(Math.abs(inv.payableOre))}</p>
+                <p className="efield-hint">{inv.rotOre ? `varav ROT-avdrag ${kr(Math.abs(inv.rotOre))} som begärs från Skatteverket.` : "Enligt det sparade utkastet."}</p>
+              </div>
+              <DeleteDraft id={inv.id} />
+            </aside>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const [events, payments] = await Promise.all([listInvoiceEvents(inv.id), listInvoicePayments(inv.id)]);
+  const totals = invoiceTotals(d);
+  const sum = customerSummary(d, totals);
+  const overdue = isOverdue(inv, today);
+  const remaining = inv.payableOre - inv.paidOre;
+  const sections = [...new Set(d.lines.map((l) => l.section.trim()))];
+  const grouped = sections.some(Boolean);
+
+  return (
+    <section className="sec sec--tight">
+      <div className="container">
+        <Link href="/admin/fakturor" className="link-quiet">
+          ← Alla fakturor
+        </Link>
+        <div className="inbox-head" style={{ marginTop: 16 }}>
+          <div>
+            <span className="eyebrow">
+              {label} ·{" "}
+              <span className="inv-status" data-status={overdue ? "overdue" : inv.status}>
+                {overdue ? "Förfallen" : INVOICE_STATUS_LABEL[inv.status]}
+              </span>
+              {inv.sentAt ? ` · skickad ${formatDateTime(inv.sentAt)}` : ""}
+            </span>
+            <h1 className="admin-h1">{d.title || label}</h1>
+            <p className="admin-shown">
+              {d.buyer.name} · {CUSTOMER_TYPE_LABEL[d.buyer.type]}
+              {d.references.quoteNumber ? ` · enligt offert ${d.references.quoteNumber}` : ""}
+              {inv.creditsInvoiceId && d.references.precedingInvoiceNumber ? ` · krediterar faktura ${d.references.precedingInvoiceNumber}` : ""}
+            </p>
+          </div>
+          <div className="lead-quick">
+            <a href={`/admin/fakturor/${inv.id}/pdf`} target="_blank" rel="noopener" className="btn btn-primary">
+              Visa PDF
+            </a>
+            <a href={`/admin/fakturor/${inv.id}/pdf?ladda-ner=1`} className="btn btn-ghost">
+              Ladda ner
+            </a>
+          </div>
+        </div>
+
+        <div className="quote-layout" style={{ marginTop: 24 }}>
+          <div className="inv-view">
+            <p className="inv-locked">
+              Låst vid utfärdandet {inv.issuedOn}
+              {inv.createdBy ? ` · ${inv.createdBy}` : ""}. Ändras aldrig; fel rättas med kreditfaktura.
+              {inv.sha256 ? ` Dokumentets hash ${inv.sha256.slice(0, 12)}…` : ""}
+            </p>
+
+            <div className="inv-grid">
+              <div>
+                <span className="lead-h2">Kund</span>
+                <strong>{d.buyer.name}</strong>
+                <br />
+                {d.buyer.street}
+                <br />
+                {d.buyer.postalCode} {d.buyer.city}
+                {d.buyer.orgNr ? (
+                  <>
+                    <br />
+                    Org.nr {d.buyer.orgNr}
+                  </>
+                ) : null}
+                {d.buyer.vatNr ? (
+                  <>
+                    <br />
+                    Momsreg.nr {d.buyer.vatNr}
+                  </>
+                ) : null}
+                {d.buyer.email ? (
+                  <>
+                    <br />
+                    {d.buyer.email}
+                  </>
+                ) : null}
+              </div>
+              <div>
+                <span className="lead-h2">Datum</span>
+                Fakturadatum <strong>{inv.issuedOn}</strong>
+                <br />
+                Förfaller <strong>{inv.dueOn}</strong>
+                {d.deliveryDate ? (
+                  <>
+                    <br />
+                    Utfört {d.deliveryDate}
+                  </>
+                ) : null}
+                <br />
+                {d.paymentMeans.termsText}
+              </div>
+              <div>
+                <span className="lead-h2">Betalning</span>
+                {d.paymentMeans.bankgiro ? (
+                  <>
+                    Bankgiro <strong>{d.paymentMeans.bankgiro}</strong>
+                    <br />
+                  </>
+                ) : null}
+                OCR <strong>{inv.ocr}</strong>
+                {d.paymentMeans.swish ? (
+                  <>
+                    <br />
+                    Swish {d.paymentMeans.swish}
+                  </>
+                ) : null}
+                {d.se.reverseCharge ? (
+                  <>
+                    <br />
+                    Omvänd betalningsskyldighet
+                  </>
+                ) : null}
+              </div>
+            </div>
+
+            <table className="inv-table">
+              <thead>
+                <tr>
+                  <th>Beskrivning</th>
+                  <th>Typ</th>
+                  <th style={{ textAlign: "right" }}>Antal</th>
+                  <th style={{ textAlign: "right" }}>{sum.inclVat ? "À-pris inkl." : "À-pris"}</th>
+                  <th style={{ textAlign: "right" }}>Belopp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(grouped ? sections : [""]).map((section) => (
+                  <Fragment key={section || "_"}>
+                    {grouped && (
+                      <tr className="inv-section">
+                        <td colSpan={5}>{section || "Övrigt"}</td>
+                      </tr>
+                    )}
+                    {d.lines
+                      .filter((l) => !grouped || l.section.trim() === section)
+                      .map((l) => {
+                        const t = totals.lines[l.id];
+                        return (
+                          <tr key={l.id}>
+                            <td>{l.description}</td>
+                            <td className="inv-muted">{LINE_KIND_LABEL[l.kind]}</td>
+                            <td style={{ textAlign: "right" }}>
+                              {l.quantity.toLocaleString("sv-SE")} {l.unit}
+                            </td>
+                            <td style={{ textAlign: "right" }}>{sek(sum.inclVat && l.quantity ? Math.round(t.gross / l.quantity) : l.unitPriceOre)}</td>
+                            <td style={{ textAlign: "right" }}>{sek(sum.inclVat ? t.gross : t.net)}</td>
+                          </tr>
+                        );
+                      })}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+
+            <dl className="qsum" style={{ marginTop: 10 }}>
+              {sum.byKind.map((k) => (
+                <div key={k.kind}>
+                  <dt>{LINE_KIND_LABEL[k.kind]}</dt>
+                  <dd>{sek(k.amount)}</dd>
+                </div>
+              ))}
+              <div>
+                <dt>{sum.inclVat ? "Summa inkl. moms" : "Summa exkl. moms"}</dt>
+                <dd>{sek(sum.subtotal)}</dd>
+              </div>
+              {totals.vatBreakdown
+                .filter((r) => r.vat !== 0)
+                .map((r) => (
+                  <div key={r.rate}>
+                    <dt>{sum.inclVat ? `varav moms ${r.rate} %` : `Moms ${r.rate} %`}</dt>
+                    <dd>{sek(r.vat)}</dd>
+                  </div>
+                ))}
+              {sum.rot !== 0 && (
+                <div>
+                  <dt>ROT-avdrag</dt>
+                  <dd>{sek(-sum.rot)}</dd>
+                </div>
+              )}
+              {sum.rounding !== 0 && (
+                <div>
+                  <dt>Öresavrundning</dt>
+                  <dd>{sek(sum.rounding)}</dd>
+                </div>
+              )}
+              <div className="qsum-pay">
+                <dt>{inv.kind === "credit" ? "Att återfå" : "Att betala"}</dt>
+                <dd>{sek(Math.abs(sum.payable))} kr</dd>
+              </div>
+            </dl>
+
+            {d.se.rot && totals.rot && (
+              <div className="inv-box">
+                <span className="lead-h2">ROT på den här fakturan</span>
+                <div className="inv-grid">
+                  {d.se.rot.buyers.map((b, i) => (
+                    <div key={i}>
+                      <strong>{b.name}</strong>
+                      <br />
+                      <span className="inv-muted">{b.personalNumber.replace(/(\d{4})$/, "••••")}</span>
+                      <br />
+                      {kr(Math.abs(totals.rot!.perBuyer[i] ?? 0))}
+                    </div>
+                  ))}
+                  <div>
+                    {d.se.rot.property?.kind === "fastighet" ? d.se.rot.property.designation : d.se.rot.property ? `Brf ${d.se.rot.property.orgNr}, lgh ${d.se.rot.property.apartmentNumber}` : ""}
+                    <br />
+                    <span className="inv-muted">Begärs från Skatteverket när kunden har betalat.</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="inv-cols">
+              <div>
+                <h2 className="lead-h2">Betalningar</h2>
+                {payments.length === 0 ? (
+                  <p className="efield-hint">Inga inbetalningar registrerade.</p>
+                ) : (
+                  <ul className="inv-list">
+                    {payments.map((p) => (
+                      <li key={p.id}>
+                        <span>
+                          {p.paidOn} · {p.method}
+                          {p.reference ? ` · ${p.reference}` : ""}
+                        </span>
+                        <strong>{kr(p.amountOre)}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="inv-remaining">
+                  Betalt {kr(inv.paidOre)} av {kr(inv.payableOre)}
+                  {remaining > 0 && inv.kind !== "credit" ? ` · ${kr(remaining)} kvar` : ""}
+                </p>
+              </div>
+              <div>
+                <h2 className="lead-h2">Tidslinje</h2>
+                <ol className="inv-timeline">
+                  {events.map((e, i) => (
+                    <li key={`${e.at}-${i}`}>
+                      <span>
+                        {EVENT_LABEL[e.type]?.text ?? e.type}
+                        {e.type === "invoice.issued" && e.data.number ? ` som ${e.data.number}` : ""}
+                        {e.type === "invoice.sent" && e.data.to ? ` till ${e.data.to}` : ""}
+                        {e.type === "payment.received" && typeof e.data.amount === "number" ? ` ${kr(e.data.amount)}` : ""}
+                      </span>
+                      <small>
+                        {formatDateTime(e.at)}
+                        {e.actor.kind === "user" ? ` · ${e.actor.name}` : ""}
+                      </small>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          </div>
+
+          <aside className="lead-aside quote-aside">
+            {isOpen(inv) && (
+              <div>
+                <h2 className="lead-h2">Registrera betalning</h2>
+                <RegisterPaymentForm id={inv.id} remainingKronor={(remaining / 100).toLocaleString("sv-SE").replace(/ /g, " ")} today={today} />
+              </div>
+            )}
+            <div>
+              <h2 className="lead-h2">Skicka till kund</h2>
+              <SendInvoiceForm id={inv.id} email={d.buyer.email} ready={mailReady} />
+              {!inv.sentAt && <MarkSentForm id={inv.id} />}
+            </div>
+            {inv.kind === "invoice" && inv.status !== "credited" && (
+              <div>
+                <h2 className="lead-h2">Rätta</h2>
+                <CreditInvoiceButton id={inv.id} number={inv.number ?? ""} />
+                <span className="efield-hint">En kreditfaktura speglar den här fakturan. Utfärda den, och skapa sedan en ny faktura om något ska faktureras om.</span>
+              </div>
+            )}
+          </aside>
+        </div>
+      </div>
+    </section>
+  );
+}

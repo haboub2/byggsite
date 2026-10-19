@@ -82,6 +82,13 @@ export default async function EditQuote({
               <SendQuoteForm id={quote.id} email={quote.data.customer.email} ready={mailReady} />
             </div>
             <div>
+              <h2 className="lead-h2">Fakturera</h2>
+              <Link href={`/admin/fakturor/ny?offert=${quote.id}`} className="btn btn-ghost quote-aside-btn">
+                Skapa faktura från offerten
+              </Link>
+              <span className="efield-hint">Kund, rader, ROT-personer och villkor följer med till ett fakturautkast.</span>
+            </div>
+            <div>
               <h2 className="lead-h2">Återanvänd</h2>
               <form action={duplicateQuote} style={{ marginBottom: 14 }}>
                 <input type="hidden" name="id" value={quote.id} />

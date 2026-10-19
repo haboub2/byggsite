@@ -21,7 +21,9 @@ export async function checkAdmin(): Promise<AdminCheck> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, reason: "signed-out" };
 
-  const { data: admin, error } = await supabase.from("admins").select("user_id").eq("user_id", user.id).maybeSingle();
+  // Same question the proxy asks. Before migration 0014 is_admin() reads the
+  // admins table; after it, memberships (owner/admin). One source of truth.
+  const { data: admin, error } = await supabase.rpc("is_admin");
   if (error) console.error("[admin] admin lookup failed:", error.message);
   if (!admin) return { ok: false, reason: "not-admin", email: user.email };
 

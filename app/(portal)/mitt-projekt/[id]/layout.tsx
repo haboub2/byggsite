@@ -5,6 +5,7 @@ import { getPortalUser } from "@/lib/portal/auth";
 import { formatRange } from "@/lib/portal/format";
 import { currentPhase, pendingChangeOrders, PROJECT_STATUS_LABEL, progressPercent } from "@/lib/portal/schema";
 import { getProjectBundle } from "@/lib/portal/store";
+import { isOpen, listInvoicesForPortal } from "@/lib/core/invoices/store";
 
 /** Dark header with name, address and progress; tabs below (desktop) or at the bottom (phone). */
 export default async function PortalProjectLayout({
@@ -17,6 +18,7 @@ export default async function PortalProjectLayout({
   const bundle = await getProjectBundle(id);
   if (!bundle) notFound();
   const { project, phases, changeOrders } = bundle;
+  const unpaid = (await listInvoicesForPortal(project.id).catch(() => [])).filter((inv) => isOpen(inv)).length;
   const pct = progressPercent(phases);
   const phase = project.current_phase || currentPhase(phases)?.name || (project.status === "active" ? "Pågår" : PROJECT_STATUS_LABEL[project.status]);
 
@@ -50,7 +52,7 @@ export default async function PortalProjectLayout({
       </header>
       <div className="portal-body">
         <div className="portal-wrap portal-grid">
-          <PortalTabs id={project.id} pending={pendingChangeOrders(changeOrders).length} />
+          <PortalTabs id={project.id} pending={pendingChangeOrders(changeOrders).length} unpaid={unpaid} />
           <main className="portal-main" id="main">
             {children}
           </main>

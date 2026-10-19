@@ -15,6 +15,7 @@ import {
   togglePhaseAction,
 } from "@/app/admin/portal-actions";
 import ProjectDetailsForm from "@/components/admin/portal/ProjectDetailsForm";
+import ProjectEconomy from "@/components/admin/projects/ProjectEconomy";
 import { DocumentUploader, UpdateComposer } from "@/components/admin/portal/PortalUploads";
 import { formatDateTime, formatWhen } from "@/lib/admin-format";
 import { fileHref } from "@/lib/portal/files-href";
@@ -22,6 +23,7 @@ import { CHANGE_ORDER_STATUS_LABEL, changeOrderRot, DOCUMENT_KIND_LABEL, formatK
 import { getProjectBundle } from "@/lib/portal/store";
 
 const FLASH: Record<string, string> = {
+  plan: "Betalplanen är skapad. Stegen blir fakturerbara när deras villkor är uppfyllda.",
   skapat: "Projektet är skapat. Fyll i det kunden ska se, och bjud sedan in kunden längst ner.",
   inbjuden: "Kunden är inbjuden och har fått ett mejl med inloggningslänk.",
   tillagd: "Kunden hade redan ett konto och har lagts till i projektet.",
@@ -69,6 +71,9 @@ export default async function PortalProjectAdmin({
         )}
 
         <ProjectDetailsForm project={project} />
+
+        {/* ---- Ekonomi och betalplan ---- */}
+        <ProjectEconomy bundle={bundle} />
 
         {/* ---- Faser ---- */}
         <h2 className="admin-h2" id="faser" style={{ marginTop: 44 }}>

@@ -4,6 +4,8 @@ import { projectIdFromKey, resolvePortalFile } from "@/lib/portal/files";
 import { getProject } from "@/lib/portal/store";
 import { getQuoteForPortal } from "@/lib/quotes/store";
 import { renderQuotePdf, quoteFileName } from "@/lib/pdf/render";
+import { getInvoice } from "@/lib/core/invoices/store";
+import { renderInvoicePdf, invoiceFileName } from "@/lib/pdf/render-invoice";
 
 /**
  * A portal file: /mitt-projekt/fil?p=projects/<id>/<file>  or  ?p=quote:<quote id>.
@@ -32,6 +34,24 @@ export async function GET(request: NextRequest) {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${quoteFileName(quote)}"`,
+        "Cache-Control": "private, no-store",
+      },
+    });
+  }
+
+  if (key.startsWith("invoice:")) {
+    // An issued invoice on a project the caller is a member of. RLS lets a
+    // member read it (invoices_portal_member); the project check is belt and braces.
+    const invoiceId = key.slice(8);
+    const projectId = request.nextUrl.searchParams.get("projekt") ?? "";
+    const project = projectId ? await getProject(projectId) : null;
+    const inv = project ? await getInvoice(invoiceId).catch(() => null) : null;
+    if (!project || !inv || inv.projectId !== project.id || inv.status === "draft") return new Response("Fakturan finns inte.", { status: 404 });
+    const pdf = await renderInvoicePdf(inv);
+    return new Response(new Uint8Array(pdf), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${invoiceFileName(inv)}"`,
         "Cache-Control": "private, no-store",
       },
     });

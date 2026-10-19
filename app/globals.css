@@ -1487,3 +1487,61 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .portal-ata-amount { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .portal-ata--admin .portal-ata-desc { font-size: 14px; color: var(--ink-2); white-space: pre-wrap; }
 .portal-ata--admin form { justify-self: end; }
+
+/* ===== Fakturor (admin) ===== */
+.kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 24px; }
+@media (max-width: 760px) { .kpi-row { grid-template-columns: 1fr 1fr; } }
+.kpi { display: grid; gap: 4px; padding: 16px 18px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); }
+.kpi span { font-size: 12.5px; font-weight: 500; color: var(--ink-3); }
+.kpi strong { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.kpi small { font-size: 13px; color: var(--ink-2); }
+.kpi--alert { border-color: var(--danger); }
+.kpi--alert strong, .kpi--alert span { color: #8a1c14; }
+.inv-status { display: inline-block; font-size: 12px; font-weight: 500; padding: 3px 9px; border-radius: 999px; background: var(--bg-deep); color: var(--ink-2); white-space: nowrap; }
+.inv-status[data-status="issued"], .inv-status[data-status="sent"] { background: #dfe7f0; color: #27476b; }
+.inv-status[data-status="partially_paid"] { background: #fbe6cf; color: #8a4a0b; }
+.inv-status[data-status="paid"] { background: #d7eadf; color: #155a37; }
+.inv-status[data-status="overdue"] { background: #f6d9d5; color: #8a1c14; }
+.inbox-row[data-status="overdue"] .inbox-status { color: #8a1c14; }
+.inv-problems { margin: 10px 0 0; padding-left: 18px; font-size: 13.5px; color: #8a1c14; display: grid; gap: 4px; }
+.inv-view { display: grid; gap: 22px; }
+.inv-locked { margin: 0; padding: 10px 14px; font-size: 13.5px; color: var(--ink-2); background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.inv-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; font-size: 14.5px; }
+.inv-grid .lead-h2 { display: block; margin-bottom: 6px; }
+@media (max-width: 760px) { .inv-grid { grid-template-columns: 1fr; } }
+.inv-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.inv-table th { text-align: left; font-size: 12.5px; font-weight: 500; color: var(--ink-3); padding: 8px 10px; border-bottom: 1px solid var(--ink); }
+.inv-table td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; font-variant-numeric: tabular-nums; }
+.inv-table .inv-section td { padding-top: 14px; font-weight: 600; font-size: 13px; color: var(--ink-2); border-bottom: 0; }
+.inv-muted { color: var(--ink-3); }
+.inv-box { padding: 14px 16px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); font-size: 14.5px; }
+.inv-box .lead-h2 { display: block; margin-bottom: 10px; }
+.inv-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 760px) { .inv-cols { grid-template-columns: 1fr; } }
+.inv-list { display: grid; gap: 8px; font-size: 14px; }
+.inv-list li { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.inv-remaining { margin: 10px 0 0; font-size: 14px; font-weight: 500; }
+.inv-timeline { display: grid; gap: 10px; font-size: 14px; }
+.inv-timeline li { display: grid; gap: 2px; padding-left: 16px; position: relative; }
+.inv-timeline li::before { content: ""; position: absolute; left: 0; top: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--bg-deep); }
+.inv-timeline li:first-child::before { background: var(--orange); }
+.inv-timeline small { font-size: 12.5px; color: var(--ink-3); }
+.quote-aside .inv-status { vertical-align: middle; }
+
+/* ===== Betalplan och ROT (admin) ===== */
+.plan-steps { display: grid; gap: 10px; margin-top: 12px; }
+.plan-steps li { display: grid; grid-template-columns: 36px 1fr auto; gap: 14px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+.plan-steps li[data-state="billable"] { border-color: var(--orange); }
+.plan-steps li[data-state="waiting"] { border-style: dashed; border-color: var(--line-strong); }
+.plan-step-no { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; background: var(--bg-deep); color: var(--ink-2); }
+.plan-steps li[data-state="invoiced"] .plan-step-no { background: #d7eadf; color: #155a37; }
+.plan-steps li[data-state="billable"] .plan-step-no { background: var(--orange); color: var(--dark); }
+.plan-step-main { display: grid; gap: 3px; min-width: 0; }
+.plan-step-side { display: grid; gap: 6px; justify-items: end; text-align: right; }
+.plan-add { margin-top: 12px; }
+.plan-add summary { cursor: pointer; font-size: 14px; font-weight: 600; }
+.rot-create { margin-top: 12px; }
+.rot-claims { display: grid; gap: 12px; margin-top: 12px; }
+.rot-claims li { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); display: grid; gap: 12px; }
+.rot-claim-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.rot-claim-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }

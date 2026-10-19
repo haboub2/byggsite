@@ -8,12 +8,14 @@ const TABS = [
   { seg: "tidplan", label: "Tidplan", icon: "M4 6h16M4 12h10M4 18h7" },
   { seg: "foton", label: "Foton", icon: "M4 7h3l2-3h6l2 3h3v12H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
   { seg: "andringar", label: "Ändringar", icon: "M4 20h4l10-10-4-4L4 16zM13 7l4 4M14 20h6" },
+  { seg: "fakturor", label: "Fakturor", icon: "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6" },
   { seg: "dokument", label: "Dokument", icon: "M7 3h7l5 5v13H7zM14 3v5h5M9 13h6M9 17h6" },
 ];
 
-/** The five tabs: a row at the bottom on phones (like an app), a side menu on desktop.
- *  `pending` is the number of change orders waiting for the customer; it shows as an orange badge on Ändringar. */
-export default function PortalTabs({ id, pending = 0 }: { id: string; pending?: number }) {
+/** The tabs: a row at the bottom on phones (like an app), a side menu on desktop.
+ *  `pending` is the number of change orders waiting for the customer (orange badge on Ändringar);
+ *  `unpaid` the number of invoices waiting for payment (badge on Fakturor). */
+export default function PortalTabs({ id, pending = 0, unpaid = 0 }: { id: string; pending?: number; unpaid?: number }) {
   const pathname = usePathname();
   const base = `/mitt-projekt/${id}`;
   return (
@@ -21,7 +23,7 @@ export default function PortalTabs({ id, pending = 0 }: { id: string; pending?: 
       {TABS.map((t) => {
         const href = t.seg ? `${base}/${t.seg}` : base;
         const current = t.seg ? pathname.startsWith(href) : pathname === base;
-        const badge = t.seg === "andringar" && pending > 0 ? pending : 0;
+        const badge = t.seg === "andringar" && pending > 0 ? pending : t.seg === "fakturor" && unpaid > 0 ? unpaid : 0;
         return (
           <Link key={t.seg} href={href} aria-current={current ? "page" : undefined}>
             <span className="portal-tab-icon">
