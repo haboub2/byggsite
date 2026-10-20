@@ -27,7 +27,7 @@ export const ITEM_KIND_LABEL: Record<ItemKind, string> = {
   material: "Material",
   other: "Övrigt",
 };
-export const UNITS = ["st", "tim", "m²", "lpm", "dag", "mån", "kpl"] as const;
+export const UNITS = ["st", "tim", "m²", "lpm", "liter", "dag", "mån", "kpl"] as const;
 
 const text = (max: number, label: string) =>
   z.string().trim().min(1, `${label} krävs.`).max(max, `${label}: högst ${max} tecken.`);

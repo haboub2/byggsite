@@ -702,7 +702,7 @@ export function QuotePdf({
         )}
         {d.intro.trim() ? (
           <View style={photos.withCover ? undefined : s.section}>
-            <Heading>Om arbetet</Heading>
+            <Heading>Beskrivning av arbetet</Heading>
             <Lines text={d.intro} style={s.pMuted} />
           </View>
         ) : null}
