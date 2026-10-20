@@ -52,26 +52,30 @@ Beslut:
   kontrollerat, eftersom läsrollerna inte får skriva i `events` under RLS.
   Misslyckas loggningen levereras filen ändå och felet hamnar i loggen,
   som vid låsningen.
-- **Exporten följer rollens läsrätt.** ROT-begärandena läses med
-  `listClaims()`, och efter 0023 ger den personnumret maskerat
-  (`ÅÅÅÅMMDD-XXXX`) för alla roller; fakturadokumenten har det maskerade
-  numret och kryptotexten (`personalNumberSealed`). Ingen klartext lämnar
-  alltså systemet via exporten. Felar en tabell felar hela JSON-exporten
-  hellre än att en ofullständig fil levereras.
+- **Personnummer i klartext bara för owner/admin.** Efter 0023 ger
+  `listClaims()` och fakturadokumenten personnumret maskerat
+  (`ÅÅÅÅMMDD-XXXX`, dokumenten också med kryptotexten). När en owner eller
+  admin hämtar JSON-filen öppnas varje maskerat nummer med samma
+  databasfunktioner som XML-filen och fakturasidan (`rot_buyer_pnr`,
+  `invoice_buyer_pnr`, via `openPersonalNumbers` i `load.ts`), så att filen
+  är komplett utan krypteringsnyckeln; kryptotexten tas då bort ur
+  dokumentet. `format.personalNumbers` säger `"plain"` eller `"masked"`, och
+  händelsen `export.json` loggar vilket och hur många nummer som öppnades.
+  Övriga roller får de maskerade numren. Felar en tabell eller ett
+  personnummer felar hela JSON-exporten hellre än att en ofullständig fil
+  levereras.
 
 Kvar:
 
-- **ROT i JSON-exporten kräver 0023.** Den pågående krypteringen av
-  personnummer har redan ändrat `listClaims()` (ocommittat när detta
-  skrevs), och mot en databas utan 0023 felar den läsningen, och därmed
-  JSON-exporten, med "personal_number_masked does not exist". Provet ovan
-  gjordes med ROT-delen tillfälligt avstängd; ROT-begärandena i JSON
-  behöver provas igen när 0023 är körd.
-- **Personnummer i klartext för en organisation som lämnar** är ett beslut
-  som väntar: kryptotexten går inte att öppna utan nyckeln i Vault, så en
-  owner som tar med sig exporten har bara de maskerade numren. Vill vi ge
-  klartext kan JSON-exporten för owner/admin öppna dem med
-  `openClaimPersonalNumbers` och logga det i händelsen.
+- ~~**ROT i JSON-exporten kräver 0023**~~ Gjort: 0023 är körd, och
+  JSON-exporten som owner gav ROT-begäran 2610 och faktura 10005 med
+  tolvsiffrigt personnummer, utan kryptotext, `format.personalNumbers`
+  `"plain"` och händelsen `export.json` med `personalNumbersOpened: 2`.
+  Det maskerade fallet (accountant, readonly, staff) är provat i testerna
+  men inte med en sådan inloggning i webbläsaren.
+- **Ett anrop per ROT-köpare** när personnumren öppnas räcker för Binaafy
+  men blir långsamt med tusentals ROT-fakturor; då behövs en
+  databasfunktion som öppnar alla i ett anrop.
 - ~~**Filnamnen på fakturorna har webbplatsens varumärke**~~ Gjort:
   `invoiceFileName` tar säljarnamnet ur fakturans frysta dokument
   (`document.seller.name`, samma namn som e-postens "från"), så Testbolags
@@ -86,8 +90,7 @@ Kvar:
   projekt är inte med i JSON-filen; den täcker faktureringskärnan.
 - **CSV för verifikationer** finns inte; SIE-filen och JSON-filen har dem.
 
-Kontroll: 10 nya tester, 265 gröna (`npm test`, 270 med den pågående
-krypteringens), lint (utan `.claude/worktrees`) och typkontroll rena.
+Kontroll: 11 nya tester för exporten, 272 gröna totalt (`npm test`), lint (utan `.claude/worktrees`) och typkontroll rena.
 
 ## Läge 2026-10-20: fas 5 (produkt), det som går utan externa avtal
 

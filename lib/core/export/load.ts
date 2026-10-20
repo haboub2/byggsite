@@ -11,8 +11,10 @@ import { DEMO_ORG_ID, listMyMemberships } from "../org/current";
 import { getOrgSettings, listNumberSeries } from "../org/settings-store";
 import { listBankTransactions } from "../payments/store";
 import type { PaymentPlan, PaymentPlanStep } from "../plans/schema";
-import { listClaims } from "../rot/store";
-import type { ExportBankTransaction, ExportCustomer, ExportData, ExportEvent, ExportJournalEntry, ExportOrg, ExportPayment, ExportReminder } from "./model";
+import { listClaims, openClaimPersonalNumbers, openInvoiceBuyerPersonalNumber } from "../rot/store";
+import { MASKED_PERSONAL_NUMBER } from "../documents/invoice";
+import { pool } from "../../pool";
+import type { ExportBankTransaction, ExportCustomer, ExportData, ExportEvent, ExportJournalEntry, ExportOrg, ExportPayment, ExportReminder, OpenedPersonalNumbers } from "./model";
 
 /**
  * Reads everything the full export needs for one organisation. The route
@@ -273,6 +275,25 @@ export async function loadExportData(orgId: string): Promise<ExportData> {
     loadEvents(orgId),
   ]);
   return { org, settings, numberSeries, accounts, customers, invoices, payments, journal, periodLocks, reminders, recurring, paymentPlans, rotClaims, bankTransactions, events };
+}
+
+/**
+ * Open the ROT buyers' personal numbers for the export, through the same
+ * database functions as the XML file and the invoice page (rot_buyer_pnr,
+ * invoice_buyer_pnr), which refuse anyone below admin. Only buyers stored
+ * masked are opened; plain text (drafts, demo mode) is already there.
+ */
+export async function openPersonalNumbers(data: Pick<ExportData, "rotClaims" | "invoices">): Promise<{ opened: OpenedPersonalNumbers; count: number }> {
+  const opened: OpenedPersonalNumbers = { claimItems: {}, invoiceBuyers: {} };
+  for (const claim of data.rotClaims) Object.assign(opened.claimItems, await openClaimPersonalNumbers(claim));
+  const withRot = data.invoices.filter((inv) => inv.document.se.rot?.buyers.some((b) => MASKED_PERSONAL_NUMBER.test(b.personalNumber)));
+  await pool(withRot, 4, async (inv) => {
+    opened.invoiceBuyers[inv.id] = await Promise.all(
+      inv.document.se.rot!.buyers.map((b, i) => (MASKED_PERSONAL_NUMBER.test(b.personalNumber) ? openInvoiceBuyerPersonalNumber(inv.id, i) : Promise.resolve(null)))
+    );
+  });
+  const count = Object.keys(opened.claimItems).length + Object.values(opened.invoiceBuyers).flat().filter(Boolean).length;
+  return { opened, count };
 }
 
 /** The organisation's name for file names. */

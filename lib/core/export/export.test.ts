@@ -298,3 +298,37 @@ test("json export: top level, öre as integers, full documents, sorted and stabl
   assert.ok(ore.length > 20);
   assert.ok(ore.every(Number.isInteger), "every *Ore field is an integer");
 });
+
+test("json export keeps personal numbers masked unless an owner or admin opened them", () => {
+  const data = exportData();
+  const badrum = data.invoices.find((i) => i.number === "10001")!;
+  const rot = badrum.document.se.rot!;
+  badrum.document = { ...badrum.document, se: { ...badrum.document.se, rot: { ...rot, buyers: [{ ...rot.buyers[0], personalNumber: "19850412-XXXX", personalNumberSealed: "c2VhbGVk" }] } } };
+  data.rotClaims = [
+    {
+      id: "claim",
+      name: "ROT oktober",
+      status: "draft",
+      sentOn: null,
+      decidedOn: null,
+      paidOre: 0,
+      note: "ROT oktober",
+      createdAt: "2026-10-20T10:00:00.000Z",
+      items: [{ id: "item", buyerId: "buyer", invoiceId: badrum.id, invoiceNumber: "10001", buyerName: "Anna Lindqvist", personalNumber: "19850412-XXXX", amountOre: badrum.rotOre, workOre: 600_000, paidOn: "2026-10-12", status: "pending", property: { kind: "fastighet", designation: "Göteborg Tolered 1:23" }, category: "Bygg" }],
+    },
+  ];
+
+  const masked = buildJsonExport(data, "2026-10-20T12:00:00.000Z");
+  assert.equal(masked.format.personalNumbers, "masked");
+  assert.equal(masked.rotClaims[0].items[0].personalNumber, "19850412-XXXX");
+  assert.equal(masked.invoices[0].document.se.rot?.buyers[0].personalNumber, "19850412-XXXX");
+
+  data.personalNumbers = { claimItems: { item: "198504121234" }, invoiceBuyers: { [badrum.id]: ["198504121234"] } };
+  const plain = buildJsonExport(data, "2026-10-20T12:00:00.000Z");
+  assert.equal(plain.format.personalNumbers, "plain");
+  assert.equal(plain.rotClaims[0].items[0].personalNumber, "198504121234");
+  const buyer = plain.invoices[0].document.se.rot!.buyers[0];
+  assert.equal(buyer.personalNumber, "198504121234");
+  assert.ok(!("personalNumberSealed" in buyer), "the ciphertext is left out once the number is open");
+  assert.equal(badrum.document.se.rot!.buyers[0].personalNumber, "19850412-XXXX", "the record itself is not changed");
+});
