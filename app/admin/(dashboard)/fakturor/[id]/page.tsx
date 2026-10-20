@@ -87,7 +87,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const overdue = isOverdue(inv, today);
   const remaining = inv.payableOre - inv.paidOre;
   const plan = overdue
-    ? reminderDue({ payableOre: inv.payableOre, paidOre: inv.paidOre, dueOn: inv.dueOn, issueDate: d.issueDate, reminders: inv.reminders, remindedAt: inv.remindedAt, customerType: d.buyer.type, status: inv.status, kind: inv.kind }, today, { ...reminderSettings(), graceDays: 0, daysBetween: 1 })
+    ? reminderDue({ payableOre: inv.payableOre, paidOre: inv.paidOre, dueOn: inv.dueOn, issueDate: d.issueDate, reminders: inv.reminders, remindedAt: inv.remindedAt, customerType: d.buyer.type, status: inv.status, kind: inv.kind }, today, { ...(await reminderSettings()), graceDays: 0, daysBetween: 1 })
     : null;
   const publicUrl = publicInvoiceUrl(inv.publicToken);
   const sections = [...new Set(d.lines.map((l) => l.section.trim()))];
@@ -122,6 +122,11 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
             <a href={`/admin/fakturor/${inv.id}/pdf?ladda-ner=1`} className="btn btn-ghost">
               Ladda ner
             </a>
+            {d.buyer.type !== "privat" && (
+              <a href={`/admin/fakturor/${inv.id}/peppol.xml`} className="btn btn-ghost" title="E-faktura enligt Peppol BIS Billing 3">
+                Peppol-XML
+              </a>
+            )}
             {inv.kind === "invoice" && d.buyer.customerId && (
               <Link href={`/admin/fakturor/aterkommande?fran=${inv.id}#ny`} className="btn btn-ghost">
                 Gör återkommande
