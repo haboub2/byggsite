@@ -1,13 +1,82 @@
 # Fakturering — en produktkärna, med Binaafy som första kund
 
 Status: **version 2, skriven 2026-10-19. Fas 0–3 är kodade samma dag,
-fas 4 och det av fas 5 som går utan externa avtal dagen efter, se *Läge*
-nedan.** Version 1 samma dag beskrev en fakturamodul för Binaafy. Den här versionen beskriver en
+fas 4, det av fas 5 som går utan externa avtal och full export dagen
+efter, se *Läge* nedan.** Version 1 samma dag beskrev en fakturamodul för Binaafy. Den här versionen beskriver en
 **kärna som andra företag ska kunna använda i stället för Fortnox**, där
 Binaafy är första kunden och det som byggs för Binaafy (offert → betalplan →
 delfakturor → ÄTA → slutfaktura → ROT) är produktens första säljargument.
 Prototypen av gränssnittet finns som design-canvas (sju skärmar: fakturalista,
 faktura, projektekonomi, kundportal i mobil, PDF, ROT-begäran, dashboard).
+
+## Läge 2026-10-20: full export (grundkrav 6)
+
+Grundkrav 6 är uppfyllt: utöver SIE4 per period och Peppol-XML per faktura
+finns nu CSV för kunder, fakturor och betalningar, PDF-arkivet som zip och
+en JSON-fil med allt, under *Full export* på Bokföringen
+(`/admin/ekonomi/export`). Provat i webbläsaren mot Binaafys databas: de
+tre CSV-filerna började med BOM och hade fakturorna 10001–10006 (oktober
+som intervall gav 10001–10003, 10005, 10006), zippen hade `index.csv` och
+sex PDF:er (`Faktura-10001-Binaafy-Test-Testkund.pdf` …), och JSON-filen
+hade 10001–10006 plus utkastet, 11 verifikationer, betalplanen och
+händelseloggen med 112 öre-fält, alla heltal. Varje nedladdning syntes som
+händelse med användaren som aktör.
+
+| Del | Fil |
+|---|---|
+| Modellen | `lib/core/export/model.ts`: `ExportData` (allt för en organisation som vanliga poster), datumintervall (`fran`, `till`), utfärdade fakturor i nummerordning |
+| CSV | `lib/core/export/csv.ts` (testad): kunder (även borttagna, med datum), fakturor (nummer, datum, förfallodag, kund, typ, netto, moms, totalt, ROT, att betala, betalt, kvar, status, OCR), betalningar (en rad per betalning och faktura, källan på svenska) |
+| PDF-arkiv | `lib/core/export/archive.ts` (testad): utfärdade fakturor och kreditfakturor genom `renderInvoicePdf` fyra åt gången (`lib/pool.ts`, utbruten ur projektrapporten), namn från `lib/pdf/invoice-file-name.ts`, `index.csv` med fakturakolumnerna, filnamnet och dokumentets SHA-256 |
+| JSON | `lib/core/export/json.ts` (testad): `{ exportedAt, schemaVersion: 1, format, org: { …, settings, numberSeries, accounts, periodLocks }, customers, invoices (med hela dokumentet), payments (med fördelning per faktura), journal, reminders, recurringInvoices, paymentPlans, rotClaims, bankTransactions, events }` |
+| Läsningen | `lib/core/export/load.ts`: varje tabell i sidor om 1 000 med användarens session (RLS) och `org_id`, demoläget ur minnet; `logExport` |
+| Nedladdning | `app/admin/(dashboard)/ekonomi/export/csv/route.ts` (`?typ=kunder\|fakturor\|betalningar&fran=&till=`), `…/pdf-arkiv/route.ts`, `…/json/route.ts`, alla med `requireRole("read")` via `lib/core/export/route-helpers.ts`; händelserna `export.csv`, `export.pdf_archive`, `export.json` (`aggregate_type` "export") |
+
+Beslut:
+
+- **CSV för svensk Excel:** UTF-8 med BOM, semikolon, decimalkomma utan
+  tusentalsavgränsare, datum ÅÅÅÅ-MM-DD, CRLF. Fält med semikolon,
+  citattecken eller radbrytning citeras. Text som Excel skulle köra som
+  formel (`=`, `@`, `+`/`-` utan siffror efter) får en apostrof först;
+  telefonnummer som `+46 70 …` lämnas.
+- **Utkast kommer inte med i CSV och zip**, bara i JSON. Intervallet gäller
+  fakturadatum respektive betaldatum; kundlistan är alltid hel. En
+  kreditfaktura har alltid *Kvar* 0, som i fakturalistan.
+- **PDF-arkivet har inte Swish-QR**, så att 500 fakturor inte blir 500 anrop
+  till Swish; QR-koden gäller ändå bara kvarvarande belopp just då.
+- **JSON-filen mappas fält för fält**, inte som databasrader, så att en
+  migration ändrar `load.ts` men inte filen. Fält läggs bara till inom en
+  schemaversion; ändras eller tas något bort blir det `schemaVersion: 2`.
+  Listorna är sorterade, så två exporter av samma data skiljer sig bara i
+  `exportedAt`. Länktoken för den publika fakturasidan exporteras inte.
+- **Händelsen skrivs som system** med organisationen som routen redan
+  kontrollerat, eftersom läsrollerna inte får skriva i `events` under RLS.
+  Misslyckas loggningen levereras filen ändå och felet hamnar i loggen,
+  som vid låsningen.
+- **Exporten följer rollens läsrätt.** ROT-begärandena läses med
+  `listClaims()`, så personnummer kommer med bara för den som får se dem
+  enligt `rot_buyers` (owner/admin). Felar en tabell felar hela
+  JSON-exporten hellre än att en ofullständig fil levereras.
+
+Kvar:
+
+- **ROT i JSON-exporten kräver 0023.** Den pågående krypteringen av
+  personnummer har redan ändrat `listClaims()` (ocommittat när detta
+  skrevs), och mot en databas utan 0023 felar den läsningen, och därmed
+  JSON-exporten, med "personal_number_masked does not exist". Provet ovan
+  gjordes med ROT-delen tillfälligt avstängd; ROT-begärandena i JSON
+  behöver provas igen när 0023 är körd.
+- **Filnamnen på fakturorna har webbplatsens varumärke** (`site.brand`)
+  för alla organisationer, som i e-posten. Testbolags PDF:er skulle heta
+  `Faktura-1-Binaafy-….pdf`; ska följa organisationen som offerterna gör.
+- **Allt byggs i minnet i ett anrop.** Zippen för en organisation med
+  tusentals fakturor bör bli ett bakgrundsjobb som lägger filen i Storage
+  och mejlar en länk; `maxDuration` är 300 s för zippen och 120 s för JSON.
+- **Projektkostnaderna** (`project_costs`), offerterna och portalens
+  projekt är inte med i JSON-filen; den täcker faktureringskärnan.
+- **CSV för verifikationer** finns inte; SIE-filen och JSON-filen har dem.
+
+Kontroll: 10 nya tester, 265 gröna (`npm test`, 270 med den pågående
+krypteringens), lint (utan `.claude/worktrees`) och typkontroll rena.
 
 ## Läge 2026-10-20: fas 5 (produkt), det som går utan externa avtal
 
@@ -192,8 +261,9 @@ Kvar efter fas 4:
 
 - **Fortnox-koppling** (push av verifikationer via Fortnox API) är inte
   byggd; SIE-filen täcker alla bokföringsprogram tills vidare.
-- **Övrig full export** (CSV för kunder, fakturor och betalningar,
-  PDF-arkivet som zip, JSON av allt) och **Peppol-XML** återstår.
+- ~~**Övrig full export**~~ (CSV för kunder, fakturor och betalningar,
+  PDF-arkivet som zip, JSON av allt) är gjord, se *Läge 2026-10-20: full
+  export*; ~~**Peppol-XML**~~ gjordes i fas 5.
 - **Att göra på dashboarden** visar ännu inte "period ej exporterad", och
   låsningen har ingen påminnelse.
 - **Kostnader läses in för hand.** Leverantörsfakturor som fil eller via

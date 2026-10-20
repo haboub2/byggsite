@@ -127,6 +127,11 @@ const fromRow = (r: Row): InvoiceRecord => ({
   updatedAt: r.updated_at,
 });
 
+/** A row from the invoices table (or the demo store) as a record, for the full export's paged reads. */
+export function invoiceFromRow(row: Record<string, unknown>): InvoiceRecord {
+  return fromRow(row as unknown as Row);
+}
+
 /** Denormalised columns for a draft, recomputed on every save so lists and the dashboard never parse documents. */
 function draftColumns(document: InvoiceDocument) {
   const t = invoiceTotals(document);

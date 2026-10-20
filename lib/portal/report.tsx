@@ -6,6 +6,7 @@ import { APPENDIX_PARTS, firstDayAnchor, firstRowAnchor, ReportPdf, type PageMap
 import { compressReportPhoto } from "../pdf/photos";
 import { getQuoteProfile } from "../quotes/profile-store";
 import { createZip } from "../zip";
+import { pool } from "../pool";
 import { documentationTree, plannedPhaseDates, reportFingerprintSource, safeFileName, zipPhotoPaths } from "./documentation";
 import { readPortalFile, removePortalFile, resolvePortalFile, writePortalFile } from "./files";
 import { todayIso } from "./format";
@@ -55,21 +56,6 @@ export function reportFileName(bundle: ProjectBundle, ext: "pdf" | "zip" = "pdf"
 const lockedDocument = (bundle: ProjectBundle) => (bundle.project.archived_at ? bundle.documents.find((d) => d.kind === "report") ?? null : null);
 
 /* ---------- rendering ---------- */
-
-/** Run `fn` over `items`, at most `n` at a time. */
-async function pool<T, R>(items: T[], n: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(n, items.length) }, async () => {
-      while (next < items.length) {
-        const i = next++;
-        out[i] = await fn(items[i]);
-      }
-    })
-  );
-  return out;
-}
 
 /** Everything the PDF shows, with every photo read and shrunk. */
 async function reportData(bundle: ProjectBundle, opts: { final: boolean; asOf: string }): Promise<ReportData> {

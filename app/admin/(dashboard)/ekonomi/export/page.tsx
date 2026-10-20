@@ -53,6 +53,9 @@ export default async function ExportPage({ searchParams }: { searchParams: Promi
             <a href={`/admin/ekonomi/export/sie?period=${period}`} className="btn btn-primary" download={sieFileName(company.legalName, period)}>
               Ladda ner SIE4-fil
             </a>
+            <a href="#full-export" className="btn btn-ghost">
+              Full export
+            </a>
           </div>
         </div>
 
@@ -162,6 +165,63 @@ export default async function ExportPage({ searchParams }: { searchParams: Promi
                 <dd>{kr(vat.movement.bank)}</dd>
               </div>
             </dl>
+          </section>
+        </div>
+
+        <h2 className="admin-h2" style={{ marginTop: 32 }} id="full-export">
+          Full export
+        </h2>
+        <p className="admin-intro" style={{ marginTop: 6 }}>
+          Allt {company.legalName || "organisationen"} har i faktureringen, för Excel, för revisorn eller för att ta med sig. Varje nedladdning loggas.
+        </p>
+        <div className="dash-grid">
+          <section className="dash-card dash-card--wide">
+            <div className="dash-head">
+              <h3 className="admin-h2">CSV för Excel</h3>
+            </div>
+            <form action="/admin/ekonomi/export/csv" method="get">
+              <div className="egrid">
+                <div className="efield">
+                  <label htmlFor="export-fran">Från (valfritt)</label>
+                  <input id="export-fran" name="fran" type="date" />
+                </div>
+                <div className="efield">
+                  <label htmlFor="export-till">Till (valfritt)</label>
+                  <input id="export-till" name="till" type="date" />
+                </div>
+              </div>
+              <div className="lead-quick" style={{ marginTop: 12, flexWrap: "wrap" }}>
+                <button type="submit" name="typ" value="fakturor" className="btn btn-dark">
+                  Fakturor
+                </button>
+                <button type="submit" name="typ" value="betalningar" className="btn btn-dark">
+                  Betalningar
+                </button>
+                <button type="submit" name="typ" value="kunder" className="btn btn-ghost">
+                  Kunder
+                </button>
+              </div>
+            </form>
+            <p className="efield-hint" style={{ marginTop: 10 }}>
+              Semikolon, decimalkomma och UTF-8, så att Excel öppnar filen direkt. Datumen gäller fakturadatum och betaldatum; kundlistan är alltid hel. Utkast kommer inte med.
+            </p>
+          </section>
+
+          <section className="dash-card">
+            <div className="dash-head">
+              <h3 className="admin-h2">Arkiv</h3>
+            </div>
+            <div className="lead-quick" style={{ flexWrap: "wrap" }}>
+              <a href="/admin/ekonomi/export/pdf-arkiv" className="btn btn-dark" download>
+                PDF-arkiv (zip)
+              </a>
+              <a href="/admin/ekonomi/export/json" className="btn btn-ghost" download>
+                Allt som JSON
+              </a>
+            </div>
+            <p className="efield-hint" style={{ marginTop: 10 }}>
+              Zip-filen har varje utfärdad faktura och kreditfaktura som PDF och en index.csv. JSON-filen har inställningar, kunder, fakturor med hela fakturadokumentet, betalningar, verifikationer, ROT, betalplaner och händelseloggen, med belopp i öre.
+            </p>
           </section>
         </div>
 

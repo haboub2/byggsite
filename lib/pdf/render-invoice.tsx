@@ -5,28 +5,20 @@ import { getOrgSettings } from "../core/org/settings-store";
 import { invoiceTotals } from "../core/invoices/totals";
 import { isOpen, type InvoiceRecord } from "../core/invoices/store";
 import { fetchSwishQrPng } from "../core/payments/swish";
-import { site } from "../placeholder";
 
 /** The invoice as PDF bytes. An issued invoice renders its frozen document;
  *  a draft renders what is saved so far, marked UTKAST. An open invoice with
- *  a Swish number gets the QR code (amount, number and OCR locked). */
-export async function renderInvoicePdf(inv: InvoiceRecord): Promise<Buffer> {
+ *  a Swish number gets the QR code (amount, number and OCR locked), unless
+ *  `swishQr` is false: the export archive keeps the document only, without
+ *  a call to Swish per invoice. */
+export async function renderInvoicePdf(inv: InvoiceRecord, options: { swishQr?: boolean } = {}): Promise<Buffer> {
   // The invoice's own organisation: the PDF is also rendered for portal
   // customers and the public page, who have no current organisation.
   const settings = await getOrgSettings(inv.orgId || undefined).catch(() => null);
   const signer = settings?.company.signer || inv.document.seller.name;
   const swish = inv.document.paymentMeans.swish;
-  const qr = swish && isOpen(inv) ? await fetchSwishQrPng({ payee: swish, amountOre: inv.payableOre - inv.paidOre, message: inv.ocr ?? inv.number ?? "" }) : null;
+  const qr = swish && isOpen(inv) && options.swishQr !== false ? await fetchSwishQrPng({ payee: swish, amountOre: inv.payableOre - inv.paidOre, message: inv.ocr ?? inv.number ?? "" }) : null;
   return renderToBuffer(<InvoicePdf document={inv.document} totals={invoiceTotals(inv.document)} signer={signer} swishQr={qr} />);
 }
 
-export function invoiceFileName(inv: InvoiceRecord): string {
-  const who = inv.document.buyer.name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^A-Za-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 40);
-  const word = inv.kind === "credit" ? "Kreditfaktura" : "Faktura";
-  return `${word}-${inv.number ?? "utkast"}-${site.brand}${who ? `-${who}` : ""}.pdf`;
-}
+export { invoiceFileName } from "./invoice-file-name";
