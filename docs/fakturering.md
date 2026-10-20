@@ -1,12 +1,86 @@
 # Fakturering — en produktkärna, med Binaafy som första kund
 
-Status: **version 2, skriven 2026-10-19. Fas 0–3 är kodade samma dag,
-se *Läge* nedan.** Version 1 samma dag beskrev en fakturamodul för Binaafy. Den här versionen beskriver en
+Status: **version 2, skriven 2026-10-19. Fas 0–3 är kodade samma dag och
+fas 4 dagen efter, se *Läge* nedan.** Version 1 samma dag beskrev en fakturamodul för Binaafy. Den här versionen beskriver en
 **kärna som andra företag ska kunna använda i stället för Fortnox**, där
 Binaafy är första kunden och det som byggs för Binaafy (offert → betalplan →
 delfakturor → ÄTA → slutfaktura → ROT) är produktens första säljargument.
 Prototypen av gränssnittet finns som design-canvas (sju skärmar: fakturalista,
 faktura, projektekonomi, kundportal i mobil, PDF, ROT-begäran, dashboard).
+
+## Läge 2026-10-20: fas 0–4 kodade och körda mot Supabase
+
+Migrationerna 0001–0020 är körda i Binaafys Supabase-projekt, och hela
+flödet för fas 0–4 är provat där i webbläsaren med testdata (kund, fakturor
+10001–10006, offert, projekt med betalplan, ROT-begäran, bankfil,
+påminnelse, låst period, återkommande fakturor, projektkostnader).
+Testdatan tas bort med `supabase/reset-invoicing.sql` före skarp drift.
+`npm run db:check` läser av kärnans tillstånd i projektet.
+
+**Fas 4 kodad 2026-10-20** och provad mot databasen (oktober 2026 visar
+verifikationerna V1–V11 och momsrutorna, SIE-filen börjar med
+`#FLAGGA 0` och är PC8-kodad, augusti 2026 är låst och händelsen
+`export.sie` loggad; två återkommande mallar gav i cron faktura 10006
+utfärdad automatiskt och ett utkast, och en andra körning samma dag gav
+ingenting; två kostnader på projektet gav täckningsbidrag och marginal):
+
+| Del | Fil |
+|---|---|
+| Perioder och moms | `lib/core/ledger/period.ts` (rena funktioner, testade): månadens intervall, föregående månad, saldon per konto, momsunderlag med momsdeklarationens rutor 05/06/07/42 (försäljning), 10/11/12 (utgående moms) och 41 (byggtjänster, omvänd), rörelse på 1510, 1513 och 1930, låsning bara av månader som är slut, filnamnet |
+| Huvudboken som den lagras | `lib/core/ledger/store.ts`: verifikationer med rader per datumintervall, kontoplanen, `period_locks`, `lockPeriod` (insert med `default_org()`, 23505 = redan låst, händelsen `export.sie`); demo-läget läser fakturastorens huvudbok |
+| SIE-export | `lib/core/ledger/sie-export.ts` (företaget från Företaget, kalenderår som räkenskapsår), `app/admin/(dashboard)/ekonomi/export/sie/route.ts` (GET `?period=ÅÅÅÅ-MM`, PC8, bilaga `<företag>-<period>.se`, bara admin) |
+| Sidan Bokföringen | `app/admin/(dashboard)/ekonomi/export/page.tsx`: 12 månader att välja, nyckeltal, momsdeklarationens rutor, *Lås perioden*, saldon per konto, verifikationer, låsta perioder; `app/admin/export-actions.ts`; länken *Till bokföringen* på Ekonomi. Triggern `journal_entries_check_lock` (0014) stoppar nya verifikationer i en låst månad |
+| Återkommande fakturor | `lib/core/invoices/recurring-schedule.ts` (testad: månad, kvartal, år, månadsslut), `lib/core/invoices/recurring.ts` (mot `recurring_invoices`: skapa från faktura, pausa, ta bort, `runDueRecurring` med optimistisk flytt av `next_on`), `app/admin/(dashboard)/fakturor/aterkommande/page.tsx`, `app/admin/recurring-actions.ts`, knappen *Gör återkommande* på fakturan, steget i `app/api/cron/invoices/route.ts` |
+| Projektkostnader | `supabase/migrations/0020_project_costs.sql` (`project_costs`, RLS: medlemmar i organisationen läser, personal skriver på egna projekt; kunden ser inget), `lib/core/projects/costs.ts`, `app/admin/cost-actions.ts` |
+| Marginal och upparbetat | `lib/core/projects/economy.ts` (testad): kostnader per typ, fakturerat exkl. moms, täckningsbidrag, marginal i procent, upparbetat ej fakturerat; delen *Kostnader och marginal* i `components/admin/projects/ProjectEconomy.tsx` |
+
+Beslut i fas 4:
+
+- **Låsning är ett eget klick, inte en följd av nedladdningen.** En låst
+  månad tar inte emot verifikationer, så den som laddar ner oktober mitt i
+  oktober ska inte stoppa resten av månadens fakturor. Bara månader som är
+  slut kan låsas. Rättelser görs med en verifikation i en öppen period.
+- **Momsunderlaget är bara försäljningssidan.** Ruta 05–12, 41 och 42 ur
+  huvudboken; 06, 07 och 08 uppstår aldrig ur en faktura och står som noll.
+  Inköp och ingående moms (48) hör till bokföringen. Påminnelseavgifter
+  och dröjsmålsränta ligger utanför momsen och syns bara som saldon.
+- **Räkenskapsåret är kalenderåret** i SIE-filen (`#RAR 0`) tills
+  `org_settings` har ett räkenskapsår.
+- **En återkommande mall som ligger efter tar igen ett intervall per
+  körning**, så att en pausad och återupptagen avtalskund aldrig får flera
+  fakturor samma morgon. Fakturan avser perioden från datumet till dagen
+  före nästa (BG-14). Sista dagen i en månad förblir sista dagen (28 feb →
+  31 mar); en dag som saknas blir månadens sista (31 jan → 28 feb), och
+  därefter följer mallen månadsslutet. ROT och ÄTA-kopplingar följer inte
+  med till mallen. Utskicket sker alltid för hand.
+- **Upparbetat räknas ärligt och enkelt:** klara faser vägda efter sina
+  dagar i tidplanen som andel av offerten exkl. moms, minus det som är
+  fakturerat av offerten exkl. moms. ÄTA (faser och fakturarader) räknas
+  inte på någon sida. Negativt betyder förskott, vilket en betalplan med
+  30 % vid start ger.
+- **Kostnader är interna siffror, inte bokföring:** de kan tas bort, och
+  timmar räknas med ett internt timpris (vad timmen kostar företaget).
+
+Kvar efter fas 4:
+
+- **Fortnox-koppling** (push av verifikationer via Fortnox API) är inte
+  byggd; SIE-filen täcker alla bokföringsprogram tills vidare.
+- **Övrig full export** (CSV för kunder, fakturor och betalningar,
+  PDF-arkivet som zip, JSON av allt) och **Peppol-XML** återstår.
+- **Att göra på dashboarden** visar ännu inte "period ej exporterad", och
+  låsningen har ingen påminnelse.
+- **Kostnader läses in för hand.** Leverantörsfakturor som fil eller via
+  bokföringen, och tidrapportering från fältet, är inte byggt. Kostnaderna
+  syns inte i SIE-filen (inköp bokförs i bokföringsprogrammet).
+- **Återkommande fakturor skickas inte automatiskt**; utkast och utfärdade
+  fakturor skickas med knappen på fakturan. Mallen ändras genom att ta bort
+  den och göra en ny från en uppdaterad faktura.
+- **Räkenskapsår och kontoplan per organisation** i `org_settings` (fas 5).
+- RLS-regeln att kunden inte ser `project_costs` följer av att kunder
+  saknar `memberships`; den är inte provad med ett kundkonto i
+  webbläsaren.
+
+Kontroll: 213 tester gröna (`npm test`), lint och typkontroll rena.
 
 ## Läge 2026-10-19: fas 0–3 kodade, migrationerna provkörda lokalt
 
@@ -89,10 +163,8 @@ repot tills PGlite läggs till som utvecklingsberoende.
 
 Inte gjort i fas 0–3, och varför:
 
-- **Migrationerna mot Supabase.** Inget av de Supabase-projekt som nås
-  härifrån har tabellerna från 0014–0016, och `.env.local` saknas, så appen
-  kör i demo-läget. 0017 ska köras efter 0016 i det projekt där 0014–0016
-  kördes, och `get_advisors` (security) köras efteråt.
+- ~~**Migrationerna mot Supabase.**~~ Gjort 2026-10-20: 0001–0020 är
+  körda i Binaafys projekt, se läget ovan.
 - **Mejlutskick** är inte testat skarpt (kräver `RESEND_API_KEY` och
   `MAIL_FROM`); knappen *Markera skickad* och *Registrera bara* på
   påminnelsen täcker tills dess.
@@ -106,8 +178,8 @@ Inte gjort i fas 0–3, och varför:
   e-tjänst; första riktiga filen laddas upp och kontrolleras där. Timmar
   tas från arbetsrader i enheten *tim*, materialkostnad från materialrader;
   kategorin (Bygg, El, VVS …) väljs per begäran.
-- **Projektets kostnadssida** (leverantörsfakturor, timmar, marginal) och
-  "upparbetat men ej fakturerat" ligger i fas 4.
+- ~~**Projektets kostnadssida**~~ och "upparbetat men ej fakturerat":
+  gjort i fas 4.
 - **Peppol-renderaren** (`lib/render/ubl`) väntar till fas 5; dokumentet är
   redan format efter standarden.
 - **Kryptering av personnummer** i `rot_buyers`: tabellen har strikt RLS
