@@ -52,6 +52,11 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
               <a href={`/admin/fakturor/${inv.id}/pdf`} target="_blank" rel="noopener" className="btn btn-ghost">
                 Förhandsgranska PDF
               </a>
+              {inv.kind === "invoice" && d.buyer.customerId && (
+                <Link href={`/admin/fakturor/aterkommande?fran=${inv.id}#ny`} className="btn btn-ghost">
+                  Gör återkommande
+                </Link>
+              )}
             </div>
           </div>
           {kredit && <p className="admin-flash">Kreditfakturan är skapad som utkast och speglar originalet. Ändra rader om bara en del ska krediteras, och utfärda sedan.</p>}
@@ -117,6 +122,11 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
             <a href={`/admin/fakturor/${inv.id}/pdf?ladda-ner=1`} className="btn btn-ghost">
               Ladda ner
             </a>
+            {inv.kind === "invoice" && d.buyer.customerId && (
+              <Link href={`/admin/fakturor/aterkommande?fran=${inv.id}#ny`} className="btn btn-ghost">
+                Gör återkommande
+              </Link>
+            )}
           </div>
         </div>
 

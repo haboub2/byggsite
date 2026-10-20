@@ -50,6 +50,9 @@ export default async function InvoicesList({ searchParams }: { searchParams: Pro
             <Link href="/admin/kunder" className="btn btn-ghost">
               Kunder
             </Link>
+            <Link href="/admin/fakturor/aterkommande" className="btn btn-ghost">
+              Återkommande
+            </Link>
             <Link href="/admin/fakturor/ny" className="btn btn-primary">
               Ny faktura
             </Link>
