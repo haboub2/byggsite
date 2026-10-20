@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import { EditorForm, TextArea, TextField, useFieldError } from "../content/EditorForm";
 import { saveQuote } from "@/app/admin/quote-actions";
-import { kr, quoteTotals, rotApplies, validUntil, ROT_CAP, ROT_RATE } from "@/lib/quotes/math";
+import { DEDUCTION_RULES, deductionLabel, kr, quoteTotals, rotApplies, validUntil } from "@/lib/quotes/math";
 import { COVER_CHOICES, NO_COVER, coverSlot } from "@/lib/quotes/cover";
 import {
   ITEM_KINDS,
@@ -155,6 +155,22 @@ function ItemRow({
   );
 }
 
+/** A terms field with a button that empties it, which leaves it off the PDF. */
+function TermArea(props: { label: string; path: string; value: string; onChange: (v: string) => void; rows?: number; placeholder?: string }) {
+  return (
+    <div className="efield--wide term-area">
+      <TextArea {...props} />
+      {props.value.trim() ? (
+        <button type="button" className="link-quiet term-clear" onClick={() => props.onChange("")}>
+          Ta bort från PDF:en
+        </button>
+      ) : (
+        <span className="efield-hint term-clear">Tas inte med på PDF:en</span>
+      )}
+    </div>
+  );
+}
+
 /** Cover photo for the PDF: automatic from the title, a chosen job, or none. */
 function CoverPicker({ q, previews, onChange }: { q: QuoteData; previews: Record<string, string>; onChange: (v: string) => void }) {
   const id = useId();
@@ -282,6 +298,17 @@ export default function QuoteEditor({ id, initial, coverPreviews = {} }: { id: s
           />
           <TextArea label="Inledning" path="intro" value={q.intro} onChange={set("intro")} rows={4} hint="Några rader om vad ni gick igenom och vad offerten omfattar. Visas under rubriken." />
           <CoverPicker q={q} previews={coverPreviews} onChange={set("cover")} />
+          <div className="efield efield--wide">
+            <span className="efield-label">Med på PDF:en</span>
+            <label className="etoggle" style={{ marginTop: 4 }}>
+              <input type="checkbox" checked={q.show.process} onChange={(e) => set("show")({ ...q.show, process: e.target.checked })} />
+              <span>Så går det till (fyra steg)</span>
+            </label>
+            <label className="etoggle" style={{ marginTop: 4 }}>
+              <input type="checkbox" checked={q.show.band} onChange={(e) => set("show")({ ...q.show, band: e.target.checked })} />
+              <span>Bildband med slogan</span>
+            </label>
+          </div>
         </div>
       </fieldset>
 
@@ -357,10 +384,26 @@ export default function QuoteEditor({ id, initial, coverPreviews = {} }: { id: s
 
         {isBygg && !isBusiness && (
           <div className="price-example">
-            <label className="etoggle" style={{ marginTop: 0 }}>
-              <input type="checkbox" checked={q.rot} onChange={(e) => set("rot")(e.target.checked)} />
-              <span>Visa ROT-avdrag på offerten ({Math.round(ROT_RATE * 100)} % av arbetskostnaden, högst {kr(ROT_CAP)} per person och år)</span>
-            </label>
+            <div className="calc-seg" role="group" aria-label="Skattereduktion">
+              <button type="button" aria-pressed={!q.rot} onClick={() => set("rot")(false)}>
+                Inget avdrag
+              </button>
+              {(["rot", "rut"] as const).map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  aria-pressed={q.rot && q.deductionType === kind}
+                  onClick={() => setQ((prev) => ({ ...prev, rot: true, deductionType: kind }))}
+                >
+                  {deductionLabel(kind)}-avdrag
+                </button>
+              ))}
+            </div>
+            <span className="efield-hint">
+              ROT: {Math.round(DEDUCTION_RULES.rot.rate * 100)} % av arbetskostnaden, högst {kr(DEDUCTION_RULES.rot.cap)} per person och år.
+              RUT: {Math.round(DEDUCTION_RULES.rut.rate * 100)} % av arbetskostnaden; ROT och RUT tillsammans högst {kr(DEDUCTION_RULES.rut.cap)} per
+              person och år.
+            </span>
             {q.rot && (
               <>
                 <div className="efield" style={{ marginTop: 12, maxWidth: 280 }}>
@@ -420,12 +463,12 @@ export default function QuoteEditor({ id, initial, coverPreviews = {} }: { id: s
           </div>
           {t.rot && (
             <div>
-              <dt>ROT-avdrag{t.rot.capped ? " (begränsat av årstaket)" : ""}</dt>
+              <dt>{deductionLabel(t.deductionKind)}-avdrag{t.rot.capped ? " (begränsat av årstaket)" : ""}</dt>
               <dd>−{kr(t.rot.deduction)}</dd>
             </div>
           )}
           <div className="qsum-pay">
-            <dt>{rotApplies(q) ? "Att betala efter ROT" : "Att betala"}</dt>
+            <dt>{rotApplies(q) ? `Att betala efter ${deductionLabel(q.deductionType)}` : "Att betala"}</dt>
             <dd>{kr(t.pay)}</dd>
           </div>
         </dl>
@@ -433,13 +476,13 @@ export default function QuoteEditor({ id, initial, coverPreviews = {} }: { id: s
 
       <fieldset className="efieldset">
         <legend>Villkor</legend>
-        <p className="efield-hint">Förifyllt från Offertuppgifter och mallen. Tomma fält tas inte med på PDF:en.</p>
+        <p className="efield-hint">Förifyllt från Offertuppgifter och mallen. Ett tomt fält tas inte med på PDF:en; Ta bort tömmer det.</p>
         <div className="egrid">
-          <TextArea label="Betalning" path="terms.payment" value={q.terms.payment} onChange={setTerm("payment")} rows={3} />
-          <TextArea label="Start och leverans" path="terms.start" value={q.terms.start} onChange={setTerm("start")} rows={2} placeholder="Preliminär start v. 46. Byggtid cirka 4 veckor." />
-          <TextArea label="Garanti och försäkring" path="terms.warranty" value={q.terms.warranty} onChange={setTerm("warranty")} rows={2} />
-          <TextArea label="Ingår inte" path="terms.excluded" value={q.terms.excluded} onChange={setTerm("excluded")} rows={3} />
-          <TextArea label="Övrigt" path="terms.notes" value={q.terms.notes} onChange={setTerm("notes")} rows={3} />
+          <TermArea label="Betalning" path="terms.payment" value={q.terms.payment} onChange={setTerm("payment")} rows={3} />
+          <TermArea label="Start och leverans" path="terms.start" value={q.terms.start} onChange={setTerm("start")} rows={2} placeholder="Preliminär start v. 46. Byggtid cirka 4 veckor." />
+          <TermArea label="Garanti och försäkring" path="terms.warranty" value={q.terms.warranty} onChange={setTerm("warranty")} rows={2} />
+          <TermArea label="Ingår inte" path="terms.excluded" value={q.terms.excluded} onChange={setTerm("excluded")} rows={3} />
+          <TermArea label="Övrigt" path="terms.notes" value={q.terms.notes} onChange={setTerm("notes")} rows={3} />
         </div>
       </fieldset>
     </EditorForm>

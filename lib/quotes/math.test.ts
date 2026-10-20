@@ -23,6 +23,8 @@ const quote = (patch: Partial<QuoteData>): QuoteData => ({
   items: [],
   pricesInclVat: false,
   rot: false,
+  deductionType: "rot",
+  show: { process: true, band: true },
   rotPersons: [],
   validDays: 30,
   paymentDays: 30,
@@ -124,14 +126,28 @@ test("price summary, private customer with ROT: rows add up to what they pay", (
   });
   const s = priceSummary(q);
   assert.equal(s.inclVat, true);
+  // Costs excl. VAT, then VAT, then the deduction.
   assert.deepEqual(s.byKind, [
-    { kind: "labor", amount: 110_000 },
-    { kind: "material", amount: 58_000 },
+    { kind: "labor", amount: 88_000 },
+    { kind: "material", amount: 46_400 },
   ]);
+  assert.deepEqual(s.vatByRate, [{ rate: 25, amount: 33_600 }]);
   assert.equal(s.rounding, 0);
-  assert.equal(s.rot, 33_000);
+  assert.equal(s.deduction, 33_000);
   assert.equal(s.total, 135_000);
-  assert.equal(s.grossBeforeRot, 168_000);
+  assert.equal(s.gross, 168_000);
+  assert.equal(88_000 + 46_400 + 33_600 - 33_000 + s.rounding, s.total);
+});
+
+test("RUT: 50 % of labour incl. VAT, under the shared 75 000 kr cap", () => {
+  const items = [item({ id: "l", qty: 1, unitPrice: 20_000, kind: "labor" }), item({ id: "m", qty: 1, unitPrice: 5_000, kind: "material" })];
+  const t = quoteTotals(quote({ items, rot: true, deductionType: "rut", pricesInclVat: true }));
+  assert.equal(t.rot?.deduction, 10_000);
+  assert.equal(t.pay, 15_000);
+  assert.equal(t.deductionKind, "rut");
+  const big = quoteTotals(quote({ items: [item({ id: "l", qty: 1, unitPrice: 400_000, kind: "labor" })], rot: true, deductionType: "rut", pricesInclVat: true }));
+  assert.equal(big.rot?.deduction, 75_000);
+  assert.equal(priceSummary(quote({ items, rot: true, deductionType: "rut", pricesInclVat: true })).deduction, 10_000);
 });
 
 test("price summary, business: amounts excl. VAT and no ROT, whatever the entry mode", () => {
@@ -150,7 +166,7 @@ test("price summary, business: amounts excl. VAT and no ROT, whatever the entry 
     { kind: "labor", amount: 10_000 },
     { kind: "other", amount: 1_000 },
   ]);
-  assert.equal(s.rot, 0);
+  assert.equal(s.deduction, 0);
   assert.equal(s.total, 11_000);
   assert.equal(s.gross, 13_750);
 });
@@ -162,8 +178,8 @@ test("price summary: the rounding row brings öre to the whole-krona total", () 
     items: [item({ id: "a", qty: 1, unitPrice: 99.9, vatRate: 25, kind: "material" })],
   });
   const s = priceSummary(q);
-  const rows = s.byKind.reduce((sum, r) => sum + r.amount, 0);
-  assert.equal(s.byKind[0].amount, 124.88);
+  const rows = s.byKind.reduce((sum, r) => sum + r.amount, 0) + s.vatByRate.reduce((sum, v) => sum + v.amount, 0);
+  assert.equal(s.byKind[0].amount, 99.9);
   assert.equal(s.total, 125);
   assert.equal(Math.round((rows + s.rounding) * 100) / 100, s.total);
 });

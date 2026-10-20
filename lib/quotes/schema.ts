@@ -41,7 +41,7 @@ const amount = z.coerce
 
 export const quoteItemSchema = z.object({
   id: z.string().min(1).max(40),
-  description: text(400, "Beskrivning"),
+  description: optionalText(400, "Beskrivning"),
   qty: z.coerce.number({ message: "Antal måste vara ett tal." }).min(0, "Antal kan inte vara negativt.").max(100_000),
   unit: optionalText(8, "Enhet"),
   unitPrice: amount,
@@ -93,8 +93,12 @@ export const quoteSchema = z.object({
   items: z.array(quoteItemSchema).max(80, "Högst 80 rader."),
   /** True when the prices typed in are incl. VAT (natural for private customers). */
   pricesInclVat: z.boolean(),
-  /** ROT deduction shown on the quote (private customers, Bygg only). */
+  /** Tax deduction shown on the quote (private customers, Bygg only). */
   rot: z.boolean(),
+  /** Which deduction `rot` turns on: ROT (30 %) or RUT (50 %). */
+  deductionType: z.enum(["rot", "rut"]),
+  /** Optional parts of the PDF. Terms left empty are left out as well. */
+  show: z.object({ process: z.boolean(), band: z.boolean() }),
   /** Who shares the deduction (1–4 people). Name and personal number are optional until the quote is accepted. */
   rotPersons: z.array(rotPersonSchema).max(4, "Högst fyra personer."),
   validDays: z.coerce.number().int().min(1, "Minst 1 dag.").max(365, "Högst 365 dagar."),
@@ -155,6 +159,8 @@ export function withQuoteDefaults(raw: QuoteData): QuoteData {
     items: (r.items ?? []).map((i) => ({ ...i, section: i.section ?? "" })),
     pricesInclVat: r.pricesInclVat ?? true,
     rot: r.rot ?? false,
+    deductionType: r.deductionType ?? "rot",
+    show: { process: true, band: true, ...(r.show ?? {}) },
     rotPersons: r.rotPersons ?? Array.from({ length: r.rotOwners ?? 0 }, () => ({ name: "", personalNumber: "" })),
     validDays: r.validDays ?? 30,
     paymentDays: r.paymentDays ?? 30,

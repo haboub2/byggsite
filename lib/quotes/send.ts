@@ -3,7 +3,7 @@ import { Resend } from "resend";
 import { site } from "../placeholder";
 import { getContent } from "../content/store";
 import { renderQuotePdf, quoteFileName } from "../pdf/render";
-import { quoteTotals, kr, validUntil, formatDate } from "./math";
+import { quoteTotals, kr, validUntil, formatDate, deductionLabel } from "./math";
 import type { Quote } from "./schema";
 
 const esc = (v: string) =>
@@ -31,7 +31,7 @@ export async function sendQuoteMail(quote: Quote, message: string): Promise<void
 
   const body = message.trim()
     ? message
-    : `Hej ${firstName},\n\nTack för förfrågan. Bifogat hittar du vår offert på ${d.title.toLowerCase()}. ${t.rot ? "ROT-avdraget är redan medräknat i summan att betala. " : ""}Offerten gäller till ${formatDate(validUntil(d.date, d.validDays))}.\n\nHör av dig om något är oklart, så går vi igenom det tillsammans.`;
+    : `Hej ${firstName},\n\nTack för förfrågan. Bifogat hittar du vår offert på ${d.title.toLowerCase()}. ${t.rot ? `${deductionLabel(t.deductionKind)}-avdraget är redan medräknat i summan att betala. ` : ""}Offerten gäller till ${formatDate(validUntil(d.date, d.validDays))}.\n\nHör av dig om något är oklart, så går vi igenom det tillsammans.`;
 
   await new Resend(key).emails.send({
     from,
@@ -43,7 +43,7 @@ export async function sendQuoteMail(quote: Quote, message: string): Promise<void
         <p style="white-space:pre-wrap">${esc(body)}</p>
         <table style="margin:16px 0;border-collapse:collapse;font-size:14px">
           <tr><td style="padding:3px 16px 3px 0;color:#6b7280">Offert</td><td>${quote.number}</td></tr>
-          <tr><td style="padding:3px 16px 3px 0;color:#6b7280">${t.rot ? "Att betala efter ROT" : "Att betala"}</td><td><strong>${esc(kr(t.pay))}</strong></td></tr>
+          <tr><td style="padding:3px 16px 3px 0;color:#6b7280">${t.rot ? `Att betala efter ${deductionLabel(t.deductionKind)}` : "Att betala"}</td><td><strong>${esc(kr(t.pay))}</strong></td></tr>
           <tr><td style="padding:3px 16px 3px 0;color:#6b7280">Gäller till</td><td>${esc(formatDate(validUntil(d.date, d.validDays)))}</td></tr>
         </table>
         <p>Vänliga hälsningar,<br>${esc(signer)}<br>${esc(site.brand)} ${side} · ${esc(company.phoneDisplay)}</p>
