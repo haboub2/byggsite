@@ -79,9 +79,9 @@ Kvar efter fas 5:
 - **Affär och juridik:** prissättning, personuppgiftsbiträdesavtal per
   organisation, produktnamnet.
 - ~~**Offerterna och webbplatsen**~~ Gjort med 0022, se nedan.
-  **Projektrapporten** (`lib/portal/report.tsx`, `lib/pdf/ReportPdf.tsx`)
-  läser fortfarande Företaget och Binaafys logotyp, också för en andra
-  organisations projekt.
+  ~~**Projektrapporten**~~ läser sedan 2c6c741 avsändaren ur projektets
+  organisation (`getQuoteProfile(project.org_id)`), företagsnamnet i stället
+  för logotyp där ingen finns; `REPORT_VERSION` 2 ritar om cachade rapporter.
 - **Brutet räkenskapsår:** SIE-filen följer inställningen, men
   verifikationsserien V numreras per kalenderår i databasen.
 - **Rutt- och anropsgränser per nyckel**, loggning av varje API-anrop i
