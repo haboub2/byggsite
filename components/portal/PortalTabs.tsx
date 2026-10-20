@@ -22,7 +22,8 @@ export default function PortalTabs({ id, pending = 0, unpaid = 0 }: { id: string
     <nav className="portal-tabs" aria-label="Projektet">
       {TABS.map((t) => {
         const href = t.seg ? `${base}/${t.seg}` : base;
-        const current = t.seg ? pathname.startsWith(href) : pathname === base;
+        // Whole segments only: "dokument" must not light up on "dokumentation".
+        const current = t.seg ? pathname === href || pathname.startsWith(`${href}/`) : pathname === base;
         const badge = t.seg === "andringar" && pending > 0 ? pending : t.seg === "fakturor" && unpaid > 0 ? unpaid : 0;
         return (
           <Link key={t.seg} href={href} aria-current={current ? "page" : undefined}>
