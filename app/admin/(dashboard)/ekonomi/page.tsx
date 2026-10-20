@@ -92,6 +92,9 @@ export default async function EkonomiPage() {
             <p className="admin-intro">Pengar ute, pengar på väg in och det som behöver göras. Allt räknas ur fakturorna, betalningarna och betalplanerna; inget skrivs in här.</p>
           </div>
           <div className="lead-quick">
+            <Link href="/admin/ekonomi/export" className="btn btn-ghost">
+              Till bokföringen
+            </Link>
             <Link href="/admin/fakturor/bank" className="btn btn-ghost">
               Läs in bankfil
             </Link>
