@@ -1,6 +1,7 @@
 -- Nollställ faktureringen inför skarp drift. KÖRS EN GÅNG, FÖR HAND, i
 -- Supabase SQL-editor, av en owner. Tar bort ALLA fakturor, betalningar,
--- verifikationer, ROT-begäran, banktransaktioner, påminnelser, betalplaner,
+-- verifikationer, låsta perioder, ROT-begäran, banktransaktioner,
+-- påminnelser, betalplaner, återkommande fakturor, projektkostnader,
 -- händelser och kunder, och ställer tillbaka nummerserierna till start.
 -- Organisationen, medlemskapen, kontoplanen, inställningarna, offerterna och
 -- projekten lämnas kvar.
@@ -37,6 +38,10 @@ delete from invoices;
 delete from payment_plan_steps;
 delete from payment_plans;
 delete from recurring_invoices;
+-- Projektens kostnader (0020), om migrationen är körd.
+do $$ begin
+  if to_regclass('public.project_costs') is not null then delete from public.project_costs; end if;
+end $$;
 delete from idempotency_keys;
 delete from events;
 update quotes set customer_id = null where customer_id is not null;

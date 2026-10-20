@@ -36,6 +36,8 @@ const FLASH: Record<string, string> = {
   ata: "Ändringen är upplagd och kunden har fått ett mejl om att svara.",
   tidplan: "Tidplanen är sparad. Kunden ser de nya datumen direkt.",
   mall: "Tidplanen är sparad som mall och kan väljas för nästa projekt.",
+  kostnad: "Kostnaden är sparad. Täckningsbidraget och marginalen är uppdaterade.",
+  "kostnad-bort": "Kostnaden är borttagen.",
 };
 
 /** "Nytt beräknat slut: 14 nov (var 12 nov)." after a delay or an ÄTA. */
@@ -63,6 +65,8 @@ export default async function PortalProjectAdmin({
   const flash = typeof q.sparat === "string" ? (FLASH[q.sparat] ?? endFlash(q.sparat, q.slut, q.var)) : undefined;
   // Timeline actions land on #tidplan; show their message there instead of at the top.
   const inTimeline = q.vid === "tidplan";
+  // Cost actions land on #kostnader inside the box Ekonomi.
+  const inCosts = q.vid === "kostnader";
   const today = todayIso();
   const todaysPhase = phaseForDay(phases, today);
   const toSchedule = changeOrdersToSchedule(changeOrders, phases);
@@ -89,8 +93,8 @@ export default async function PortalProjectAdmin({
           </Link>
         </div>
 
-        {flash && !inTimeline && <p className="admin-flash">{flash}</p>}
-        {error && !inTimeline && (
+        {flash && !inTimeline && !inCosts && <p className="admin-flash">{flash}</p>}
+        {error && !inTimeline && !inCosts && (
           <p className="form-feedback error" role="alert" style={{ marginTop: 14 }}>
             {error}
           </p>
@@ -161,7 +165,7 @@ export default async function PortalProjectAdmin({
         </div>
 
         {/* ---- Ekonomi och betalplan ---- */}
-        <ProjectEconomy bundle={bundle} />
+        <ProjectEconomy bundle={bundle} notice={inCosts ? { flash, error } : undefined} />
 
         {/* ---- Tidplan ---- */}
         <h2 className="admin-h2" id="tidplan" style={{ marginTop: 44 }}>

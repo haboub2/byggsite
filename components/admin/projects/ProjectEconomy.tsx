@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { addStepAction, createPlanAction, createStepInvoiceAction, removePlanAction, removeStepAction } from "@/app/admin/plan-actions";
-import { formatOre } from "@/lib/core/money";
+import { addCostAction, removeCostAction } from "@/app/admin/cost-actions";
+import { formatOre, lineAmount } from "@/lib/core/money";
+import { CostsTableMissingError, listProjectCosts, type ProjectCost } from "@/lib/core/projects/costs";
+import { COST_KINDS, COST_KIND_LABEL, projectMargin } from "@/lib/core/projects/economy";
 import { quoteInvoiceLines } from "@/lib/core/invoices/from-plan";
 import { INVOICE_STATUS_LABEL, invoiceLabel, isOverdue, listInvoices } from "@/lib/core/invoices/store";
 import { projectEconomy, stepGross, stepIsBillable } from "@/lib/core/plans/billing";
@@ -14,20 +17,36 @@ const kr = (ore: number) => formatOre(ore, { decimals: 0, currency: true });
 
 /**
  * The project's money: quote plus approved ÄTA, what is invoiced and paid,
- * and the payment plan with a "Skapa faktura" button on the step that is
- * billable now. Server component; the forms post to plan-actions.
+ * the costs and the margin, and the payment plan with a "Skapa faktura"
+ * button on the step that is billable now. Server component; the forms post
+ * to plan-actions and cost-actions.
  */
-export default async function ProjectEconomy({ bundle }: { bundle: ProjectBundle }) {
+export default async function ProjectEconomy({ bundle, notice }: { bundle: ProjectBundle; notice?: { flash?: string; error?: string } }) {
   const { project, phases, changeOrders } = bundle;
-  const [quote, plan, invoices, invoicedOn] = await Promise.all([
+  const [quote, plan, invoices, invoicedOn, costsResult] = await Promise.all([
     project.quote_id ? getQuote(project.quote_id) : null,
     getPlanForProject(project.id),
     listInvoices({ projectId: project.id }),
     changeOrderInvoiceIds(project.id),
+    listProjectCosts(project.id).then(
+      (costs) => ({ costs, missing: false }),
+      (err) => {
+        // Before 0020 is run: show the box without costs and say what to do.
+        if (err instanceof CostsTableMissingError) return { costs: [] as ProjectCost[], missing: true };
+        throw err;
+      }
+    ),
   ]);
+  const { costs, missing: costsMissing } = costsResult;
   const today = todayIso();
   const quoteLines = quote ? quoteInvoiceLines(quote) : [];
   const economy = projectEconomy(quoteLines, changeOrders, invoices);
+  const margin = projectMargin({
+    quoteNetOre: quote ? quoteLines.reduce((s, l) => s + lineAmount(l.unitPriceOre, l.quantity), 0) : null,
+    phases,
+    invoices: invoices.map((i) => ({ kind: i.kind, status: i.status, totalOre: i.totalOre, vatOre: i.vatOre, lines: i.document.lines })),
+    costs,
+  });
   const hidden = <input type="hidden" name="project" value={project.id} />;
   const issuedGross = invoices.filter((i) => i.status !== "draft" && i.status !== "void" && i.kind === "invoice" && !i.document.lines.some((l) => l.changeOrderId)).reduce((s, i) => s + i.totalOre, 0);
   const approvedNotInvoicedKr = changeOrders.filter((c) => c.status === "approved" && !invoicedOn[c.id]).reduce((s, c) => s + c.amount, 0);
@@ -68,6 +87,131 @@ export default async function ProjectEconomy({ bundle }: { bundle: ProjectBundle
               <small>{economy.outstanding > 0 ? `${kr(economy.outstanding)} obetalt` : economy.rotOnInvoices ? `ROT ${kr(economy.rotOnInvoices)} på fakturorna` : "inget obetalt"}</small>
             </div>
           </div>
+        </>
+      )}
+
+      <h3 className="lead-h2" id="kostnader" style={{ marginTop: 28 }}>
+        Kostnader och marginal
+      </h3>
+      {notice?.flash && <p className="admin-flash">{notice.flash}</p>}
+      {notice?.error && (
+        <p className="form-feedback error" role="alert" style={{ marginTop: 10 }}>
+          {notice.error}
+        </p>
+      )}
+      {costsMissing ? (
+        <p className="form-feedback error" role="alert" style={{ marginTop: 10 }}>
+          Tabellen för kostnader finns inte i databasen än. Kör <code>supabase/migrations/0020_project_costs.sql</code> i Supabase SQL-editorn.
+        </p>
+      ) : (
+        <>
+          <div className="kpi-row" style={{ marginTop: 14 }}>
+            <div className="kpi">
+              <span>Kostnader</span>
+              <strong>{kr(margin.costs)}</strong>
+              <small>
+                {costs.length} {costs.length === 1 ? "post" : "poster"} · exkl. moms
+              </small>
+            </div>
+            <div className={`kpi${margin.contribution < 0 ? " kpi--alert" : ""}`}>
+              <span>Täckningsbidrag</span>
+              <strong>{kr(margin.contribution)}</strong>
+              <small>fakturerat {kr(margin.invoicedNet)} exkl. moms minus kostnader</small>
+            </div>
+            <div className={`kpi${margin.marginPercent !== null && margin.marginPercent < 0 ? " kpi--alert" : ""}`}>
+              <span>Marginal</span>
+              <strong>{margin.marginPercent === null ? "–" : `${margin.marginPercent.toLocaleString("sv-SE")} %`}</strong>
+              <small>{margin.marginPercent === null ? "inget fakturerat än" : "av fakturerat exkl. moms"}</small>
+            </div>
+            {quote && (
+              <div className="kpi">
+                <span>Upparbetat ej fakturerat</span>
+                <strong>{kr(margin.earnedNotInvoiced)}</strong>
+                <small>{margin.earnedNotInvoiced < 0 ? "fakturerat före arbetet" : `${Math.round(margin.doneShare * 100)} % av offertens arbete klart`}</small>
+              </div>
+            )}
+          </div>
+          {quote && (
+            <p className="efield-hint" style={{ marginTop: 8 }}>
+              Upparbetat är klara faser i tidplanen, vägda efter sina dagar, som andel av offerten exkl. moms ({kr(margin.earned)} av {kr(margin.quoteNet ?? 0)}), minus det som är fakturerat av offerten exkl. moms. ÄTA räknas inte på någon sida. Ett negativt tal betyder att mer är fakturerat än utfört, som en betalplan med förskott ger.
+            </p>
+          )}
+          {costs.length > 0 && (
+            <ul className="inv-list" style={{ marginTop: 12 }}>
+              {costs.map((c) => (
+                <li key={c.id}>
+                  <span>
+                    {c.costDate} · {COST_KIND_LABEL[c.kind]}
+                    {c.supplier ? ` · ${c.supplier}` : ""}
+                    {c.description ? ` · ${c.description}` : ""}
+                    {c.kind === "hours" && c.hours !== null && c.hourlyRateOre !== null ? (
+                      <span className="inbox-meta">
+                        {" "}
+                        ({c.hours.toLocaleString("sv-SE")} tim × {kr(c.hourlyRateOre)})
+                      </span>
+                    ) : null}
+                  </span>
+                  <span>
+                    <strong>{kr(c.amountOre)}</strong>{" "}
+                    <form action={removeCostAction} style={{ display: "inline" }}>
+                      {hidden}
+                      <input type="hidden" name="cost" value={c.id} />
+                      <button type="submit" className="link-quiet" aria-label={`Ta bort kostnaden ${c.description || c.supplier}`}>
+                        Ta bort
+                      </button>
+                    </form>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <details className="plan-add" open={costs.length === 0 || Boolean(notice?.error)}>
+            <summary>Lägg till kostnad</summary>
+            <form action={addCostAction} className="egrid" style={{ marginTop: 12 }}>
+              {hidden}
+              <div className="efield">
+                <label htmlFor="cost-kind">Typ</label>
+                <select id="cost-kind" name="kind" defaultValue="supplier">
+                  {COST_KINDS.map((k) => (
+                    <option key={k} value={k}>
+                      {COST_KIND_LABEL[k]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="efield">
+                <label htmlFor="cost-date">Datum</label>
+                <input id="cost-date" name="costDate" type="date" defaultValue={today} required />
+              </div>
+              <div className="efield">
+                <label htmlFor="cost-supplier">Leverantör</label>
+                <input id="cost-supplier" name="supplier" maxLength={120} placeholder="Byggmax, Ahlsell …" />
+              </div>
+              <div className="efield">
+                <label htmlFor="cost-description">Vad</label>
+                <input id="cost-description" name="description" maxLength={400} placeholder="Kakel och fix, faktura 88123" />
+              </div>
+              <div className="efield">
+                <label htmlFor="cost-amount">Belopp exkl. moms, kr</label>
+                <input id="cost-amount" name="amount" inputMode="decimal" placeholder="12 400" />
+                <p className="efield-hint">Minus för en kreditnota.</p>
+              </div>
+              <div className="efield">
+                <label htmlFor="cost-hours">eller timmar (vid Timmar)</label>
+                <input id="cost-hours" name="hours" inputMode="decimal" placeholder="7,5" />
+              </div>
+              <div className="efield">
+                <label htmlFor="cost-rate">Internt timpris, kr</label>
+                <input id="cost-rate" name="rate" inputMode="decimal" placeholder="450" />
+                <p className="efield-hint">Vad en timme kostar företaget, inte vad kunden betalar.</p>
+              </div>
+              <div className="efield efield--wide">
+                <button type="submit" className="btn btn-ghost">
+                  Spara kostnaden
+                </button>
+              </div>
+            </form>
+          </details>
         </>
       )}
 
