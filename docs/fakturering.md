@@ -53,9 +53,11 @@ Beslut:
   Misslyckas loggningen levereras filen ändå och felet hamnar i loggen,
   som vid låsningen.
 - **Exporten följer rollens läsrätt.** ROT-begärandena läses med
-  `listClaims()`, så personnummer kommer med bara för den som får se dem
-  enligt `rot_buyers` (owner/admin). Felar en tabell felar hela
-  JSON-exporten hellre än att en ofullständig fil levereras.
+  `listClaims()`, och efter 0023 ger den personnumret maskerat
+  (`ÅÅÅÅMMDD-XXXX`) för alla roller; fakturadokumenten har det maskerade
+  numret och kryptotexten (`personalNumberSealed`). Ingen klartext lämnar
+  alltså systemet via exporten. Felar en tabell felar hela JSON-exporten
+  hellre än att en ofullständig fil levereras.
 
 Kvar:
 
@@ -65,6 +67,11 @@ Kvar:
   JSON-exporten, med "personal_number_masked does not exist". Provet ovan
   gjordes med ROT-delen tillfälligt avstängd; ROT-begärandena i JSON
   behöver provas igen när 0023 är körd.
+- **Personnummer i klartext för en organisation som lämnar** är ett beslut
+  som väntar: kryptotexten går inte att öppna utan nyckeln i Vault, så en
+  owner som tar med sig exporten har bara de maskerade numren. Vill vi ge
+  klartext kan JSON-exporten för owner/admin öppna dem med
+  `openClaimPersonalNumbers` och logga det i händelsen.
 - **Filnamnen på fakturorna har webbplatsens varumärke** (`site.brand`)
   för alla organisationer, som i e-posten. Testbolags PDF:er skulle heta
   `Faktura-1-Binaafy-….pdf`; ska följa organisationen som offerterna gör.
