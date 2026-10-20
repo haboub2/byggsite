@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { invoiceDocumentFromQuote, lineFromQuoteItem } from "./from-quote";
 import { invoiceTotals } from "./totals";
 import { validateForIssue } from "../documents/invoice";
-import type { Quote } from "../../quotes/schema";
+import { rotPersonSchema, type Quote } from "../../quotes/schema";
 
 const seller = {
   name: "Binaafy AB",
@@ -69,6 +69,22 @@ test("a private ROT quote becomes a draft with ROT buyers and the quote referenc
   assert.equal(t.rot?.deduction, 225_000);
   // Not issuable yet: the property is missing. That is the editor's job.
   assert.ok(validateForIssue(doc).some((e) => e.includes("fastighetsbeteckning")));
+});
+
+test("a sealed quote passes the masked number and its ciphertext on to the invoice (0024)", () => {
+  const q = { ...quote, data: { ...quote.data, rotPersons: [{ name: "Anna Lindqvist", personalNumber: "19850412-XXXX", personalNumberSealed: "c2VhbGVk" }, { name: "Bo", personalNumber: "" }] } } as Quote;
+  const doc = invoiceDocumentFromQuote({ quote: q, seller, paymentMeans: { bankgiro: "5555-1234" }, issueDate: "2026-10-10", customerId: null });
+  assert.deepEqual(doc.se.rot?.buyers[0], { name: "Anna Lindqvist", personalNumber: "19850412-XXXX", personalNumberSealed: "c2VhbGVk", roomOre: null });
+  assert.equal("personalNumberSealed" in doc.se.rot!.buyers[1], false);
+});
+
+test("the quote schema wants the ciphertext next to a masked number", () => {
+  assert.ok(rotPersonSchema.safeParse({ name: "A", personalNumber: "19850412-XXXX", personalNumberSealed: "c2VhbGVk" }).success);
+  assert.ok(rotPersonSchema.safeParse({ name: "A", personalNumber: "850412-1234" }).success);
+  const bare = rotPersonSchema.safeParse({ name: "A", personalNumber: "19850412-XXXX" });
+  assert.equal(bare.success, false);
+  assert.deepEqual(bare.error?.issues[0].path, ["personalNumber"]);
+  assert.equal(rotPersonSchema.safeParse({ name: "A", personalNumber: "8504-12" }).success, false);
 });
 
 test("a business quote becomes a business buyer without ROT", () => {

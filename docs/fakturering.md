@@ -287,10 +287,7 @@ Beslut:
 
 Kvar:
 
-- **Offerterna:** `quotes.data.rotPersons` har personnumret i klartext, och
-  offertens PDF skriver ut det. Samma behandling behövs: trigger på
-  `quotes`, och kryptotexten följer med i `from-quote.ts`. Fakturan som
-  skapas från en offert krypteras redan när den sparas.
+- ~~**Offerterna**~~ Gjort med 0024, se nedan.
 - **Ingen logg över vem som öppnat ett nummer** i `invoice_buyer_pnr` och
   `rot_buyer_pnr`; JSON-exporten loggar sina egna.
 - **Nyckelbyte** saknas och kräver omkryptering av alla rader.
@@ -306,6 +303,36 @@ Kontroll: 270 tester gröna (`npm test`, med de pågående sessionernas),
 lint (utan `.claude/worktrees`) och typkontroll rena; PGlite mot 0001–0023
 med gamla klartextrader före 0023, och 0021_rls, 0022_rls och 0023_rot_pnr
 gröna.
+
+### Personnummer i offerterna (0024)
+
+`quotes.data.rotPersons[].personalNumber` låg i klartext, och offertens PDF
+(även i kundportalen) skrev ut numret. Migration 0024 gör samma sak som 0023
+gör för fakturorna, med 0023:s nyckel och funktioner:
+
+- En trigger på `quotes` och `quote_templates` byter varje klartext mot
+  `ÅÅÅÅMMDD-XXXX` och lägger kryptotexten i `personalNumberSealed`.
+  Befintliga offerter krypteras i migrationen utan att `updated_at` ändras.
+- Offertschemat tar emot det maskerade numret bara med kryptotexten bredvid
+  ("Skriv hela personnumret igen." annars). Formuläret visar det maskerade
+  numret; ett nytt nummer ersätter kryptotexten och krypteras när det sparas.
+- Offertens PDF visar `ÅÅÅÅMMDD-XXXX`, även i demoläget. Kundportalen visar
+  offerten bara som den PDF:en.
+- `rotBuyersFromQuote()` i `lib/core/invoices/from-quote.ts`, som även
+  betalplanen använder, kopierar det maskerade numret och kryptotexten till
+  fakturans `se.rot.buyers`. Fakturans trigger lämnar dem orörda, så
+  `invoice_buyer_pnr()` och ROT-begäran får hela numret. Offerten har ingen
+  egen funktion för att öppna numret; det behövs först på fakturan.
+
+| Del | Fil |
+|---|---|
+| Migration 0024 | `supabase/migrations/0024_quote_pnr.sql`: `rot_pnr_seal_persons`, `rot_pnr_seal_quote`, triggrarna `quotes_seal_pnr` och `quote_templates_seal_pnr`; krypterar befintliga offerter och mallar; avbryter utan ändringar om nyckeln saknas |
+| Prov | `supabase/tests/0024_quote_pnr.sql`: owner och staff i A, owner i B; offert, mall och faktura från offerten, i en transaktion som rullas tillbaka (Vault ersätts i PGlite) |
+| Kod | `lib/quotes/schema.ts`, `components/admin/quotes/QuoteEditor.tsx`, `lib/pdf/QuotePdf.tsx`, `lib/core/invoices/from-quote.ts` och `from-plan.ts` (testad i `from-quote.test.ts`) |
+
+Kontroll: 274 tester gröna (`npm test`), lint (utan `.claude/**`) och
+typkontroll rena; PGlite mot 0001–0024 med en gammal klartextoffert före
+0024, och 0021_rls, 0022_rls, 0023_rot_pnr och 0024_quote_pnr gröna.
 
 ## Läge 2026-10-20: fas 0–4 kodade och körda mot Supabase
 

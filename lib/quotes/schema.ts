@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MASKED_PERSONAL_NUMBER, PERSONAL_NUMBER } from "../core/documents/invoice";
 
 /**
  * A quote ("offert") written from /admin and sent to a customer as a PDF.
@@ -67,13 +68,25 @@ export const customerSchema = z.object({
 });
 export type QuoteCustomer = z.infer<typeof customerSchema>;
 
-export const rotPersonSchema = z.object({
-  name: optionalText(80, "Namn"),
-  personalNumber: optionalText(13, "Personnummer").refine(
-    (v) => v === "" || /^(\d{2})?\d{6}-?\d{4}$/.test(v),
-    "Personnummer skrivs ÅÅMMDD-XXXX."
-  ),
-});
+export const rotPersonSchema = z
+  .object({
+    name: optionalText(80, "Namn"),
+    /**
+     * Typed in plain text; the database replaces it with ÅÅÅÅMMDD-XXXX on
+     * save (0024), the same way as on the invoice (0023). Demo mode keeps
+     * plain text, so the PDF masks it as well.
+     */
+    personalNumber: optionalText(13, "Personnummer").refine(
+      (v) => v === "" || PERSONAL_NUMBER.test(v) || MASKED_PERSONAL_NUMBER.test(v),
+      "Personnummer skrivs ÅÅMMDD-XXXX."
+    ),
+    /** The encrypted personal number, set by the database and copied as is to the invoice. */
+    personalNumberSealed: z.string().max(500).optional(),
+  })
+  .refine((p) => !MASKED_PERSONAL_NUMBER.test(p.personalNumber) || !!p.personalNumberSealed, {
+    message: "Skriv hela personnumret igen.",
+    path: ["personalNumber"],
+  });
 export type RotPerson = z.infer<typeof rotPersonSchema>;
 
 export const termsSchema = z.object({

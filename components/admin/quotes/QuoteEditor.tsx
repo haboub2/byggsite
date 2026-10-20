@@ -218,6 +218,9 @@ export default function QuoteEditor({ id, initial, coverPreviews = {} }: { id: s
     });
   const setPerson = (i: number, patch: Partial<RotPerson>) =>
     setQ((prev) => ({ ...prev, rotPersons: persons.map((p, j) => (j === i ? { ...p, ...patch } : p)) }));
+  // A number typed anew replaces the sealed one; the database seals it again on save (0024).
+  const setPersonalNumber = (i: number, v: string) =>
+    setQ((prev) => ({ ...prev, rotPersons: persons.map((p, j) => (j === i ? { name: p.name, personalNumber: v } : p)) }));
   const isBusiness = q.customer.type === "foretag";
   const incl = q.pricesInclVat;
 
@@ -432,14 +435,14 @@ export default function QuoteEditor({ id, initial, coverPreviews = {} }: { id: s
                         inputMode="numeric"
                         value={person.personalNumber}
                         placeholder="ÅÅMMDD-XXXX"
-                        onChange={(v) => setPerson(i, { personalNumber: v })}
+                        onChange={(v) => setPersonalNumber(i, v)}
                       />
                     </div>
                   ))}
                 </div>
                 <span className="efield-hint">
                   Varje person får sin del av avdraget på offerten. Personnumret behövs först när vi begär utbetalningen
-                  från Skatteverket; lämna tomt tills kunden har godkänt.
+                  från Skatteverket; lämna tomt tills kunden har godkänt. Det sparas krypterat och visas som ÅÅÅÅMMDD-XXXX.
                 </span>
               </>
             )}

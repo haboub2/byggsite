@@ -5,9 +5,10 @@ import {
   type Buyer,
   type InvoiceDocument,
   type InvoiceLine,
+  type RotBuyer,
   type Seller,
 } from "../documents/invoice";
-import type { Quote } from "../../quotes/schema";
+import type { Quote, RotPerson } from "../../quotes/schema";
 import type { paymentMeansSchema } from "../documents/invoice";
 import type { z } from "zod";
 
@@ -37,6 +38,22 @@ export function lineFromQuoteItem(item: Quote["data"]["items"][number], pricesIn
     section: (item as { section?: string }).section ?? "",
     changeOrderId: null,
   };
+}
+
+/**
+ * The quote's ROT persons as the invoice's buyers. Since 0024 a stored quote
+ * holds ÅÅÅÅMMDD-XXXX and the ciphertext; both are copied as they are, and
+ * the invoice trigger (0023) leaves a masked number with ciphertext alone.
+ * Demo mode copies plain text, which the invoice then holds as well.
+ */
+export function rotBuyersFromQuote(d: Quote["data"]): RotBuyer[] {
+  const persons: RotPerson[] = d.rotPersons.length > 0 ? d.rotPersons : [{ name: d.customer.name, personalNumber: "" }];
+  return persons.map((p, i) => ({
+    name: p.name || (i === 0 ? d.customer.name : ""),
+    personalNumber: p.personalNumber ?? "",
+    ...(p.personalNumberSealed ? { personalNumberSealed: p.personalNumberSealed } : {}),
+    roomOre: null,
+  }));
 }
 
 export function buyerFromQuote(quote: Quote, customerId: string | null): Buyer {
@@ -81,12 +98,7 @@ export function invoiceDocumentFromQuote(input: {
   doc.lines = d.items.map((item) => lineFromQuoteItem(item, d.pricesInclVat));
   doc.se.lateInterestText = input.lateInterestText ?? "";
   if (d.rot && buyer.type === "privat" && d.division === "bygg") {
-    const persons = d.rotPersons.length > 0 ? d.rotPersons : [{ name: d.customer.name, personalNumber: "" }];
-    doc.se.rot = {
-      buyers: persons.map((p, i) => ({ name: p.name || (i === 0 ? d.customer.name : ""), personalNumber: p.personalNumber ?? "", roomOre: null })),
-      property: null,
-      deductionOre: null,
-    };
+    doc.se.rot = { buyers: rotBuyersFromQuote(d), property: null, deductionOre: null };
   }
   return invoiceDocumentSchema.parse(doc);
 }
