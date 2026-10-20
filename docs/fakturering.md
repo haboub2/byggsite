@@ -1,12 +1,103 @@
 # Fakturering — en produktkärna, med Binaafy som första kund
 
-Status: **version 2, skriven 2026-10-19. Fas 0–3 är kodade samma dag och
-fas 4 dagen efter, se *Läge* nedan.** Version 1 samma dag beskrev en fakturamodul för Binaafy. Den här versionen beskriver en
+Status: **version 2, skriven 2026-10-19. Fas 0–3 är kodade samma dag,
+fas 4 och det av fas 5 som går utan externa avtal dagen efter, se *Läge*
+nedan.** Version 1 samma dag beskrev en fakturamodul för Binaafy. Den här versionen beskriver en
 **kärna som andra företag ska kunna använda i stället för Fortnox**, där
 Binaafy är första kunden och det som byggs för Binaafy (offert → betalplan →
 delfakturor → ÄTA → slutfaktura → ROT) är produktens första säljargument.
 Prototypen av gränssnittet finns som design-canvas (sju skärmar: fakturalista,
 faktura, projektekonomi, kundportal i mobil, PDF, ROT-begäran, dashboard).
+
+## Läge 2026-10-20: fas 5 (produkt), det som går utan externa avtal
+
+Migration 0021 är körd i Binaafys Supabase-projekt och provad där i
+webbläsaren: organisationen **Testbolag AB** skapades via
+`/admin/ny-organisation` (owner, serierna F och V från 1, kontoplan,
+inställningar). Dess inställningar sparades och dess första utkast fick
+Testbolags säljare och bankgiro. Fakturor och kunder i Testbolag var tomma
+och växlaren bytte mellan organisationerna. Binaafys faktura gav 404 i
+Testbolag, både i admin och med Testbolags API-nyckel. En inbjudan som
+redovisningskonsult visade länken, eftersom MAIL_FROM är tom, och länken
+spärrades för fel inloggad adress. En API-nyckel skapade, utfärdade och
+betalade faktura 1 i Testbolag. Idempotent omsändning gav samma id, en annan
+kropp gav 422 och nyckeln gav 401 efter återkallning. Peppol-XML:en för
+faktura 1 kom ut utan anmärkningar, med köparens 0007:5566778899. Faktura
+10005 gav 422, eftersom köparen är privatperson; med `?trots=1` kom filen ut
+ändå. Cron levererade tre webhooks till httpbin.org med giltig X-Signature.
+
+| Del | Fil |
+|---|---|
+| Migration 0021 | `supabase/migrations/0021_organizations.sql`: `create_organization` (security definer: org, owner, serier, `seed_org_accounts`, inställningar), `invitation_info`/`accept_invitation` (inloggad med den inbjudna adressen, 14 dagar, aldrig owner via inbjudan), `org_members` (e-post ur auth.users), triggern `memberships_guard` (alltid en owner, bara owners rör owners), `register_payment`/`mark_invoice_sent`/`mark_invoice_credited` med `can_write_org_or_system` (API:t kör med service role), webhook-kön som trigger på `events`, `webhook_deliveries.failed_at` |
+| RLS-prov | `supabase/tests/0021_rls.sql`: två organisationer och en konsult i en transaktion som rullas tillbaka; körd i PGlite mot 0001–0021 |
+| Inställningar | `lib/core/org/settings.ts` (zod: företaget på fakturan, betalning, villkor per kundtyp, dröjsmålsräntetext, påminnelser, räkenskapsår, kontoplansöverstyrningar; testad), `lib/core/org/settings-store.ts` (första organisationen faller tillbaka på Företaget, Offertuppgifter och miljövariablerna tills raden sparas; andra organisationer aldrig), `/admin/installningar` med `components/admin/org/OrgSettingsEditor.tsx` på `EditorForm` |
+| Läsare av inställningarna | `lib/core/invoices/seller.ts`, `lib/core/reminders/store.ts`, `lib/core/invoices/send.ts`, `lib/pdf/render-invoice.tsx`, `lib/core/ledger/sie-export.ts` (räkenskapsåret i `#RAR`), konteringen via `currentChart()`. Offerterna läser fortfarande Företaget och Offertuppgifter |
+| Sessionens organisation | `lib/core/org/current.ts` (cookien `org` bland användarens medlemskap, annars första; `currentOrgId()` för skrivning, `readOrgId()` för läsning, null för portalkunder), `lib/core/db.ts` (`asSystem(fn, orgId)`). Alla kärnstores filtrerar och skriver med org_id: kunder, fakturor, betalplaner, ROT, bankfil, verifikationer, kontoplan, låsta perioder, återkommande, projektkostnader, händelser, samt projekt- och offertlistorna |
+| Roller | `lib/core/org/roles.ts` (testad), `lib/admin.ts` (`requireRole("read" \| "write" \| "admin")`; `checkAdmin()` = staff eller högre), `proxy.ts` (medlemskap i stället för `is_admin()`, läsare når bara Ekonomi, Bokföringen, fakturor, kunder, ROT, Organisation), menyn per roll |
+| Organisation och onboarding | `/admin/organisation` (medlemmar, roller, inbjudningar), `/admin/ny-organisation`, `/admin/inbjudan/[token]` (inloggningslänk till den inbjudna adressen via `/mitt-projekt/callback?next=`), `lib/core/org/members.ts`, `app/admin/org-actions.ts`, växlaren `components/admin/OrgSwitcher.tsx` |
+| Peppol | `lib/render/ubl/peppol-bis-billing-3.ts` (Invoice och CreditNote, golden file i testet), `lib/core/peppol/provider.ts` (gränssnittet och "manual"), `/admin/fakturor/[id]/peppol.xml` (validering, 422 med skälen, händelsen `invoice.einvoiced`), Peppol-id på kunden |
+| API v1 | `lib/api/route.ts` (nyckel, scope, `asSystem` med nyckelns org, Idempotency-Key med platshållarrad), `lib/api/schemas.ts`, `lib/api/resources.ts`, `app/api/v1/customers`, `app/api/v1/invoices` (+ `/{id}`, `/issue`, `/payments`, `/pdf`), `lib/api/openapi.ts` genererad ur zod via `lib/api/zod-json-schema.ts`; testat i `lib/api/schemas.test.ts` |
+| Nycklar och webhooks | `/admin/api`, `lib/api/admin-store.ts`, `lib/api/webhooks.ts` (signatur, backoff; testad), `lib/api/webhook-delivery.ts`, steget i `app/api/cron/invoices/route.ts` som nu kör varje organisation för sig |
+
+Beslut i fas 5:
+
+- **En sparad inställningsrad gäller som helhet.** Fallbacken till
+  Företaget, Offertuppgifter och `SWISH_NUMBER`/`REMINDERS_*` gäller bara
+  den första organisationen och bara tills `/admin/installningar` sparas.
+  Binaafys rad är inte sparad än: sidan är förifylld, och ett klick på
+  *Spara* tar över. En ny organisation får aldrig Binaafys uppgifter.
+- **Läsning utan organisation är tillåten, skrivning inte.** En portalkund
+  har inget medlemskap och läser med RLS som förut. Systemanrop utan
+  organisation (den publika fakturasidan) läser på id. Varje insert kräver
+  `currentOrgId()`, som hellre kastar än gissar.
+- **Roller:** accountant och readonly läser; staff och uppåt skriver;
+  owner/admin äger inställningar, medlemmar, nycklar och webbplatsens
+  innehåll. Owner blir man bara genom att en owner ändrar rollen.
+- **Peppol, tre avsteg från det första upplägget,** med regelnumren i
+  filens huvud:
+  - en enda `cbc:Note` på dokumentnivå (PEPPOL-EN16931-R002)
+  - bankgiro som `PayeeFinancialAccount/ID` med `SE:BANKGIRO` i
+    `FinancialInstitutionBranch/ID` (SE-R-007..010), inte som schemeID
+  - F-skatt både som `PartyTaxScheme` TAX och som `CompanyLegalForm`
+
+  ROT är inte rabatt och inte förskott: `PayableAmount` är hela beloppet
+  inkl. moms. Avdraget och beloppet att betala står som text i Note och
+  PaymentTerms, utan personnummer. **SFTI:s rekommendation för ROT ska
+  verifieras innan första skarpa sändning.**
+- **API:et är camelCase som dokumentet**, belopp i öre. Idempotency-Key krävs
+  på alla POST. Ett 5xx sparas inte, så klienten kan försöka igen.
+- **Webhooks signeras** `X-Signature: t=<unix>,v1=<HMAC-SHA256("t.kropp")>`.
+  Upp till 8 försök med 1, 2, 4 … minuters väntan, men cron går en gång om
+  dygnet, så i praktiken blir det ett försök per dag tills cron körs oftare.
+
+Kvar efter fas 5:
+
+- **Externa avtal:** riktig Peppol-accesspunkt (Pagero, Qvalia,
+  Unifiedpost) bakom `PeppolProvider`, öppen bankdata (Enable Banking,
+  Tink), BankID-inloggning och signering (Criipto, Signicat), Swish Handel
+  med callback.
+- **Affär och juridik:** prissättning, personuppgiftsbiträdesavtal per
+  organisation, produktnamnet.
+- **Offerterna och webbplatsen** är fortfarande Binaafys: offert-PDF:en läser
+  Företaget och Offertuppgifter. `content_blocks` och förfrågningarna är
+  inte per organisation, och `is_admin()` (owner/admin i någon organisation)
+  styr dem fortfarande. En andra organisation ska inte släppas in i
+  webbplatsens innehåll innan det är löst.
+- **Brutet räkenskapsår:** SIE-filen följer inställningen, men
+  verifikationsserien V numreras per kalenderår i databasen.
+- **Rutt- och anropsgränser per nyckel**, loggning av varje API-anrop i
+  `events` och fler resurser (betalplaner, ROT, händelser) i API:t.
+- **Inbjudan via inloggningslänk** kräver att
+  `<sajt>/mitt-projekt/callback**` finns bland Redirect URLs i Supabase
+  Auth. Inbjudningsmejl kräver `MAIL_FROM`.
+- **Krypteringen av personnummer** i `rot_buyers` görs nu när det finns en
+  andra organisation.
+- **Testdata:** Testbolag AB (kund, faktura 1 betald, en återkallad nyckel,
+  webhook mot httpbin, en öppen inbjudan) ligger kvar. `reset-invoicing.sql`
+  tar inte bort organisationer, så Testbolag tas bort separat före skarp
+  drift.
+
+Kontroll: 251 tester gröna (`npm test`), lint och typkontroll rena.
 
 ## Läge 2026-10-20: fas 0–4 kodade och körda mot Supabase
 
