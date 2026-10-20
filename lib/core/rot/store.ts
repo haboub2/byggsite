@@ -1,5 +1,7 @@
 import "server-only";
 import { getDb } from "../db";
+import { currentOrgId, readOrgId } from "../org/current";
+import { currentChart } from "../org/settings-store";
 import { isDemo } from "../../leads";
 import { todayIso } from "../../quotes/schema";
 import { postPayment, type Posting } from "../ledger/posting";
@@ -85,7 +87,10 @@ export async function listRotCandidates(): Promise<RotCandidate[]> {
 export async function listClaims(): Promise<RotClaim[]> {
   if (isDemo()) return [...demo().claims].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const supabase = await getDb();
-  const { data: claims, error } = await supabase.from("rot_claims").select("*").order("created_at", { ascending: false });
+  const org = await readOrgId();
+  let q = supabase.from("rot_claims").select("*");
+  if (org) q = q.eq("org_id", org);
+  const { data: claims, error } = await q.order("created_at", { ascending: false });
   if (error) throw new Error(`Kunde inte hämta ROT-begäran: ${error.message}`);
   const ids = (claims ?? []).map((c) => c.id as string);
   if (ids.length === 0) return [];
@@ -164,16 +169,17 @@ export async function createClaim(name: string, invoiceIds: string[], category: 
     return claim.id;
   }
   const supabase = await getDb();
-  const { data: claim, error } = await supabase.from("rot_claims").insert({ status: "draft", note: name, created_by: actor.kind === "user" ? actor.name : null }).select("id, org_id").single();
+  const org = await currentOrgId();
+  const { data: claim, error } = await supabase.from("rot_claims").insert({ org_id: org, status: "draft", note: name, created_by: actor.kind === "user" ? actor.name : null }).select("id, org_id").single();
   if (error) throw new Error(`Kunde inte skapa begäran: ${error.message}`);
   for (const it of items) {
     const { data: buyer, error: e1 } = await supabase
       .from("rot_buyers")
-      .insert({ invoice_id: it.invoiceId, name: it.buyerName, personal_number: it.personalNumber, share_ore: it.amountOre, property: it.property, category: it.category })
+      .insert({ org_id: org, invoice_id: it.invoiceId, name: it.buyerName, personal_number: it.personalNumber, share_ore: it.amountOre, property: it.property, category: it.category })
       .select("id")
       .single();
     if (e1) throw new Error(`Kunde inte spara köparen: ${e1.message}`);
-    const { error: e2 } = await supabase.from("rot_claim_items").insert({ claim_id: claim.id, invoice_id: it.invoiceId, buyer_id: buyer.id, amount_ore: it.amountOre, work_ore: it.workOre, paid_on: it.paidOn });
+    const { error: e2 } = await supabase.from("rot_claim_items").insert({ org_id: org, claim_id: claim.id, invoice_id: it.invoiceId, buyer_id: buyer.id, amount_ore: it.amountOre, work_ore: it.workOre, paid_on: it.paidOn });
     if (e2) throw new Error(`Kunde inte spara ärendet: ${e2.message}`);
   }
   await supabase.from("events").insert({ org_id: claim.org_id, aggregate_type: "rot_claim", aggregate_id: claim.id, type: "rot_claim.created", data: { name, invoices: items.length }, actor });
@@ -239,7 +245,7 @@ export async function markClaimSent(id: string, actor: Actor): Promise<void> {
     return;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("rot_claims").update({ status: "sent", sent_on: todayIso() }).eq("id", id).eq("status", "draft").select("org_id");
+  const { data, error } = await supabase.from("rot_claims").update({ status: "sent", sent_on: todayIso() }).eq("id", id).eq("org_id", await currentOrgId()).eq("status", "draft").select("org_id");
   if (error) throw new Error(`Kunde inte markera som skickad: ${error.message}`);
   if (!data?.length) throw new Error("Begäran är redan skickad eller finns inte.");
   const claim = await getClaim(id);
@@ -252,7 +258,7 @@ export async function registerClaimPayout(id: string, amountOre: number, paidOn:
   const claim = await getClaim(id);
   if (!claim) throw new Error("Begäran finns inte.");
   if (claim.status !== "sent") throw new Error(`Begäran är ${ROT_CLAIM_STATUS_LABEL[claim.status].toLowerCase()}, inte skickad.`);
-  const posting: Posting = postPayment({ paymentId: id, amount: amountOre, method: "rot", date: paidOn, text: `Utbetalning ROT från Skatteverket, ${claim.name}` });
+  const posting: Posting = postPayment({ paymentId: id, amount: amountOre, method: "rot", date: paidOn, text: `Utbetalning ROT från Skatteverket, ${claim.name}` }, isDemo() ? undefined : await currentChart());
   if (isDemo()) {
     const c = demo().claims.find((x) => x.id === id)!;
     c.status = "paid";

@@ -1,7 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
 import { site } from "../../placeholder";
-import { getContent } from "../../content/store";
+import { getOrgSettings } from "../org/settings-store";
 import { renderInvoicePdf, invoiceFileName } from "../../pdf/render-invoice";
 import { formatOre } from "../money";
 import { invoiceTotals } from "./totals";
@@ -23,12 +23,13 @@ export async function sendInvoiceMail(inv: InvoiceRecord, message: string): Prom
   const to = inv.document.buyer.email;
   if (!to) throw new Error("Kunden saknar e-postadress.");
 
-  const { company, quote: settings } = await getContent();
+  const settings = await getOrgSettings(inv.orgId || undefined);
   const d = inv.document;
   const t = invoiceTotals(d);
   const pdf = await renderInvoicePdf(inv);
   const firstName = d.buyer.type === "privat" ? d.buyer.name.split(" ")[0] : d.buyer.reference || d.buyer.name;
-  const signer = settings.signerName || company.legalName;
+  const signer = settings.company.signer || settings.company.legalName;
+  const brand = d.seller.name || site.brand;
   const label = invoiceLabel(inv);
   const isCredit = inv.kind === "credit";
   const pay = `${formatOre(Math.abs(t.payable), { decimals: 0, currency: true })}`;
@@ -42,8 +43,8 @@ export async function sendInvoiceMail(inv: InvoiceRecord, message: string): Prom
   await new Resend(key).emails.send({
     from,
     to,
-    replyTo: company.email,
-    subject: `${label} från ${site.brand}${d.title ? `: ${d.title}` : ""}`,
+    replyTo: settings.company.email || undefined,
+    subject: `${label} från ${brand}${d.title ? `: ${d.title}` : ""}`,
     html: `
       <div style="font-family:sans-serif;font-size:14px;color:#14161a;line-height:1.6">
         <p style="white-space:pre-wrap">${esc(body)}</p>
@@ -54,7 +55,7 @@ export async function sendInvoiceMail(inv: InvoiceRecord, message: string): Prom
           ${isCredit || !d.paymentMeans.bankgiro ? "" : `<tr><td style="padding:3px 16px 3px 0;color:#6b7280">Bankgiro</td><td>${esc(d.paymentMeans.bankgiro)}</td></tr>`}
           ${isCredit ? "" : `<tr><td style="padding:3px 16px 3px 0;color:#6b7280">OCR</td><td>${esc(d.paymentMeans.ocr ?? inv.number ?? "")}</td></tr>`}
         </table>
-        <p>Vänliga hälsningar,<br>${esc(signer)}<br>${esc(site.brand)} · ${esc(company.phoneDisplay)}</p>
+        <p>Vänliga hälsningar,<br>${esc(signer)}<br>${esc(brand)}${settings.company.phone ? ` · ${esc(settings.company.phone)}` : ""}</p>
       </div>
     `,
     attachments: [{ filename: invoiceFileName(inv), content: pdf }],

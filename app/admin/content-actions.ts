@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { checkAdmin } from "@/lib/admin";
+import { requireRole } from "@/lib/admin";
 import { CONTENT_KEYS, contentSchemas, type ContentKey, type ContentMap } from "@/lib/content/schema";
 import { getHistoryVersion, saveContent } from "@/lib/content/store";
 
@@ -37,7 +37,7 @@ async function persist(key: ContentKey, data: unknown, savedBy: string | null): 
 
 /** Save one content block. The form posts the whole block as JSON. */
 export async function saveContentBlock(_prev: ContentActionState, formData: FormData): Promise<ContentActionState> {
-  const check = await checkAdmin();
+  const check = await requireRole("admin");
   if (!check.ok) return { error: "Du saknar behörighet. Logga in igen." };
 
   const key = formData.get("key");
@@ -54,7 +54,7 @@ export async function saveContentBlock(_prev: ContentActionState, formData: Form
 
 /** Save an earlier version again, so it becomes the current one (and itself undoable). */
 export async function restoreContentVersion(formData: FormData): Promise<void> {
-  const check = await checkAdmin();
+  const check = await requireRole("admin");
   if (!check.ok) return;
   const key = formData.get("key");
   const id = String(formData.get("id") ?? "");

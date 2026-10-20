@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { checkAdmin } from "@/lib/admin";
+import { requireRole } from "@/lib/admin";
 import type { Actor } from "@/lib/core/events";
 import { isPeriod, lockProblem } from "@/lib/core/ledger/period";
 import { listPeriodLocks, lockPeriod } from "@/lib/core/ledger/store";
@@ -13,7 +13,7 @@ const back = (q: Record<string, string>) => `${PAGE}?${new URLSearchParams(q)}`;
 
 /** Lock a month after its SIE file is in the bookkeeping. Only months that have ended. */
 export async function lockPeriodAction(formData: FormData): Promise<void> {
-  const check = await checkAdmin();
+  const check = await requireRole("admin");
   if (!check.ok) redirect("/admin/login");
   const period = String(formData.get("period") ?? "");
   if (!isPeriod(period)) redirect(back({ fel: "Okänd period." }));

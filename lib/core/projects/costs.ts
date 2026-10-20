@@ -1,5 +1,6 @@
 import "server-only";
 import { getDb } from "../db";
+import { currentOrgId, readOrgId } from "../org/current";
 import { isDemo } from "../../leads";
 import { COST_KINDS, hoursAmount, type CostKind } from "./economy";
 
@@ -95,7 +96,10 @@ export class CostsTableMissingError extends Error {
 export async function listProjectCosts(projectId: string): Promise<ProjectCost[]> {
   if (isDemo()) return demo().filter((r) => r.project_id === projectId).map(fromRow).sort((a, b) => b.costDate.localeCompare(a.costDate));
   const supabase = await getDb();
-  const { data, error } = await supabase.from("project_costs").select("*").eq("project_id", projectId).order("cost_date", { ascending: false }).order("created_at", { ascending: false });
+  const org = await readOrgId();
+  let q = supabase.from("project_costs").select("*").eq("project_id", projectId);
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.order("cost_date", { ascending: false }).order("created_at", { ascending: false });
   if (error) {
     // Before 0020 is run the table is missing; the page shows the box without costs.
     if (error.code === "42P01" || error.code === "PGRST205") throw new CostsTableMissingError();
@@ -112,7 +116,7 @@ export async function addProjectCost(projectId: string, input: ProjectCostInput,
     return id;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("project_costs").insert(row).select("id").single();
+  const { data, error } = await supabase.from("project_costs").insert({ ...row, org_id: await currentOrgId() }).select("id").single();
   if (error) throw new Error(`Kunde inte spara kostnaden: ${error.message}`);
   return data.id as string;
 }
@@ -123,6 +127,6 @@ export async function removeProjectCost(projectId: string, id: string): Promise<
     return;
   }
   const supabase = await getDb();
-  const { error } = await supabase.from("project_costs").delete().eq("id", id).eq("project_id", projectId);
+  const { error } = await supabase.from("project_costs").delete().eq("id", id).eq("org_id", await currentOrgId()).eq("project_id", projectId);
   if (error) throw new Error(`Kunde inte ta bort kostnaden: ${error.message}`);
 }

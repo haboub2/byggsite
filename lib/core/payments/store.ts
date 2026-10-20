@@ -1,5 +1,6 @@
 import "server-only";
 import { getDb } from "../db";
+import { currentOrgId, readOrgId } from "../org/current";
 import { isDemo } from "../../leads";
 import { todayIso } from "../../quotes/schema";
 import type { Actor } from "../events";
@@ -56,6 +57,8 @@ export async function listBankTransactions(status?: BankTransaction["status"]): 
   if (isDemo()) return demo().filter((r) => !status || r.status === status).map(fromRow).sort((a, b) => b.bookedOn.localeCompare(a.bookedOn));
   const supabase = await getDb();
   let q = supabase.from("bank_transactions").select("*").order("booked_on", { ascending: false }).limit(1000);
+  const org = await readOrgId();
+  if (org) q = q.eq("org_id", org);
   if (status) q = q.eq("status", status);
   const { data, error } = await q;
   if (error) throw new Error(`Kunde inte hämta banktransaktioner: ${error.message}`);
@@ -77,7 +80,8 @@ export async function importBankFile(xml: string, actor: Actor): Promise<{ impor
     return { imported, skipped: credits.length - imported, account: file.account };
   }
   const supabase = await getDb();
-  const rows = credits.map((t) => ({ source: "camt054", external_id: t.externalId, booked_on: t.bookedOn, amount_ore: t.amountOre, currency: t.currency, reference: t.reference, counterpart: t.counterpart, raw: { message: t.message, credit: t.credit } }));
+  const org = await currentOrgId();
+  const rows = credits.map((t) => ({ org_id: org, source: "camt054", external_id: t.externalId, booked_on: t.bookedOn, amount_ore: t.amountOre, currency: t.currency, reference: t.reference, counterpart: t.counterpart, raw: { message: t.message, credit: t.credit } }));
   const { data, error } = await supabase.from("bank_transactions").upsert(rows, { onConflict: "org_id,source,external_id", ignoreDuplicates: true }).select("id");
   if (error) throw new Error(`Kunde inte läsa in filen: ${error.message}`);
   return { imported: data?.length ?? 0, skipped: credits.length - (data?.length ?? 0), account: file.account };

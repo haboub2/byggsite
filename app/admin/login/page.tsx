@@ -7,8 +7,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function AdminLoginPage() {
+export default async function AdminLoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const configured = isSupabaseConfigured();
+  const { next } = await searchParams;
 
   return (
     <div>
@@ -20,7 +21,7 @@ export default function AdminLoginPage() {
               <h1 style={{ fontSize: 40, marginTop: 8 }}>Admin</h1>
             </div>
             {configured ? (
-              <LoginForm />
+              <LoginForm next={typeof next === "string" ? next : undefined} />
             ) : (
               <p style={{ color: "var(--ink-2)" }}>
                 Supabase är inte konfigurerat ännu. Skapa ett projekt, kör migrationerna i{" "}

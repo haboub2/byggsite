@@ -2,12 +2,13 @@ import "server-only";
 import { getDb } from "../db";
 import { isDemo } from "../../leads";
 import type { Customer, CustomerInput } from "./schema";
+import { currentOrgId, readOrgId } from "../org/current";
 
 /**
  * The customers table (supabase/migrations/0014_core.sql), read and written
- * with the admin's session so RLS decides. org_id defaults to default_org()
- * in the database until there is more than one organisation. Demo mode
- * keeps everything in memory, like the quotes.
+ * with the admin's session so RLS decides, always in the session's
+ * organisation (lib/core/org/current.ts): reads filter on it, inserts set
+ * it. Demo mode keeps everything in memory, like the quotes.
  */
 
 type Row = {
@@ -23,6 +24,7 @@ type Row = {
   postal_code: string;
   city: string;
   reference: string;
+  peppol_id?: string;
   default_terms_days: number;
   notes: string;
   created_at: string;
@@ -43,6 +45,7 @@ const fromRow = (r: Row): Customer => ({
   postalCode: r.postal_code,
   city: r.city,
   reference: r.reference,
+  peppolId: r.peppol_id ?? "",
   defaultTermsDays: r.default_terms_days,
   notes: r.notes,
   createdAt: r.created_at,
@@ -61,6 +64,7 @@ const toRow = (c: CustomerInput) => ({
   postal_code: c.postalCode,
   city: c.city,
   reference: c.reference,
+  peppol_id: c.peppolId,
   default_terms_days: c.defaultTermsDays,
   notes: c.notes,
 });
@@ -78,7 +82,10 @@ export async function listCustomers(q?: string): Promise<Customer[]> {
       .map(fromRow);
   }
   const supabase = await getDb();
-  let query = supabase.from("customers").select("*").is("deleted_at", null).order("name").limit(1000);
+  let query = supabase.from("customers").select("*").is("deleted_at", null);
+  const org = await readOrgId();
+  if (org) query = query.eq("org_id", org);
+  query = query.order("name").limit(1000);
   if (term) {
     const safe = term.replace(/["\\*%,]/g, " ").trim();
     if (safe) query = query.or([`name.ilike."*${safe}*"`, `company.ilike."*${safe}*"`, `email.ilike."*${safe}*"`, `city.ilike."*${safe}*"`].join(","));
@@ -94,7 +101,10 @@ export async function getCustomer(id: string): Promise<Customer | null> {
     return r ? fromRow(r) : null;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("customers").select("*").eq("id", id).maybeSingle();
+  const org = await readOrgId();
+  let q = supabase.from("customers").select("*").eq("id", id);
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.maybeSingle();
   if (error) throw new Error(`Kunde inte hämta kunden: ${error.message}`);
   return data ? fromRow(data as Row) : null;
 }
@@ -107,7 +117,7 @@ export async function createCustomer(input: CustomerInput, createdBy: string | n
     return row.id;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("customers").insert({ ...toRow(input), created_by: createdBy }).select("id").single();
+  const { data, error } = await supabase.from("customers").insert({ ...toRow(input), org_id: await currentOrgId(), created_by: createdBy }).select("id").single();
   if (error) throw new Error(`Kunde inte skapa kunden: ${error.message}`);
   return data.id as string;
 }
@@ -120,7 +130,7 @@ export async function updateCustomer(id: string, input: CustomerInput): Promise<
     return;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("customers").update(toRow(input)).eq("id", id).select("id");
+  const { data, error } = await supabase.from("customers").update(toRow(input)).eq("id", id).eq("org_id", await currentOrgId()).select("id");
   if (error) throw new Error(`Kunde inte spara kunden: ${error.message}`);
   if (!data?.length) throw new Error("Kunde inte spara: kunden finns inte eller saknar behörighet.");
 }
@@ -133,7 +143,7 @@ export async function archiveCustomer(id: string): Promise<void> {
     return;
   }
   const supabase = await getDb();
-  const { error } = await supabase.from("customers").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  const { error } = await supabase.from("customers").update({ deleted_at: new Date().toISOString() }).eq("id", id).eq("org_id", await currentOrgId());
   if (error) throw new Error(`Kunde inte ta bort kunden: ${error.message}`);
 }
 

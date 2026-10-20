@@ -1,5 +1,6 @@
 import "server-only";
 import { getDb } from "../db";
+import { currentOrgId, readOrgId } from "../org/current";
 import { isDemo } from "../../leads";
 import type { PaymentPlan, PaymentPlanStep, PlanStepInput } from "./schema";
 
@@ -66,7 +67,10 @@ export async function getPlanForProject(projectId: string): Promise<PaymentPlan 
     return { id: plan.id, projectId: plan.project_id, quoteId: plan.quote_id, kind: plan.kind, createdAt: plan.created_at, steps: demo().steps.filter((s) => s.plan_id === plan.id).sort((a, b) => a.sort - b.sort).map(fromStep) };
   }
   const supabase = await getDb();
-  const { data: plan, error } = await supabase.from("payment_plans").select("*").eq("project_id", projectId).maybeSingle();
+  const org = await readOrgId();
+  let q = supabase.from("payment_plans").select("*").eq("project_id", projectId);
+  if (org) q = q.eq("org_id", org);
+  const { data: plan, error } = await q.maybeSingle();
   if (error) throw new Error(`Kunde inte hämta betalplanen: ${error.message}`);
   if (!plan) return null;
   const { data: steps, error: e2 } = await supabase.from("payment_plan_steps").select("*").eq("plan_id", plan.id).order("sort");
@@ -84,9 +88,10 @@ export async function createPlan(input: { projectId: string; quoteId: string | n
     return plan.id;
   }
   const supabase = await getDb();
-  const { data: plan, error } = await supabase.from("payment_plans").insert({ project_id: input.projectId, quote_id: input.quoteId, kind: "fixed" }).select("id").single();
+  const org = await currentOrgId();
+  const { data: plan, error } = await supabase.from("payment_plans").insert({ org_id: org, project_id: input.projectId, quote_id: input.quoteId, kind: "fixed" }).select("id").single();
   if (error) throw new Error(`Kunde inte skapa betalplanen: ${error.message}`);
-  const { error: e2 } = await supabase.from("payment_plan_steps").insert(input.steps.map((s, i) => toStep(s, plan.id as string, i)));
+  const { error: e2 } = await supabase.from("payment_plan_steps").insert(input.steps.map((s, i) => ({ ...toStep(s, plan.id as string, i), org_id: org })));
   if (e2) throw new Error(`Kunde inte skapa stegen: ${e2.message}`);
   return plan.id as string;
 }
@@ -99,7 +104,7 @@ export async function addStep(planId: string, step: PlanStepInput): Promise<void
   }
   const supabase = await getDb();
   const { data: last } = await supabase.from("payment_plan_steps").select("sort").eq("plan_id", planId).order("sort", { ascending: false }).limit(1).maybeSingle();
-  const { error } = await supabase.from("payment_plan_steps").insert(toStep(step, planId, ((last?.sort as number | undefined) ?? -1) + 1));
+  const { error } = await supabase.from("payment_plan_steps").insert({ ...toStep(step, planId, ((last?.sort as number | undefined) ?? -1) + 1), org_id: await currentOrgId() });
   if (error) throw new Error(`Kunde inte lägga till steget: ${error.message}`);
 }
 
@@ -112,7 +117,7 @@ export async function updateStep(stepId: string, step: PlanStepInput): Promise<v
     return;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("payment_plan_steps").update({ label: step.label, phase_id: step.phaseId, percent: step.percent, amount_ore: step.amountOre, labor_share: step.laborShare, due_rule: step.dueRule, due_on: step.dueOn }).eq("id", stepId).is("invoice_id", null).select("id");
+  const { data, error } = await supabase.from("payment_plan_steps").update({ label: step.label, phase_id: step.phaseId, percent: step.percent, amount_ore: step.amountOre, labor_share: step.laborShare, due_rule: step.dueRule, due_on: step.dueOn }).eq("id", stepId).eq("org_id", await currentOrgId()).is("invoice_id", null).select("id");
   if (error) throw new Error(`Kunde inte spara steget: ${error.message}`);
   if (!data?.length) throw new Error("Steget är fakturerat eller finns inte.");
 }
@@ -125,7 +130,7 @@ export async function removeStep(stepId: string): Promise<void> {
     return;
   }
   const supabase = await getDb();
-  const { error } = await supabase.from("payment_plan_steps").delete().eq("id", stepId).is("invoice_id", null);
+  const { error } = await supabase.from("payment_plan_steps").delete().eq("id", stepId).eq("org_id", await currentOrgId()).is("invoice_id", null);
   if (error) throw new Error(`Kunde inte ta bort steget: ${error.message}`);
 }
 
@@ -137,7 +142,7 @@ export async function removePlan(planId: string): Promise<void> {
     return;
   }
   const supabase = await getDb();
-  const { error } = await supabase.from("payment_plans").delete().eq("id", planId);
+  const { error } = await supabase.from("payment_plans").delete().eq("id", planId).eq("org_id", await currentOrgId());
   if (error) throw new Error(`Kunde inte ta bort betalplanen: ${error.message}`);
 }
 
@@ -150,7 +155,7 @@ export async function markStepInvoiced(stepId: string, invoiceId: string, change
     return;
   }
   const supabase = await getDb();
-  const { error } = await supabase.from("payment_plan_steps").update({ invoice_id: invoiceId }).eq("id", stepId);
+  const { error } = await supabase.from("payment_plan_steps").update({ invoice_id: invoiceId }).eq("id", stepId).eq("org_id", await currentOrgId());
   if (error) throw new Error(`Kunde inte koppla steget: ${error.message}`);
   if (changeOrderIds.length) {
     const { error: e2 } = await supabase.from("change_orders").update({ invoice_id: invoiceId }).in("id", changeOrderIds);

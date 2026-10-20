@@ -1,6 +1,7 @@
 import "server-only";
-import { getContent } from "../../content/store";
-import type { InvoiceDocument, Seller } from "../documents/invoice";
+import { getOrgSettings } from "../org/settings-store";
+import { DEFAULT_LATE_INTEREST_TEXT, sellerFromSettings, termsDaysFor, type OrgSettings } from "../org/settings";
+import type { CustomerType, InvoiceDocument, Seller } from "../documents/invoice";
 import type { PaymentMeansInput } from "./from-quote";
 
 /**
@@ -26,35 +27,26 @@ export function applySellerDefaults(doc: InvoiceDocument, defaults: { seller: Se
 }
 
 /**
- * The seller block and payment details for a new invoice, from what the
- * admins already maintain under Företaget and Offertuppgifter. Moves to
- * org_settings when the settings UI is per organisation (fas 5).
+ * The seller block and payment details for a new invoice, from the
+ * organisation's settings (org_settings; lib/core/org/settings-store.ts,
+ * which falls back to Företaget, Offertuppgifter and SWISH_NUMBER for the
+ * first organisation until its settings are saved). Terms follow the
+ * customer type when it is known.
  */
-export async function getSellerDefaults(): Promise<{ seller: Seller; paymentMeans: PaymentMeansInput; lateInterestText: string; signer: string }> {
-  const { company, quote } = await getContent();
+export async function getSellerDefaults(customerType?: CustomerType): Promise<{ seller: Seller; paymentMeans: PaymentMeansInput; lateInterestText: string; signer: string; settings: OrgSettings }> {
+  const settings = await getOrgSettings();
   return {
-    seller: {
-      name: company.legalName,
-      orgNr: company.orgNr,
-      vatNr: quote.vatNumber,
-      street: company.street,
-      postalCode: company.postalCode,
-      city: company.city,
-      countryCode: "SE",
-      email: company.email,
-      phone: company.phoneDisplay,
-      fSkatt: quote.fSkatt,
-    },
+    seller: sellerFromSettings(settings),
     paymentMeans: {
-      bankgiro: quote.bankgiro,
-      plusgiro: quote.plusgiro,
-      iban: quote.iban,
-      bic: quote.bic,
-      // Until the settings page has a Swish field: SWISH_NUMBER in the environment.
-      swish: (process.env.SWISH_NUMBER ?? "").replace(/\s/g, ""),
-      termsDays: quote.paymentDays,
+      bankgiro: settings.payment.bankgiro,
+      plusgiro: settings.payment.plusgiro,
+      iban: settings.payment.iban,
+      bic: settings.payment.bic,
+      swish: settings.payment.swish,
+      termsDays: termsDaysFor(settings, customerType),
     },
-    lateInterestText: quote.lateInterest || "Dröjsmålsränta enligt räntelagen, referensräntan plus 8 procentenheter.",
-    signer: quote.signerName || company.legalName,
+    lateInterestText: settings.lateInterestText || DEFAULT_LATE_INTEREST_TEXT,
+    signer: settings.company.signer || settings.company.legalName,
+    settings,
   };
 }

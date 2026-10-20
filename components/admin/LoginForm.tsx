@@ -10,11 +10,12 @@ async function action(_prev: State, formData: FormData): Promise<State> {
   return result ?? {};
 }
 
-export default function LoginForm() {
+export default function LoginForm({ next }: { next?: string }) {
   const [state, formAction, pending] = useActionState<State, FormData>(action, {});
 
   return (
     <form action={formAction} className="form" style={{ maxWidth: 380, margin: "0 auto" }}>
+      {next && <input type="hidden" name="next" value={next} />}
       <div className="field">
         <label htmlFor="admin-email">E-post</label>
         <input id="admin-email" name="email" type="email" autoComplete="email" required />

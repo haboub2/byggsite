@@ -1,5 +1,6 @@
 import "server-only";
 import { getDb } from "../db";
+import { currentOrgId, readOrgId } from "../org/current";
 import { isDemo } from "../../leads";
 import { makeEvent, type Actor, type CoreEvent } from "../events";
 import { demoJournalEntries } from "../invoices/store";
@@ -8,7 +9,8 @@ import { entriesIn, isPeriodLocked, monthRange, type LedgerEntry, type Period, t
 
 /**
  * The ledger as it is stored (journal_entries, journal_lines, accounts,
- * period_locks in 0014). Read with the caller's session so RLS decides;
+ * period_locks in 0014). Read with the caller's session so RLS decides, in
+ * the session's organisation;
  * entries are written only by the database functions that own the events
  * (issue_invoice, register_payment …). Demo mode reads the in-memory ledger
  * the invoice store keeps.
@@ -48,9 +50,10 @@ export async function listJournalEntries(range: { from: string; to: string }): P
     return entriesIn(all, range.from, range.to);
   }
   const supabase = await getDb();
-  const { data, error } = await supabase
-    .from("journal_entries")
-    .select("id, series, fiscal_year, number, entry_date, text, source_type, journal_lines(account, debit_ore, credit_ore, text)")
+  const org = await readOrgId();
+  let q = supabase.from("journal_entries").select("id, series, fiscal_year, number, entry_date, text, source_type, journal_lines(account, debit_ore, credit_ore, text)");
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q
     .gte("entry_date", range.from)
     .lte("entry_date", range.to)
     .order("entry_date")
@@ -74,7 +77,10 @@ export async function listAccounts(): Promise<{ number: string; name: string }[]
   const fallback = Object.entries(DEFAULT_ACCOUNT_NAMES).map(([number, name]) => ({ number, name }));
   if (isDemo()) return fallback;
   const supabase = await getDb();
-  const { data, error } = await supabase.from("accounts").select("number, name").order("number");
+  const org = await readOrgId();
+  let q = supabase.from("accounts").select("number, name");
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.order("number");
   if (error) throw new Error(`Kunde inte hämta kontoplanen: ${error.message}`);
   const rows = (data ?? []) as { number: string; name: string }[];
   return [...rows, ...fallback.filter((f) => !rows.some((r) => r.number === f.number))].sort((a, b) => a.number.localeCompare(b.number));
@@ -83,7 +89,10 @@ export async function listAccounts(): Promise<{ number: string; name: string }[]
 export async function listPeriodLocks(): Promise<PeriodLock[]> {
   if (isDemo()) return [...demoLocks()].sort((a, b) => b.periodStart.localeCompare(a.periodStart));
   const supabase = await getDb();
-  const { data, error } = await supabase.from("period_locks").select("period_start, period_end, locked_by, locked_at").order("period_start", { ascending: false });
+  const org = await readOrgId();
+  let q = supabase.from("period_locks").select("period_start, period_end, locked_by, locked_at");
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.order("period_start", { ascending: false });
   if (error) throw new Error(`Kunde inte hämta låsta perioder: ${error.message}`);
   return ((data ?? []) as { period_start: string; period_end: string; locked_by: string | null; locked_at: string }[]).map((r) => ({
     periodStart: r.period_start,
@@ -119,8 +128,7 @@ export async function lockPeriod(period: Period, actor: Actor): Promise<void> {
     return;
   }
   const supabase = await getDb();
-  const { data: orgId, error: orgError } = await supabase.rpc("default_org");
-  if (orgError || !orgId) throw new Error(`Kunde inte avgöra organisationen: ${orgError?.message ?? "saknas"}`);
+  const orgId = await currentOrgId();
   const { error } = await supabase.from("period_locks").insert({ org_id: orgId, period_start: from, period_end: to, locked_by: lockedBy });
   if (error) {
     if (error.code === "23505") throw new PeriodAlreadyLockedError(period);

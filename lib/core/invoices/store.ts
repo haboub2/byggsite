@@ -8,6 +8,8 @@ import { postInvoice, postPayment, type PaymentMethod, type Posting } from "../l
 import { ocrFor } from "../ocr";
 import { makeEvent, type Actor, type CoreEvent, type EventType } from "../events";
 import { todayIso } from "../../quotes/schema";
+import { currentOrgId, readOrgId } from "../org/current";
+import { currentChart } from "../org/settings-store";
 
 /**
  * The invoices table (supabase/migrations/0014_core.sql) and the functions
@@ -18,30 +20,12 @@ import { todayIso } from "../../quotes/schema";
  * including the ledger, so the admin can be used without Supabase.
  */
 
-export const INVOICE_STATUSES = ["draft", "issued", "sent", "partially_paid", "paid", "credited", "void"] as const;
-export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
-export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
-  draft: "Utkast",
-  issued: "Utfärdad",
-  sent: "Skickad",
-  partially_paid: "Delbetald",
-  paid: "Betald",
-  credited: "Krediterad",
-  void: "Annullerad",
-};
-/** The tabs in the list: statuses plus the derived "förfallen". */
-export const INVOICE_LIST_TABS = ["draft", "open", "overdue", "paid", "credited"] as const;
-export type InvoiceListTab = (typeof INVOICE_LIST_TABS)[number];
-export const INVOICE_TAB_LABEL: Record<InvoiceListTab, string> = {
-  draft: "Utkast",
-  open: "Obetalda",
-  overdue: "Förfallna",
-  paid: "Betalda",
-  credited: "Krediterade",
-};
+import { INVOICE_LIST_TABS, INVOICE_STATUSES, INVOICE_STATUS_LABEL, type InvoiceListTab, type InvoiceStatus } from "./store-types";
+export { INVOICE_LIST_TABS, INVOICE_STATUSES, INVOICE_STATUS_LABEL, INVOICE_TAB_LABEL, type InvoiceListTab, type InvoiceStatus } from "./store-types";
 
 export type InvoiceRecord = {
   id: string;
+  orgId: string;
   series: string;
   number: string | null;
   kind: InvoiceKind;
@@ -83,6 +67,7 @@ export type PaymentRecord = {
 
 type Row = {
   id: string;
+  org_id?: string;
   series: string;
   number: string | null;
   kind: InvoiceKind;
@@ -113,6 +98,7 @@ type Row = {
 
 const fromRow = (r: Row): InvoiceRecord => ({
   id: r.id,
+  orgId: r.org_id ?? "",
   series: r.series,
   number: r.number,
   kind: r.kind,
@@ -243,7 +229,10 @@ function demoJournal(posting: Posting): string {
 async function loadAll(): Promise<InvoiceRecord[]> {
   if (isDemo()) return demo().invoices.map(fromRow);
   const supabase = await getDb();
-  const { data, error } = await supabase.from("invoices").select("*").order("updated_at", { ascending: false }).limit(2000);
+  const org = await readOrgId();
+  let q = supabase.from("invoices").select("*");
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.order("updated_at", { ascending: false }).limit(2000);
   if (error) throw new Error(`Kunde inte hämta fakturor: ${error.message}`);
   return (data as Row[]).map(fromRow);
 }
@@ -278,7 +267,10 @@ export async function getInvoice(id: string): Promise<InvoiceRecord | null> {
     return r ? fromRow(r) : null;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("invoices").select("*").eq("id", id).maybeSingle();
+  const org = await readOrgId();
+  let q = supabase.from("invoices").select("*").eq("id", id);
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.maybeSingle();
   if (error) throw new Error(`Kunde inte hämta fakturan: ${error.message}`);
   return data ? fromRow(data as Row) : null;
 }
@@ -291,9 +283,10 @@ export async function listInvoiceEvents(invoiceId: string): Promise<CoreEvent[]>
       .sort((a, b) => b.at.localeCompare(a.at));
   }
   const supabase = await getDb();
-  const { data, error } = await supabase
-    .from("events")
-    .select("org_id, aggregate_type, aggregate_id, type, data, actor, created_at")
+  const org = await readOrgId();
+  let q = supabase.from("events").select("org_id, aggregate_type, aggregate_id, type, data, actor, created_at");
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q
     .or(`and(aggregate_type.eq.invoice,aggregate_id.eq.${invoiceId}),and(aggregate_type.eq.payment,data->>invoice.eq.${invoiceId})`)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -312,10 +305,10 @@ export async function listInvoiceEvents(invoiceId: string): Promise<CoreEvent[]>
 export async function listInvoicePayments(invoiceId: string): Promise<PaymentRecord[]> {
   if (isDemo()) return demo().payments.filter((p) => p.invoiceId === invoiceId);
   const supabase = await getDb();
-  const { data, error } = await supabase
-    .from("payment_allocations")
-    .select("amount_ore, payments(id, method, paid_on, reference, note, created_by, created_at)")
-    .eq("invoice_id", invoiceId)
+  const org = await readOrgId();
+  let q = supabase.from("payment_allocations").select("amount_ore, payments(id, method, paid_on, reference, note, created_by, created_at)").eq("invoice_id", invoiceId);
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q
     .order("created_at", { ascending: false });
   if (error) throw new Error(`Kunde inte hämta betalningar: ${error.message}`);
   type Joined = { amount_ore: number; payments: { id: string; method: PaymentMethod; paid_on: string; reference: string; note: string; created_by: string | null; created_at: string } | null };
@@ -374,6 +367,7 @@ export async function createInvoice(
   const { data, error } = await supabase
     .from("invoices")
     .insert({
+      org_id: await currentOrgId(),
       series: document.series,
       kind: document.kind,
       quote_id: input.quoteId ?? null,
@@ -407,7 +401,7 @@ export async function updateInvoiceDraft(id: string, document: InvoiceDocument):
     return;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("invoices").update(cols).eq("id", id).eq("status", "draft").select("id");
+  const { data, error } = await supabase.from("invoices").update(cols).eq("id", id).eq("org_id", await currentOrgId()).eq("status", "draft").select("id");
   if (error) throw new Error(`Kunde inte spara: ${error.message}`);
   if (!data?.length) throw new Error("Kunde inte spara: fakturan är utfärdad, finns inte eller saknar behörighet.");
 }
@@ -420,7 +414,7 @@ export async function deleteDraft(id: string): Promise<void> {
     return;
   }
   const supabase = await getDb();
-  const { error } = await supabase.from("invoices").delete().eq("id", id).eq("status", "draft");
+  const { error } = await supabase.from("invoices").delete().eq("id", id).eq("org_id", await currentOrgId()).eq("status", "draft");
   if (error) throw new Error(`Kunde inte ta bort: ${error.message}`);
 }
 
@@ -443,7 +437,7 @@ export async function issueInvoice(id: string, actor: Actor, prepare?: (doc: Inv
   const problems = validateForIssue(doc);
   if (problems.length) throw new IssueError(problems);
   const totals = invoiceTotals(doc);
-  const posting = postInvoice(doc, totals, id);
+  const posting = postInvoice(doc, totals, id, isDemo() ? undefined : await currentChart());
   const totalsJson = { total: totals.gross, vat: totals.vat, rot: totals.rot?.deduction ?? 0, payable: totals.payable };
 
   if (isDemo()) {
@@ -532,7 +526,7 @@ export async function registerPayment(
     date: input.paidOn,
     text: `Inbetalning ${invoiceLabel(inv).toLowerCase()} ${inv.document.buyer.name}`,
     dimensions: { projectId: inv.projectId, customerId: inv.customerId },
-  });
+  }, isDemo() ? undefined : await currentChart());
 
   if (isDemo()) {
     const r = demo().invoices.find((x) => x.id === id)!;

@@ -2,6 +2,7 @@ import "server-only";
 import { createClient as createSessionClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { isDemo } from "../leads";
+import { currentOrgId, readOrgId } from "../core/org/current";
 import { roundHalf, shiftWorkdays } from "../workdays";
 import { formatDay, todayIso } from "./format";
 import { cannotFinishReason } from "./documentation";
@@ -323,7 +324,12 @@ function applyTimeline(project: ProjectRow, phases: ProjectPhase[], shifts: Time
 export async function listProjects(): Promise<PortalProject[]> {
   if (isDemo()) return demo().projects.slice().sort((a, b) => b.updated_at.localeCompare(a.updated_at)).map(fromProjectRow);
   const supabase = await createSessionClient();
-  const { data, error } = await supabase.from("portal_projects").select("*").order("updated_at", { ascending: false }).limit(500);
+  // Staff see the projects of the organisation they work in; a customer (no
+  // membership) gets null here and RLS limits them to their own projects.
+  const org = await readOrgId();
+  let q = supabase.from("portal_projects").select("*");
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.order("updated_at", { ascending: false }).limit(500);
   if (error) fail("Kunde inte hämta projekten", error.message);
   return (data as ProjectRow[]).map(fromProjectRow);
 }
@@ -405,7 +411,7 @@ export async function createProject(
     return id;
   }
   const supabase = await createSessionClient();
-  const { data, error } = await supabase.from("portal_projects").insert(row).select("id").single();
+  const { data, error } = await supabase.from("portal_projects").insert({ ...row, org_id: await currentOrgId() }).select("id").single();
   if (error) fail("Kunde inte skapa projektet", error.message);
   const id = data!.id as string;
   if (phaseRows.length) {

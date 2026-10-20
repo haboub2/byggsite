@@ -41,6 +41,16 @@ export default function CustomerForm({ id, initial }: { id: string | null; initi
           )}
           <TextField label={business ? "Kontaktperson" : "Namn"} path="name" value={c.name} onChange={set("name")} placeholder="Anna Lindqvist" />
           {business && <TextField label="Er referens (valfritt)" path="reference" value={c.reference} onChange={set("reference")} hint="Skrivs på fakturan. Lämnas tomt används kontaktpersonen." />}
+          {business && (
+            <TextField
+              label="Peppol-id (e-faktura, valfritt)"
+              path="peppolId"
+              value={c.peppolId ?? ""}
+              onChange={set("peppolId")}
+              placeholder="0007:5561234567"
+              hint="Kundens adress i Peppol. Lämnas tomt används 0007 och organisationsnumret."
+            />
+          )}
           <TextField label="E-post" path="email" inputMode="email" value={c.email} onChange={set("email")} hint="Fakturor mejlas hit." />
           <TextField label="Telefon" path="phone" inputMode="tel" value={c.phone} onChange={set("phone")} />
           <div className="egrid egrid--address efield--wide">

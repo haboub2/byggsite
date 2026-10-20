@@ -1,5 +1,6 @@
 import "server-only";
 import { getDb } from "../db";
+import { currentOrgId, readOrgId } from "../org/current";
 import { isDemo } from "../../leads";
 import { invoiceDocumentSchema, type InvoiceDocument } from "../documents/invoice";
 import type { Actor } from "../events";
@@ -65,7 +66,10 @@ const demo = () => (g.__binaafyRecurring ??= []);
 export async function listRecurring(): Promise<RecurringRecord[]> {
   if (isDemo()) return demo().map(fromRow).sort((a, b) => a.nextOn.localeCompare(b.nextOn));
   const supabase = await getDb();
-  const { data, error } = await supabase.from("recurring_invoices").select("*").order("active", { ascending: false }).order("next_on");
+  const org = await readOrgId();
+  let q = supabase.from("recurring_invoices").select("*");
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.order("active", { ascending: false }).order("next_on");
   if (error) throw new Error(`Kunde inte hämta återkommande fakturor: ${error.message}`);
   return ((data ?? []) as Row[]).map(fromRow);
 }
@@ -90,7 +94,7 @@ export async function createRecurringFromInvoice(invoiceId: string, input: Recur
     return id;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("recurring_invoices").insert(row).select("id").single();
+  const { data, error } = await supabase.from("recurring_invoices").insert({ ...row, org_id: await currentOrgId() }).select("id").single();
   if (error) throw new Error(`Kunde inte spara: ${error.message}`);
   return data.id as string;
 }
@@ -102,7 +106,7 @@ export async function setRecurringActive(id: string, active: boolean): Promise<v
     return;
   }
   const supabase = await getDb();
-  const { error } = await supabase.from("recurring_invoices").update({ active }).eq("id", id);
+  const { error } = await supabase.from("recurring_invoices").update({ active }).eq("id", id).eq("org_id", await currentOrgId());
   if (error) throw new Error(`Kunde inte spara: ${error.message}`);
 }
 
@@ -112,7 +116,7 @@ export async function deleteRecurring(id: string): Promise<void> {
     return;
   }
   const supabase = await getDb();
-  const { error } = await supabase.from("recurring_invoices").delete().eq("id", id);
+  const { error } = await supabase.from("recurring_invoices").delete().eq("id", id).eq("org_id", await currentOrgId());
   if (error) throw new Error(`Kunde inte ta bort: ${error.message}`);
 }
 
@@ -125,7 +129,7 @@ async function claim(id: string, from: string, to: string): Promise<boolean> {
     return true;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("recurring_invoices").update({ next_on: to }).eq("id", id).eq("next_on", from).select("id");
+  const { data, error } = await supabase.from("recurring_invoices").update({ next_on: to }).eq("id", id).eq("org_id", await currentOrgId()).eq("next_on", from).select("id");
   if (error) throw new Error(`Kunde inte flytta nästa datum: ${error.message}`);
   return Boolean(data?.length);
 }

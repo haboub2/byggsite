@@ -18,9 +18,9 @@ export async function getInvoiceByToken(token: string): Promise<InvoiceRecord | 
     const inv = row ? await getInvoice(row.id) : null;
     return inv && inv.status !== "draft" ? inv : null;
   }
-  const { data, error } = await createAdminClient().from("invoices").select("id").eq("public_token", token).neq("status", "draft").maybeSingle();
+  const { data, error } = await createAdminClient().from("invoices").select("id, org_id").eq("public_token", token).neq("status", "draft").maybeSingle();
   if (error || !data) return null;
-  return asSystem(() => getInvoice(data.id as string));
+  return asSystem(() => getInvoice(data.id as string), data.org_id as string);
 }
 
 export function publicInvoiceUrl(token: string | null): string | null {

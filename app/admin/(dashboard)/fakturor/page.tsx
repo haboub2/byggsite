@@ -36,12 +36,8 @@ export default async function InvoicesList({ searchParams }: { searchParams: Pro
             <h1>Fakturor</h1>
             <p className="admin-intro">
               Fakturor skapas från en accepterad offert eller för en kund i registret. En utfärdad faktura är låst; fel rättas med kreditfaktura. Säljaruppgifterna kommer från{" "}
-              <Link href="/admin/innehall/foretaget" className="link-quiet">
-                Företaget
-              </Link>{" "}
-              och{" "}
-              <Link href="/admin/innehall/offert" className="link-quiet">
-                Offertuppgifter
+              <Link href="/admin/installningar" className="link-quiet">
+                Inställningar
               </Link>
               .
             </p>

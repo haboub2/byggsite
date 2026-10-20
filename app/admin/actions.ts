@@ -24,7 +24,9 @@ export async function signIn(formData: FormData) {
     return { error: "Fel e-post eller lösenord." };
   }
 
-  redirect("/admin");
+  const next = String(formData.get("next") ?? "");
+  // Only back into admin, never to another site.
+  redirect(/^\/admin(\/[\w\-/]*)?$/.test(next) ? next : "/admin");
 }
 
 export async function signOut() {

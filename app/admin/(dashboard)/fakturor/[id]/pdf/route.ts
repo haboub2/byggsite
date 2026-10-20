@@ -1,12 +1,12 @@
 import type { NextRequest } from "next/server";
-import { checkAdmin } from "@/lib/admin";
+import { requireRole } from "@/lib/admin";
 import { getInvoice } from "@/lib/core/invoices/store";
 import { renderInvoicePdf, invoiceFileName } from "@/lib/pdf/render-invoice";
 
-/** The invoice as PDF: inline for preview, `?ladda-ner=1` to download. Admins only.
+/** The invoice as PDF: inline for preview, `?ladda-ner=1` to download. Any member.
  *  Issued invoices render their frozen document, so the file is always the same. */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkAdmin();
+  const check = await requireRole("read");
   if (!check.ok) return new Response("Saknar behörighet.", { status: 403 });
 
   const { id } = await params;

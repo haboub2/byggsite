@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CUSTOMER_TYPES, ORG_NR, VAT_NR, type Buyer } from "../documents/invoice";
+import { CUSTOMER_TYPES, ORG_NR, PEPPOL_ID, VAT_NR, type Buyer } from "../documents/invoice";
 
 /**
  * The customer register (customers table). What the invoice buyer block is
@@ -21,6 +21,10 @@ export const customerSchema = z.object({
   postalCode: text(10, "Postnummer"),
   city: text(60, "Ort"),
   reference: text(80, "Er referens"),
+  /** E-invoice address (BT-49), "0007:5591234567". Empty: derived from the org nr when sending Peppol. */
+  peppolId: text(60, "Peppol-id")
+    .refine((v) => v === "" || PEPPOL_ID.test(v), "Peppol-id skrivs 0007:5591234567 (schema:id).")
+    .default(""),
   defaultTermsDays: z.coerce.number().int().min(0, "Minst 0 dagar.").max(120, "Högst 120 dagar."),
   notes: text(2000, "Anteckningar"),
 });
@@ -44,6 +48,7 @@ export const emptyCustomer: CustomerInput = {
   postalCode: "",
   city: "",
   reference: "",
+  peppolId: "",
   defaultTermsDays: 30,
   notes: "",
 };
@@ -69,6 +74,7 @@ export function customerToBuyer(c: Customer): Buyer {
     email: c.email,
     phone: c.phone,
     reference: business ? c.reference || c.name : "",
+    peppolId: business ? c.peppolId : "",
   };
 }
 

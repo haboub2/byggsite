@@ -1,15 +1,17 @@
 import "server-only";
-import { getContent } from "../../content/store";
+import { getOrgSettings } from "../org/settings-store";
+import { fiscalYearFor } from "../org/settings";
 import { renderSie4 } from "../../render/sie/sie4";
 import { todayIso } from "../../quotes/schema";
-import { fiscalYearOf, monthRange, sieFileName, type Period } from "./period";
+import { monthRange, sieFileName, type Period } from "./period";
 import { listAccounts, listJournalEntries } from "./store";
 
-/** One month of the ledger as a SIE 4 file: the company from Företaget, the chart, the month's entries. */
+/** One month of the ledger as a SIE 4 file: the company and fiscal year from the organisation's settings, the chart, the month's entries. */
 export async function sieForPeriod(period: Period): Promise<{ text: string; fileName: string; entries: number }> {
   const { from, to } = monthRange(period);
-  const [{ company }, accounts, entries] = await Promise.all([getContent(), listAccounts(), listJournalEntries({ from, to })]);
-  const year = fiscalYearOf(from);
+  const [settings, accounts, entries] = await Promise.all([getOrgSettings(), listAccounts(), listJournalEntries({ from, to })]);
+  const company = settings.company;
+  const year = fiscalYearFor(from, settings.fiscalYearStart);
   const text = renderSie4({
     company: { name: company.legalName, orgNr: company.orgNr, fiscalYearStart: year.start, fiscalYearEnd: year.end },
     accounts,

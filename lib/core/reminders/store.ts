@@ -3,39 +3,34 @@ import { Resend } from "resend";
 import { getDb } from "../db";
 import { isDemo } from "../../leads";
 import { site } from "../../placeholder";
-import { getContent } from "../../content/store";
+import { getOrgSettings } from "../org/settings-store";
+import { chartFromSettings, reminderSettingsFrom } from "../org/settings";
 import { renderInvoicePdf, invoiceFileName } from "../../pdf/render-invoice";
 import { formatOre } from "../money";
 import { postReminder } from "../ledger/posting";
 import { makeEvent, type Actor } from "../events";
 import { demoJournalEntries, getInvoice, invoiceLabel, listInvoices, type InvoiceRecord } from "../invoices/store";
 import { todayIso } from "../../quotes/schema";
-import { DEFAULT_REMINDER_SETTINGS, reminderDue, reminderText, type ReminderPlan, type ReminderSettings } from "./reminders";
+import { reminderDue, reminderText, type ReminderPlan, type ReminderSettings } from "./reminders";
 
 /**
  * Sending and recording reminders. `listDueReminders` is what the cron and
  * the dashboard read; `sendReminder` mails (when mail is configured) and
  * records the reminder with its fee and interest as one transaction
- * (register_reminder in 0017). Settings come from the environment until
- * org_settings has a UI: REMINDERS_AUTO=1 lets the cron send by itself.
+ * (register_reminder in 0017). The settings (grace days, interval, fee to
+ * private persons, automatic sending) come from the organisation's
+ * org_settings; for the first organisation, until those are saved, from the
+ * environment as before (REMINDERS_AUTO, REMINDERS_GRACE_DAYS …).
  */
 
-export function reminderSettings(): ReminderSettings & { auto: boolean } {
-  const env = process.env;
-  const n = (v: string | undefined, d: number) => (v && Number.isFinite(Number(v)) ? Number(v) : d);
-  return {
-    ...DEFAULT_REMINDER_SETTINGS,
-    graceDays: n(env.REMINDERS_GRACE_DAYS, DEFAULT_REMINDER_SETTINGS.graceDays),
-    daysBetween: n(env.REMINDERS_DAYS_BETWEEN, DEFAULT_REMINDER_SETTINGS.daysBetween),
-    feeToConsumers: env.REMINDERS_FEE_TO_CONSUMERS === "1",
-    auto: env.REMINDERS_AUTO === "1",
-  };
+export async function reminderSettings(): Promise<ReminderSettings & { auto: boolean }> {
+  return reminderSettingsFrom(await getOrgSettings());
 }
 
 export type DueReminder = { invoice: InvoiceRecord; plan: ReminderPlan };
 
 export async function listDueReminders(today = todayIso()): Promise<DueReminder[]> {
-  const settings = reminderSettings();
+  const settings = await reminderSettings();
   const out: DueReminder[] = [];
   for (const invoice of await listInvoices({ tab: "overdue" })) {
     const plan = reminderDue(
@@ -56,7 +51,7 @@ async function mailReminder(inv: InvoiceRecord, plan: ReminderPlan): Promise<str
   if (!key || !from) throw new Error("Mejl är inte påslaget (RESEND_API_KEY och MAIL_FROM). Registrera påminnelsen ändå och skicka den själv.");
   const to = inv.document.buyer.email;
   if (!to) throw new Error("Kunden saknar e-postadress.");
-  const { company, quote: settings } = await getContent();
+  const settings = await getOrgSettings();
   const d = inv.document;
   const pdf = await renderInvoicePdf(inv);
   const total = plan.remainingOre + plan.feeOre + plan.interestOre;
@@ -66,8 +61,8 @@ async function mailReminder(inv: InvoiceRecord, plan: ReminderPlan): Promise<str
   await new Resend(key).emails.send({
     from,
     to,
-    replyTo: company.email,
-    subject: `Påminnelse ${plan.level}: faktura ${inv.number} från ${site.brand}`,
+    replyTo: settings.company.email || undefined,
+    subject: `Påminnelse ${plan.level}: faktura ${inv.number} från ${d.seller.name || site.brand}`,
     html: `
       <div style="font-family:sans-serif;font-size:14px;color:#14161a;line-height:1.6">
         <p style="white-space:pre-wrap">${esc(body)}</p>
@@ -79,7 +74,7 @@ async function mailReminder(inv: InvoiceRecord, plan: ReminderPlan): Promise<str
           ${d.paymentMeans.bankgiro ? `<tr><td style="padding:3px 16px 3px 0;color:#6b7280">Bankgiro</td><td>${esc(d.paymentMeans.bankgiro)}</td></tr>` : ""}
           <tr><td style="padding:3px 16px 3px 0;color:#6b7280">OCR</td><td>${esc(inv.ocr ?? "")}</td></tr>
         </table>
-        <p>Vänliga hälsningar,<br>${esc(settings.signerName || company.legalName)}<br>${esc(site.brand)} · ${esc(company.phoneDisplay)}</p>
+        <p>Vänliga hälsningar,<br>${esc(settings.company.signer || settings.company.legalName)}<br>${esc(d.seller.name || site.brand)}${settings.company.phone ? ` · ${esc(settings.company.phone)}` : ""}</p>
       </div>
     `,
     attachments: [{ filename: invoiceFileName(inv), content: pdf }],
@@ -95,11 +90,11 @@ export async function sendReminder(invoiceId: string, actor: Actor, options: { m
   const plan = reminderDue(
     { payableOre: inv.payableOre, paidOre: inv.paidOre, dueOn: inv.dueOn, issueDate: inv.document.issueDate, reminders: inv.reminders, remindedAt: inv.remindedAt, customerType: inv.document.buyer.type, status: inv.status, kind: inv.kind },
     today,
-    { ...reminderSettings(), graceDays: 0, daysBetween: 1 }
+    { ...(await reminderSettings()), graceDays: 0, daysBetween: 1 }
   );
   if (!plan) throw new Error(`${invoiceLabel(inv)} är inte förfallen eller påmindes nyss.`);
   const sentTo = options.mail ? await mailReminder(inv, plan) : "manuellt";
-  const posting = postReminder({ reminderId: crypto.randomUUID(), fee: plan.feeOre, interest: plan.interestOre, date: today, text: `Påminnelse ${plan.level} ${invoiceLabel(inv).toLowerCase()} ${inv.document.buyer.name}`, dimensions: { projectId: inv.projectId, customerId: inv.customerId } });
+  const posting = postReminder({ reminderId: crypto.randomUUID(), fee: plan.feeOre, interest: plan.interestOre, date: today, text: `Påminnelse ${plan.level} ${invoiceLabel(inv).toLowerCase()} ${inv.document.buyer.name}`, dimensions: { projectId: inv.projectId, customerId: inv.customerId } }, chartFromSettings(await getOrgSettings()));
 
   if (isDemo()) {
     const g = globalThis as unknown as { __binaafyInvoices?: { invoices: { id: string; reminders: number; reminded_at: string | null; updated_at: string }[]; events: unknown[] } };

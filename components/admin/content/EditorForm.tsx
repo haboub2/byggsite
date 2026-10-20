@@ -19,6 +19,7 @@ export function EditorForm<T>({
   value,
   initial,
   lastSaved,
+  savedNote = "Sajten är uppdaterad.",
   children,
 }: {
   /** A content block (company, pricing…) saved by saveContentBlock… */
@@ -31,6 +32,8 @@ export function EditorForm<T>({
   initial: T;
   /** Latest saved version, so the bar can say when (it survives the remount after a save). */
   lastSaved?: LastSaved;
+  /** What a save means, after "Sparat." (content blocks: the site is updated). */
+  savedNote?: string;
   children: React.ReactNode;
 }) {
   const [state, action, pending] = useActionState<ContentActionState, FormData>(customAction ?? saveContentBlock, {});
@@ -71,9 +74,9 @@ export function EditorForm<T>({
                 : dirty
                   ? "Osparade ändringar"
                   : lastSavedAt
-                    ? "Sparat. Sajten är uppdaterad."
+                    ? `Sparat. ${savedNote}`
                     : lastSaved
-                      ? `Senast sparat ${formatWhen(lastSaved.at)}${lastSaved.by ? ` av ${lastSaved.by}` : ""}. Sajten är uppdaterad.`
+                      ? `Senast sparat ${formatWhen(lastSaved.at)}${lastSaved.by ? ` av ${lastSaved.by}` : ""}. ${savedNote}`
                       : "Inga osparade ändringar"}
           </span>
           <button type="submit" className="btn btn-primary" disabled={pending || !dirty}>

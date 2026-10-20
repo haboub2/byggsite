@@ -30,6 +30,15 @@ export const EVENT_TYPES = [
   "export.sie",
   "api_key.created",
   "api_key.revoked",
+  "invoice.einvoiced",
+  "organization.created",
+  "settings.updated",
+  "member.invited",
+  "member.joined",
+  "member.updated",
+  "member.removed",
+  "webhook.created",
+  "webhook.removed",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -49,7 +58,7 @@ export const WEBHOOK_EVENT_TYPES = [
 ] as const satisfies readonly EventType[];
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
-export type AggregateType = "customer" | "invoice" | "payment" | "rot_claim" | "export" | "api_key";
+export type AggregateType = "customer" | "invoice" | "payment" | "rot_claim" | "export" | "api_key" | "organization" | "webhook";
 
 export type Actor =
   | { kind: "user"; id: string; name: string }
@@ -103,9 +112,23 @@ export const EVENT_LABEL: Record<EventType, { text: string; customer: boolean }>
   "export.sie": { text: "SIE-fil exporterad", customer: false },
   "api_key.created": { text: "API-nyckel skapad", customer: false },
   "api_key.revoked": { text: "API-nyckel återkallad", customer: false },
+  "invoice.einvoiced": { text: "E-faktura (Peppol) skapad", customer: false },
+  "organization.created": { text: "Organisation skapad", customer: false },
+  "settings.updated": { text: "Inställningar ändrade", customer: false },
+  "member.invited": { text: "Medlem inbjuden", customer: false },
+  "member.joined": { text: "Medlem anslöt", customer: false },
+  "member.updated": { text: "Medlems roll ändrad", customer: false },
+  "member.removed": { text: "Medlem borttagen", customer: false },
+  "webhook.created": { text: "Webhook registrerad", customer: false },
+  "webhook.removed": { text: "Webhook borttagen", customer: false },
 };
+
+/** The label for any stored event type, also one this version does not know. */
+export function eventLabel(type: string): { text: string; customer: boolean } {
+  return (EVENT_LABEL as Record<string, { text: string; customer: boolean }>)[type] ?? { text: type, customer: false };
+}
 
 /** The events a customer may see in the portal, oldest first. */
 export function customerTimeline(events: CoreEvent[]): CoreEvent[] {
-  return events.filter((e) => EVENT_LABEL[e.type].customer).sort((a, b) => a.at.localeCompare(b.at));
+  return events.filter((e) => eventLabel(e.type).customer).sort((a, b) => a.at.localeCompare(b.at));
 }

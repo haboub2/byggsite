@@ -1773,3 +1773,14 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .doc-portal-photos li[data-figure] img { aspect-ratio: 4 / 3; }
 .doc-portal-photos span { display: block; margin-top: 4px; font-size: 13.5px; color: var(--ink-2); }
 .portal-phase-doc { display: inline-block; margin-top: 6px; font-size: 13.5px; font-weight: 500; color: var(--orange-text); }
+
+/* Organisation switcher in the admin bar (fas 5) */
+.org-switch select { background: var(--dark-2); color: var(--on-dark); border: 1px solid var(--line-dark-strong); border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px; max-width: 220px; }
+.org-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.org-table th, .org-table td { text-align: left; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.org-table th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); font-weight: 600; }
+.org-inline { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.org-inline select, .org-inline input { font: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: #fff; }
+.org-link { display: block; word-break: break-all; padding: 10px 12px; background: var(--bg-deep); border-radius: 6px; font-family: ui-monospace, monospace; font-size: 13px; margin-top: 8px; }
+.org-secret { font-family: ui-monospace, monospace; font-size: 14px; padding: 12px; background: #fff8e1; border: 1px solid #f0d58a; border-radius: 6px; word-break: break-all; }
+@media (max-width: 640px) { .org-table th:nth-child(3), .org-table td:nth-child(3) { display: none; } }

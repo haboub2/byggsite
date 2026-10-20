@@ -2,6 +2,7 @@ import "server-only";
 import { createClient as createSessionClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { isDemo } from "../leads";
+import { currentOrgId, readOrgId } from "../core/org/current";
 import { quoteTotals } from "./math";
 import {
   QUOTE_STATUSES,
@@ -113,6 +114,9 @@ export async function listQuotes(f: QuoteFilters = {}): Promise<Quote[]> {
   }
   const supabase = await createSessionClient();
   let query = supabase.from("quotes").select("*").order("updated_at", { ascending: false }).limit(500);
+  // The quotes of the organisation the user works in (0014 gave quotes org_id).
+  const org = await readOrgId();
+  if (org) query = query.eq("org_id", org);
   if (f.status) query = query.eq("status", f.status);
   if (f.division) query = query.eq("division", f.division);
   if (f.q) {
@@ -184,7 +188,7 @@ export async function createQuote(data: QuoteData, createdBy: string | null): Pr
   const supabase = await createSessionClient();
   const { data: inserted, error } = await supabase
     .from("quotes")
-    .insert({ ...summary(data), created_by: createdBy })
+    .insert({ ...summary(data), org_id: await currentOrgId(), created_by: createdBy })
     .select("id")
     .single();
   if (error) throw new Error(`Kunde inte skapa offerten: ${error.message}`);

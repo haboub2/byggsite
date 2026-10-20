@@ -45,6 +45,8 @@ const oreInt = z.number().int("Belopp anges i hela öre.").safe();
 export const ORG_NR = /^\d{6}-?\d{4}$/;
 /** Swedish VAT number: SE + 12 digits (org nr + 01). */
 export const VAT_NR = /^SE\d{12}$/;
+/** Peppol participant id: ISO 6523 scheme code, colon, identifier (0007:5591234567, 0088:7300010000001). */
+export const PEPPOL_ID = /^\d{4}:[A-Za-z0-9.\-]{1,50}$/;
 /** Personal number, 10 or 12 digits with optional dash. */
 export const PERSONAL_NUMBER = /^(\d{2})?\d{6}-?\d{4}$/;
 
@@ -78,6 +80,10 @@ export const buyerSchema = partySchema.extend({
   customerId: z.string().uuid().nullable().default(null),
   /** BT-10 buyer reference: the person or order the buyer wants printed. */
   reference: text(80, "Er referens").default(""),
+  /** BT-49 buyer electronic address for Peppol, "<scheme>:<id>", e.g. 0007:5591234567. Empty: derived from orgNr. */
+  peppolId: text(60, "Peppol-id")
+    .refine((v) => v === "" || PEPPOL_ID.test(v), "Peppol-id skrivs 0007:5591234567 (schema:id).")
+    .optional(),
 });
 export type Buyer = z.infer<typeof buyerSchema>;
 

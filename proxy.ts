@@ -1,10 +1,18 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { canOpenAdminPath, isOpenAdminPath, isRole, type Role } from "./lib/core/org/roles";
+
+// Same name as ORG_COOKIE in lib/core/org/current.ts (server-only, so not imported here).
+const ORG_COOKIE = "org";
 
 /**
  * Gate the two signed-in areas:
- *   /admin/*        — admins only (a session AND a row in `admins`); a signed-in
- *                     customer is sent to the portal, nobody else to /admin/login.
+ *   /admin/*        — members of an organisation (memberships). Accountants and
+ *                     read-only members only reach Ekonomi, fakturor, kunder and
+ *                     ROT (lib/core/org/roles.ts); a signed-in user without a
+ *                     membership is sent to the portal, except to accept an
+ *                     invitation or start an organisation. Nobody signed out
+ *                     gets past /admin/login.
  *   /mitt-projekt/* — any signed-in user; RLS then limits customers to their
  *                     own projects. Admins may look too.
  * Without a Supabase project configured, development runs on sample data
@@ -48,13 +56,22 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(new URL(login, request.url));
+    // An invitation link shows its own sign-in for the invited address.
+    if (pathname.startsWith("/admin/inbjudan/")) return response;
+    const to = new URL(login, request.url);
+    if (isAdmin && pathname !== "/admin") to.searchParams.set("next", pathname);
+    return NextResponse.redirect(to);
   }
 
-  if (isAdmin) {
-    // Customers are ordinary users too; only the admins table tells them apart.
-    const { data: admin } = await supabase.rpc("is_admin");
-    if (!admin) return NextResponse.redirect(new URL("/mitt-projekt", request.url));
+  if (isAdmin && !isOpenAdminPath(pathname)) {
+    // Customers are ordinary users too; only memberships tell them apart.
+    // The cookie picks among the user's own memberships, never beyond them.
+    const { data } = await supabase.from("memberships").select("org_id, role").eq("user_id", user.id).order("created_at");
+    const rows = (data ?? []) as { org_id: string; role: string }[];
+    const wanted = request.cookies.get(ORG_COOKIE)?.value;
+    const current = rows.find((r) => r.org_id === wanted) ?? rows[0];
+    if (!current || !isRole(current.role)) return NextResponse.redirect(new URL("/mitt-projekt", request.url));
+    if (!canOpenAdminPath(current.role as Role, pathname)) return NextResponse.redirect(new URL("/admin/ekonomi", request.url));
   }
 
   return response;
