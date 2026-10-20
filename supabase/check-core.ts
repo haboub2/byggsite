@@ -36,7 +36,7 @@ const TABLES = [
   "accounts", "journal_entries", "journal_lines", "period_locks", "rot_buyers", "rot_claims", "rot_claim_items", "api_keys",
   "idempotency_keys", "webhook_endpoints", "webhook_deliveries",
 ];
-const FUNCTIONS = ["issue_invoice", "register_payment", "mark_invoice_sent", "mark_invoice_credited", "register_rot_payout", "reject_rot_claim", "register_reminder", "mark_bank_transaction", "can_write_org_or_system", "next_document_number", "ocr_for", "default_org"];
+const FUNCTIONS = ["issue_invoice", "register_payment", "mark_invoice_sent", "mark_invoice_credited", "register_rot_payout", "reject_rot_claim", "register_reminder", "mark_bank_transaction", "can_write_org_or_system", "next_document_number", "ocr_for", "default_org", "create_organization", "accept_invitation"];
 
 let problems = 0;
 const bad = (msg: string) => {
@@ -73,7 +73,16 @@ async function main() {
     register_reminder: { p_invoice: nil, p_fee: 0, p_interest: 0, p_sent_to: "", p_posting: j, p_actor: j },
     mark_bank_transaction: { p_tx: nil, p_status: "ignored", p_payment: null },
     next_document_number: { p_org: nil, p_series: "ZZ", p_year: 0 },
+    // 0021: without a user both refuse ("Logga in …"), which proves they exist.
+    create_organization: { p_name: "Prov", p_org_nr: "" },
+    accept_invitation: { p_token: "0" },
   };
+  // 0021: read functions that answer an empty list for an unknown id.
+  for (const [f, args] of [["org_members", { p_org: nil }], ["invitation_info", { p_token: "0" }]] as const) {
+    const { error } = await db.rpc(f, args);
+    if (error) bad(`${f}: ${error.message.slice(0, 120)} (kör 0021)`);
+    else ok(`${f} finns`);
+  }
   for (const f of FUNCTIONS.filter((x) => x !== "ocr_for" && x !== "default_org" && x !== "can_write_org_or_system")) {
     const { error } = await db.rpc(f, calls[f]);
     if (!error) bad(`${f}: svarade utan fel på ett påhittat id, oväntat`);
