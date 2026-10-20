@@ -1,10 +1,9 @@
 import { Document, Font, Image, Link, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { ReactNode } from "react";
-import type { Company } from "../content/schema";
 import type { ChangeOrder, PortalProject, ProjectDocument, ProjectPhase, TimelineShift } from "../portal/schema";
 import { DOCUMENT_KIND_LABEL, formatKr } from "../portal/schema";
+import type { QuoteCompany } from "../quotes/profile";
 import { formatDays } from "../workdays";
-import { LOGO_DATA_URI } from "./logo";
 import { JAKARTA_BOLD, JAKARTA_ITALIC, JAKARTA_MEDIUM, JAKARTA_REGULAR } from "./fonts";
 import type { PdfPhoto } from "./photos";
 
@@ -55,6 +54,8 @@ const s = StyleSheet.create({
 
   head: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, paddingBottom: 9, borderBottomWidth: 0.6, borderBottomColor: LINE },
   headLogo: { width: 76, height: 24, objectFit: "contain", objectPosition: "left top" },
+  // Without a logo (an organisation other than the site's): the company name.
+  headName: { fontSize: 11, lineHeight: 1.2, fontWeight: 700, paddingTop: 6, maxWidth: 260 },
   headRight: { alignItems: "flex-end", paddingTop: 8 },
   headText: { fontSize: 8, color: INK3 },
   foot: { position: "absolute", bottom: 26, left: X, right: X, flexDirection: "row", justifyContent: "space-between", paddingTop: 8, borderTopWidth: 0.6, borderTopColor: LINE },
@@ -125,6 +126,7 @@ const s = StyleSheet.create({
   coverState: { marginTop: 18, fontSize: 8.5, lineHeight: 1.45, color: INK3 },
   coverFoot: { position: "absolute", left: X, right: X, bottom: 34, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
   coverLogo: { width: 104, height: 34, objectFit: "contain", objectPosition: "left bottom" },
+  coverName: { fontSize: 13, lineHeight: 1.2, fontWeight: 700, maxWidth: 220 },
   coverContact: { fontSize: 8, lineHeight: 1.5, color: INK3, textAlign: "right" },
 });
 
@@ -149,7 +151,10 @@ export type ReportChapter = {
 
 export type ReportData = {
   project: PortalProject;
-  company: Company;
+  /** The sender: the project's organisation (lib/quotes/profile.ts). */
+  company: QuoteCompany;
+  /** Data URI of the logo, or null to print the company name. */
+  logo: string | null;
   /** Locked: the final version handed to the customer. */
   final: boolean;
   /** "2026-10-19": the day the PDF shows as its date. */
@@ -262,8 +267,12 @@ function CoverPage({ data }: { data: ReportData }) {
         </Text>
       </View>
       <View style={s.coverFoot}>
-        {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt */}
-        <Image src={LOGO_DATA_URI} style={s.coverLogo} />
+        {data.logo ? (
+          // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt
+          <Image src={data.logo} style={s.coverLogo} />
+        ) : (
+          <Text style={s.coverName}>{clean(company.legalName)}</Text>
+        )}
         <View>
           <Text style={s.coverContact}>{clean([company.legalName, address].filter(Boolean).join(" · "))}</Text>
           <Text style={s.coverContact}>{clean([company.phoneDisplay, company.email].filter(Boolean).join(" · "))}</Text>
@@ -673,8 +682,12 @@ export function ReportPdf({
       <CoverPage data={data} />
       <Page size="A4" style={s.page}>
         <View style={s.head} fixed>
-          {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt */}
-          <Image src={LOGO_DATA_URI} style={s.headLogo} />
+          {data.logo ? (
+            // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt
+            <Image src={data.logo} style={s.headLogo} />
+          ) : (
+            <Text style={s.headName}>{clean(company.legalName)}</Text>
+          )}
           <View style={s.headRight}>
             {/* The cover is not counted. */}
             <Text style={s.headText} render={({ pageNumber, totalPages }) => `Projektdokumentation  ·  Sida ${pageNumber - 1} av ${totalPages - 1}`} />

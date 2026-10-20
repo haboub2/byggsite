@@ -46,7 +46,7 @@ import { changeOrderPhaseName, computeTimeline, movePlannedEnd } from "./timelin
  * which computes them (lib/portal/timeline.ts) and stores the result.
  */
 
-type ProjectRow = Omit<PortalProject, "status" | "starts_on" | "ends_on" | "planned_ends_on" | "works_saturdays" | "final_summary" | "archived_at" | "report_hash"> & {
+type ProjectRow = Omit<PortalProject, "org_id" | "status" | "starts_on" | "ends_on" | "planned_ends_on" | "works_saturdays" | "final_summary" | "archived_at" | "report_hash"> & {
   status: string;
   starts_on: string | null;
   ends_on: string | null;
@@ -55,6 +55,7 @@ type ProjectRow = Omit<PortalProject, "status" | "starts_on" | "ends_on" | "plan
   final_summary?: string | null;
   archived_at?: string | null;
   report_hash?: string | null;
+  org_id?: string | null;
 };
 type UpdateRow = Omit<ProjectUpdate, "photos">;
 
@@ -68,6 +69,7 @@ const fromProjectRow = (r: ProjectRow): PortalProject => ({
   final_summary: r.final_summary ?? "",
   archived_at: r.archived_at ?? null,
   report_hash: r.report_hash ?? null,
+  org_id: r.org_id ?? null,
 });
 
 // numeric columns may arrive as strings; never let one through as text.

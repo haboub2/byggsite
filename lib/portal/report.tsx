@@ -2,9 +2,9 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { after } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { getContent } from "../content/store";
 import { APPENDIX_PARTS, firstDayAnchor, firstRowAnchor, ReportPdf, type PageMap, type ReportChapter, type ReportData, type ReportPhoto } from "../pdf/ReportPdf";
 import { compressReportPhoto } from "../pdf/photos";
+import { getQuoteProfile } from "../quotes/profile-store";
 import { createZip } from "../zip";
 import { documentationTree, plannedPhaseDates, reportFingerprintSource, safeFileName, zipPhotoPaths } from "./documentation";
 import { readPortalFile, removePortalFile, resolvePortalFile, writePortalFile } from "./files";
@@ -79,8 +79,10 @@ async function reportData(bundle: ProjectBundle, opts: { final: boolean; asOf: s
   const inReport = tree.flatMap((c) => c.days.flatMap((d) => d.photos));
   const last = inReport.slice().sort((a, b) => a.day.localeCompare(b.day) || a.created_at.localeCompare(b.created_at) || a.sort - b.sort).pop();
 
-  const [{ company }, images, cover] = await Promise.all([
-    getContent(),
+  // The sender is the project's organisation, read as the system: the report
+  // is also rendered for portal customers and in the background.
+  const [{ company, logo }, images, cover] = await Promise.all([
+    getQuoteProfile(project.org_id),
     pool(inReport, 6, async (p: ProjectPhoto) => {
       const raw = await readPortalFile(p.path).catch(() => null);
       return [p.id, raw ? await compressReportPhoto(raw, p.caption.trim() ? "figure" : "grid") : null] as const;
@@ -110,6 +112,7 @@ async function reportData(bundle: ProjectBundle, opts: { final: boolean; asOf: s
   return {
     project,
     company,
+    logo,
     final: opts.final,
     asOf: opts.asOf,
     cover,

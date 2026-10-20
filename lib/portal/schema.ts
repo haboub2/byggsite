@@ -143,6 +143,8 @@ export type ChangeOrderForm = z.infer<typeof changeOrderFormSchema>;
 
 export type PortalProject = ProjectForm & {
   id: string;
+  /** The organisation the project belongs to; null only in demo mode. */
+  org_id: string | null;
   /** "" until a start date is set. Phase dates and ends_on follow from it. */
   starts_on: string;
   /** The computed end, "" without a start date. */

@@ -163,8 +163,9 @@ export type ReportInput = {
   shifts: TimelineShift[];
 };
 
-/** Bump when the report's layout changes, so every cached PDF is rendered again. */
-export const REPORT_VERSION = 1;
+/** Bump when the report's layout changes, so every cached PDF is rendered again.
+ *  2: the sender is the project's organisation, no longer always the site's. */
+export const REPORT_VERSION = 2;
 
 /**
  * A stable text of the report's content; its hash names the cached PDF. Only
@@ -175,7 +176,7 @@ export function reportFingerprintSource(input: ReportInput): string {
   const { project: p } = input;
   return JSON.stringify([
     REPORT_VERSION,
-    [p.id, p.title, p.address, p.customer_name, p.starts_on, p.ends_on, p.planned_ends_on, p.works_saturdays, p.final_summary, p.quote_id, p.archived_at],
+    [p.id, p.org_id, p.title, p.address, p.customer_name, p.starts_on, p.ends_on, p.planned_ends_on, p.works_saturdays, p.final_summary, p.quote_id, p.archived_at],
     input.phases.map((x) => [x.id, x.name, x.sort, x.starts_on, x.ends_on, x.duration_days, x.change_order_id, x.done_at, x.summary]),
     input.updates.map((x) => [x.id, x.body, x.phase_id, x.day, x.created_at]),
     input.photos.map((x) => [x.id, x.path, x.phase_id, x.day, x.caption, x.in_report, x.sort]),
