@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { checkAdmin } from "@/lib/admin";
 import { getQuote } from "@/lib/quotes/store";
 import { renderQuotePdf, quoteFileName } from "@/lib/pdf/render";
+import { getQuoteProfile } from "@/lib/quotes/profile-store";
 
 /** The quote as PDF: inline for preview, `?ladda-ner=1` to download. Admins only. */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -12,9 +13,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const quote = await getQuote(id);
   if (!quote) return new Response("Offerten finns inte.", { status: 404 });
 
-  const pdf = await renderQuotePdf(quote);
+  const profile = await getQuoteProfile(quote.orgId);
+  const pdf = await renderQuotePdf(quote, profile);
   const download = request.nextUrl.searchParams.has("ladda-ner");
-  const name = quoteFileName(quote);
+  const name = quoteFileName(quote, profile.brand);
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",

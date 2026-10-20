@@ -6,7 +6,8 @@ import type { Access } from "@/lib/core/org/roles";
 
 type NavLink = { href: string; label: string; access: Access; match?: (p: string) => boolean };
 
-// What each role sees; the proxy and every action check the same again.
+// What each role sees; the proxy and every action check the same again. The
+// website's content ("site") only shows in the organisation that owns the site.
 const LINKS: NavLink[] = [
   { href: "/admin/ekonomi", label: "Ekonomi", access: "read" },
   { href: "/admin", label: "Förfrågningar", access: "write", match: (p: string) => p === "/admin" || p.startsWith("/admin/leads") },
@@ -18,14 +19,14 @@ const LINKS: NavLink[] = [
   { href: "/admin/installningar", label: "Inställningar", access: "admin" },
   { href: "/admin/organisation", label: "Organisation", access: "read" },
   { href: "/admin/api", label: "API", access: "admin" },
-  { href: "/admin/innehall/foretaget", label: "Företaget", access: "admin" },
-  { href: "/admin/innehall/priser", label: "Priser", access: "admin" },
-  { href: "/admin/innehall/garanti", label: "Garanti", access: "admin" },
-  { href: "/admin/innehall/projekt", label: "Projekt", access: "admin" },
-  { href: "/admin/innehall/case", label: "Case", access: "admin" },
-  { href: "/admin/innehall/team", label: "Team", access: "admin" },
-  { href: "/admin/innehall/omdomen", label: "Omdömen", access: "admin" },
-  { href: "/admin/innehall/offert", label: "Offertuppgifter", access: "admin" },
+  { href: "/admin/innehall/foretaget", label: "Företaget", access: "site" },
+  { href: "/admin/innehall/priser", label: "Priser", access: "site" },
+  { href: "/admin/innehall/garanti", label: "Garanti", access: "site" },
+  { href: "/admin/innehall/projekt", label: "Projekt", access: "site" },
+  { href: "/admin/innehall/case", label: "Case", access: "site" },
+  { href: "/admin/innehall/team", label: "Team", access: "site" },
+  { href: "/admin/innehall/omdomen", label: "Omdömen", access: "site" },
+  { href: "/admin/innehall/offert", label: "Offertuppgifter", access: "site" },
 ];
 
 export default function AdminNav({ access }: { access: Access[] }) {

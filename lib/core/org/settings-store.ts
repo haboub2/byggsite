@@ -3,6 +3,7 @@ import { getDb } from "../db";
 import { isDemo } from "../../leads";
 import { getContent } from "../../content/store";
 import { currentOrgId } from "./current";
+import { isSiteOrg } from "./site";
 import type { ChartOfAccounts } from "../ledger/posting";
 import { chartFromSettings, overrideAccounts, resolveOrgSettings, settingsFromContent, orgSettingsSchema, type OrgSettings } from "./settings";
 import type { Actor } from "../events";
@@ -32,13 +33,11 @@ export async function getOrgSettingsRecord(orgId?: string): Promise<StoredSettin
     return { orgId: org, settings: resolveOrgSettings(data, () => fallback), saved: !!data, updatedAt: null };
   }
   const supabase = await getDb();
-  const [{ data, error }, { data: first }] = await Promise.all([
+  const [{ data, error }, isFirst] = await Promise.all([
     supabase.from("org_settings").select("data, updated_at").eq("org_id", org).maybeSingle(),
-    // default_org() is security definer: the oldest organisation of all, not of those the user can see.
-    supabase.rpc("default_org"),
+    isSiteOrg(org),
   ]);
   if (error) throw new Error(`Kunde inte läsa inställningarna: ${error.message}`);
-  const isFirst = first === org;
   const stored = data?.data ?? {};
   return {
     orgId: org,

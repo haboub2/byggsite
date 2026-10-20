@@ -4,6 +4,7 @@ import { projectIdFromKey, resolvePortalFile } from "@/lib/portal/files";
 import { getProject } from "@/lib/portal/store";
 import { getQuoteForPortal } from "@/lib/quotes/store";
 import { renderQuotePdf, quoteFileName } from "@/lib/pdf/render";
+import { getQuoteProfile } from "@/lib/quotes/profile-store";
 import { getInvoice } from "@/lib/core/invoices/store";
 import { renderInvoicePdf, invoiceFileName } from "@/lib/pdf/render-invoice";
 import { fetchSwishQrPng } from "@/lib/core/payments/swish";
@@ -30,11 +31,12 @@ export async function GET(request: NextRequest) {
     if (!project || project.quote_id !== quoteId) return new Response("Dokumentet finns inte.", { status: 404 });
     const quote = await getQuoteForPortal(quoteId).catch(() => null);
     if (!quote) return new Response("Offerten finns inte längre.", { status: 404 });
-    const pdf = await renderQuotePdf(quote);
+    const profile = await getQuoteProfile(quote.orgId);
+    const pdf = await renderQuotePdf(quote, profile);
     return new Response(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${quoteFileName(quote)}"`,
+        "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${quoteFileName(quote, profile.brand)}"`,
         "Cache-Control": "private, no-store",
       },
     });

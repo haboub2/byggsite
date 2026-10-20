@@ -8,7 +8,7 @@ export default async function QuoteSettingsPage() {
     <ContentPage
       contentKey="quote"
       title="Offertuppgifter"
-      intro="Det som står på varje offert utöver företagsnamn, adress och org.nr (som hämtas från Företaget): betalningsuppgifter, F-skatt, undertecknare och standardtexterna för villkoren. Nya offerter fylls i med texterna här; i en enskild offert går allt att ändra."
+      intro="Standardtexterna för villkoren per sida, giltighetstid, försäkring och undertecknarens titel. Säljaren, betalningsuppgifterna, F-skatt, betalningsvillkoren och undertecknaren hämtas från Inställningar; tills de sparats där gäller Företaget och fälten här. Nya offerter fylls i med texterna här; i en enskild offert går allt att ändra."
       shownOn={[{ label: "Offerterna", href: "/admin/offerter" }]}
       data={quote}
     >

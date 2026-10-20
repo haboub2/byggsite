@@ -42,7 +42,7 @@ export default async function AdminDashboardLayout({
   }
 
   const orgs = (await listMyMemberships()).map((m) => ({ id: m.orgId, name: m.name }));
-  const access = (["read", "write", "admin", "owner"] as Access[]).filter((a) => hasAccess(check.role, a));
+  const access = (["read", "write", "admin", "owner", "site"] as Access[]).filter((a) => hasAccess(check.role, a, check.site));
 
   return (
     <div className="admin">

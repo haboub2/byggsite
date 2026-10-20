@@ -1,11 +1,11 @@
 import { Document, Font, Page, Text, View, Image, StyleSheet, Svg, Path } from "@react-pdf/renderer";
 import type { ReactNode } from "react";
 import type { Style } from "@react-pdf/stylesheet";
-import type { Company, QuoteSettings } from "../content/schema";
+import type { QuoteSettings } from "../content/schema";
+import type { QuoteCompany as Company } from "../quotes/profile";
 import { displayUnitPrice, groupItems, priceSummary, quoteTotals, sek, qty, showsInclVat, validUntil, formatDate, ROT_RATE, ROT_CAP } from "../quotes/math";
 import { ITEM_KIND_LABEL, type ItemKind, type Quote } from "../quotes/schema";
 import { BANNER_LINE } from "../quotes/cover";
-import { LOGO_DATA_URI } from "./logo";
 import { JAKARTA_BOLD, JAKARTA_ITALIC, JAKARTA_MEDIUM, JAKARTA_REGULAR } from "./fonts";
 import type { PdfPhoto } from "./photos";
 
@@ -61,6 +61,8 @@ const s = StyleSheet.create({
   // absolutely positioned fixed elements.
   head: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, paddingBottom: 9, borderBottomWidth: 0.6, borderBottomColor: LINE },
   headLogo: { width: 76, height: 24, objectFit: "contain", objectPosition: "left top" },
+  // Without a logo (an organisation other than the site's): the company name.
+  headName: { fontSize: 11, lineHeight: 1.2, fontWeight: 700, paddingTop: 6, maxWidth: 260 },
   headRight: { alignItems: "flex-end", paddingTop: 8 },
   headText: { fontSize: 8, color: INK3 },
   foot: { position: "absolute", bottom: 26, left: X, right: X, flexDirection: "row", justifyContent: "space-between", paddingTop: 8, borderTopWidth: 0.6, borderTopColor: LINE },
@@ -170,6 +172,7 @@ const s = StyleSheet.create({
   coverFactV: { fontSize: 12.5, lineHeight: 1.2, fontWeight: 700, marginTop: 4 },
   coverFoot: { position: "absolute", left: X, right: X, bottom: 34, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
   coverLogo: { width: 104, height: 34, objectFit: "contain", objectPosition: "left bottom" },
+  coverName: { fontSize: 13, lineHeight: 1.2, fontWeight: 700, maxWidth: 220 },
   coverContact: { fontSize: 8, lineHeight: 1.5, color: INK3, textAlign: "right" },
 });
 
@@ -263,7 +266,7 @@ const addressOf = (street: string, postalCode: string, city: string) =>
 
 /** Page 1: a full-bleed photo over the title, who the quote is for and the
  *  three figures the customer looks for first. */
-function CoverPage({ quote, company, photo }: { quote: Quote; company: Company; photo: PdfPhoto | null }) {
+function CoverPage({ quote, company, logo, photo }: { quote: Quote; company: Company; logo: string | null; photo: PdfPhoto | null }) {
   const d = quote.data;
   const c = d.customer;
   const p = priceSummary(d);
@@ -301,7 +304,7 @@ function CoverPage({ quote, company, photo }: { quote: Quote; company: Company; 
       </View>
       <View style={s.coverFoot}>
         {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt */}
-        <Image src={LOGO_DATA_URI} style={s.coverLogo} />
+        {logo ? <Image src={logo} style={s.coverLogo} /> : <Text style={s.coverName}>{clean(company.legalName)}</Text>}
         <View>
           <Text style={s.coverContact}>{clean(`${company.legalName} · ${addressOf(company.street, company.postalCode, company.city)}`)}</Text>
           <Text style={s.coverContact}>{clean([company.phoneDisplay, company.email].filter(Boolean).join(" · "))}</Text>
@@ -645,11 +648,14 @@ export function QuotePdf({
   quote,
   company,
   settings,
+  logo,
   photos = { cover: null, banner: null, withCover: false },
 }: {
   quote: Quote;
   company: Company;
   settings: QuoteSettings;
+  /** Data URI of the logo, or null to print the company name (lib/quotes/profile.ts). */
+  logo: string | null;
   photos?: QuotePhotos;
 }) {
   const d = quote.data;
@@ -660,11 +666,11 @@ export function QuotePdf({
 
   return (
     <Document title={`Offert ${number} – ${company.legalName}`} author={company.legalName} subject={d.title} language="sv-SE">
-      {photos.withCover ? <CoverPage quote={quote} company={company} photo={photos.cover} /> : null}
+      {photos.withCover ? <CoverPage quote={quote} company={company} logo={logo} photo={photos.cover} /> : null}
       <Page size="A4" style={s.page}>
         <View style={s.head} fixed>
           {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt */}
-          <Image src={LOGO_DATA_URI} style={s.headLogo} />
+          {logo ? <Image src={logo} style={s.headLogo} /> : <Text style={s.headName}>{clean(company.legalName)}</Text>}
           <View style={s.headRight}>
             <Text style={s.headText} render={({ pageNumber, totalPages }) => `Offert ${number}  ·  Sida ${pageNumber - skip} av ${totalPages - skip}`} />
           </View>

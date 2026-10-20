@@ -31,7 +31,7 @@ faktura 1 kom ut utan anmärkningar, med köparens 0007:5566778899. Faktura
 | Migration 0021 | `supabase/migrations/0021_organizations.sql`: `create_organization` (security definer: org, owner, serier, `seed_org_accounts`, inställningar), `invitation_info`/`accept_invitation` (inloggad med den inbjudna adressen, 14 dagar, aldrig owner via inbjudan), `org_members` (e-post ur auth.users), triggern `memberships_guard` (alltid en owner, bara owners rör owners), `register_payment`/`mark_invoice_sent`/`mark_invoice_credited` med `can_write_org_or_system` (API:t kör med service role), webhook-kön som trigger på `events`, `webhook_deliveries.failed_at` |
 | RLS-prov | `supabase/tests/0021_rls.sql`: två organisationer och en konsult i en transaktion som rullas tillbaka; körd i PGlite mot 0001–0021 |
 | Inställningar | `lib/core/org/settings.ts` (zod: företaget på fakturan, betalning, villkor per kundtyp, dröjsmålsräntetext, påminnelser, räkenskapsår, kontoplansöverstyrningar; testad), `lib/core/org/settings-store.ts` (första organisationen faller tillbaka på Företaget, Offertuppgifter och miljövariablerna tills raden sparas; andra organisationer aldrig), `/admin/installningar` med `components/admin/org/OrgSettingsEditor.tsx` på `EditorForm` |
-| Läsare av inställningarna | `lib/core/invoices/seller.ts`, `lib/core/reminders/store.ts`, `lib/core/invoices/send.ts`, `lib/pdf/render-invoice.tsx`, `lib/core/ledger/sie-export.ts` (räkenskapsåret i `#RAR`), konteringen via `currentChart()`. Offerterna läser fortfarande Företaget och Offertuppgifter |
+| Läsare av inställningarna | `lib/core/invoices/seller.ts`, `lib/core/reminders/store.ts`, `lib/core/invoices/send.ts`, `lib/pdf/render-invoice.tsx`, `lib/core/ledger/sie-export.ts` (räkenskapsåret i `#RAR`), konteringen via `currentChart()`, offerterna via `lib/quotes/profile.ts` (se 0022 nedan) |
 | Sessionens organisation | `lib/core/org/current.ts` (cookien `org` bland användarens medlemskap, annars första; `currentOrgId()` för skrivning, `readOrgId()` för läsning, null för portalkunder), `lib/core/db.ts` (`asSystem(fn, orgId)`). Alla kärnstores filtrerar och skriver med org_id: kunder, fakturor, betalplaner, ROT, bankfil, verifikationer, kontoplan, låsta perioder, återkommande, projektkostnader, händelser, samt projekt- och offertlistorna |
 | Roller | `lib/core/org/roles.ts` (testad), `lib/admin.ts` (`requireRole("read" \| "write" \| "admin")`; `checkAdmin()` = staff eller högre), `proxy.ts` (medlemskap i stället för `is_admin()`, läsare når bara Ekonomi, Bokföringen, fakturor, kunder, ROT, Organisation), menyn per roll |
 | Organisation och onboarding | `/admin/organisation` (medlemmar, roller, inbjudningar), `/admin/ny-organisation`, `/admin/inbjudan/[token]` (inloggningslänk till den inbjudna adressen via `/mitt-projekt/callback?next=`), `lib/core/org/members.ts`, `app/admin/org-actions.ts`, växlaren `components/admin/OrgSwitcher.tsx` |
@@ -78,11 +78,10 @@ Kvar efter fas 5:
   med callback.
 - **Affär och juridik:** prissättning, personuppgiftsbiträdesavtal per
   organisation, produktnamnet.
-- **Offerterna och webbplatsen** är fortfarande Binaafys: offert-PDF:en läser
-  Företaget och Offertuppgifter. `content_blocks` och förfrågningarna är
-  inte per organisation, och `is_admin()` (owner/admin i någon organisation)
-  styr dem fortfarande. En andra organisation ska inte släppas in i
-  webbplatsens innehåll innan det är löst.
+- ~~**Offerterna och webbplatsen**~~ Gjort med 0022, se nedan.
+  **Projektrapporten** (`lib/portal/report.tsx`, `lib/pdf/ReportPdf.tsx`)
+  läser fortfarande Företaget och Binaafys logotyp, också för en andra
+  organisations projekt.
 - **Brutet räkenskapsår:** SIE-filen följer inställningen, men
   verifikationsserien V numreras per kalenderår i databasen.
 - **Rutt- och anropsgränser per nyckel**, loggning av varje API-anrop i
@@ -98,6 +97,43 @@ Kvar efter fas 5:
   drift.
 
 Kontroll: 251 tester gröna (`npm test`), lint och typkontroll rena.
+
+### Offerterna och webbplatsen per organisation (0022)
+
+Migration 0022 är körd i Binaafys projekt och provad i webbläsaren med en
+användare som är owner i både Binaafy och Testbolag. I Testbolag syns inga
+innehållslänkar i menyn, och `/admin/innehall/*` skickas till Ekonomi.
+Förfrågningar och offerter är tomma, CSV-exporten har bara rubrikraden,
+och Binaafys förfrågan, offert och offert-PDF ger 404. Uppladdning till
+galleriet ger 403. En provoffert i Testbolag (1010, borttagen) fick
+Testbolags namn i stället för logotypen, Testbolags säljare, bankgiro och
+undertecknare, och filnamnet `Offert-1010-Testbolag-AB.pdf`. I Binaafy är
+innehållet, förfrågningarna och offert-PDF:en som förut.
+
+| Del | Fil |
+|---|---|
+| Migration 0022 | `supabase/migrations/0022_site_org.sql`: `is_site_admin()` = owner/admin i `default_org()`; `content_blocks`, `content_history`, `services`, `projects`, `cases`, `gallery_images`, `admins` och bucketen `gallery` byter `is_admin()` mot den; `leads` läses och uppdateras med `can_write_org(org_id)`; `is_admin()` omdefinieras till `is_site_admin()` |
+| RLS-prov | `supabase/tests/0022_rls.sql`: owner i en andra organisation, personal och owner i webbplatsens organisation, utloggad; körd i PGlite mot 0001–0022 (och fäller den gamla `is_admin()`) |
+| Webbplatsens organisation | `lib/core/org/site.ts` (`siteOrgId()`, `isSiteOrg()`), rollen `"site"` i `lib/core/org/roles.ts` (testad), `requireRole("site")` och `check.site` i `lib/admin.ts`, `proxy.ts` (`/admin/innehall` bara för webbplatsens owner/admin), menyn, `app/admin/(dashboard)/innehall/layout.tsx`, innehålls-, case-, projekt- och uppladdningsåtgärderna |
+| Offertens avsändare | `lib/quotes/profile.ts` (testad) och `profile-store.ts`: säljare, betalning, F-skatt, momsnummer och undertecknare ur `getOrgSettings(offertens org)`, läst som system så att portalen också får dem; texterna per sida ur Offertuppgifter bara för webbplatsens organisation, andra börjar tomt; logotyp och varumärke bara för webbplatsens organisation. Används av `lib/pdf/render.tsx`, `lib/quotes/send.ts`, PDF-routerna och `createQuoteFromTemplate` (betalningsvillkor per kundtyp) |
+| Per organisation | `lib/quotes/store.ts` (enskild offert, ändring, borttagning, mallar), `lib/leads.ts` (lista, räknare, förfrågan, uppdatering), Bokföringens SIE-filnamn |
+
+Beslut:
+
+- **Webbplatsen har ingen org_id; den tillhör `default_org()`.** Bara den
+  organisationens owner/admin skriver i den, och formulären på sajten lägger
+  förfrågningarna där. En andra sajt kräver org_id på innehållet, vilket inte
+  behövs nu.
+- **Rättigheter i databasen följer användaren, inte cookien.** Den som är
+  owner i båda organisationerna får fortfarande skriva webbplatsens innehåll
+  enligt RLS när växlaren står på Testbolag; det är appen (proxy,
+  `requireRole("site")`, filtren på `org_id`) som håller isär dem. En
+  användare som bara är med i Testbolag stoppas av RLS också.
+- **Förfrågningar är för personal och uppåt**, som offerterna; läsrollerna
+  gäller ekonomin.
+
+Kontroll: 255 tester gröna (`npm test`), lint (utan `.claude/worktrees`) och
+typkontroll rena.
 
 ## Läge 2026-10-20: fas 0–4 kodade och körda mot Supabase
 

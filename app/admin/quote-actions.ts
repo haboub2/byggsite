@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkAdmin } from "@/lib/admin";
-import { getContent } from "@/lib/content/store";
+import { getOrgSettings } from "@/lib/core/org/settings-store";
+import { termsDaysFor } from "@/lib/core/org/settings";
+import { getQuoteProfile } from "@/lib/quotes/profile-store";
 import { getLead } from "@/lib/leads";
 import { services } from "@/lib/placeholder";
 import { QUOTE_STATUSES, quoteSchema, newItemId, todayIso, type QuoteData, type QuoteStatus } from "@/lib/quotes/schema";
@@ -39,7 +41,8 @@ export async function createQuoteFromTemplate(formData: FormData): Promise<void>
 
   const key = String(formData.get("template") ?? "");
   const leadId = String(formData.get("lead") ?? "") || null;
-  const { quote: settings } = await getContent();
+  // The organisation's own default texts and terms (lib/quotes/profile.ts).
+  const [{ settings }, org] = await Promise.all([getQuoteProfile(), getOrgSettings()]);
   const today = todayIso();
 
   let data: QuoteData | null = null;
@@ -73,6 +76,9 @@ export async function createQuoteFromTemplate(formData: FormData): Promise<void>
       };
     }
   }
+
+  // Payment terms as the organisation's settings give them for this customer type.
+  if (!key.startsWith("saved:")) data = { ...data, paymentDays: termsDaysFor(org, data.customer.type) };
 
   const id = await createQuote(data, check.email);
   revalidatePath(LIST);

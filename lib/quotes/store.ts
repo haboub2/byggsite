@@ -17,11 +17,20 @@ import {
 /**
  * Quotes and saved templates: the `quotes` and `quote_templates` tables
  * (supabase/migrations/0008_quotes.sql), read and written with the admin's
- * session so RLS decides. Demo mode keeps everything in memory.
+ * session so RLS decides. Every read and write is also limited to the
+ * session's organisation (0014), so a member of two organisations only sees
+ * the one they work in. Demo mode keeps everything in memory.
  */
+
+/** Limit a query to the session's organisation (readOrgId()), when there is one. */
+function inOrg<Q extends { eq(column: string, value: string): Q }>(query: Q, org: string | null): Q {
+  return org ? query.eq("org_id", org) : query;
+}
 
 type Row = {
   id: string;
+  /** Not in demo rows. */
+  org_id?: string;
   number: number;
   status: string;
   division: string;
@@ -38,6 +47,7 @@ type Row = {
 
 const fromRow = (r: Row): Quote => ({
   id: r.id,
+  orgId: r.org_id ?? null,
   number: r.number,
   status: QUOTE_STATUSES.includes(r.status as QuoteStatus) ? (r.status as QuoteStatus) : "draft",
   created_at: r.created_at,
@@ -113,10 +123,7 @@ export async function listQuotes(f: QuoteFilters = {}): Promise<Quote[]> {
       .map(fromRow);
   }
   const supabase = await createSessionClient();
-  let query = supabase.from("quotes").select("*").order("updated_at", { ascending: false }).limit(500);
-  // The quotes of the organisation the user works in (0014 gave quotes org_id).
-  const org = await readOrgId();
-  if (org) query = query.eq("org_id", org);
+  let query = inOrg(supabase.from("quotes").select("*").order("updated_at", { ascending: false }).limit(500), await readOrgId());
   if (f.status) query = query.eq("status", f.status);
   if (f.division) query = query.eq("division", f.division);
   if (f.q) {
@@ -146,7 +153,7 @@ export async function getQuote(id: string): Promise<Quote | null> {
     return r ? fromRow(r) : null;
   }
   const supabase = await createSessionClient();
-  const { data, error } = await supabase.from("quotes").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await inOrg(supabase.from("quotes").select("*").eq("id", id), await readOrgId()).maybeSingle();
   if (error) throw new Error(`Kunde inte hämta offerten: ${error.message}`);
   return data ? fromRow(data as Row) : null;
 }
@@ -165,7 +172,7 @@ export async function getQuoteForPortal(id: string): Promise<Quote | null> {
 export async function listQuotesForLead(leadId: string): Promise<Quote[]> {
   if (isDemo()) return demoQuotes().filter((r) => r.lead_id === leadId).map(fromRow);
   const supabase = await createSessionClient();
-  const { data } = await supabase.from("quotes").select("*").eq("lead_id", leadId).order("created_at", { ascending: false });
+  const { data } = await inOrg(supabase.from("quotes").select("*").eq("lead_id", leadId), await readOrgId()).order("created_at", { ascending: false });
   return ((data ?? []) as Row[]).map(fromRow);
 }
 
@@ -203,7 +210,7 @@ export async function updateQuote(id: string, data: QuoteData): Promise<void> {
     return;
   }
   const supabase = await createSessionClient();
-  const { data: rows, error } = await supabase.from("quotes").update(summary(data)).eq("id", id).select("id");
+  const { data: rows, error } = await inOrg(supabase.from("quotes").update(summary(data)).eq("id", id), await readOrgId()).select("id");
   if (error) throw new Error(`Kunde inte spara: ${error.message}`);
   if (!rows?.length) throw new Error("Kunde inte spara: offerten finns inte eller saknar behörighet.");
 }
@@ -216,7 +223,7 @@ export async function setQuoteStatus(id: string, status: QuoteStatus): Promise<v
     return;
   }
   const supabase = await createSessionClient();
-  const { error } = await supabase.from("quotes").update(patch).eq("id", id);
+  const { error } = await inOrg(supabase.from("quotes").update(patch).eq("id", id), await readOrgId());
   if (error) throw new Error(`Kunde inte spara status: ${error.message}`);
 }
 
@@ -226,7 +233,7 @@ export async function removeQuote(id: string): Promise<void> {
     return;
   }
   const supabase = await createSessionClient();
-  const { error } = await supabase.from("quotes").delete().eq("id", id);
+  const { error } = await inOrg(supabase.from("quotes").delete().eq("id", id), await readOrgId());
   if (error) throw new Error(`Kunde inte ta bort: ${error.message}`);
 }
 
@@ -235,7 +242,7 @@ export async function removeQuote(id: string): Promise<void> {
 export async function listSavedTemplates(division?: QuoteDivision): Promise<QuoteTemplateRecord[]> {
   if (isDemo()) return demoTemplates().filter((t) => !division || t.division === division).map((t) => ({ ...t, data: withQuoteDefaults(t.data) }));
   const supabase = await createSessionClient();
-  let query = supabase.from("quote_templates").select("*").order("name");
+  let query = inOrg(supabase.from("quote_templates").select("*").order("name"), await readOrgId());
   if (division) query = query.eq("division", division);
   const { data, error } = await query;
   if (error) throw new Error(`Kunde inte hämta mallar: ${error.message}`);
@@ -253,7 +260,7 @@ export async function saveTemplate(name: string, data: QuoteData): Promise<void>
     return;
   }
   const supabase = await createSessionClient();
-  const { error } = await supabase.from("quote_templates").insert(record);
+  const { error } = await supabase.from("quote_templates").insert({ ...record, org_id: await currentOrgId() });
   if (error) throw new Error(`Kunde inte spara mallen: ${error.message}`);
 }
 
@@ -263,6 +270,6 @@ export async function removeTemplate(id: string): Promise<void> {
     return;
   }
   const supabase = await createSessionClient();
-  const { error } = await supabase.from("quote_templates").delete().eq("id", id);
+  const { error } = await inOrg(supabase.from("quote_templates").delete().eq("id", id), await readOrgId());
   if (error) throw new Error(`Kunde inte ta bort mallen: ${error.message}`);
 }

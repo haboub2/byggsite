@@ -4,7 +4,7 @@ import { formatDateTime } from "@/lib/admin-format";
 import { formatOre } from "@/lib/core/money";
 import { accountTotals, isPeriod, isPeriodLocked, lockProblem, monthRange, previousMonth, recentPeriods, sieFileName, vatSummary, VAT_BOX_LABEL, type VatBoxes } from "@/lib/core/ledger/period";
 import { listAccounts, listJournalEntries, listPeriodLocks } from "@/lib/core/ledger/store";
-import { getContent } from "@/lib/content/store";
+import { getOrgSettings } from "@/lib/core/org/settings-store";
 import { todayIso } from "@/lib/quotes/schema";
 
 const kr = (ore: number) => formatOre(ore, { decimals: 2, currency: true });
@@ -25,7 +25,7 @@ export default async function ExportPage({ searchParams }: { searchParams: Promi
   const current = today.slice(0, 7);
   const period = isPeriod(q.period) ? q.period : previousMonth(current);
   const { from, to } = monthRange(period);
-  const [entries, accounts, locks, { company }] = await Promise.all([listJournalEntries({ from, to }), listAccounts(), listPeriodLocks(), getContent()]);
+  const [entries, accounts, locks, { company }] = await Promise.all([listJournalEntries({ from, to }), listAccounts(), listPeriodLocks(), getOrgSettings()]);
   const names = new Map(accounts.map((a) => [a.number, a.name]));
   const totals = accountTotals(entries);
   const vat = vatSummary(entries);

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { checkAdmin } from "@/lib/admin";
+import { requireRole } from "@/lib/admin";
 import { projectSchema } from "@/lib/project-schema";
 import { listAllProjects, removeProject, storeProject } from "@/lib/projects";
 import { services } from "@/lib/placeholder";
@@ -10,7 +10,7 @@ import type { ContentActionState } from "./content-actions";
 
 /** Create or update a project. `original` is the slug being edited, empty for a new one. */
 export async function saveProject(_prev: ContentActionState, formData: FormData): Promise<ContentActionState> {
-  const check = await checkAdmin();
+  const check = await requireRole("site");
   if (!check.ok) return { error: "Du saknar behörighet. Logga in igen." };
 
   let data: unknown;
@@ -46,7 +46,7 @@ export async function saveProject(_prev: ContentActionState, formData: FormData)
 }
 
 export async function deleteProject(formData: FormData): Promise<void> {
-  const check = await checkAdmin();
+  const check = await requireRole("site");
   if (!check.ok) return;
   const slug = String(formData.get("slug") ?? "");
   if (slug) await removeProject(slug);
@@ -56,7 +56,7 @@ export async function deleteProject(formData: FormData): Promise<void> {
 
 /** Move a project one step up or down in the order shown on the site. */
 export async function moveProject(formData: FormData): Promise<void> {
-  const check = await checkAdmin();
+  const check = await requireRole("site");
   if (!check.ok) return;
   const slug = String(formData.get("slug") ?? "");
   const dir = formData.get("dir") === "up" ? -1 : 1;

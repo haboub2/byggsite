@@ -1,7 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
-import { site } from "../placeholder";
-import { getContent } from "../content/store";
+import { getQuoteProfile } from "./profile-store";
 import { renderQuotePdf, quoteFileName } from "../pdf/render";
 import { quoteTotals, kr, validUntil, formatDate } from "./math";
 import type { Quote } from "./schema";
@@ -21,10 +20,12 @@ export async function sendQuoteMail(quote: Quote, message: string): Promise<void
   const to = quote.data.customer.email;
   if (!to) throw new Error("Kunden saknar e-postadress.");
 
-  const { company, quote: settings } = await getContent();
+  // The quote's own organisation: seller, signer and reply address.
+  const profile = await getQuoteProfile(quote.orgId);
+  const { company, settings, brand } = profile;
   const t = quoteTotals(quote.data);
   const d = quote.data;
-  const pdf = await renderQuotePdf(quote);
+  const pdf = await renderQuotePdf(quote, profile);
   const firstName = d.customer.name.split(" ")[0];
   const signer = settings.signerName || company.legalName;
   const side = d.division === "bygg" ? "Bygg" : "Software";
@@ -36,8 +37,8 @@ export async function sendQuoteMail(quote: Quote, message: string): Promise<void
   await new Resend(key).emails.send({
     from,
     to,
-    replyTo: company.email,
-    subject: `Offert ${quote.number} från ${site.brand}: ${d.title}`,
+    replyTo: company.email || undefined,
+    subject: `Offert ${quote.number} från ${brand}: ${d.title}`,
     html: `
       <div style="font-family:sans-serif;font-size:14px;color:#14161a;line-height:1.6">
         <p style="white-space:pre-wrap">${esc(body)}</p>
@@ -46,9 +47,9 @@ export async function sendQuoteMail(quote: Quote, message: string): Promise<void
           <tr><td style="padding:3px 16px 3px 0;color:#6b7280">${t.rot ? "Att betala efter ROT" : "Att betala"}</td><td><strong>${esc(kr(t.pay))}</strong></td></tr>
           <tr><td style="padding:3px 16px 3px 0;color:#6b7280">Gäller till</td><td>${esc(formatDate(validUntil(d.date, d.validDays)))}</td></tr>
         </table>
-        <p>Vänliga hälsningar,<br>${esc(signer)}<br>${esc(site.brand)} ${side} · ${esc(company.phoneDisplay)}</p>
+        <p>Vänliga hälsningar,<br>${esc(signer)}<br>${esc([`${brand} ${side}`, company.phoneDisplay].filter(Boolean).join(" · "))}</p>
       </div>
     `,
-    attachments: [{ filename: quoteFileName(quote), content: pdf }],
+    attachments: [{ filename: quoteFileName(quote, brand), content: pdf }],
   });
 }

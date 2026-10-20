@@ -2,10 +2,21 @@ import "server-only";
 import { createClient } from "./supabase/server";
 import { isDemo } from "./leads";
 import { currentMembership } from "./core/org/current";
+import { isSiteOrg } from "./core/org/site";
 import { hasAccess, type Access, type Role } from "./core/org/roles";
 
 export type AdminCheck =
-  | { ok: true; email: string | null; demo: boolean; userId: string | null; role: Role; orgId: string; orgName: string }
+  | {
+      ok: true;
+      email: string | null;
+      demo: boolean;
+      userId: string | null;
+      role: Role;
+      orgId: string;
+      orgName: string;
+      /** The organisation owns the website (lib/core/org/site.ts). */
+      site: boolean;
+    }
   | { ok: false; reason: "signed-out" | "not-admin" | "forbidden"; email?: string | null; role?: Role };
 
 /**
@@ -18,12 +29,13 @@ export type AdminCheck =
  *   requireRole("read")   any member: accountant and readonly read Ekonomi, Bokföringen, fakturor
  *   requireRole("write")  owner, admin, staff: everything that creates or changes
  *   requireRole("admin")  owner, admin: settings, members, API keys
+ *   requireRole("site")   owner, admin in the organisation that owns the website: its content
  *
  * "not-admin" means the user has no membership at all; "forbidden" that the
  * role is too low for this.
  */
 export async function requireRole(access: Access): Promise<AdminCheck> {
-  if (isDemo()) return { ok: true, email: "demo@localhost", demo: true, userId: null, role: "owner", orgId: "demo", orgName: "Demo AB" };
+  if (isDemo()) return { ok: true, email: "demo@localhost", demo: true, userId: null, role: "owner", orgId: "demo", orgName: "Demo AB", site: true };
 
   const supabase = await createClient();
   const {
@@ -33,9 +45,10 @@ export async function requireRole(access: Access): Promise<AdminCheck> {
 
   const membership = await currentMembership();
   if (!membership) return { ok: false, reason: "not-admin", email: user.email };
-  if (!hasAccess(membership.role, access)) return { ok: false, reason: "forbidden", email: user.email, role: membership.role };
+  const site = await isSiteOrg(membership.orgId);
+  if (!hasAccess(membership.role, access, site)) return { ok: false, reason: "forbidden", email: user.email, role: membership.role };
 
-  return { ok: true, email: user.email ?? null, demo: false, userId: user.id, role: membership.role, orgId: membership.orgId, orgName: membership.name };
+  return { ok: true, email: user.email ?? null, demo: false, userId: user.id, role: membership.role, orgId: membership.orgId, orgName: membership.name, site };
 }
 
 /** The check every writing server action makes: staff or higher in the current organisation. */

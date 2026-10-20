@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { checkAdmin } from "@/lib/admin";
+import { requireRole } from "@/lib/admin";
 import { caseSchema } from "@/lib/case-schema";
 import { listAllCases, removeCase, storeCase } from "@/lib/cases";
 import type { ContentActionState } from "./content-actions";
 
 /** Create or update a case. `original` is the slug being edited, empty for a new one. */
 export async function saveCase(_prev: ContentActionState, formData: FormData): Promise<ContentActionState> {
-  const check = await checkAdmin();
+  const check = await requireRole("site");
   if (!check.ok) return { error: "Du saknar behörighet. Logga in igen." };
 
   let data: unknown;
@@ -42,7 +42,7 @@ export async function saveCase(_prev: ContentActionState, formData: FormData): P
 }
 
 export async function deleteCase(formData: FormData): Promise<void> {
-  const check = await checkAdmin();
+  const check = await requireRole("site");
   if (!check.ok) return;
   const slug = String(formData.get("slug") ?? "");
   if (slug) await removeCase(slug);
@@ -52,7 +52,7 @@ export async function deleteCase(formData: FormData): Promise<void> {
 
 /** Move a case one step up or down in the order shown on the site. */
 export async function moveCase(formData: FormData): Promise<void> {
-  const check = await checkAdmin();
+  const check = await requireRole("site");
   if (!check.ok) return;
   const slug = String(formData.get("slug") ?? "");
   const dir = formData.get("dir") === "up" ? -1 : 1;

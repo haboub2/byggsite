@@ -28,6 +28,21 @@ test("staff opens everything; anyone opens invitations and a new organisation", 
   assert.equal(canOpenAdminPath(null, "/admin/ekonomi"), false);
 });
 
+test("the website's content only for owner/admin in the organisation that owns the site", () => {
+  assert.equal(hasAccess("owner", "site"), false);
+  assert.equal(hasAccess("owner", "site", true), true);
+  assert.equal(hasAccess("admin", "site", true), true);
+  assert.equal(hasAccess("staff", "site", true), false);
+  for (const p of ["/admin/innehall/foretaget", "/admin/innehall/offert", "/admin/innehall/projekt/ny"]) {
+    assert.equal(canOpenAdminPath("owner", p), false, p);
+    assert.equal(canOpenAdminPath("owner", p, true), true, p);
+    assert.equal(canOpenAdminPath("staff", p, true), false, p);
+  }
+  // Everything else is the same in every organisation.
+  assert.equal(canOpenAdminPath("owner", "/admin/offerter"), true);
+  assert.equal(canOpenAdminPath("staff", "/admin"), true);
+});
+
 test("only owners make owners; staff assigns nothing", () => {
   assert.ok(assignableRoles("owner").includes("owner"));
   assert.ok(!assignableRoles("admin").includes("owner"));

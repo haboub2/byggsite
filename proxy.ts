@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { canOpenAdminPath, isOpenAdminPath, isRole, type Role } from "./lib/core/org/roles";
+import { canOpenAdminPath, isOpenAdminPath, isRole, isSiteAdminPath, type Role } from "./lib/core/org/roles";
 
 // Same name as ORG_COOKIE in lib/core/org/current.ts (server-only, so not imported here).
 const ORG_COOKIE = "org";
@@ -11,8 +11,10 @@ const ORG_COOKIE = "org";
  *                     read-only members only reach Ekonomi, fakturor, kunder and
  *                     ROT (lib/core/org/roles.ts); a signed-in user without a
  *                     membership is sent to the portal, except to accept an
- *                     invitation or start an organisation. Nobody signed out
- *                     gets past /admin/login.
+ *                     invitation or start an organisation. The website's
+ *                     content (/admin/innehall) is only for owners and admins
+ *                     of the organisation that owns the site (default_org()).
+ *                     Nobody signed out gets past /admin/login.
  *   /mitt-projekt/* — any signed-in user; RLS then limits customers to their
  *                     own projects. Admins may look too.
  * Without a Supabase project configured, development runs on sample data
@@ -71,7 +73,9 @@ export async function proxy(request: NextRequest) {
     const wanted = request.cookies.get(ORG_COOKIE)?.value;
     const current = rows.find((r) => r.org_id === wanted) ?? rows[0];
     if (!current || !isRole(current.role)) return NextResponse.redirect(new URL("/mitt-projekt", request.url));
-    if (!canOpenAdminPath(current.role as Role, pathname)) return NextResponse.redirect(new URL("/admin/ekonomi", request.url));
+    // default_org() is security definer: the site's organisation, whichever the user can see.
+    const siteOrg = isSiteAdminPath(pathname) && (await supabase.rpc("default_org")).data === current.org_id;
+    if (!canOpenAdminPath(current.role as Role, pathname, siteOrg)) return NextResponse.redirect(new URL("/admin/ekonomi", request.url));
   }
 
   return response;

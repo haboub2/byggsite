@@ -1,11 +1,16 @@
 import "server-only";
 import { createClient } from "./supabase/server";
 import { isSupabaseConfigured } from "./supabase/config";
+import { readOrgId } from "./core/org/current";
 
 /**
  * Leads inbox data access. Reads and writes go through the signed-in admin's
- * session, so the RLS policies in supabase/migrations/0002_rls.sql decide
- * what is allowed — no service-role key involved.
+ * session, so RLS decides what is allowed (staff in the lead's organisation,
+ * supabase/migrations/0022_site_org.sql) — no service-role key involved. Each
+ * query is also limited to the organisation the session works in, so a
+ * member of two organisations only sees the current one's leads. The
+ * website's forms file every lead under the site's organisation
+ * (default_org(), lib/lead-handler.ts).
  *
  * Demo mode: in local development without a Supabase project, the inbox runs
  * on in-memory sample data so it can be tried out. Never in production
@@ -119,7 +124,9 @@ export async function listLeads(
   }
 
   const supabase = await createClient();
+  const org = await readOrgId();
   let query = supabase.from("leads").select("*", { count: "exact" }).order("created_at", { ascending: false });
+  if (org) query = query.eq("org_id", org);
   if (f.status) query = query.eq("status", f.status);
   if (f.division) query = query.eq("division", f.division);
   if (f.kind) query = query.eq("kind", f.kind);
@@ -142,9 +149,11 @@ export async function countByStatus(f: Omit<LeadFilters, "status">): Promise<Rec
     return counts;
   }
   const supabase = await createClient();
+  const org = await readOrgId();
   await Promise.all(
     STATUSES.map(async (s) => {
       let q = supabase.from("leads").select("id", { count: "exact", head: true }).eq("status", s);
+      if (org) q = q.eq("org_id", org);
       if (f.division) q = q.eq("division", f.division);
       if (f.kind) q = q.eq("kind", f.kind);
       const search = f.q ? searchFilter(f.q) : null;
@@ -160,7 +169,10 @@ export async function countByStatus(f: Omit<LeadFilters, "status">): Promise<Rec
 export async function getLead(id: string): Promise<Lead | null> {
   if (isDemo()) return demoStore().find((l) => l.id === id) ?? null;
   const supabase = await createClient();
-  const { data, error } = await supabase.from("leads").select("*").eq("id", id).maybeSingle();
+  const org = await readOrgId();
+  let query = supabase.from("leads").select("*").eq("id", id);
+  if (org) query = query.eq("org_id", org);
+  const { data, error } = await query.maybeSingle();
   if (error) throw new Error(`Kunde inte hämta förfrågan: ${error.message}`);
   return (data as Lead | null) ?? null;
 }
@@ -172,8 +184,11 @@ export async function updateLead(id: string, patch: { status?: LeadStatus; note?
     return;
   }
   const supabase = await createClient();
-  // RLS: only admins may update. `select` makes a silently-blocked update visible.
-  const { data, error } = await supabase.from("leads").update(patch).eq("id", id).select("id");
+  const org = await readOrgId();
+  // RLS: only staff in the lead's organisation may update. `select` makes a silently-blocked update visible.
+  let query = supabase.from("leads").update(patch).eq("id", id);
+  if (org) query = query.eq("org_id", org);
+  const { data, error } = await query.select("id");
   if (error) throw new Error(`Kunde inte spara: ${error.message}`);
   if (!data?.length) throw new Error("Kunde inte spara: förfrågan finns inte eller saknar behörighet.");
 }

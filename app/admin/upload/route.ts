@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { checkAdmin } from "@/lib/admin";
+import { checkAdmin, requireRole } from "@/lib/admin";
 import { uploadImage, UPLOAD_FOLDERS, type UploadFolder } from "@/lib/storage";
 import { uploadPortalFile } from "@/lib/portal/files";
 import { getProject } from "@/lib/portal/store";
@@ -8,7 +8,8 @@ import { getProject } from "@/lib/portal/store";
  *  compressed photos; this checks rights, type and size, then stores them.
  *
  *  Two destinations:
- *   - folder=projects|team|cases  → the public gallery bucket (site photos)
+ *   - folder=projects|team|cases  → the public gallery bucket (site photos),
+ *     only for the website's own organisation (requireRole("site"))
  *   - project=<id>&kind=image|document → the private portal bucket */
 export async function POST(request: NextRequest) {
   const check = await checkAdmin();
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const folder = form?.get("folder");
+    if (!(await requireRole("site")).ok) return Response.json({ error: "Du saknar behörighet." }, { status: 403 });
     if (!UPLOAD_FOLDERS.includes(folder as UploadFolder)) return Response.json({ error: "Ingen bild skickades." }, { status: 400 });
     return Response.json(await uploadImage(folder as UploadFolder, file));
   } catch (err) {

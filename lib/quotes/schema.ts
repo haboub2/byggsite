@@ -112,6 +112,8 @@ export type QuoteData = z.infer<typeof quoteSchema>;
 /** A stored quote: the document plus what the list needs. */
 export type Quote = {
   id: string;
+  /** The organisation the quote belongs to (0014); null in demo mode. */
+  orgId: string | null;
   number: number;
   status: QuoteStatus;
   created_at: string;

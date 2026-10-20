@@ -23,9 +23,9 @@ export default async function QuotesList({
             <span className="eyebrow">Admin</span>
             <h1>Offerter</h1>
             <p className="admin-intro">
-              Skriv offerten här, ladda ner den som PDF eller mejla den direkt till kunden. Företagsuppgifterna på
-              PDF:en kommer från <Link href="/admin/innehall/foretaget" className="link-quiet">Företaget</Link> och{" "}
-              <Link href="/admin/innehall/offert" className="link-quiet">Offertuppgifter</Link>.
+              Skriv offerten här, ladda ner den som PDF eller mejla den direkt till kunden. Säljaren, betalningen,
+              villkoren och undertecknaren på PDF:en kommer från{" "}
+              <Link href="/admin/installningar" className="link-quiet">Inställningar</Link>.
             </p>
           </div>
           <Link href="/admin/offerter/ny" className="btn btn-primary">
