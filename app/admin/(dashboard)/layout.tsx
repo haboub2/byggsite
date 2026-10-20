@@ -5,8 +5,8 @@ import { requireRole } from "@/lib/admin";
 import { listMyMemberships } from "@/lib/core/org/current";
 import { hasAccess, ROLE_LABEL, type Access } from "@/lib/core/org/roles";
 import { signOut } from "@/app/admin/actions";
-import AdminNav from "@/components/admin/AdminNav";
-import OrgSwitcher from "@/components/admin/OrgSwitcher";
+import AdminTopBar from "@/components/admin/AdminTopBar";
+import { loadNavCounts } from "@/lib/admin/today";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -44,33 +44,20 @@ export default async function AdminDashboardLayout({
   const orgs = (await listMyMemberships()).map((m) => ({ id: m.orgId, name: m.name }));
   const access = (["read", "write", "admin", "owner", "site"] as Access[]).filter((a) => hasAccess(check.role, a, check.site));
 
+  const counts = await loadNavCounts(access);
+
   return (
     <div className="admin">
-      <header className="admin-bar">
-        <div className="container">
-          <Link href="/admin" aria-label="Förfrågningar">
-            <img src="/brand/binaafy-light.svg" alt="Binaafy admin" width={95} height={22} />
-          </Link>
-          <div className="admin-bar-right">
-            {orgs.length > 1 ? (
-              <OrgSwitcher current={check.orgId} orgs={orgs} />
-            ) : (
-              <span className="admin-user">{check.orgName}</span>
-            )}
-            <span className="admin-user">
-              {check.email} · {ROLE_LABEL[check.role].toLowerCase()}
-            </span>
-            {!check.demo && (
-              <form action={signOut}>
-                <button type="submit" className="btn btn-ghost">
-                  Logga ut
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      </header>
-      <AdminNav access={access} />
+      <AdminTopBar
+        access={access}
+        counts={counts}
+        orgName={check.orgName}
+        orgId={check.orgId}
+        orgs={orgs}
+        email={check.email}
+        roleLabel={ROLE_LABEL[check.role].toLowerCase()}
+        demo={check.demo}
+      />
       {check.demo && (
         <p className="admin-demo">
           Demoläge: exempeldata, bara på din egen dator. Ändringar sparas inte på riktigt förrän Supabase är kopplat

@@ -14,7 +14,7 @@ function matches(p: PortalProject, q: string): boolean {
   const hay = [p.customer_name, p.address, p.title].join(" ").toLocaleLowerCase("sv");
   return q
     .toLocaleLowerCase("sv")
-    .split(/s+/)
+    .split(/\s+/)
     .filter(Boolean)
     .every((w) => hay.includes(w));
 }
@@ -28,8 +28,10 @@ export default async function PortalProjectsList({
   const archive = params.arkiv === "1";
   const status = !archive && PROJECT_STATUSES.includes(params.status as ProjectStatus) ? (params.status as ProjectStatus) : undefined;
   const error = typeof params.fel === "string" ? params.fel : undefined;
+  // ?vy=tavla shows the open projects as a board, one column per status.
+  const board = !archive && !status && params.vy === "tavla";
   const search = typeof params.q === "string" ? params.q.trim().slice(0, 80) : "";
-  const year = typeof params.ar === "string" && /^d{4}$/.test(params.ar) ? params.ar : "";
+  const year = typeof params.ar === "string" && /^\d{4}$/.test(params.ar) ? params.ar : "";
   const [all, overdue] = await Promise.all([listProjects(), listOverduePhases()]);
   const archived = all.filter((p) => p.archived_at);
   const years = [...new Set(archived.map(yearOf))].sort().reverse();
@@ -131,6 +133,54 @@ export default async function PortalProjectsList({
           </Link>
         </nav>
 
+        {!archive && !status && (
+          <nav className="lp-view" aria-label="Visning">
+            <Link href="/admin/projekt" aria-current={!board ? "page" : undefined}>
+              Lista
+            </Link>
+            <Link href="/admin/projekt?vy=tavla" aria-current={board ? "page" : undefined}>
+              Tavla
+            </Link>
+          </nav>
+        )}
+
+        {board && shown.length > 0 && (
+          <div className="pb">
+            {PROJECT_STATUSES.map((s) => {
+              const col = shown.filter((p) => p.status === s && !p.archived_at);
+              return (
+                <section key={s} className="pb-col" aria-labelledby={`pb-${s}`}>
+                  <h2 id={`pb-${s}`}>
+                    {PROJECT_STATUS_LABEL[s]} <span>{col.length}</span>
+                  </h2>
+                  {col.length === 0 && <p className="inbox-meta">Inga projekt.</p>}
+                  {col.map((p) => {
+                    const h = health.get(p.id);
+                    const late = nudges.some((ph) => ph.project_id === p.id);
+                    return (
+                      <article key={p.id} className={late ? "pb-card pb-card--late" : "pb-card"}>
+                        <Link href={`/admin/projekt/${p.id}`} className="pb-card-main">
+                          <strong>{p.title}</strong>
+                          <span className="inbox-meta">{[p.customer_name, p.address].filter(Boolean).join(" · ")}</span>
+                          <span className="inbox-meta">{formatRange(p.starts_on, p.ends_on) || "Inga datum"}</span>
+                          {late && <span className="doc-warn">En fas borde vara klar</span>}
+                          {h?.missing.length ? <span className="doc-warn">{missingPhotosLine(h.missing)}</span> : null}
+                        </Link>
+                        {s === "active" && (
+                          <div className="pb-card-actions">
+                            <Link href={`/admin/projekt/${p.id}#ny-uppdatering`}>Foto och rad</Link>
+                            <Link href={`/admin/projekt/${p.id}#tidplan`}>Tidplan</Link>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </section>
+              );
+            })}
+          </div>
+        )}
+
         {archive && (
           <form className="doc-archive-search" action="/admin/projekt" role="search">
             <input type="hidden" name="arkiv" value="1" />
@@ -161,7 +211,7 @@ export default async function PortalProjectsList({
                   : "Inga projekt med den statusen."}
             </p>
           </div>
-        ) : (
+        ) : board ? null : (
           <ul className="inbox-list">
             {shown.map((p) => {
               const moved = p.planned_ends_on && p.ends_on && p.planned_ends_on !== p.ends_on;

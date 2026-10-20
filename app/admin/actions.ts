@@ -26,7 +26,7 @@ export async function signIn(formData: FormData) {
 
   const next = String(formData.get("next") ?? "");
   // Only back into admin, never to another site.
-  redirect(/^\/admin(\/[\w\-/]*)?$/.test(next) ? next : "/admin");
+  redirect(/^\/admin(\/[\w\-/]*)?$/.test(next) && next !== "/admin" ? next : "/admin/idag");
 }
 
 export async function signOut() {
