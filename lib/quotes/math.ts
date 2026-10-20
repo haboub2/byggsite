@@ -1,4 +1,4 @@
-import { calculateRot, ROT_RATE, ROT_CAP, type RotResult } from "../rot";
+import { calculateRot, ROT_RATE, ROT_CAP, RUT_RATE, RUT_CAP, type DeductionKind, type RotResult } from "../rot";
 import { ITEM_KINDS, ITEM_KIND_LABEL, type ItemKind, type QuoteData, type QuoteItem } from "./schema";
 
 /**
@@ -17,8 +17,9 @@ export type QuoteTotals = {
   vatByRate: { rate: number; amount: number }[];
   gross: number;
   laborGross: number;
-  /** Set when the quote shows a ROT deduction. */
+  /** Set when the quote shows a ROT or RUT deduction (see `deductionKind`). */
   rot: RotResult | null;
+  deductionKind: DeductionKind;
   /** What the customer pays: gross, minus ROT when it applies. */
   pay: number;
 };
@@ -33,7 +34,17 @@ export function lineTotals(item: QuoteItem, pricesInclVat: boolean): LineTotals 
   return { net: r2(net), vat: r2(gross - net), gross: r2(gross) };
 }
 
-/** ROT applies to private customers on the Bygg side only. */
+/** "ROT" or "RUT", for labels. */
+export function deductionLabel(kind: DeductionKind): string {
+  return kind === "rut" ? "RUT" : "ROT";
+}
+
+export const DEDUCTION_RULES: Record<DeductionKind, { rate: number; cap: number }> = {
+  rot: { rate: ROT_RATE, cap: ROT_CAP },
+  rut: { rate: RUT_RATE, cap: RUT_CAP },
+};
+
+/** ROT/RUT applies to private customers on the Bygg side only. */
 export function rotApplies(q: Pick<QuoteData, "division" | "rot" | "customer">): boolean {
   return q.division === "bygg" && q.rot && q.customer.type === "privat";
 }
@@ -66,13 +77,14 @@ export function quoteTotals(q: QuoteData): QuoteTotals {
         labor: laborGross,
         material: gross - laborGross,
         owners: Array.from({ length: Math.max(1, q.rotPersons.length) }, () => ({})),
+        kind: q.deductionType,
       })
     : null;
 
-  return { lines, net, vat, vatByRate, gross, laborGross, rot, pay: rot ? rot.pay : gross };
+  return { lines, net, vat, vatByRate, gross, laborGross, rot, deductionKind: q.deductionType, pay: rot ? rot.pay : gross };
 }
 
-export { ROT_RATE, ROT_CAP };
+export { ROT_RATE, ROT_CAP, RUT_RATE, RUT_CAP };
 
 /**
  * How amounts are shown to the customer, decided by who the customer is,
@@ -84,26 +96,27 @@ export function showsInclVat(q: Pick<QuoteData, "customer">): boolean {
 }
 
 /**
- * The "Pris sammanställning" box on the PDF. Rows are the cost per kind
- * (labour, material, other) in the customer's display mode, in öre; the
- * rounding row brings them to the whole-krona total, and for private
- * customers the ROT deduction comes off before the total. The rows always
- * add up to the total exactly.
+ * The "Pris sammanställning" box on the PDF. Costs per kind (labour,
+ * material, other) excl. VAT in öre, then VAT per rate, then for private
+ * customers the ROT/RUT deduction, and a rounding row to whole kronor. The
+ * rows always add up to the total: what a private person pays, or for a
+ * business the amount excl. VAT (VAT and the total incl. VAT follow below
+ * the total, not in the sum).
  */
 export type PriceSummary = {
   inclVat: boolean;
   byKind: { kind: ItemKind; amount: number }[];
+  vatByRate: { rate: number; amount: number }[];
   /** Whole-krona total minus the exact sum of the rows, in öre. */
   rounding: number;
-  /** ROT deduction, positive kronor; 0 when ROT doesn't apply. */
-  rot: number;
-  /** The big figure: what a private customer pays, or the amount excl. VAT for a business. */
+  /** ROT/RUT deduction, positive kronor; 0 when none applies. */
+  deduction: number;
+  deductionKind: DeductionKind;
+  /** The big figure. */
   total: number;
-  /** Before the ROT deduction, incl. VAT (private customers). */
-  grossBeforeRot: number;
-  net: number;
+  /** Incl. VAT, before any deduction. */
   gross: number;
-  vatByRate: { rate: number; amount: number }[];
+  net: number;
 };
 
 export function priceSummary(q: QuoteData, totals: QuoteTotals = quoteTotals(q)): PriceSummary {
@@ -112,22 +125,24 @@ export function priceSummary(q: QuoteData, totals: QuoteTotals = quoteTotals(q))
   for (const item of q.items) {
     const line = totals.lines[item.id];
     if (!line) continue;
-    sums.set(item.kind, (sums.get(item.kind) ?? 0) + (inclVat ? line.gross : line.net));
+    sums.set(item.kind, (sums.get(item.kind) ?? 0) + line.net);
   }
   const byKind = ITEM_KINDS.filter((k) => sums.has(k)).map((kind) => ({ kind, amount: r2(sums.get(kind)!) }));
-  const exact = r2(byKind.reduce((sum, row) => sum + row.amount, 0));
+  const exactNet = byKind.reduce((sum, row) => sum + row.amount, 0);
+  const vatSum = totals.vatByRate.reduce((sum, v) => sum + v.amount, 0);
+  const deduction = inclVat && totals.rot ? totals.rot.deduction : 0;
   const shown = inclVat ? totals.gross : totals.net;
-  const rot = inclVat && totals.rot ? totals.rot.deduction : 0;
+  const rounding = r2(shown - exactNet - (inclVat ? vatSum : 0));
   return {
     inclVat,
     byKind,
-    rounding: r2(shown - exact),
-    rot,
-    total: shown - rot,
-    grossBeforeRot: totals.gross,
-    net: totals.net,
-    gross: totals.gross,
     vatByRate: totals.vatByRate,
+    rounding,
+    deduction,
+    deductionKind: totals.deductionKind,
+    total: shown - deduction,
+    gross: totals.gross,
+    net: totals.net,
   };
 }
 

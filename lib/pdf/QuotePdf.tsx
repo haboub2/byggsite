@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { Style } from "@react-pdf/stylesheet";
 import type { QuoteSettings } from "../content/schema";
 import type { QuoteCompany as Company } from "../quotes/profile";
-import { displayUnitPrice, groupItems, priceSummary, quoteTotals, sek, qty, showsInclVat, validUntil, formatDate, ROT_RATE, ROT_CAP } from "../quotes/math";
+import { deductionLabel, DEDUCTION_RULES, displayUnitPrice, groupItems, priceSummary, quoteTotals, sek, qty, showsInclVat, validUntil, formatDate } from "../quotes/math";
 import { ITEM_KIND_LABEL, type ItemKind, type Quote } from "../quotes/schema";
 import { BANNER_LINE } from "../quotes/cover";
 import { JAKARTA_BOLD, JAKARTA_ITALIC, JAKARTA_MEDIUM, JAKARTA_REGULAR } from "./fonts";
@@ -78,10 +78,6 @@ const s = StyleSheet.create({
   // Title block
   eyebrow: { fontSize: 7.5, lineHeight: 1.2, letterSpacing: 1.8, color: ORANGE, fontWeight: 700, marginBottom: 6 },
   h1: { fontSize: 22, lineHeight: 1.15, fontWeight: 700, letterSpacing: -0.5 },
-  meta: { flexDirection: "row", marginTop: 14, paddingTop: 10, borderTopWidth: 0.6, borderTopColor: LINE },
-  metaCell: { flex: 1 },
-  metaV: { fontSize: 9.5, lineHeight: 1.3, fontWeight: 500, marginTop: 3 },
-  intro: { marginTop: 16 },
 
   // Parties
   parties: { flexDirection: "row", gap: 14 },
@@ -123,6 +119,9 @@ const s = StyleSheet.create({
   sumTotal: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", paddingTop: 10, paddingHorizontal: 14 },
   sumTotalK: { fontSize: 12, lineHeight: 1.2, fontWeight: 700 },
   sumTotalV: { fontSize: 17, lineHeight: 1.2, fontWeight: 700, letterSpacing: -0.3 },
+  sumBelow: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 14, marginTop: 3 },
+  sumBelowK: { fontSize: 8.5, lineHeight: 1.35, color: INK3 },
+  sumBelowV: { fontSize: 8.5, lineHeight: 1.35, color: INK3 },
   sumAfter: { fontSize: 8, lineHeight: 1.4, color: INK3, textAlign: "right", paddingHorizontal: 14, marginTop: 3 },
 
   // How the job runs
@@ -161,16 +160,20 @@ const s = StyleSheet.create({
 
   // Cover page
   cover: { fontFamily: "Jakarta", fontFeatureSettings: NO_LIGATURES, color: INK, backgroundColor: WHITE },
-  coverPhoto: { width: "100%", height: 470, objectFit: "cover" },
-  coverBlock: { width: "100%", height: 470, backgroundColor: INK },
+  coverPhoto: { width: "100%", height: 300, objectFit: "cover" },
+  coverBlock: { width: "100%", height: 300, backgroundColor: INK },
+  coverParties: { marginTop: 22 },
+  coverBottom: { position: "absolute", left: X, right: X, bottom: 30 },
+  facts: { flexDirection: "row", paddingTop: 12, borderTopWidth: 0.6, borderTopColor: LINE },
+  factsInline: { flexDirection: "row", marginTop: 14, paddingTop: 10, borderTopWidth: 0.6, borderTopColor: LINE },
+  fact: { flex: 1, paddingRight: 8 },
+  factLast: { flex: 1.25 },
+  factV: { fontSize: 9.5, lineHeight: 1.3, fontWeight: 500, marginTop: 3 },
+  factStrong: { fontSize: 12, lineHeight: 1.2, fontWeight: 700, marginTop: 2 },
   coverBody: { paddingHorizontal: X, paddingTop: 34 },
   coverLabel: { fontSize: 8, lineHeight: 1.2, letterSpacing: 2.4, color: INK3, marginBottom: 8 },
   coverTitle: { fontSize: 32, lineHeight: 1.12, fontWeight: 700, letterSpacing: -0.9, marginBottom: 10 },
-  coverFor: { fontSize: 11, lineHeight: 1.45, color: INK2 },
-  coverFacts: { flexDirection: "row", marginTop: 26, borderTopWidth: 0.6, borderTopColor: LINE, paddingTop: 12 },
-  coverFact: { flex: 1 },
-  coverFactV: { fontSize: 12.5, lineHeight: 1.2, fontWeight: 700, marginTop: 4 },
-  coverFoot: { position: "absolute", left: X, right: X, bottom: 34, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
+  coverFoot: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 18 },
   coverLogo: { width: 104, height: 34, objectFit: "contain", objectPosition: "left bottom" },
   coverName: { fontSize: 13, lineHeight: 1.2, fontWeight: 700, maxWidth: 220 },
   coverContact: { fontSize: 8, lineHeight: 1.5, color: INK3, textAlign: "right" },
@@ -264,15 +267,34 @@ const addressOf = (street: string, postalCode: string, city: string) =>
 
 /* ------------------------------------------------------------ cover */
 
-/** Page 1: a full-bleed photo over the title, who the quote is for and the
- *  three figures the customer looks for first. */
-function CoverPage({ quote, company, logo, photo }: { quote: Quote; company: Company; logo: string | null; photo: PdfPhoto | null }) {
+/** The facts row: dates, payment terms, side and the figure the customer
+ *  reads first. On the cover, or on the first page when there is no cover. */
+function Facts({ quote, company, style }: { quote: Quote; company: Company; style: Style }) {
   const d = quote.data;
-  const c = d.customer;
   const p = priceSummary(d);
-  const who = c.type === "foretag" && c.company ? `${c.company}, ${c.name}` : c.name;
-  const where = addressOf(c.street, c.postalCode, c.city);
-  const amountLabel = p.inclVat ? (p.rot > 0 ? "Att betala efter ROT" : "Att betala") : "Totalt exkl. moms";
+  const amountLabel = p.inclVat ? (p.deduction > 0 ? `Att betala efter ${deductionLabel(p.deductionKind)}` : "Att betala") : "Totalt exkl. moms";
+  const facts: [string, string][] = [
+    ["Offertdatum", formatDate(d.date)],
+    ["Giltig till", formatDate(validUntil(d.date, d.validDays))],
+    ["Betalning", `${d.paymentDays} dagar netto`],
+    ["Verksamhet", `${company.legalName} ${d.division === "bygg" ? "Bygg" : "Software"}`],
+    [amountLabel, `${sek(p.total).replace(/,00$/, "")} kr`],
+  ];
+  return (
+    <View style={style}>
+      {facts.map(([k, v], i) => (
+        <View key={k} style={i === facts.length - 1 ? s.factLast : s.fact}>
+          <Text style={s.label}>{k}</Text>
+          <Text style={i === facts.length - 1 ? s.factStrong : s.factV}>{clean(v)}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Page 1: a photo, the title, the parties, and the facts row at the bottom. */
+function CoverPage({ quote, company, settings, logo, photo }: { quote: Quote; company: Company; settings: QuoteSettings; logo: string | null; photo: PdfPhoto | null }) {
+  const d = quote.data;
   return (
     <Page size="A4" style={s.cover}>
       {photo ? (
@@ -285,28 +307,13 @@ function CoverPage({ quote, company, logo, photo }: { quote: Quote; company: Com
         <View style={s.accent} />
         <Text style={s.coverLabel}>OFFERT {quote.number}</Text>
         <Text style={s.coverTitle}>{clean(d.title || "Offert")}</Text>
-        {who ? <Text style={s.coverFor}>Avsedd för {clean(who)}</Text> : null}
-        {where ? <Text style={s.coverFor}>{clean(where)}</Text> : null}
-        <View style={s.coverFacts}>
-          <View style={s.coverFact}>
-            <Text style={s.label}>Datum</Text>
-            <Text style={s.coverFactV}>{formatDate(d.date)}</Text>
-          </View>
-          <View style={s.coverFact}>
-            <Text style={s.label}>Giltig till</Text>
-            <Text style={s.coverFactV}>{formatDate(validUntil(d.date, d.validDays))}</Text>
-          </View>
-          <View style={s.coverFact}>
-            <Text style={s.label}>{amountLabel}</Text>
-            <Text style={s.coverFactV}>{sek(p.total).replace(/,00$/, "")} kr</Text>
-          </View>
-        </View>
+        <Parties quote={quote} company={company} settings={settings} heading={false} />
       </View>
-      <View style={s.coverFoot}>
-        {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt */}
-        {logo ? <Image src={logo} style={s.coverLogo} /> : <Text style={s.coverName}>{clean(company.legalName)}</Text>}
-        <View>
-          <Text style={s.coverContact}>{clean(`${company.legalName} · ${addressOf(company.street, company.postalCode, company.city)}`)}</Text>
+      <View style={s.coverBottom}>
+        <Facts quote={quote} company={company} style={s.facts} />
+        <View style={s.coverFoot}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt */}
+          {logo ? <Image src={logo} style={s.coverLogo} /> : <Text style={s.coverName}>{clean(company.legalName)}</Text>}
           <Text style={s.coverContact}>{clean([company.phoneDisplay, company.email].filter(Boolean).join(" · "))}</Text>
         </View>
       </View>
@@ -316,13 +323,13 @@ function CoverPage({ quote, company, logo, photo }: { quote: Quote; company: Com
 
 /* ------------------------------------------------------------ sections */
 
-function Parties({ quote, company, settings }: { quote: Quote; company: Company; settings: QuoteSettings }) {
+function Parties({ quote, company, settings, heading = true }: { quote: Quote; company: Company; settings: QuoteSettings; heading?: boolean }) {
   const d = quote.data;
   const c = d.customer;
   const business = c.type === "foretag";
   return (
-    <View style={s.section} wrap={false}>
-      <Heading>Parter</Heading>
+    <View style={heading ? s.section : s.coverParties} wrap={false}>
+      {heading ? <Heading>Parter</Heading> : null}
       <View style={s.parties}>
         <View style={s.party}>
           <View style={s.partyHead}>
@@ -410,31 +417,37 @@ const KIND_SUM_LABEL: Record<ItemKind, string> = {
   other: "Övrigt",
 };
 
-/** "Pris sammanställning": the cost per kind, rounding and ROT down to the
- *  one figure the customer reads — what a private person pays, or the
- *  amount excl. VAT for a business — with VAT in small print below. */
+/** "Pris sammanställning": costs excl. VAT, VAT, the ROT/RUT deduction and
+ *  rounding, down to what a private person pays. A business reads the total
+ *  excl. VAT, with VAT and the total incl. VAT right under it. */
 function PriceSummaryBox({ quote }: { quote: Quote }) {
   const d = quote.data;
   const p = priceSummary(d);
   const software = d.division === "01";
-  const vat = p.vatByRate.map((v) => `moms ${v.rate} % ${sek(v.amount)}`).join(", ");
+  const label = deductionLabel(p.deductionKind);
   // Software has no labour/material split worth showing: one row for it all.
   const kindRows = software
     ? [{ k: "Summa enligt specifikation", v: Math.round(p.byKind.reduce((sum, r) => sum + r.amount, 0) * 100) / 100 }]
     : p.byKind.map((row) => ({
         k: KIND_SUM_LABEL[row.kind],
         v: row.amount,
-        tag: row.kind === "labor" && p.rot > 0 ? "Berättigad för ROT-avdrag" : undefined,
+        tag: row.kind === "labor" && p.deduction > 0 ? `Berättigad för ${label}-avdrag` : undefined,
       }));
+  const vatRows = p.vatByRate.map((v) => ({ k: `Moms ${v.rate} %`, v: v.amount }));
   const rows: { k: string; v: number; tag?: string }[] = [
     ...kindRows,
-    ...(p.rot > 0 ? [{ k: "ROT-avdrag", v: -p.rot }] : []),
+    ...(p.inclVat ? vatRows : []),
+    ...(p.deduction > 0 ? [{ k: `${label}-avdrag`, v: -p.deduction }] : []),
     { k: "Öresavrundning", v: p.rounding },
   ];
-  const totalLabel = p.inclVat ? (p.rot > 0 ? "Att betala efter ROT" : "Att betala") : "Totalt exkl. moms";
-  const after = p.inclVat
-    ? [p.rot > 0 ? `Totalpris utan avdrag ${sek(p.grossBeforeRot)} SEK.` : "", vat ? `Varav ${vat} SEK.` : "Momsfritt."].filter(Boolean)
-    : [vat ? `Tillkommer ${vat} SEK.` : "Momsfritt.", `Totalt inkl. moms ${sek(p.gross)} SEK.`];
+  const totalLabel = p.inclVat ? (p.deduction > 0 ? `Att betala efter ${label}` : "Att betala") : "Totalt exkl. moms";
+  // Below the total: for a business VAT and the amount incl. VAT, which they pay;
+  // for a private person the price before the deduction.
+  const below: { k: string; v: number }[] = p.inclVat
+    ? p.deduction > 0
+      ? [{ k: "Totalpris utan avdrag", v: p.gross }]
+      : []
+    : [...vatRows, { k: "Att betala inkl. moms", v: p.gross }];
 
   return (
     <View style={s.sum} wrap={false}>
@@ -442,7 +455,7 @@ function PriceSummaryBox({ quote }: { quote: Quote }) {
         <Text style={s.sumTitle}>
           <Text style={s.bold}>Pris </Text>sammanställning
         </Text>
-        <Text style={s.sumMode}>{p.inclVat ? "inkl. moms" : "exkl. moms"}</Text>
+        <Text style={s.sumMode}>Belopp i SEK</Text>
       </View>
       <View style={s.sumRows}>
         {rows.map((row) => (
@@ -460,11 +473,13 @@ function PriceSummaryBox({ quote }: { quote: Quote }) {
         <Text style={s.sumTotalK}>{totalLabel}</Text>
         <Text style={s.sumTotalV}>SEK {sek(p.total)}</Text>
       </View>
-      {after.map((line) => (
-        <Text key={line} style={s.sumAfter}>
-          {line}
-        </Text>
+      {below.map((row) => (
+        <View key={row.k} style={s.sumBelow}>
+          <Text style={s.sumBelowK}>{row.k}</Text>
+          <Text style={s.sumBelowV}>{sek(row.v)}</Text>
+        </View>
       ))}
+      {p.vatByRate.length === 0 ? <Text style={s.sumAfter}>Momsfritt.</Text> : null}
     </View>
   );
 }
@@ -514,8 +529,10 @@ function Terms({ quote }: { quote: Quote }) {
   if (d.terms.notes.trim()) cards.push({ h: "Övrigt", body: <Lines text={d.terms.notes} style={s.termText} /> });
   const rot = t.rot;
   if (rot) {
+    const label = deductionLabel(t.deductionKind);
+    const rule = DEDUCTION_RULES[t.deductionKind];
     cards.push({
-      h: "ROT-avdrag, preliminärt",
+      h: `${label}-avdrag, preliminärt`,
       wide: true,
       body: (
         <>
@@ -529,9 +546,9 @@ function Terms({ quote }: { quote: Quote }) {
             </View>
           ))}
           <Text style={[s.small, { marginTop: 6 }]}>
-            {Math.round(ROT_RATE * 100)} % av arbetskostnaden inkl. moms ({sek(t.laborGross)} SEK), högst {sek(ROT_CAP)} SEK per
-            person och år{rot.capped ? ", här begränsat av årstaket" : ""}. Avdraget dras på fakturan och förutsätter att ni äger
-            bostaden, har betalat tillräckligt med skatt under året och inte redan använt ert utrymme. Material och resor ger inget
+            {Math.round(rule.rate * 100)} % av arbetskostnaden inkl. moms ({sek(t.laborGross)} SEK), högst {sek(rule.cap)} SEK per
+            person och år{t.deductionKind === "rut" ? " för ROT och RUT tillsammans" : ""}{rot.capped ? ", här begränsat av årstaket" : ""}. Avdraget dras på fakturan och förutsätter att ni
+            {t.deductionKind === "rot" ? " äger bostaden," : ""} har betalat tillräckligt med skatt under året och inte redan använt ert utrymme. Material och resor ger inget
             avdrag. Vi förbehåller oss rätten att fakturera återstående belopp, motsvarande skattereduktionen, om begäran avslås av
             Skatteverket.
           </Text>
@@ -666,7 +683,7 @@ export function QuotePdf({
 
   return (
     <Document title={`Offert ${number} – ${company.legalName}`} author={company.legalName} subject={d.title} language="sv-SE">
-      {photos.withCover ? <CoverPage quote={quote} company={company} logo={logo} photo={photos.cover} /> : null}
+      {photos.withCover ? <CoverPage quote={quote} company={company} settings={settings} logo={logo} photo={photos.cover} /> : null}
       <Page size="A4" style={s.page}>
         <View style={s.head} fixed>
           {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt */}
@@ -680,38 +697,27 @@ export function QuotePdf({
           {settings.fSkatt ? <Text style={s.footText}>Godkänd för F-skatt</Text> : null}
         </View>
 
-        <Text style={s.eyebrow}>OFFERT {number}</Text>
-        <Text style={s.h1}>{clean(d.title || "Offert")}</Text>
-        <View style={s.meta}>
-          <View style={s.metaCell}>
-            <Text style={s.label}>Offertdatum</Text>
-            <Text style={s.metaV}>{formatDate(d.date)}</Text>
-          </View>
-          <View style={s.metaCell}>
-            <Text style={s.label}>Giltig till</Text>
-            <Text style={s.metaV}>{formatDate(validUntil(d.date, d.validDays))}</Text>
-          </View>
-          <View style={s.metaCell}>
-            <Text style={s.label}>Betalningsvillkor</Text>
-            <Text style={s.metaV}>{d.paymentDays} dagar</Text>
-          </View>
-          <View style={s.metaCell}>
-            <Text style={s.label}>Verksamhet</Text>
-            <Text style={s.metaV}>{clean(`${company.legalName} ${d.division === "bygg" ? "Bygg" : "Software"}`)}</Text>
-          </View>
-        </View>
+        {/* Without a cover, the title, facts and parties open the first page. */}
+        {photos.withCover ? null : (
+          <>
+            <Text style={s.eyebrow}>OFFERT {number}</Text>
+            <Text style={s.h1}>{clean(d.title || "Offert")}</Text>
+            <Facts quote={quote} company={company} style={s.factsInline} />
+            <Parties quote={quote} company={company} settings={settings} />
+          </>
+        )}
         {d.intro.trim() ? (
-          <View style={s.intro}>
+          <View style={photos.withCover ? undefined : s.section}>
+            <Heading>Beskrivning av arbetet</Heading>
             <Lines text={d.intro} style={s.pMuted} />
           </View>
         ) : null}
 
-        <Parties quote={quote} company={company} settings={settings} />
         <Items quote={quote} />
         <PriceSummaryBox quote={quote} />
-        <Process quote={quote} />
+        {d.show.process ? <Process quote={quote} /> : null}
 
-        {photos.banner ? (
+        {d.show.band && photos.banner ? (
           <View style={s.band} wrap={false}>
             {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt */}
             <Image src={photos.banner} style={s.bandPhoto} />

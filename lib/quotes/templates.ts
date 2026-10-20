@@ -770,6 +770,8 @@ export function quoteFromTemplate(t: BuiltInTemplate, settings: QuoteSettings, d
     items: t.items.map((i) => ({ ...i, id: newItemId() })),
     pricesInclVat: t.pricesInclVat,
     rot: t.rot,
+    deductionType: "rot",
+    show: { process: true, band: true },
     rotPersons: [],
     validDays: settings.validDays,
     paymentDays: settings.paymentDays,

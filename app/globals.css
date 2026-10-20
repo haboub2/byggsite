@@ -1223,6 +1223,9 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .qrows { display: grid; gap: 10px; }
 .qrow { display: grid; grid-template-columns: 118px 72px 78px 124px 84px minmax(90px, 1fr) auto; gap: 8px; align-items: center; padding: 10px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); }
 .qrow--head { display: none; }
+.term-area { display: grid; gap: 4px; }
+.term-clear { justify-self: end; font-size: 13px; }
+.efield-label { font-size: 14px; font-weight: 500; }
 .qrow-desc { grid-column: 1 / -1; min-width: 0; display: flex; gap: 8px; }
 .qrow-desc > .efield { flex: 1; min-width: 0; }
 .qrow-step { flex: 0 0 170px; min-width: 0; min-height: 42px; padding: 8px 10px; font-size: 14px; background: var(--paper); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); }

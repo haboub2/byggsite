@@ -15,6 +15,12 @@
 export const ROT_RATE = 0.3;
 export const ROT_CAP = 50_000;
 export const ROT_RUT_CAP = 75_000;
+/** RUT: 50 % of the labour cost incl. VAT. RUT has no cap of its own below
+ *  the shared ROT+RUT cap of 75 000 kr per person and year. */
+export const RUT_RATE = 0.5;
+export const RUT_CAP = ROT_RUT_CAP;
+
+export type DeductionKind = "rot" | "rut";
 
 export type Owner = {
   /** ROT already received this calendar year, kr. */
@@ -43,6 +49,11 @@ export type RotResult = {
 
 const kr = (n: number) => (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
 
+/** RUT room one person has left this year: what ROT and RUT have not used of the shared cap. */
+export function rutRoom({ usedRot = 0, usedRut = 0 }: Owner): number {
+  return Math.max(0, ROT_RUT_CAP - kr(usedRot) - kr(usedRut));
+}
+
 /** ROT room one person has left this year. */
 export function rotRoom({ usedRot = 0, usedRut = 0 }: Owner): number {
   const rot = kr(usedRot);
@@ -54,7 +65,10 @@ export function calculateRot({
   labor,
   material = 0,
   owners = [{}],
+  kind = "rot",
 }: {
+  /** "rut" uses the RUT rate and the room left under the shared cap. */
+  kind?: DeductionKind;
   labor: number;
   material?: number;
   owners?: Owner[];
@@ -63,8 +77,8 @@ export function calculateRot({
   const m = kr(material);
   const list = owners.length > 0 ? owners : [{}];
 
-  const uncapped = Math.floor(l * ROT_RATE);
-  const room = list.map(rotRoom);
+  const uncapped = Math.floor(l * (kind === "rut" ? RUT_RATE : ROT_RATE));
+  const room = list.map(kind === "rut" ? rutRoom : rotRoom);
   const deduction = Math.min(uncapped, room.reduce((a, b) => a + b, 0));
 
   // Split as evenly as possible, never above anyone's room. Owners with the
