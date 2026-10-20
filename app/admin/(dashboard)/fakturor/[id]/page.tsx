@@ -15,6 +15,9 @@ import { EVENT_LABEL } from "@/lib/core/events";
 import { INVOICE_STATUS_LABEL, getInvoice, invoiceLabel, isOpen, isOverdue, listInvoiceEvents, listInvoicePayments } from "@/lib/core/invoices/store";
 import { applySellerDefaults, getSellerDefaults } from "@/lib/core/invoices/seller";
 import { todayIso } from "@/lib/quotes/schema";
+import { requireRole } from "@/lib/admin";
+import { maskPersonalNumber } from "@/lib/core/rot/pnr";
+import { RevealPersonalNumber } from "@/components/admin/invoices/RevealPersonalNumber";
 
 const kr = (ore: number) => formatOre(ore, { decimals: 0, currency: true });
 const sek = (ore: number) => formatOre(ore);
@@ -29,6 +32,8 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const label = invoiceLabel(inv);
   const today = todayIso();
   const mailReady = Boolean(process.env.RESEND_API_KEY && process.env.MAIL_FROM);
+  // Owner/admin may open a ROT buyer's personal number; everyone else sees it masked.
+  const canSeePnr = Boolean(d.se.rot) && (await requireRole("admin")).ok;
 
   if (isDraft) {
     const version = createHash("sha1").update(JSON.stringify(d)).digest("hex").slice(0, 12);
@@ -292,7 +297,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                     <div key={i}>
                       <strong>{b.name}</strong>
                       <br />
-                      <span className="inv-muted">{b.personalNumber.replace(/(\d{4})$/, "••••")}</span>
+                      {canSeePnr ? <RevealPersonalNumber invoiceId={inv.id} index={i} masked={maskPersonalNumber(b.personalNumber, today)} /> : <span className="inv-muted">{maskPersonalNumber(b.personalNumber, today) || "Personnummer saknas"}</span>}
                       <br />
                       {kr(Math.abs(totals.rot!.perBuyer[i] ?? 0))}
                     </div>

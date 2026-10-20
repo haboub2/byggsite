@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClaimAction, markClaimSentAction, registerPayoutAction, rejectClaimAction } from "@/app/admin/rot-actions";
 import { formatOre } from "@/lib/core/money";
 import { ROT_CATEGORIES, ROT_CATEGORY_LABEL, validateRotClaim } from "@/lib/core/rot/claim-xml";
+import { maskPersonalNumber, withPlaceholderPersonalNumbers } from "@/lib/core/rot/pnr";
 import { claimToXmlWithInvoices, listClaims, listRotCandidates, ROT_CLAIM_STATUS_LABEL, rotSummary } from "@/lib/core/rot/store";
 import { rotClaimDeadline } from "@/lib/core/rules";
 import { todayIso } from "@/lib/quotes/schema";
@@ -21,7 +22,8 @@ export default async function RotPage({ searchParams }: { searchParams: Promise<
   const drafts = claims.filter((c) => c.status === "draft");
   const sent = claims.filter((c) => c.status === "sent");
   const done = claims.filter((c) => c.status === "paid" || c.status === "rejected");
-  const xmlProblems = Object.fromEntries(await Promise.all(drafts.map(async (c) => [c.id, validateRotClaim(await claimToXmlWithInvoices(c, today))] as const)));
+  // Checked with placeholders; the numbers are opened only when the file is downloaded.
+  const xmlProblems = Object.fromEntries(await Promise.all(drafts.map(async (c) => [c.id, validateRotClaim(withPlaceholderPersonalNumbers(await claimToXmlWithInvoices(c, today)))] as const)));
 
   return (
     <section className="sec sec--tight">
@@ -106,7 +108,7 @@ export default async function RotPage({ searchParams }: { searchParams: Promise<
                       <td>
                         {c.buyers.map((b, i) => (
                           <div key={i}>
-                            {b.name} · <span className="inv-muted">{b.personalNumber.replace(/(\d{4})$/, "••••")}</span>
+                            {b.name} · <span className="inv-muted">{maskPersonalNumber(b.personalNumber, today)}</span>
                           </div>
                         ))}
                         <div className="inv-muted" style={{ fontSize: 12.5 }}>

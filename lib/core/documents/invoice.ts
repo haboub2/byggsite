@@ -49,6 +49,12 @@ export const VAT_NR = /^SE\d{12}$/;
 export const PEPPOL_ID = /^\d{4}:[A-Za-z0-9.\-]{1,50}$/;
 /** Personal number, 10 or 12 digits with optional dash. */
 export const PERSONAL_NUMBER = /^(\d{2})?\d{6}-?\d{4}$/;
+/**
+ * A personal number as stored once the database has encrypted it (0023):
+ * birth date with century, last four hidden. The ciphertext travels next to
+ * it in personalNumberSealed.
+ */
+export const MASKED_PERSONAL_NUMBER = /^\d{8}-XXXX$/;
 
 /** BG-4 / BG-7: a party. */
 export const partySchema = z.object({
@@ -112,15 +118,21 @@ export const invoiceLineSchema = z.object({
 });
 export type InvoiceLine = z.infer<typeof invoiceLineSchema>;
 
-/** A person sharing the ROT deduction. Printed on the invoice, never shown in the portal. */
+/** A person sharing the ROT deduction. Name on the invoice, personal number only masked. */
 export const rotBuyerSchema = z.object({
   name: text(120, "Namn"),
-  /** May be empty on a draft (copied from a quote); required to issue. */
+  /**
+   * May be empty on a draft (copied from a quote); required to issue. Written
+   * in plain text; the database replaces it with ÅÅÅÅMMDD-XXXX on save
+   * (0023), so a stored document only ever holds the masked form.
+   */
   personalNumber: z
     .string()
     .trim()
     .max(13)
-    .refine((v) => v === "" || PERSONAL_NUMBER.test(v), "Personnummer skrivs ÅÅMMDD-XXXX."),
+    .refine((v) => v === "" || PERSONAL_NUMBER.test(v) || MASKED_PERSONAL_NUMBER.test(v), "Personnummer skrivs ÅÅMMDD-XXXX."),
+  /** The encrypted personal number (pgcrypto, key in Supabase Vault), set by the database. Opened only for owner/admin. */
+  personalNumberSealed: z.string().max(500).optional(),
   /**
    * ROT room this person has left this year, öre, as stated by the customer.
    * Null means "assume the full cap". We can never verify this; Skatteverket
@@ -276,7 +288,7 @@ export function validateForIssue(doc: InvoiceDocument): string[] {
     if (!doc.se.rot.property) errors.push("ROT kräver fastighetsbeteckning, eller bostadsrättsföreningens organisationsnummer och lägenhetsnummer.");
     for (const b of doc.se.rot.buyers) {
       if (!b.name) errors.push("Varje ROT-köpare behöver ett namn.");
-      if (!PERSONAL_NUMBER.test(b.personalNumber)) errors.push(`Personnummer saknas eller är fel för ${b.name || "en köpare"}.`);
+      if (!hasRotPersonalNumber(b)) errors.push(`Personnummer saknas eller är fel för ${b.name || "en köpare"}.`);
     }
   }
 
@@ -284,6 +296,11 @@ export function validateForIssue(doc: InvoiceDocument): string[] {
     if (!doc.references.precedingInvoiceNumber) errors.push("En kreditfaktura måste hänvisa till fakturan den krediterar.");
   }
   return errors;
+}
+
+/** A buyer's personal number is there: in plain text, or masked with its ciphertext. */
+export function hasRotPersonalNumber(b: Pick<RotBuyer, "personalNumber" | "personalNumberSealed">): boolean {
+  return PERSONAL_NUMBER.test(b.personalNumber) || (MASKED_PERSONAL_NUMBER.test(b.personalNumber) && !!b.personalNumberSealed);
 }
 
 /** A new draft with sensible defaults for one seller and buyer. */

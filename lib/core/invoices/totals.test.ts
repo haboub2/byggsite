@@ -216,6 +216,12 @@ test("validateForIssue catches what momslagen and Skatteverket require", () => {
   const badPnr = { ...ok, se: { ...ok.se, rot: { ...ok.se.rot!, buyers: [{ name: "X", personalNumber: "123", roomOre: null }] } } };
   assert.ok(validateForIssue(badPnr).some((e) => e.includes("Personnummer")));
 
+  // As the database stores it after 0023: masked, with the ciphertext next to it.
+  const sealed = { ...ok, se: { ...ok.se, rot: { ...ok.se.rot!, buyers: [{ name: "Anna", personalNumber: "19850412-XXXX", personalNumberSealed: "ww0ECQMC", roomOre: null }] } } };
+  assert.deepEqual(validateForIssue(sealed), []);
+  const maskedWithoutCipher = { ...ok, se: { ...ok.se, rot: { ...ok.se.rot!, buyers: [{ name: "Anna", personalNumber: "19850412-XXXX", roomOre: null }] } } };
+  assert.ok(validateForIssue(maskedWithoutCipher).some((e) => e.includes("Personnummer")));
+
   const creditNoRef = { ...ok, kind: "credit" as const };
   assert.ok(validateForIssue(creditNoRef).some((e) => e.includes("kreditfaktura")));
 

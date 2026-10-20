@@ -313,7 +313,7 @@ export default function InvoiceEditor({ id, initial }: { id: string; initial: In
                   ))}
                 </div>
                 <span className="efield-hint">
-                  Personnummer och fastighet krävs för att utfärda och skrivs på fakturan, aldrig i portalen. Utrymmet är enligt kundens egen uppgift; Skatteverket avvisar en begäran som överskrider det.
+                  Personnummer och fastighet krävs för att utfärda. Personnumret krypteras när utkastet sparas och visas sedan som ÅÅÅÅMMDD-XXXX, även på fakturan; skriv ett nytt för att byta. Utrymmet är enligt kundens egen uppgift; Skatteverket avvisar en begäran som överskrider det.
                 </span>
               </>
             )}
