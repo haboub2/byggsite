@@ -6,6 +6,7 @@ import { invoiceTotals } from "../invoices/totals";
 import { orgSettingsSchema } from "../org/settings";
 import { ocrFor } from "../ocr";
 import { readStoredZip } from "../../zip";
+import { invoiceFileName } from "../../pdf/invoice-file-name";
 import { buildInvoiceArchive } from "./archive";
 import { CSV_BOM, csvAmount, csvField, csvText, customersCsv, fileSlug, invoicesCsv, paymentsCsv } from "./csv";
 import { buildJsonExport, EXPORT_SCHEMA_VERSION, serializeJsonExport } from "./json";
@@ -216,15 +217,22 @@ test("the archive holds every issued invoice as a PDF named like the e-mail, and
   const entries = readStoredZip(zip);
   assert.deepEqual(
     entries.map((e) => e.name),
-    ["index.csv", "Faktura-10001-Binaafy-Anna-Lindqvist.pdf", "Faktura-10002-Binaafy-Bygg-Soder-AB.pdf", "Kreditfaktura-10003-Binaafy-Bygg-Soder-AB.pdf"]
+    ["index.csv", "Faktura-10001-Binaafy-AB-Anna-Lindqvist.pdf", "Faktura-10002-Binaafy-AB-Bygg-Soder-AB.pdf", "Kreditfaktura-10003-Binaafy-AB-Bygg-Soder-AB.pdf"]
   );
   assert.deepEqual(files, entries.map((e) => e.name));
   assert.ok(entries.every((e) => e.crcOk));
   assert.equal(entries[1].data.toString(), "%PDF-1.4 10001");
   const index = entries[0].data.toString("utf8");
   assert.ok(index.startsWith(`${CSV_BOM}Fil;Fakturanummer;`));
-  assert.ok(index.includes("\r\nKreditfaktura-10003-Binaafy-Bygg-Soder-AB.pdf;10003;Kreditfaktura;"));
+  assert.ok(index.includes("\r\nKreditfaktura-10003-Binaafy-AB-Bygg-Soder-AB.pdf;10003;Kreditfaktura;"));
   assert.ok(!index.includes("utkast"));
+});
+
+test("an invoice's file is named after its own seller, not the website's brand", () => {
+  const doc = (sellerName: string) => ({ seller: { name: sellerName }, buyer: { name: "Åsa Öberg" } });
+  assert.equal(invoiceFileName({ kind: "invoice", number: "1", document: doc("Testbolag AB") }), "Faktura-1-Testbolag-AB-Asa-Oberg.pdf");
+  assert.equal(invoiceFileName({ kind: "credit", number: "2", document: doc("Testbolag AB") }), "Kreditfaktura-2-Testbolag-AB-Asa-Oberg.pdf");
+  assert.equal(invoiceFileName({ kind: "invoice", number: null, document: doc("") }), "Faktura-utkast-Asa-Oberg.pdf");
 });
 
 /* ---------- JSON ---------- */

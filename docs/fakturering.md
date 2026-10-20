@@ -72,9 +72,13 @@ Kvar:
   owner som tar med sig exporten har bara de maskerade numren. Vill vi ge
   klartext kan JSON-exporten för owner/admin öppna dem med
   `openClaimPersonalNumbers` och logga det i händelsen.
-- **Filnamnen på fakturorna har webbplatsens varumärke** (`site.brand`)
-  för alla organisationer, som i e-posten. Testbolags PDF:er skulle heta
-  `Faktura-1-Binaafy-….pdf`; ska följa organisationen som offerterna gör.
+- ~~**Filnamnen på fakturorna har webbplatsens varumärke**~~ Gjort:
+  `invoiceFileName` tar säljarnamnet ur fakturans frysta dokument
+  (`document.seller.name`, samma namn som e-postens "från"), så Testbolags
+  fakturor heter `Faktura-1-Testbolag-AB-….pdf` i e-posten, påminnelsen,
+  portalen, API:t och PDF-arkivet. Medvetet beslut: Binaafys heter efter
+  företagsnamnet på fakturan, inte varumärket (`Binaafy-AB` om säljaren
+  heter Binaafy AB), och namnet ändras aldrig när fakturan väl är utfärdad.
 - **Allt byggs i minnet i ett anrop.** Zippen för en organisation med
   tusentals fakturor bör bli ett bakgrundsjobb som lägger filen i Storage
   och mejlar en länk; `maxDuration` är 300 s för zippen och 120 s för JSON.
