@@ -46,12 +46,6 @@ export const priceGuide: GuidePrice[] = [
     preset: { label: "Plåttak 150 m²", labor: 110_000, material: 100_000 },
   },
   {
-    slug: "el-vvs",
-    from: "timpris från 650 kr",
-    note: "certifierad elektriker eller rörmokare",
-    preset: { label: "El/VVS 20 timmar", labor: 13_000, material: 5_000 },
-  },
-  {
     slug: "tillbyggnad",
     from: "från 25 000 kr/m²",
     note: "nyckelfärdigt, bygglov ingår",

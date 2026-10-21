@@ -29,6 +29,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/bygg", destination: "/", permanent: true },
       { source: "/tjanster", destination: "/bygg/tjanster", permanent: true },
+      { source: "/tjanster/el-vvs", destination: "/bygg/tjanster", permanent: true },
+      { source: "/bygg/tjanster/el-vvs", destination: "/bygg/tjanster", permanent: true },
       { source: "/tjanster/:slug", destination: "/bygg/tjanster/:slug", permanent: true },
       { source: "/projekt", destination: "/bygg/projekt", permanent: true },
       { source: "/projekt/villa-soder", destination: "/bygg/projekt/villa-sondrum", permanent: true },

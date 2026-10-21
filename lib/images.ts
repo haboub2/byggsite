@@ -116,7 +116,6 @@ export const serviceImage: Record<string, string> = {
   tak: "tak-hero",
   golv: "golv-hero",
   maleri: "maleri-hero",
-  "el-vvs": "el-vvs-hero",
   projektledning: "projektledning-hero",
   webb: "webb-hero",
   automation: "automation-hero",

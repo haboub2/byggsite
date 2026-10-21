@@ -60,7 +60,6 @@ export const services = [
   { slug: "tak", title: "Takarbeten", desc: "Nya tak, reparationer och tätning som håller din fastighet skyddad året runt." },
   { slug: "golv", title: "Golvläggning", desc: "Trä, laminat, klinker och vinyl — fackmannamässigt avjämnat och lagt för perfekt finish." },
   { slug: "maleri", title: "Måleri & puts", desc: "Släta väggar och skarp, hållbar målning inomhus och utomhus med förstklassiga material." },
-  { slug: "el-vvs", title: "El & VVS", desc: "Certifierade elektriker och rörmokare för säkra, standardenliga installationer och uppgraderingar." },
   { slug: "projektledning", title: "Projektledning", desc: "En kontaktperson som samordnar yrkesgrupper, tidplaner och budget — så slipper du." },
 ];
 

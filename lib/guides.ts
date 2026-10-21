@@ -328,7 +328,6 @@ export const guidesFor: Record<string, string[]> = {
   tak: ["rot-avdrag-2026"],
   golv: ["rot-avdrag-2026"],
   maleri: ["rot-avdrag-2026"],
-  "el-vvs": ["rot-avdrag-2026"],
   projektledning: ["checklista-infor-renovering"],
   "interna-system": ["standardsystem-eller-eget-system"],
   automation: ["standardsystem-eller-eget-system"],

@@ -134,7 +134,7 @@ export function businessJsonLd(c: Company, w: Warranty) {
     name: `${site.brand} Bygg`,
     parentOrganization: ORG,
     description:
-      "Bygg- och renoveringsfirma i södra och västra Sverige: totalrenovering, badrum, kök, tillbyggnad, tak, golv, måleri samt el och VVS. Kostnadsfri offert, fast pris, ROT-avdrag på fakturan och " + w.sentence + ".",
+      "Bygg- och renoveringsfirma i södra och västra Sverige: totalrenovering, badrum, kök, tillbyggnad, tak, golv och måleri. Kostnadsfri offert, fast pris, ROT-avdrag på fakturan och " + w.sentence + ".",
     url: abs("/"),
     image: abs("/opengraph-image.png"),
     logo: abs("/brand/binaafy-mark.png"),

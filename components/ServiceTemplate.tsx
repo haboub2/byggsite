@@ -205,5 +205,4 @@ const CLOSING_TITLE: Record<string, string> = {
   tak: "Hur mår ditt tak?",
   golv: "Vilket golv vill du ha?",
   maleri: "Vad ska målas?",
-  "el-vvs": "Vad behöver installeras?",
 };

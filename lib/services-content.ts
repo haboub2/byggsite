@@ -238,38 +238,6 @@ export const servicesContent: Record<string, ServiceContent> = {
     ],
   },
 
-  "el-vvs": {
-    lead: "El och VVS är den del av hemmet du märker minst när det fungerar — och mest när det inte gör det. Behöriga elinstallatörer och auktoriserade VVS-montörer gör säkra installationer och uppgraderingar enligt gällande normer.",
-    sections: [
-      {
-        heading: "Elinstallationer",
-        body: "Vi drar ny el, byter säkringsskåp, installerar jordfelsbrytare och sätter upp belysning och eluttag — allt utfört av behöriga elinstallatörer enligt Elsäkerhetsverkets föreskrifter. Vanliga uppdrag är omdragning vid renovering, uppgradering av äldre elcentraler, och installation av laddbox för elbil.",
-      },
-      {
-        heading: "VVS-installationer",
-        body: "VVS-montörerna vi samarbetar med gör allt från byte av blandare och toaletter till komplett omdragning av vatten och avlopp vid en renovering, samt installation av golvvärme och bergvärme. Allt VVS-arbete i våtutrymmen görs enligt Säker Vatten, vilket är en förutsättning för att din försäkring ska gälla fullt ut.",
-      },
-      {
-        heading: "Kombinerat vid renovering",
-        body: "Vid en badrums-, köks- eller totalrenovering samordnar vi el och VVS som en del av samma projekt, med ett samlat ansvar istället för att du själv behöver anlita och koordinera separata hantverkare.",
-      },
-      {
-        heading: "Vad påverkar priset",
-        body: "Omfattningen styr: ett byte av blandare eller en ny laddbox är ett kort uppdrag, medan ny el i hela huset eller omdragning av vatten och avlopp vid en renovering tar betydligt längre tid. Husets ålder spelar in, eftersom äldre installationer ofta behöver uppgraderas för att klara dagens krav. Du får ett fast pris efter att vi har sett installationen, och akuta ärenden prioriteras.",
-      },
-      {
-        heading: "Vem gör vad i projektet",
-        body: "El- och VVS-arbeten är reglerade yrken. Elarbetet utförs av behöriga elinstallatörer och VVS-arbetet av auktoriserade montörer enligt Säker Vatten — partners som vi har arbetat med länge. Vi beställer, samordnar och kontrollerar arbetet, och du får ett avtal, en faktura och en garanti från oss. Behöver väggar, golv eller tak öppnas och återställas gör vi det själva.",
-      },
-    ],
-    faq: [
-      { q: "Är elektrikerna och rörmokarna behöriga?", a: "Ja. Alla el- och VVS-installationer utförs av behöriga elinstallatörer respektive auktoriserade VVS-montörer enligt Elsäkerhetsverkets och Säker Vattens regelverk. Vi samordnar dem och ansvarar för helheten gentemot dig." },
-      { q: "Kan ni installera laddbox för elbil?", a: "Ja, vi installerar laddboxar med rätt säkring och jordfelsbrytare enligt gällande föreskrifter." },
-      { q: "Gör ni akuta VVS-jobb, som vattenläckor?", a: "Vi prioriterar akuta ärenden som vattenläckor och strömavbrott och rycker ut så snart vi kan." },
-      { q: "Kan ni göra bara el eller bara VVS, inte båda?", a: "Absolut, du kan anlita oss för endera delen eller båda tillsammans — vad som passar ditt projekt." },
-    ],
-  },
-
   projektledning: {
     lead: "Ett större byggprojekt involverar många yrkesgrupper, leveranser och beslut. Med oss som projektledare får du en kontaktperson som samordnar allt — så att du slipper vara din egen byggledare.",
     sections: [
@@ -426,22 +394,6 @@ export const serviceExtras: Record<string, ServiceExtras> = {
       "Fasadmålning",
     ],
   },
-  "el-vvs": {
-    meta: "Installation och uppgradering",
-    facts: [
-      { value: "Certifierat", label: "el och VVS" },
-      { value: "Säker Vatten", label: "i våtrum" },
-      { value: "Akut", label: "ärenden prioriteras" },
-    ],
-    included: [
-      "Ny el och omdragning",
-      "Byte av elcentral",
-      "Jordfelsbrytare",
-      "Laddbox för elbil",
-      "Vatten och avlopp",
-      "Golvvärme och bergvärme",
-    ],
-  },
   projektledning: {
     meta: "En kontaktperson, hela vägen",
     facts: [
@@ -490,10 +442,6 @@ export const serviceSeo: Record<string, { title: string; description: string }> 
   maleri: {
     title: "Målare i Göteborg — inne, fasad och puts",
     description: "Målare i Göteborg för rum, fasad och puts. Ordentligt underarbete och förstklassiga färgsystem. Kostnadsfritt hembesök och ROT på arbetet.",
-  },
-  "el-vvs": {
-    title: "Elektriker och rörmokare i Göteborg",
-    description: "Elektriker och rörmokare i Göteborg: ny el, elcentral, laddbox, vatten, avlopp och golvvärme. Certifierade installatörer, akut prioriteras.",
   },
   projektledning: {
     title: "Byggprojektledning i Göteborg",
