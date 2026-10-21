@@ -35,10 +35,10 @@ export const responsibility = {
   title: "Egen personal där vi kan, behöriga specialister där det krävs.",
   /** Phrase in `body` that lights up in orange on scroll. */
   highlight: "en kontaktperson och ett avtal med oss",
-  body: "Merparten av arbetet utför vi med egen personal. För specialistmoment som el, VVS och våtrumsarbeten anlitar vi noggrant utvalda och behöriga underentreprenörer som vi har arbetat med länge. Du har alltid en kontaktperson och ett avtal med oss – vi samordnar, kvalitetssäkrar och tar fullt ansvar för helheten, inklusive garantin.",
+  body: "Merparten av arbetet utför vi med egen personal. För specialistmoment som kräver särskild behörighet anlitar vi noggrant utvalda underentreprenörer som vi har arbetat med länge. Du har alltid en kontaktperson och ett avtal med oss – vi samordnar, kvalitetssäkrar och tar fullt ansvar för helheten, inklusive garantin.",
   points: [
     { title: "Egen personal", body: "Rivning, stomme, snickerier, golv, kakel och montering gör vi själva. Det ger kortare beslutsvägar och en jämn kvalitet." },
-    { title: "Behöriga specialister", body: "El- och VVS-arbeten är reglerade yrken. De utförs av behöriga elinstallatörer och auktoriserade VVS-montörer som vi känner och litar på." },
+    { title: "Behöriga specialister", body: "Moment som kräver särskild behörighet utförs av certifierade specialister som vi känner och litar på." },
     { title: "Ett avtal, en garanti", body: "Du skriver avtal med oss och får en faktura, en tidplan och en garanti – vi ansvarar för varje moment, oavsett vem som utför det." },
   ],
 };
@@ -101,7 +101,7 @@ export const featuredProjects = [
 export const faq = [
   { q: "Erbjuder ni kostnadsfri offert?", a: "Ja. Vi tar fram en kostnadsfri och detaljerad offert utan förpliktelser. Fyll i formuläret så återkommer vi inom 24 timmar." },
   { q: "Vilka områden arbetar ni i?", a: "Vi utför bygg- och renoveringsprojekt i södra och västra Sverige – i Skåne, Halland och Västra Götaland, från Malmö till Borås. Hör av dig så berättar vi om vi kan ta ditt projekt." },
-  { q: "Gör ni allt arbete själva?", a: "Merparten, ja. Rivning, stomme, snickerier, golv, kakel och montering gör vi med egen personal. El- och VVS-arbeten utförs av behöriga specialister som vi har arbetat med länge, eftersom det är reglerade yrken. Du har ändå bara ett avtal och en kontaktperson – vi samordnar arbetet och ansvarar för helheten, inklusive garantin." },
+  { q: "Gör ni allt arbete själva?", a: "Merparten, ja. Rivning, stomme, snickerier, golv, kakel och montering gör vi med egen personal. Moment som kräver särskild behörighet utförs av specialister som vi har arbetat med länge. Du har ändå bara ett avtal och en kontaktperson – vi samordnar arbetet och ansvarar för helheten, inklusive garantin." },
   { q: "Kan jag använda ROT-avdrag?", a: "Ja, för de flesta renoverings- och byggarbeten i hemmet kan du nyttja ROT-avdraget på arbetskostnaden. Vi hjälper dig med uppgifterna och drar av direkt på fakturan." },
   { q: "Hur lång tid tar ett projekt?", a: "Det beror på omfattningen. Ett badrum tar ofta 3–5 veckor, medan en totalrenovering kan ta flera månader. Du får en tydlig tidplan i offerten." },
   { q: "Lämnar ni garanti på arbetet?", a: "Ja, vi lämnar {garanti}." },
