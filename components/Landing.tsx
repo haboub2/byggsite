@@ -7,7 +7,7 @@ import Blueprint from "./Blueprint";
 import WorkCard from "./WorkCard";
 import Reveal from "./Reveal";
 import { Icon } from "./Icons";
-import { Stats, SectionHead, Register, Faq, Bridge, CtaBand, type RegisterItem } from "./Sections";
+import { SectionHead, Register, Faq, Bridge, CtaBand, type RegisterItem } from "./Sections";
 import { Craft } from "./PhotoSections";
 import ExpandBand from "./scroll/ExpandBand";
 import ProcessStory from "./scroll/ProcessStory";
@@ -16,6 +16,7 @@ import WorkStrip from "./scroll/WorkStrip";
 import StackCards from "./scroll/StackCards";
 import ScrollWipe from "./scroll/ScrollWipe";
 import Marquee from "./scroll/Marquee";
+import ReferenceCarousel from "./scroll/ReferenceCarousel";
 import { PricingSection } from "./Pricing";
 import { hasImage, resolveImage } from "@/lib/images";
 import { listPublishedProjects, resolve } from "@/lib/projects";
@@ -56,7 +57,6 @@ export default async function Landing({ side }: { side: Side }) {
   preloadHero(isBygg ? "mjukvara" : "bygg");
   const [{ company, warranty }, projects, cases] = await Promise.all([getContent(), listPublishedProjects(), listPublishedCases()]);
   const w = isBygg ? warranty.bygg : warranty.software;
-  const stats = [...(isBygg ? company.byggStats : company.softwareStats), { value: w.short, label: "garanti" }];
   const steps = (isBygg ? processSteps : softwareProcess).map((s, i) => ({
     ...s,
     body: fillWarranty(s.body, w),
@@ -176,10 +176,6 @@ export default async function Landing({ side }: { side: Side }) {
         </div>
       </section>
 
-      <div className="container">
-        <Stats items={stats} />
-      </div>
-
       <section className="sec">
         <div className="container">
           <SectionHead eyebrow={cfg.register.eyebrow} title={cfg.register.title} aside={cfg.register.aside} />
@@ -192,6 +188,8 @@ export default async function Landing({ side }: { side: Side }) {
       </section>
 
       {isBygg && <Marquee words={services.map((s) => s.title)} />}
+
+      {isBygg && <ReferenceCarousel cta={cfg.cta} />}
 
       <Craft {...cfg.craft} />
 
