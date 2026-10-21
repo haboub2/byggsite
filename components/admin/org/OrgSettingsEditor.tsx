@@ -56,6 +56,13 @@ export default function OrgSettingsEditor({ initial, defaults, lastSaved }: { in
           <TextField label="BIC" path="payment.bic" value={s.payment.bic} onChange={payment("bic")} placeholder="ESSESESS" />
           <TextField label="Swish-nummer (företag)" path="payment.swish" inputMode="numeric" value={s.payment.swish} onChange={payment("swish")} placeholder="1231234567" />
         </div>
+        <label className="etoggle">
+          <input type="checkbox" checked={s.payment.ocrAgreement} onChange={(e) => payment("ocrAgreement")(e.target.checked)} />
+          <span>Bankgirot har OCR-avtal</span>
+        </label>
+        <p className="efield-hint">
+          Med avtal (OCR-referenskontroll, beställs via banken) står OCR-numret på fakturan. Utan avtal står &quot;Referens&quot; med fakturanumret, som kunden skriver som meddelande. Gäller fakturor som utfärdas efter att du sparat.
+        </p>
       </fieldset>
 
       <fieldset className="efieldset">

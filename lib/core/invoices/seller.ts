@@ -22,6 +22,8 @@ export function applySellerDefaults(doc: InvoiceDocument, defaults: { seller: Se
       iban: pm.iban || d.iban || "",
       bic: pm.bic || d.bic || "",
       swish: pm.swish || d.swish || "",
+      // The organisation's agreement with Bankgirot, not a per-invoice choice.
+      ocrAgreement: d.ocrAgreement ?? pm.ocrAgreement,
     },
   };
 }
@@ -43,6 +45,7 @@ export async function getSellerDefaults(customerType?: CustomerType): Promise<{ 
       iban: settings.payment.iban,
       bic: settings.payment.bic,
       swish: settings.payment.swish,
+      ocrAgreement: settings.payment.ocrAgreement,
       termsDays: termsDaysFor(settings, customerType),
     },
     lateInterestText: settings.lateInterestText || DEFAULT_LATE_INTEREST_TEXT,

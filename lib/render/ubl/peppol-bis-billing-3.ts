@@ -1,6 +1,6 @@
 import { formatKronor, formatOre, roundToKronor, type Ore } from "../../core/money";
 import { invoiceTotals } from "../../core/invoices/totals";
-import { PEPPOL_ID, type InvoiceDocument, type InvoiceLine } from "../../core/documents/invoice";
+import { PEPPOL_ID, paymentReference, type InvoiceDocument, type InvoiceLine } from "../../core/documents/invoice";
 
 /**
  * Peppol BIS Billing 3.0 (UBL 2.1) for one invoice document. An invoice
@@ -299,7 +299,9 @@ export function renderPeppolInvoice(doc: InvoiceDocument, opts: PeppolOptions = 
   for (const account of accounts) {
     open("cac:PaymentMeans");
     el("cbc:PaymentMeansCode", "30");
-    if (pm.ocr) el("cbc:PaymentID", pm.ocr);
+    // The OCR number under an OCR agreement, otherwise the invoice number.
+    const reference = paymentReference(doc).value;
+    if (reference) el("cbc:PaymentID", reference);
     open("cac:PayeeFinancialAccount");
     el("cbc:ID", account.id);
     if (account.branch) {

@@ -7,6 +7,7 @@ import { getOrgSettings } from "../org/settings-store";
 import { chartFromSettings, reminderSettingsFrom } from "../org/settings";
 import { renderInvoicePdf, invoiceFileName } from "../../pdf/render-invoice";
 import { formatOre } from "../money";
+import { paymentReference } from "../documents/invoice";
 import { postReminder } from "../ledger/posting";
 import { makeEvent, type Actor } from "../events";
 import { demoJournalEntries, getInvoice, invoiceLabel, listInvoices, type InvoiceRecord } from "../invoices/store";
@@ -72,7 +73,7 @@ async function mailReminder(inv: InvoiceRecord, plan: ReminderPlan): Promise<str
           ${plan.interestOre ? `<tr><td style="padding:3px 16px 3px 0;color:#6b7280">Dröjsmålsränta</td><td>${esc(kr(plan.interestOre))}</td></tr>` : ""}
           <tr><td style="padding:3px 16px 3px 0;color:#6b7280">Att betala</td><td><strong>${esc(kr(total))}</strong></td></tr>
           ${d.paymentMeans.bankgiro ? `<tr><td style="padding:3px 16px 3px 0;color:#6b7280">Bankgiro</td><td>${esc(d.paymentMeans.bankgiro)}</td></tr>` : ""}
-          <tr><td style="padding:3px 16px 3px 0;color:#6b7280">OCR</td><td>${esc(inv.ocr ?? "")}</td></tr>
+          <tr><td style="padding:3px 16px 3px 0;color:#6b7280">${paymentReference(d).label}</td><td>${esc(paymentReference(d).value)}</td></tr>
         </table>
         <p>Vänliga hälsningar,<br>${esc(settings.company.signer || settings.company.legalName)}<br>${esc(d.seller.name || site.brand)}${settings.company.phone ? ` · ${esc(settings.company.phone)}` : ""}</p>
       </div>

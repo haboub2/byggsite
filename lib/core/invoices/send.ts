@@ -5,6 +5,7 @@ import { getOrgSettings } from "../org/settings-store";
 import { renderInvoicePdf, invoiceFileName } from "../../pdf/render-invoice";
 import { formatOre } from "../money";
 import { invoiceTotals } from "./totals";
+import { paymentReference } from "../documents/invoice";
 import { invoiceLabel, type InvoiceRecord } from "./store";
 
 const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -32,13 +33,14 @@ export async function sendInvoiceMail(inv: InvoiceRecord, message: string): Prom
   const brand = d.seller.name || site.brand;
   const label = invoiceLabel(inv);
   const isCredit = inv.kind === "credit";
+  const ref = paymentReference(d);
   const pay = `${formatOre(Math.abs(t.payable), { decimals: 0, currency: true })}`;
 
   const body = message.trim()
     ? message
     : isCredit
       ? `Hej ${firstName},\n\nBifogat hittar du kreditfaktura ${inv.number} som avser faktura ${d.references.precedingInvoiceNumber}. Beloppet ${pay} regleras mot fakturan eller återbetalas.\n\nHör av dig om något är oklart.`
-      : `Hej ${firstName},\n\nBifogat hittar du faktura ${inv.number}${d.title ? ` för ${d.title.toLowerCase()}` : ""}. Att betala: ${pay} senast ${d.dueDate}${t.rot ? ", ROT-avdraget är redan avdraget" : ""}. Ange OCR ${d.paymentMeans.ocr ?? inv.number} vid betalning.\n\nHör av dig om något är oklart.`;
+      : `Hej ${firstName},\n\nBifogat hittar du faktura ${inv.number}${d.title ? ` för ${d.title.toLowerCase()}` : ""}. Att betala: ${pay} senast ${d.dueDate}${t.rot ? ", ROT-avdraget är redan avdraget" : ""}. ${ref.instruction}\n\nHör av dig om något är oklart.`;
 
   await new Resend(key).emails.send({
     from,
@@ -53,7 +55,7 @@ export async function sendInvoiceMail(inv: InvoiceRecord, message: string): Prom
           <tr><td style="padding:3px 16px 3px 0;color:#6b7280">${isCredit ? "Att återfå" : "Att betala"}</td><td><strong>${esc(pay)}</strong></td></tr>
           ${isCredit ? "" : `<tr><td style="padding:3px 16px 3px 0;color:#6b7280">Förfallodatum</td><td>${esc(d.dueDate)}</td></tr>`}
           ${isCredit || !d.paymentMeans.bankgiro ? "" : `<tr><td style="padding:3px 16px 3px 0;color:#6b7280">Bankgiro</td><td>${esc(d.paymentMeans.bankgiro)}</td></tr>`}
-          ${isCredit ? "" : `<tr><td style="padding:3px 16px 3px 0;color:#6b7280">OCR</td><td>${esc(d.paymentMeans.ocr ?? inv.number ?? "")}</td></tr>`}
+          ${isCredit ? "" : `<tr><td style="padding:3px 16px 3px 0;color:#6b7280">${ref.label}</td><td>${esc(ref.value)}</td></tr>`}
         </table>
         <p>Vänliga hälsningar,<br>${esc(signer)}<br>${esc(brand)}${settings.company.phone ? ` · ${esc(settings.company.phone)}` : ""}</p>
       </div>

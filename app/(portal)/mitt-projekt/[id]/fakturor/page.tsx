@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { formatOre } from "@/lib/core/money";
+import { paymentReference } from "@/lib/core/documents/invoice";
 import { EVENT_LABEL, customerTimeline } from "@/lib/core/events";
 import { INVOICE_STATUS_LABEL, invoiceLabel, isOpen, isOverdue, listInvoiceEvents, listInvoicesForPortal } from "@/lib/core/invoices/store";
 import { formatDay } from "@/lib/portal/format";
@@ -25,7 +26,7 @@ export default async function PortalInvoices({ params }: { params: Promise<{ id:
     <div className="portal-stack">
       {open.length > 0 && (
         <p className="portal-alert">
-          <strong>{open.length === 1 ? "En faktura väntar på betalning." : `${open.length} fakturor väntar på betalning.`}</strong> Betala med bankgiro eller Swish och ange OCR-numret, så matchas betalningen automatiskt.
+          <strong>{open.length === 1 ? "En faktura väntar på betalning." : `${open.length} fakturor väntar på betalning.`}</strong> Betala med bankgiro eller Swish och ange referensen som står vid fakturan, så matchas betalningen automatiskt.
         </p>
       )}
 
@@ -63,7 +64,7 @@ export default async function PortalInvoices({ params }: { params: Promise<{ id:
 
               {openNow && d.paymentMeans.swish && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`/mitt-projekt/fil?p=swish:${inv.id}&projekt=${id}`} alt={`Swish-QR: ${kr(remaining)} till ${d.paymentMeans.swish} med meddelande ${inv.ocr}`} width={140} height={140} style={{ borderRadius: 8, border: "1px solid var(--line)", background: "#fff" }} />
+                <img src={`/mitt-projekt/fil?p=swish:${inv.id}&projekt=${id}`} alt={`Swish-QR: ${kr(remaining)} till ${d.paymentMeans.swish} med meddelande ${paymentReference(d).value}`} width={140} height={140} style={{ borderRadius: 8, border: "1px solid var(--line)", background: "#fff" }} />
               )}
               {openNow && (
                 <dl className="portal-ata-sums">
@@ -80,8 +81,8 @@ export default async function PortalInvoices({ params }: { params: Promise<{ id:
                     </div>
                   )}
                   <div>
-                    <dt>OCR / meddelande</dt>
-                    <dd>{inv.ocr}</dd>
+                    <dt>{paymentReference(d).ocr ? "OCR-nummer" : "Meddelande"}</dt>
+                    <dd>{paymentReference(d).value}</dd>
                   </div>
                   <div>
                     <dt>Att betala senast {inv.dueOn}</dt>

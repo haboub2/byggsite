@@ -2,7 +2,7 @@ import { Document, Font, Page, Text, View, Image, StyleSheet } from "@react-pdf/
 import type { Style } from "@react-pdf/stylesheet";
 import { formatOre } from "../core/money";
 import { rulesAt } from "../core/rules";
-import { LINE_KIND_LABEL, type InvoiceDocument } from "../core/documents/invoice";
+import { LINE_KIND_LABEL, paymentReference, type InvoiceDocument } from "../core/documents/invoice";
 import { customerSummary, invoiceTotals, type InvoiceTotals } from "../core/invoices/totals";
 import { maskPersonalNumber } from "../core/rot/pnr";
 import { JAKARTA_BOLD, JAKARTA_ITALIC, JAKARTA_MEDIUM, JAKARTA_REGULAR } from "./fonts";
@@ -170,7 +170,7 @@ export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer,
   const refs = doc.references;
   const sections = [...new Set(doc.lines.map((l) => l.section.trim()))];
   const grouped = sections.length > 1 || (sections.length === 1 && sections[0] !== "");
-  const ocr = pm.ocr ?? doc.number ?? "";
+  const ref = paymentReference(doc);
   const footer = [
     [seller.name, [seller.street, postal(seller)].filter(Boolean).join(", "), seller.phone, seller.email].filter(Boolean).join(" · "),
     [seller.orgNr ? `Org.nr ${seller.orgNr}` : "", seller.vatNr ? `Momsreg.nr ${seller.vatNr}` : "", seller.city ? `Säte ${seller.city}` : "", seller.fSkatt ? "Godkänd för F-skatt" : ""].filter(Boolean).join(" · "),
@@ -360,8 +360,8 @@ export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer,
                 </View>
               ) : null}
               <View style={s.payCol}>
-                <Text style={s.label}>OCR-nummer</Text>
-                <Text style={s.payV}>{ocr}</Text>
+                <Text style={s.label}>{ref.label}</Text>
+                <Text style={s.payV}>{ref.value}</Text>
               </View>
               <View style={s.payCol}>
                 <Text style={s.label}>Förfaller</Text>
@@ -377,8 +377,8 @@ export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer,
               ) : null}
             </View>
             <Text style={s.payNote}>
-              Ange OCR-numret {ocr} vid betalning.
-              {pm.swish ? ` Swish ${pm.swish} med ${ocr} som meddelande${swishQr ? ", eller skanna koden" : ""}.` : ""}
+              {ref.instruction}
+              {pm.swish ? ` Swish ${pm.swish} med ${ref.value} som meddelande${swishQr ? ", eller skanna koden" : ""}.` : ""}
             </Text>
           </View>
         ) : null}

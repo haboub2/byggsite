@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 import { createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import type { InvoicePdfProps } from "./InvoicePdf";
 import { LOGO_DATA_URI } from "./logo";
-import { invoiceDocumentSchema, newInvoiceDocument, type InvoiceDocument, type InvoiceLine } from "../core/documents/invoice";
+import { invoiceDocumentSchema, newInvoiceDocument, paymentReference, type InvoiceDocument, type InvoiceLine } from "../core/documents/invoice";
 
 const seller = {
   name: "Binaafy AB",
@@ -163,6 +163,20 @@ test("an invoice puts the buyer in the window and prints bankgiro, OCR and the a
   assert.match(t, /Underlag 25 %: 3 450,00 kr · utgående moms 862,50 kr/);
   assert.match(t, /Godkänd för F-skatt/);
   assert.doesNotMatch(t, /ROT-avdrag/);
+});
+
+test("without an OCR agreement the invoice asks for the invoice number as the message", async () => {
+  const doc = invoice("foretag", (d) => {
+    d.paymentMeans.ocrAgreement = false;
+  });
+  const t = await textOf(doc);
+  assert.match(t, /^Referens\n10001$/m);
+  assert.match(t, /Ange fakturanummer 10001 som meddelande vid betalning/);
+  assert.doesNotMatch(t, /OCR/);
+  assert.deepEqual(paymentReference(doc), { ocr: false, label: "Referens", value: "10001", instruction: "Ange fakturanummer 10001 som meddelande vid betalning." });
+  // With the agreement, and on documents issued before the choice existed: the OCR number.
+  assert.equal(paymentReference({ ...doc, paymentMeans: { ...doc.paymentMeans, ocrAgreement: true } }).value, "1000175");
+  assert.equal(paymentReference({ ...doc, paymentMeans: { ...doc.paymentMeans, ocrAgreement: undefined } }).label, "OCR-nummer");
 });
 
 test("a credit note has its own heading, negative lines and no payment box", async () => {

@@ -9,7 +9,7 @@ import { reminderSettings } from "@/lib/core/reminders/store";
 import { publicInvoiceUrl } from "@/lib/core/invoices/public";
 import { formatDateTime } from "@/lib/admin-format";
 import { formatOre } from "@/lib/core/money";
-import { CUSTOMER_TYPE_LABEL, LINE_KIND_LABEL, validateForIssue } from "@/lib/core/documents/invoice";
+import { CUSTOMER_TYPE_LABEL, LINE_KIND_LABEL, paymentReference, validateForIssue } from "@/lib/core/documents/invoice";
 import { customerSummary, invoiceTotals } from "@/lib/core/invoices/totals";
 import { EVENT_LABEL } from "@/lib/core/events";
 import { INVOICE_STATUS_LABEL, getInvoice, invoiceLabel, isOpen, isOverdue, listInvoiceEvents, listInvoicePayments } from "@/lib/core/invoices/store";
@@ -197,7 +197,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                     <br />
                   </>
                 ) : null}
-                OCR <strong>{inv.ocr}</strong>
+                {paymentReference(d).ocr ? "OCR" : "Referens"} <strong>{paymentReference(d).value}</strong>
                 {d.paymentMeans.swish ? (
                   <>
                     <br />

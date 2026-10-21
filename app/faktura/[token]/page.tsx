@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { formatOre } from "@/lib/core/money";
-import { LINE_KIND_LABEL } from "@/lib/core/documents/invoice";
+import { LINE_KIND_LABEL, paymentReference } from "@/lib/core/documents/invoice";
 import { getInvoiceByToken } from "@/lib/core/invoices/public";
 import { INVOICE_STATUS_LABEL, invoiceLabel, isOpen, isOverdue } from "@/lib/core/invoices/store";
 import { customerSummary, invoiceTotals } from "@/lib/core/invoices/totals";
@@ -30,6 +30,7 @@ export default async function PublicInvoice({ params }: { params: Promise<{ toke
   const overdue = isOverdue(inv, today);
   const remaining = inv.payableOre - inv.paidOre;
   const swish = d.paymentMeans.swish && isSwishNumber(d.paymentMeans.swish);
+  const ref = paymentReference(d);
 
   return (
     <main className="pub-wrap">
@@ -73,14 +74,14 @@ export default async function PublicInvoice({ params }: { params: Promise<{ toke
                   </div>
                 )}
                 <div>
-                  <dt>OCR / meddelande</dt>
-                  <dd>{inv.ocr}</dd>
+                  <dt>{ref.ocr ? "OCR-nummer" : "Meddelande"}</dt>
+                  <dd>{ref.value}</dd>
                 </div>
               </dl>
             </div>
             {swish && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={`/faktura/${token}/swish.png`} alt={`Swish-QR: ${kr(remaining)} till ${d.paymentMeans.swish} med meddelande ${inv.ocr}`} width={160} height={160} className="pub-qr" />
+              <img src={`/faktura/${token}/swish.png`} alt={`Swish-QR: ${kr(remaining)} till ${d.paymentMeans.swish} med meddelande ${ref.value}`} width={160} height={160} className="pub-qr" />
             )}
           </section>
         ) : (

@@ -185,8 +185,14 @@ export const paymentMeansSchema = z.object({
   iban: text(34, "IBAN").default(""),
   bic: text(11, "BIC").default(""),
   swish: text(15, "Swish-nummer").default(""),
-  /** BT-83 remittance information: the OCR number. Set at issue. */
+  /** The OCR number, set at issue. Printed only under an OCR agreement; see paymentReference. */
   ocr: z.string().regex(/^\d+$/).nullable().default(null),
+  /**
+   * The seller's bankgiro has an OCR agreement, frozen from the settings at
+   * issue. Absent on documents issued before the choice existed, which were
+   * sent with their OCR number and keep it.
+   */
+  ocrAgreement: z.boolean().optional(),
   /** BT-20 payment terms as printed ("14 dagar netto"). */
   termsText: text(200, "Betalningsvillkor").default(""),
   /** Payment terms in days, used to derive dueDate from issueDate. */
@@ -245,6 +251,28 @@ export function reverseChargeFor(type: CustomerType): boolean {
 /** Private customers read prices incl. VAT; businesses excl. */
 export function showsInclVat(buyer: Pick<Buyer, "type">): boolean {
   return buyer.type === "privat";
+}
+
+/**
+ * What the payer gives with the payment (EN 16931 BT-83). With an OCR
+ * agreement on the bankgiro it is the OCR number; without one the bank only
+ * offers a free-text message, so it is the invoice number, which the bank
+ * matching also recognises (lib/core/payments/matching.ts). A document
+ * issued before the choice existed has no flag and keeps its OCR number.
+ */
+export function paymentReference(doc: { number: string | null; paymentMeans: { ocr: string | null; ocrAgreement?: boolean } }): {
+  ocr: boolean;
+  /** "OCR-nummer" or "Referens". */
+  label: string;
+  value: string;
+  /** The sentence under the payment details. */
+  instruction: string;
+} {
+  const ocr = doc.paymentMeans.ocrAgreement !== false;
+  const value = (ocr ? doc.paymentMeans.ocr : null) ?? doc.number ?? "";
+  return ocr
+    ? { ocr, label: "OCR-nummer", value, instruction: `Ange OCR-numret ${value} vid betalning.` }
+    : { ocr, label: "Referens", value, instruction: `Ange fakturanummer ${value} som meddelande vid betalning.` };
 }
 
 /**

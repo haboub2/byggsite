@@ -362,12 +362,12 @@ export default function InvoiceEditor({ id, initial }: { id: string; initial: In
         <legend>Betalning</legend>
         <div className="egrid egrid--three">
           <TextField label="Bankgiro" path="paymentMeans.bankgiro" value={d.paymentMeans.bankgiro} onChange={setPm("bankgiro")} />
-          <TextField label="Swish-nummer (valfritt)" path="paymentMeans.swish" value={d.paymentMeans.swish} onChange={setPm("swish")} hint="Skrivs på fakturan med OCR som meddelande." />
+          <TextField label="Swish-nummer (valfritt)" path="paymentMeans.swish" value={d.paymentMeans.swish} onChange={setPm("swish")} hint="Skrivs på fakturan med referensen som meddelande." />
           <TextField label="IBAN (valfritt)" path="paymentMeans.iban" value={d.paymentMeans.iban} onChange={setPm("iban")} />
           <TextArea label="Dröjsmålsränta" path="se.lateInterestText" value={d.se.lateInterestText} onChange={(v) => setD((prev) => ({ ...prev, se: { ...prev.se, lateInterestText: v } }))} rows={2} />
         </div>
         <span className="efield-hint" style={{ display: "block", marginTop: 10 }}>
-          OCR-numret sätts automatiskt när fakturan utfärdas (fakturanumret med längd- och kontrollsiffra).
+          Referensen sätts när fakturan utfärdas: fakturanumret, eller OCR-numret (fakturanumret med längd- och kontrollsiffra) om bankgirot har OCR-avtal under Inställningar.
         </span>
       </fieldset>
     </EditorForm>

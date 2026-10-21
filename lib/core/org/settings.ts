@@ -50,6 +50,12 @@ export const paymentSettingsSchema = z.object({
     .transform((v) => v.replace(/\s/g, ""))
     .refine((v) => v === "" || /^123\d{7}$/.test(v), "Swish-nummer för företag är tio siffror och börjar med 123.")
     .default(""),
+  /**
+   * The bankgiro has Bankgirot's OCR reference check (ordered through the
+   * bank). Off: the invoice asks for the invoice number as the payment's
+   * message, since without the agreement the bank offers no OCR field.
+   */
+  ocrAgreement: z.boolean().default(false),
 });
 
 export const termsSettingsSchema = z.object({
@@ -293,6 +299,7 @@ export function settingsFromContent(input: {
       iban: quote.iban,
       bic: quote.bic,
       swish: (env.SWISH_NUMBER ?? "").replace(/\s/g, ""),
+      ocrAgreement: false,
     },
     terms: { privat: quote.paymentDays, foretag: quote.paymentDays, byggforetag: quote.paymentDays },
     lateInterestText: quote.lateInterest || DEFAULT_LATE_INTEREST_TEXT,
