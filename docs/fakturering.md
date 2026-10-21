@@ -308,7 +308,19 @@ gröna.
 
 `quotes.data.rotPersons[].personalNumber` låg i klartext, och offertens PDF
 (även i kundportalen) skrev ut numret. Migration 0024 gör samma sak som 0023
-gör för fakturorna, med 0023:s nyckel och funktioner:
+gör för fakturorna, med 0023:s nyckel och funktioner. Migrationen är körd i
+Binaafys Supabase-projekt. Provat i webbläsaren mot databasen, i Testbolag AB:
+
+- offert 1013 sparades med testnumret 121212-1212; formuläret visar sedan
+  `19121212-XXXX`, och PDF:en visar "Tolvan Offertprov (19121212-XXXX)"
+  utan det fullständiga numret
+- fakturautkastet från offerten fick `19121212-XXXX` och offertens kryptotext;
+  faktura 3 utfärdades och betalades
+- begäran "Prov 0024" för faktura 3 gav `<Kopare>191212121212</Kopare>` i
+  XML-filen. Begäran ligger kvar oskickad och tas bort med Testbolag, liksom
+  offerten, kunden Tolvan Offertprov och fakturan
+
+Ändringen:
 
 - En trigger på `quotes` och `quote_templates` byter varje klartext mot
   `ÅÅÅÅMMDD-XXXX` och lägger kryptotexten i `personalNumberSealed`.
