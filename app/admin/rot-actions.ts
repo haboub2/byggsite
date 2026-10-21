@@ -2,11 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { checkAdmin } from "@/lib/admin";
+import { checkAdmin, requireRole } from "@/lib/admin";
 import type { Actor } from "@/lib/core/events";
 import { parseKronor } from "@/lib/core/money";
 import { ROT_CATEGORIES, type RotCategory } from "@/lib/core/rot/claim-xml";
-import { createClaim, markClaimSent, registerClaimPayout, rejectClaim } from "@/lib/core/rot/store";
+import { formatPersonalNumber } from "@/lib/core/rot/pnr";
+import { createClaim, markClaimSent, openInvoiceBuyerPersonalNumber, PersonalNumberAccessError, registerClaimPayout, rejectClaim } from "@/lib/core/rot/store";
 
 const LIST = "/admin/rot";
 const actorOf = (email: string | null): Actor => (email ? { kind: "user", id: email, name: email } : { kind: "system", name: "admin" });
@@ -28,6 +29,18 @@ export async function createClaimAction(formData: FormData): Promise<void> {
   revalidatePath(LIST, "layout");
   revalidatePath("/admin/fakturor", "layout");
   redirect(back({ skapad: id }));
+}
+
+/** Opens one ROT buyer's personal number on an invoice, for owner/admin (invoice_buyer_pnr checks again). */
+export async function revealPersonalNumberAction(invoiceId: string, index: number): Promise<{ ok: true; value: string } | { ok: false; error: string }> {
+  const check = await requireRole("admin");
+  if (!check.ok) return { ok: false, error: "Bara ägare och administratörer ser personnummer." };
+  try {
+    const pnr = await openInvoiceBuyerPersonalNumber(String(invoiceId), Number(index));
+    return pnr ? { ok: true, value: formatPersonalNumber(pnr) } : { ok: false, error: "Personnummer saknas." };
+  } catch (err) {
+    return { ok: false, error: err instanceof PersonalNumberAccessError ? err.message : "Kunde inte läsa personnumret." };
+  }
 }
 
 export async function markClaimSentAction(formData: FormData): Promise<void> {

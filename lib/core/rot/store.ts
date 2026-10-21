@@ -9,12 +9,18 @@ import { makeEvent, type Actor } from "../events";
 import { invoiceTotals } from "../invoices/totals";
 import { demoJournalEntries, listInvoices, type InvoiceRecord } from "../invoices/store";
 import { rulesAt } from "../rules";
+import { hasRotPersonalNumber, MASKED_PERSONAL_NUMBER } from "../documents/invoice";
 import { toTwelveDigitPersonalNumber, type RotCategory, type RotClaimXml, type RotClaimXmlItem } from "./claim-xml";
 
 /**
  * ROT claims (rot_claims, rot_claim_items in 0014; payout and rejection in
  * 0016). A claim is a set of paid invoices with ROT, turned into one XML
  * file for Skatteverket. Demo mode keeps claims in memory.
+ *
+ * Personal numbers are encrypted in the database (0023). Claims and
+ * candidates carry the masked "ÅÅÅÅMMDD-XXXX"; the twelve digits are opened
+ * only for the XML file (openClaimPersonalNumbers) and when owner/admin asks
+ * for one buyer (openInvoiceBuyerPersonalNumber). Demo mode keeps plain text.
  */
 
 export type RotClaimStatus = "draft" | "sent" | "paid" | "rejected";
@@ -24,7 +30,10 @@ export type RotClaimItem = {
   id: string;
   invoiceId: string;
   invoiceNumber: string;
+  /** rot_buyers.id; null in demo mode. */
+  buyerId: string | null;
   buyerName: string;
+  /** Masked ÅÅÅÅMMDD-XXXX (plain text in demo mode). */
   personalNumber: string;
   amountOre: number;
   workOre: number;
@@ -50,7 +59,8 @@ export type RotClaim = {
 export type RotCandidate = {
   invoice: InvoiceRecord;
   paidOn: string;
-  buyers: { name: string; personalNumber: string; amountOre: number }[];
+  /** personalNumber as stored on the invoice: masked, or plain text in demo mode. */
+  buyers: { index: number; name: string; personalNumber: string; amountOre: number }[];
   workOre: number;
   materialOre: number;
   otherOre: number;
@@ -77,8 +87,8 @@ export async function listRotCandidates(): Promise<RotCandidate[]> {
     const hours = inv.document.lines.filter((l) => l.kind === "labor" && /^tim/i.test(l.unit)).reduce((s, l) => s + l.quantity, 0);
     const byKind = { labor: 0, material: 0, other: 0 };
     for (const l of inv.document.lines) byKind[l.kind] += t.lines[l.id]?.gross ?? 0;
-    const buyers = rot.buyers.map((b, i) => ({ name: b.name, personalNumber: b.personalNumber, amountOre: t.rot?.perBuyer[i] ?? 0 }));
-    for (const b of buyers) if (!/^(\d{2})?\d{6}-?\d{4}$/.test(b.personalNumber)) problems.push(`Personnummer saknas för ${b.name || "en köpare"}.`);
+    const buyers = rot.buyers.map((b, i) => ({ index: i, name: b.name, personalNumber: b.personalNumber, amountOre: t.rot?.perBuyer[i] ?? 0 }));
+    for (const b of rot.buyers) if (!hasRotPersonalNumber(b)) problems.push(`Personnummer saknas för ${b.name || "en köpare"}.`);
     out.push({ invoice: inv, paidOn: (inv.paidAt ?? inv.updatedAt).slice(0, 10), buyers, workOre: byKind.labor, materialOre: byKind.material, otherOre: byKind.other, hours: hours > 0 ? Math.round(hours) : null, property: rot.property, problems });
   }
   return out.sort((a, b) => a.paidOn.localeCompare(b.paidOn));
@@ -96,10 +106,10 @@ export async function listClaims(): Promise<RotClaim[]> {
   if (ids.length === 0) return [];
   const { data: items, error: e2 } = await supabase
     .from("rot_claim_items")
-    .select("id, claim_id, invoice_id, amount_ore, work_ore, paid_on, status, rot_buyers(name, personal_number, property, category), invoices(number)")
+    .select("id, claim_id, invoice_id, buyer_id, amount_ore, work_ore, paid_on, status, rot_buyers(name, personal_number_masked, property, category), invoices(number)")
     .in("claim_id", ids);
   if (e2) throw new Error(`Kunde inte hämta ROT-ärenden: ${e2.message}`);
-  type ItemRow = { id: string; claim_id: string; invoice_id: string; amount_ore: number; work_ore: number; paid_on: string; status: RotClaimItem["status"]; rot_buyers: { name: string; personal_number: string; property: RotClaimXmlItem["property"]; category: RotCategory } | null; invoices: { number: string } | null };
+  type ItemRow = { id: string; claim_id: string; invoice_id: string; buyer_id: string; amount_ore: number; work_ore: number; paid_on: string; status: RotClaimItem["status"]; rot_buyers: { name: string; personal_number_masked: string; property: RotClaimXmlItem["property"]; category: RotCategory } | null; invoices: { number: string } | null };
   return (claims ?? []).map((c) => ({
     id: c.id as string,
     name: (c.note as string)?.split("\n")[0] || "ROT-begäran",
@@ -115,8 +125,9 @@ export async function listClaims(): Promise<RotClaim[]> {
         id: i.id,
         invoiceId: i.invoice_id,
         invoiceNumber: i.invoices?.number ?? "",
+        buyerId: i.buyer_id,
         buyerName: i.rot_buyers?.name ?? "",
-        personalNumber: i.rot_buyers?.personal_number ?? "",
+        personalNumber: i.rot_buyers?.personal_number_masked ?? "",
         amountOre: Number(i.amount_ore),
         workOre: Number(i.work_ore),
         paidOn: i.paid_on,
@@ -141,6 +152,7 @@ export async function createClaim(name: string, invoiceIds: string[], category: 
     c.buyers.map((b) => ({
       invoiceId: c.invoice.id,
       invoiceNumber: c.invoice.number ?? "",
+      buyerIndex: b.index,
       buyerName: b.name,
       personalNumber: b.personalNumber,
       amountOre: b.amountOre,
@@ -162,7 +174,7 @@ export async function createClaim(name: string, invoiceIds: string[], category: 
       paidOre: 0,
       note: name,
       createdAt: new Date().toISOString(),
-      items: items.map((i) => ({ id: crypto.randomUUID(), status: "pending", ...i })),
+      items: items.map((i) => ({ id: crypto.randomUUID(), buyerId: null, status: "pending", ...i })),
     };
     demo().claims.push(claim);
     demoEvent("rot_claim", claim.id, "rot_claim.created", { name, invoices: items.length }, actor);
@@ -173,30 +185,31 @@ export async function createClaim(name: string, invoiceIds: string[], category: 
   const { data: claim, error } = await supabase.from("rot_claims").insert({ org_id: org, status: "draft", note: name, created_by: actor.kind === "user" ? actor.name : null }).select("id, org_id").single();
   if (error) throw new Error(`Kunde inte skapa begäran: ${error.message}`);
   for (const it of items) {
-    const { data: buyer, error: e1 } = await supabase
-      .from("rot_buyers")
-      .insert({ org_id: org, invoice_id: it.invoiceId, name: it.buyerName, personal_number: it.personalNumber, share_ore: it.amountOre, property: it.property, category: it.category })
-      .select("id")
-      .single();
+    // The ciphertext is copied from the invoice inside the database; nothing is opened here.
+    const { data: buyerId, error: e1 } = await supabase.rpc("rot_buyer_from_invoice", { p_invoice: it.invoiceId, p_index: it.buyerIndex, p_share_ore: it.amountOre, p_property: it.property, p_category: it.category });
     if (e1) throw new Error(`Kunde inte spara köparen: ${e1.message}`);
-    const { error: e2 } = await supabase.from("rot_claim_items").insert({ org_id: org, claim_id: claim.id, invoice_id: it.invoiceId, buyer_id: buyer.id, amount_ore: it.amountOre, work_ore: it.workOre, paid_on: it.paidOn });
+    const { error: e2 } = await supabase.from("rot_claim_items").insert({ org_id: org, claim_id: claim.id, invoice_id: it.invoiceId, buyer_id: buyerId as string, amount_ore: it.amountOre, work_ore: it.workOre, paid_on: it.paidOn });
     if (e2) throw new Error(`Kunde inte spara ärendet: ${e2.message}`);
   }
   await supabase.from("events").insert({ org_id: claim.org_id, aggregate_type: "rot_claim", aggregate_id: claim.id, type: "rot_claim.created", data: { name, invoices: items.length }, actor });
   return claim.id as string;
 }
 
-/** The XML input for a claim; the admin downloads the rendered file. */
-export function claimToXml(claim: RotClaim, today = todayIso()): RotClaimXml {
+/**
+ * The XML input for a claim; the admin downloads the rendered file.
+ * `personalNumbers` (item id → twelve digits, from openClaimPersonalNumbers)
+ * replaces the masked numbers; without it they stay masked and
+ * renderRotClaimXml refuses the claim.
+ */
+export function claimToXml(claim: RotClaim, today = todayIso(), personalNumbers: Record<string, string> = {}): RotClaimXml {
   return {
     name: claim.name.slice(0, 16),
     items: claim.items.map((it) => {
-      const inv = null;
-      void inv;
       const workKr = Math.round(it.workOre / 100);
       const requestedKr = Math.round(it.amountOre / 100);
+      const pnr = personalNumbers[it.id] ?? it.personalNumber;
       return {
-        personalNumber: toTwelveDigitPersonalNumber(it.personalNumber, today),
+        personalNumber: MASKED_PERSONAL_NUMBER.test(pnr) ? pnr : toTwelveDigitPersonalNumber(pnr, today),
         paidOn: it.paidOn,
         workPriceKr: workKr,
         paidKr: Math.max(0, workKr - requestedKr),
@@ -211,9 +224,9 @@ export function claimToXml(claim: RotClaim, today = todayIso()): RotClaimXml {
 }
 
 /** Richer XML input when the invoices are at hand: hours, material and other costs per case. */
-export async function claimToXmlWithInvoices(claim: RotClaim, today = todayIso()): Promise<RotClaimXml> {
+export async function claimToXmlWithInvoices(claim: RotClaim, today = todayIso(), personalNumbers: Record<string, string> = {}): Promise<RotClaimXml> {
   const invoices = await listInvoices();
-  const base = claimToXml(claim, today);
+  const base = claimToXml(claim, today, personalNumbers);
   base.items = base.items.map((item, i) => {
     const inv = invoices.find((x) => x.id === claim.items[i].invoiceId);
     if (!inv) return item;
@@ -232,6 +245,46 @@ export async function claimToXmlWithInvoices(claim: RotClaim, today = todayIso()
     };
   });
   return base;
+}
+
+export class PersonalNumberAccessError extends Error {
+  constructor() {
+    super("Bara ägare och administratörer ser personnummer.");
+    this.name = "PersonalNumberAccessError";
+  }
+}
+
+/** The twelve-digit personal numbers of a claim, item id → number. Owner/admin only (rot_buyer_pnr). */
+export async function openClaimPersonalNumbers(claim: RotClaim): Promise<Record<string, string>> {
+  if (isDemo()) return {};
+  const supabase = await getDb();
+  const out: Record<string, string> = {};
+  for (const it of claim.items) {
+    if (!it.buyerId) continue;
+    const { data, error } = await supabase.rpc("rot_buyer_pnr", { p_buyer: it.buyerId });
+    if (error) {
+      if (error.code === "42501") throw new PersonalNumberAccessError();
+      throw new Error(`Kunde inte läsa personnumret: ${error.message}`);
+    }
+    if (typeof data === "string") out[it.id] = data;
+  }
+  return out;
+}
+
+/** One invoice buyer's personal number, twelve digits, or null if there is none. Owner/admin only (invoice_buyer_pnr). */
+export async function openInvoiceBuyerPersonalNumber(invoiceId: string, index: number): Promise<string | null> {
+  if (isDemo()) {
+    const inv = (await listInvoices()).find((x) => x.id === invoiceId);
+    const pnr = inv?.document.se.rot?.buyers[index]?.personalNumber ?? "";
+    return pnr && !MASKED_PERSONAL_NUMBER.test(pnr) ? toTwelveDigitPersonalNumber(pnr, todayIso()) : null;
+  }
+  const supabase = await getDb();
+  const { data, error } = await supabase.rpc("invoice_buyer_pnr", { p_invoice: invoiceId, p_index: index });
+  if (error) {
+    if (error.code === "42501") throw new PersonalNumberAccessError();
+    throw new Error(`Kunde inte läsa personnumret: ${error.message}`);
+  }
+  return typeof data === "string" ? data : null;
 }
 
 export async function markClaimSent(id: string, actor: Actor): Promise<void> {

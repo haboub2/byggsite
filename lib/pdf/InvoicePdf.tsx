@@ -4,6 +4,7 @@ import { formatOre } from "../core/money";
 import { rulesAt } from "../core/rules";
 import { CUSTOMER_TYPE_LABEL, INVOICE_TYPE_CODE, LINE_KIND_LABEL, type InvoiceDocument } from "../core/documents/invoice";
 import { customerSummary, invoiceTotals, type InvoiceTotals } from "../core/invoices/totals";
+import { maskPersonalNumber } from "../core/rot/pnr";
 import { LOGO_DATA_URI } from "./logo";
 import { JAKARTA_BOLD, JAKARTA_ITALIC, JAKARTA_MEDIUM, JAKARTA_REGULAR } from "./fonts";
 
@@ -16,7 +17,8 @@ import { JAKARTA_BOLD, JAKARTA_ITALIC, JAKARTA_MEDIUM, JAKARTA_REGULAR } from ".
  *
  * Content follows momslagen's list (docs/fakturering.md, grundkrav 4) and
  * Swedish practice: due date, org nr, F-skatt, bankgiro and OCR, the
- * reverse-charge sentence, and the ROT block with buyer and property.
+ * reverse-charge sentence, and the ROT block with buyer and property (the
+ * personal number masked, ÅÅÅÅMMDD-XXXX, since 0023).
  */
 
 Font.register({
@@ -293,7 +295,7 @@ export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer,
                 </Text>
                 {doc.se.rot.buyers.map((b, i) => (
                   <Text key={i} style={s.boxText}>
-                    {clean(`Köpare: ${b.name}, ${b.personalNumber}${doc.se.rot!.buyers.length > 1 ? ` · ${kr(Math.abs(totals.rot!.perBuyer[i] ?? 0))}` : ""}`)}
+                    {clean(`Köpare: ${b.name}, ${maskPersonalNumber(b.personalNumber, doc.issueDate)}${doc.se.rot!.buyers.length > 1 ? ` · ${kr(Math.abs(totals.rot!.perBuyer[i] ?? 0))}` : ""}`)}
                   </Text>
                 ))}
                 {doc.se.rot.property ? (

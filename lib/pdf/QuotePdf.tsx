@@ -6,6 +6,7 @@ import type { QuoteCompany as Company } from "../quotes/profile";
 import { deductionLabel, DEDUCTION_RULES, displayUnitPrice, groupItems, priceSummary, quoteTotals, sek, qty, showsInclVat, validUntil, formatDate } from "../quotes/math";
 import { ITEM_KIND_LABEL, type ItemKind, type Quote } from "../quotes/schema";
 import { BANNER_LINE } from "../quotes/cover";
+import { maskPersonalNumber } from "../core/rot/pnr";
 import { JAKARTA_BOLD, JAKARTA_ITALIC, JAKARTA_MEDIUM, JAKARTA_REGULAR } from "./fonts";
 import type { PdfPhoto } from "./photos";
 
@@ -521,6 +522,8 @@ function Terms({ quote }: { quote: Quote }) {
   const t = quoteTotals(d);
   const c = d.customer;
   const persons = d.rotPersons.length > 0 ? d.rotPersons : [{ name: "", personalNumber: "" }];
+  // Masked even in demo mode, where the database has not sealed the number (0024).
+  const personalNumbers = persons.map((p) => maskPersonalNumber(p.personalNumber, d.date));
   const cards: { h: string; body: ReactNode; wide?: boolean }[] = [];
   if (d.terms.payment.trim()) cards.push({ h: "Betalningsvillkor", body: <Lines text={d.terms.payment} style={s.termText} /> });
   if (d.terms.start.trim()) cards.push({ h: "Start och leverans", body: <Lines text={d.terms.start} style={s.termText} /> });
@@ -540,7 +543,7 @@ function Terms({ quote }: { quote: Quote }) {
             <View key={i} style={s.rotLine}>
               <Text style={s.termText}>
                 {clean(person.name || (i === 0 && c.name) || `Person ${i + 1}`)}
-                {person.personalNumber ? ` (${person.personalNumber})` : ""}
+                {personalNumbers[i] ? ` (${personalNumbers[i]})` : ""}
               </Text>
               <Text style={s.termText}>-{sek(rot.perOwner[i] ?? 0)} SEK</Text>
             </View>

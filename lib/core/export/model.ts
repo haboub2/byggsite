@@ -56,6 +56,14 @@ export type ExportBankTransaction = {
 
 export type ExportEvent = { id: string; aggregateType: string; aggregateId: string; type: string; data: Record<string, unknown>; actor: Actor; at: string };
 
+/**
+ * Personal numbers opened for the export (owner/admin only): ROT claim item
+ * id → twelve digits, and invoice id → one per ROT buyer in the document
+ * (null where the buyer has none). Without it the file keeps the masked
+ * form the database stores (0023).
+ */
+export type OpenedPersonalNumbers = { claimItems: Record<string, string>; invoiceBuyers: Record<string, (string | null)[]> };
+
 export type ExportData = {
   org: ExportOrg;
   settings: OrgSettings;
@@ -72,6 +80,7 @@ export type ExportData = {
   rotClaims: RotClaim[];
   bankTransactions: ExportBankTransaction[];
   events: ExportEvent[];
+  personalNumbers?: OpenedPersonalNumbers;
 };
 
 /** Issued invoices and credit notes, the ones with a number: what the CSV and the PDF archive hold. */

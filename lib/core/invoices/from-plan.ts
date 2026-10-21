@@ -1,6 +1,6 @@
 import "server-only";
 import { invoiceDocumentSchema, newInvoiceDocument, type InvoiceDocument, type InvoiceLine } from "../documents/invoice";
-import { buyerFromQuote, lineFromQuoteItem } from "./from-quote";
+import { buyerFromQuote, lineFromQuoteItem, rotBuyersFromQuote } from "./from-quote";
 import { kindTotals, stepInvoiceLines, type ChangeOrderLike } from "../plans/billing";
 import type { PaymentPlan, PaymentPlanStep } from "../plans/schema";
 import { getSellerDefaults } from "./seller";
@@ -51,8 +51,7 @@ export async function invoiceDocumentForStep(input: {
   doc.lines = lines;
   doc.se.lateInterestText = lateInterestText;
   if (quote.data.rot && buyer.type === "privat" && quote.data.division === "bygg" && kindTotals(lines).labor !== 0) {
-    const persons = quote.data.rotPersons.length > 0 ? quote.data.rotPersons : [{ name: quote.data.customer.name, personalNumber: "" }];
-    doc.se.rot = { buyers: persons.map((p, i) => ({ name: p.name || (i === 0 ? quote.data.customer.name : ""), personalNumber: p.personalNumber ?? "", roomOre: null })), property: null, deductionOre: null };
+    doc.se.rot = { buyers: rotBuyersFromQuote(quote.data), property: null, deductionOre: null };
   }
   return { document: invoiceDocumentSchema.parse(doc), changeOrderIds: [...new Set(lines.flatMap((l) => (l.changeOrderId ? [l.changeOrderId] : [])))] };
 }

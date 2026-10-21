@@ -6,6 +6,7 @@ import { invoiceTotals } from "../invoices/totals";
 import { orgSettingsSchema } from "../org/settings";
 import { ocrFor } from "../ocr";
 import { readStoredZip } from "../../zip";
+import { invoiceFileName } from "../../pdf/invoice-file-name";
 import { buildInvoiceArchive } from "./archive";
 import { CSV_BOM, csvAmount, csvField, csvText, customersCsv, fileSlug, invoicesCsv, paymentsCsv } from "./csv";
 import { buildJsonExport, EXPORT_SCHEMA_VERSION, serializeJsonExport } from "./json";
@@ -216,15 +217,22 @@ test("the archive holds every issued invoice as a PDF named like the e-mail, and
   const entries = readStoredZip(zip);
   assert.deepEqual(
     entries.map((e) => e.name),
-    ["index.csv", "Faktura-10001-Binaafy-Anna-Lindqvist.pdf", "Faktura-10002-Binaafy-Bygg-Soder-AB.pdf", "Kreditfaktura-10003-Binaafy-Bygg-Soder-AB.pdf"]
+    ["index.csv", "Faktura-10001-Binaafy-AB-Anna-Lindqvist.pdf", "Faktura-10002-Binaafy-AB-Bygg-Soder-AB.pdf", "Kreditfaktura-10003-Binaafy-AB-Bygg-Soder-AB.pdf"]
   );
   assert.deepEqual(files, entries.map((e) => e.name));
   assert.ok(entries.every((e) => e.crcOk));
   assert.equal(entries[1].data.toString(), "%PDF-1.4 10001");
   const index = entries[0].data.toString("utf8");
   assert.ok(index.startsWith(`${CSV_BOM}Fil;Fakturanummer;`));
-  assert.ok(index.includes("\r\nKreditfaktura-10003-Binaafy-Bygg-Soder-AB.pdf;10003;Kreditfaktura;"));
+  assert.ok(index.includes("\r\nKreditfaktura-10003-Binaafy-AB-Bygg-Soder-AB.pdf;10003;Kreditfaktura;"));
   assert.ok(!index.includes("utkast"));
+});
+
+test("an invoice's file is named after its own seller, not the website's brand", () => {
+  const doc = (sellerName: string) => ({ seller: { name: sellerName }, buyer: { name: "Åsa Öberg" } });
+  assert.equal(invoiceFileName({ kind: "invoice", number: "1", document: doc("Testbolag AB") }), "Faktura-1-Testbolag-AB-Asa-Oberg.pdf");
+  assert.equal(invoiceFileName({ kind: "credit", number: "2", document: doc("Testbolag AB") }), "Kreditfaktura-2-Testbolag-AB-Asa-Oberg.pdf");
+  assert.equal(invoiceFileName({ kind: "invoice", number: null, document: doc("") }), "Faktura-utkast-Asa-Oberg.pdf");
 });
 
 /* ---------- JSON ---------- */
@@ -289,4 +297,38 @@ test("json export: top level, öre as integers, full documents, sorted and stabl
   JSON.stringify(back, (k, v) => (/Ore$/.test(k) && typeof v === "number" ? (ore.push(v), v) : v));
   assert.ok(ore.length > 20);
   assert.ok(ore.every(Number.isInteger), "every *Ore field is an integer");
+});
+
+test("json export keeps personal numbers masked unless an owner or admin opened them", () => {
+  const data = exportData();
+  const badrum = data.invoices.find((i) => i.number === "10001")!;
+  const rot = badrum.document.se.rot!;
+  badrum.document = { ...badrum.document, se: { ...badrum.document.se, rot: { ...rot, buyers: [{ ...rot.buyers[0], personalNumber: "19850412-XXXX", personalNumberSealed: "c2VhbGVk" }] } } };
+  data.rotClaims = [
+    {
+      id: "claim",
+      name: "ROT oktober",
+      status: "draft",
+      sentOn: null,
+      decidedOn: null,
+      paidOre: 0,
+      note: "ROT oktober",
+      createdAt: "2026-10-20T10:00:00.000Z",
+      items: [{ id: "item", buyerId: "buyer", invoiceId: badrum.id, invoiceNumber: "10001", buyerName: "Anna Lindqvist", personalNumber: "19850412-XXXX", amountOre: badrum.rotOre, workOre: 600_000, paidOn: "2026-10-12", status: "pending", property: { kind: "fastighet", designation: "Göteborg Tolered 1:23" }, category: "Bygg" }],
+    },
+  ];
+
+  const masked = buildJsonExport(data, "2026-10-20T12:00:00.000Z");
+  assert.equal(masked.format.personalNumbers, "masked");
+  assert.equal(masked.rotClaims[0].items[0].personalNumber, "19850412-XXXX");
+  assert.equal(masked.invoices[0].document.se.rot?.buyers[0].personalNumber, "19850412-XXXX");
+
+  data.personalNumbers = { claimItems: { item: "198504121234" }, invoiceBuyers: { [badrum.id]: ["198504121234"] } };
+  const plain = buildJsonExport(data, "2026-10-20T12:00:00.000Z");
+  assert.equal(plain.format.personalNumbers, "plain");
+  assert.equal(plain.rotClaims[0].items[0].personalNumber, "198504121234");
+  const buyer = plain.invoices[0].document.se.rot!.buyers[0];
+  assert.equal(buyer.personalNumber, "198504121234");
+  assert.ok(!("personalNumberSealed" in buyer), "the ciphertext is left out once the number is open");
+  assert.equal(badrum.document.se.rot!.buyers[0].personalNumber, "19850412-XXXX", "the record itself is not changed");
 });

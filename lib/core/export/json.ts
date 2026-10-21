@@ -1,3 +1,4 @@
+import type { InvoiceDocument } from "../documents/invoice";
 import { byNumber, type ExportData } from "./model";
 
 /**
@@ -9,7 +10,9 @@ import { byNumber, type ExportData } from "./model";
  * renaming or removing one means `schemaVersion: 2`.
  *
  * Money is integer öre (1 krona = 100 öre), with `currency` beside it where
- * a record has one. Dates are ISO 8601: `YYYY-MM-DD` for dates, UTC
+ * a record has one. Personal numbers are masked (ÅÅÅÅMMDD-XXXX) unless an
+ * owner or admin exported, then twelve digits (`format.personalNumbers`).
+ * Dates are ISO 8601: `YYYY-MM-DD` for dates, UTC
  * timestamps for moments. Every list is sorted, so two exports of the same
  * data are identical apart from `exportedAt`.
  */
@@ -28,8 +31,30 @@ const byKey =
     return 0;
   };
 
+/** The invoice document with the ROT buyers' personal numbers in plain text, when they were opened. The ciphertext goes: it is useless without the key. */
+function withPersonalNumbers(doc: InvoiceDocument, opened: (string | null)[] | undefined): InvoiceDocument {
+  const rot = doc.se.rot;
+  if (!rot || !opened) return doc;
+  return {
+    ...doc,
+    se: {
+      ...doc.se,
+      rot: {
+        ...rot,
+        buyers: rot.buyers.map((b, i) => {
+          if (!opened[i]) return b;
+          const { personalNumberSealed, ...rest } = b;
+          void personalNumberSealed;
+          return { ...rest, personalNumber: opened[i]! };
+        }),
+      },
+    },
+  };
+}
+
 export function buildJsonExport(data: ExportData, exportedAt: string = new Date().toISOString()) {
   const invoiceNumber = new Map(data.invoices.map((i) => [i.id, i.number]));
+  const opened = data.personalNumbers;
   return {
     exportedAt,
     schemaVersion: EXPORT_SCHEMA_VERSION,
@@ -38,6 +63,7 @@ export function buildJsonExport(data: ExportData, exportedAt: string = new Date(
       money: "Heltal i öre (1 kr = 100 öre).",
       dates: "ISO 8601; datum ÅÅÅÅ-MM-DD, tidpunkter i UTC.",
       invoiceDocument: "invoices[].document följer EN 16931 (lib/core/documents/invoice.ts), med svenska tillägg under se.",
+      personalNumbers: opened ? "plain" : "masked",
     },
     org: {
       id: data.org.id,
@@ -104,7 +130,7 @@ export function buildJsonExport(data: ExportData, exportedAt: string = new Date(
         createdBy: i.createdBy,
         createdAt: i.createdAt,
         updatedAt: i.updatedAt,
-        document: i.document,
+        document: withPersonalNumbers(i.document, opened?.invoiceBuyers[i.id]),
       })),
     payments: [...data.payments]
       .sort(byKey((p) => p.paidOn, (p) => p.createdAt, (p) => p.id))
@@ -185,7 +211,7 @@ export function buildJsonExport(data: ExportData, exportedAt: string = new Date(
             invoiceId: i.invoiceId,
             invoiceNumber: i.invoiceNumber,
             buyerName: i.buyerName,
-            personalNumber: i.personalNumber,
+            personalNumber: opened?.claimItems[i.id] ?? i.personalNumber,
             amountOre: i.amountOre,
             workOre: i.workOre,
             paidOn: i.paidOn,

@@ -52,29 +52,37 @@ Beslut:
   kontrollerat, eftersom läsrollerna inte får skriva i `events` under RLS.
   Misslyckas loggningen levereras filen ändå och felet hamnar i loggen,
   som vid låsningen.
-- **Exporten följer rollens läsrätt.** ROT-begärandena läses med
-  `listClaims()`, och efter 0023 ger den personnumret maskerat
-  (`ÅÅÅÅMMDD-XXXX`) för alla roller; fakturadokumenten har det maskerade
-  numret och kryptotexten (`personalNumberSealed`). Ingen klartext lämnar
-  alltså systemet via exporten. Felar en tabell felar hela JSON-exporten
-  hellre än att en ofullständig fil levereras.
+- **Personnummer i klartext bara för owner/admin.** Efter 0023 ger
+  `listClaims()` och fakturadokumenten personnumret maskerat
+  (`ÅÅÅÅMMDD-XXXX`, dokumenten också med kryptotexten). När en owner eller
+  admin hämtar JSON-filen öppnas varje maskerat nummer med samma
+  databasfunktioner som XML-filen och fakturasidan (`rot_buyer_pnr`,
+  `invoice_buyer_pnr`, via `openPersonalNumbers` i `load.ts`), så att filen
+  är komplett utan krypteringsnyckeln; kryptotexten tas då bort ur
+  dokumentet. `format.personalNumbers` säger `"plain"` eller `"masked"`, och
+  händelsen `export.json` loggar vilket och hur många nummer som öppnades.
+  Övriga roller får de maskerade numren. Felar en tabell eller ett
+  personnummer felar hela JSON-exporten hellre än att en ofullständig fil
+  levereras.
 
 Kvar:
 
-- **ROT i JSON-exporten kräver 0023.** Den pågående krypteringen av
-  personnummer har redan ändrat `listClaims()` (ocommittat när detta
-  skrevs), och mot en databas utan 0023 felar den läsningen, och därmed
-  JSON-exporten, med "personal_number_masked does not exist". Provet ovan
-  gjordes med ROT-delen tillfälligt avstängd; ROT-begärandena i JSON
-  behöver provas igen när 0023 är körd.
-- **Personnummer i klartext för en organisation som lämnar** är ett beslut
-  som väntar: kryptotexten går inte att öppna utan nyckeln i Vault, så en
-  owner som tar med sig exporten har bara de maskerade numren. Vill vi ge
-  klartext kan JSON-exporten för owner/admin öppna dem med
-  `openClaimPersonalNumbers` och logga det i händelsen.
-- **Filnamnen på fakturorna har webbplatsens varumärke** (`site.brand`)
-  för alla organisationer, som i e-posten. Testbolags PDF:er skulle heta
-  `Faktura-1-Binaafy-….pdf`; ska följa organisationen som offerterna gör.
+- ~~**ROT i JSON-exporten kräver 0023**~~ Gjort: 0023 är körd, och
+  JSON-exporten som owner gav ROT-begäran 2610 och faktura 10005 med
+  tolvsiffrigt personnummer, utan kryptotext, `format.personalNumbers`
+  `"plain"` och händelsen `export.json` med `personalNumbersOpened: 2`.
+  Det maskerade fallet (accountant, readonly, staff) är provat i testerna
+  men inte med en sådan inloggning i webbläsaren.
+- **Ett anrop per ROT-köpare** när personnumren öppnas räcker för Binaafy
+  men blir långsamt med tusentals ROT-fakturor; då behövs en
+  databasfunktion som öppnar alla i ett anrop.
+- ~~**Filnamnen på fakturorna har webbplatsens varumärke**~~ Gjort:
+  `invoiceFileName` tar säljarnamnet ur fakturans frysta dokument
+  (`document.seller.name`, samma namn som e-postens "från"), så Testbolags
+  fakturor heter `Faktura-1-Testbolag-AB-….pdf` i e-posten, påminnelsen,
+  portalen, API:t och PDF-arkivet. Medvetet beslut: Binaafys heter efter
+  företagsnamnet på fakturan, inte varumärket (`Binaafy-AB` om säljaren
+  heter Binaafy AB), och namnet ändras aldrig när fakturan väl är utfärdad.
 - **Allt byggs i minnet i ett anrop.** Zippen för en organisation med
   tusentals fakturor bör bli ett bakgrundsjobb som lägger filen i Storage
   och mejlar en länk; `maxDuration` är 300 s för zippen och 120 s för JSON.
@@ -82,8 +90,7 @@ Kvar:
   projekt är inte med i JSON-filen; den täcker faktureringskärnan.
 - **CSV för verifikationer** finns inte; SIE-filen och JSON-filen har dem.
 
-Kontroll: 10 nya tester, 265 gröna (`npm test`, 270 med den pågående
-krypteringens), lint (utan `.claude/worktrees`) och typkontroll rena.
+Kontroll: 11 nya tester för exporten, 272 gröna totalt (`npm test`), lint (utan `.claude/worktrees`) och typkontroll rena.
 
 ## Läge 2026-10-20: fas 5 (produkt), det som går utan externa avtal
 
@@ -165,8 +172,7 @@ Kvar efter fas 5:
 - **Inbjudan via inloggningslänk** kräver att
   `<sajt>/mitt-projekt/callback**` finns bland Redirect URLs i Supabase
   Auth. Inbjudningsmejl kräver `MAIL_FROM`.
-- **Krypteringen av personnummer** i `rot_buyers` görs nu när det finns en
-  andra organisation.
+- ~~**Krypteringen av personnummer**~~ Gjort med 0023, se nedan.
 - **Testdata:** Testbolag AB (kund, faktura 1 betald, en återkallad nyckel,
   webhook mot httpbin, en öppen inbjudan) ligger kvar. `reset-invoicing.sql`
   tar inte bort organisationer, så Testbolag tas bort separat före skarp
@@ -210,6 +216,135 @@ Beslut:
 
 Kontroll: 255 tester gröna (`npm test`), lint (utan `.claude/worktrees`) och
 typkontroll rena.
+
+### Kryptering av personnummer (0023)
+
+Migration 0023 är körd i Binaafys Supabase-projekt, efter att nyckeln
+`rot_pnr_key` skapades i Vault, och `supabase/tests/0023_rot_pnr.sql` gick
+igenom där. Provat i webbläsaren mot databasen:
+
+- `/admin/rot` som förut
+- faktura 10005 visar `19850412-XXXX`, och *Visa* ger owner hela numret
+- XML-filen för den gamla begäran (ROT 2610) har `<Kopare>` med tolv
+  siffror ur den krypterade kolumnen
+
+En ny faktura i Testbolag AB med Skatteverkets testnummer 121212-1212
+sparades som `19121212-XXXX` plus kryptotext. Den gick sedan att utfärda
+och betala, ROT-sidan visade den maskerad, och den nya begärans XML fick
+`<Kopare>191212121212</Kopare>`. Begäran markerades som skickad och sedan
+avvisad, och fakturan blev begärbar igen. Serverloggen var utan fel.
+
+**Upplägg: pgcrypto med nyckeln i Supabase Vault, i databasen.** Vault gick
+att nå från security definer-funktioner (ägda av postgres), så det behövdes
+ingen kryptering i applikationen och ingen nyckel i Vercels miljövariabler.
+Nyckeln lämnar aldrig databasen och slumpades fram där med
+`vault.create_secret(encode(extensions.gen_random_bytes(32), 'base64'),
+'rot_pnr_key', …)`. Varje organisation får en egen härledd nyckel
+(Vault-nyckeln plus org_id), så en kryptotext går inte att öppna i en annan
+organisation. Krypteringen är `pgp_sym_encrypt` (AES-256) av det tolvsiffriga
+numret.
+
+**Personnumret låg på fler ställen än i `rot_buyers`.** Det fanns också i
+klartext i fakturans dokument (`invoices.document -> se.rot.buyers`), som
+alla medlemmar och portalkunden läser. `rot_buyers` fylls dessutom först när
+en begäran skapas. Därför krypteras dokumentet också:
+
+- En trigger på `invoices` och `recurring_invoices` byter varje klartext mot
+  `ÅÅÅÅMMDD-XXXX` och lägger kryptotexten i `personalNumberSealed`, oavsett
+  väg in: formuläret, API:t, offert, betalplan eller kreditering.
+- `rot_buyers` får `personal_number_enc` (bytea) och
+  `personal_number_masked`. Klartextkolumnen är borttagen, och kryptotexten
+  går inte att välja ens för owner/admin (kolumnrättigheter).
+- Klartext ges bara av `invoice_buyer_pnr()` och `rot_buyer_pnr()`, för
+  owner/admin i organisationen eller service role. I appen sker det i
+  XML-routen, med *Visa* på fakturasidan och i JSON-exporten för owner/admin.
+
+| Del | Fil |
+|---|---|
+| Migration 0023 | `supabase/migrations/0023_rot_pnr_encryption.sql`: `rot_pnr_key` (Vault), `rot_pnr_normalize`, `rot_pnr_encrypt`/`_decrypt`, `rot_pnr_seal_document`, triggrarna `invoices_seal_pnr` och `recurring_invoices_seal_pnr`, `rot_buyer_from_invoice` (kopierar kryptotexten till en begäran utan att dekryptera), `rot_buyer_pnr`, `invoice_buyer_pnr`; krypterar befintliga fakturor (även utfärdade), mallar, sparade API-svar (`idempotency_keys`) och `rot_buyers`; avbryter utan ändringar om nyckeln saknas |
+| Prov | `supabase/tests/0023_rot_pnr.sql`: owner, staff, readonly, accountant i A och owner i B, i en transaktion som rullas tillbaka; i PGlite med en ersättning för Vault (provnyckel i `vault.decrypted_secrets` i transaktionen), i Supabase med den riktiga nyckeln |
+| Dokumentet | `lib/core/documents/invoice.ts`: `MASKED_PERSONAL_NUMBER`, `personalNumberSealed`, `hasRotPersonalNumber()` i `validateForIssue` |
+| Visning | `lib/core/rot/pnr.ts` (`maskPersonalNumber`, `formatPersonalNumber`, `withPlaceholderPersonalNumbers`; testad), ROT-sidan, fakturasidan med `components/admin/invoices/RevealPersonalNumber.tsx` och `revealPersonalNumberAction`, fakturans PDF |
+| ROT | `lib/core/rot/store.ts`: kandidaterna och begärandena bär det maskerade numret, `createClaim` via `rot_buyer_from_invoice`, `openClaimPersonalNumbers`, `openInvoiceBuyerPersonalNumber`; `app/admin/(dashboard)/rot/[id]/xml/route.ts` öppnar numren (403 för personal) |
+
+Beslut:
+
+- **Fakturans PDF visar `ÅÅÅÅMMDD-XXXX`.** Skatteverkets krav på fakturan
+  nämner fastighet, kostnader och skattereduktion men inte personnumret,
+  som behövs i begäran. PDF:er som redan har skickats har kvar numret.
+- **Utfärdade fakturors dokument skrevs om en gång.** Låset
+  (`invoices_freeze`) och `updated_at` var avstängda under just den
+  uppdateringen. `sha256` räknades om för det krypterade dokumentet, och
+  triggern gör samma sak om `issue_invoice` någon gång får en klartext.
+- **Personal får skapa en begäran men inte ladda ner filen.** Tidigare föll
+  personalens begäran på RLS i `rot_buyers`. Nu kopierar
+  `rot_buyer_from_invoice` kryptotexten, medan XML-filen, som innehåller
+  numren, är för owner/admin.
+- **Ingen hash för att känna igen samma köpare.** Koden behöver den inte,
+  och en hash av ett personnummer går att gissa sig tillbaka från.
+- **Nyckeln ska ha en kopia utanför Supabase,** i lösenordshanteraren.
+  Försvinner den går personnumren inte att läsa.
+
+Kvar:
+
+- ~~**Offerterna**~~ Gjort med 0024, se nedan.
+- **Ingen logg över vem som öppnat ett nummer** i `invoice_buyer_pnr` och
+  `rot_buyer_pnr`; JSON-exporten loggar sina egna.
+- **Nyckelbyte** saknas och kräver omkryptering av alla rader.
+- **Det maskerade numret kontrolleras inte mot kryptotexten.** Personal kan
+  i teorin para ihop fel maskering med en kryptotext i samma organisation.
+  Det påverkar bara visningen; XML-filen tar kryptotexten.
+- **Personal ser länken till XML-filen** och får 403 med en förklaring;
+  ROT-sidan kunde dölja den efter roll.
+- **Testdata:** faktura 2 i Testbolag AB (kunden Tolvan Prov, betald, en
+  avvisad testbegäran) ligger kvar och tas bort med Testbolag.
+
+Kontroll: 270 tester gröna (`npm test`, med de pågående sessionernas),
+lint (utan `.claude/worktrees`) och typkontroll rena; PGlite mot 0001–0023
+med gamla klartextrader före 0023, och 0021_rls, 0022_rls och 0023_rot_pnr
+gröna.
+
+### Personnummer i offerterna (0024)
+
+`quotes.data.rotPersons[].personalNumber` låg i klartext, och offertens PDF
+(även i kundportalen) skrev ut numret. Migration 0024 gör samma sak som 0023
+gör för fakturorna, med 0023:s nyckel och funktioner. Migrationen är körd i
+Binaafys Supabase-projekt. Provat i webbläsaren mot databasen, i Testbolag AB:
+
+- offert 1013 sparades med testnumret 121212-1212; formuläret visar sedan
+  `19121212-XXXX`, och PDF:en visar "Tolvan Offertprov (19121212-XXXX)"
+  utan det fullständiga numret
+- fakturautkastet från offerten fick `19121212-XXXX` och offertens kryptotext;
+  faktura 3 utfärdades och betalades
+- begäran "Prov 0024" för faktura 3 gav `<Kopare>191212121212</Kopare>` i
+  XML-filen. Begäran ligger kvar oskickad och tas bort med Testbolag, liksom
+  offerten, kunden Tolvan Offertprov och fakturan
+
+Ändringen:
+
+- En trigger på `quotes` och `quote_templates` byter varje klartext mot
+  `ÅÅÅÅMMDD-XXXX` och lägger kryptotexten i `personalNumberSealed`.
+  Befintliga offerter krypteras i migrationen utan att `updated_at` ändras.
+- Offertschemat tar emot det maskerade numret bara med kryptotexten bredvid
+  ("Skriv hela personnumret igen." annars). Formuläret visar det maskerade
+  numret; ett nytt nummer ersätter kryptotexten och krypteras när det sparas.
+- Offertens PDF visar `ÅÅÅÅMMDD-XXXX`, även i demoläget. Kundportalen visar
+  offerten bara som den PDF:en.
+- `rotBuyersFromQuote()` i `lib/core/invoices/from-quote.ts`, som även
+  betalplanen använder, kopierar det maskerade numret och kryptotexten till
+  fakturans `se.rot.buyers`. Fakturans trigger lämnar dem orörda, så
+  `invoice_buyer_pnr()` och ROT-begäran får hela numret. Offerten har ingen
+  egen funktion för att öppna numret; det behövs först på fakturan.
+
+| Del | Fil |
+|---|---|
+| Migration 0024 | `supabase/migrations/0024_quote_pnr.sql`: `rot_pnr_seal_persons`, `rot_pnr_seal_quote`, triggrarna `quotes_seal_pnr` och `quote_templates_seal_pnr`; krypterar befintliga offerter och mallar; avbryter utan ändringar om nyckeln saknas |
+| Prov | `supabase/tests/0024_quote_pnr.sql`: owner och staff i A, owner i B; offert, mall och faktura från offerten, i en transaktion som rullas tillbaka (Vault ersätts i PGlite) |
+| Kod | `lib/quotes/schema.ts`, `components/admin/quotes/QuoteEditor.tsx`, `lib/pdf/QuotePdf.tsx`, `lib/core/invoices/from-quote.ts` och `from-plan.ts` (testad i `from-quote.test.ts`) |
+
+Kontroll: 274 tester gröna (`npm test`), lint (utan `.claude/**`) och
+typkontroll rena; PGlite mot 0001–0024 med en gammal klartextoffert före
+0024, och 0021_rls, 0022_rls, 0023_rot_pnr och 0024_quote_pnr gröna.
 
 ## Läge 2026-10-20: fas 0–4 kodade och körda mot Supabase
 
@@ -386,9 +521,7 @@ Inte gjort i fas 0–3, och varför:
   gjort i fas 4.
 - **Peppol-renderaren** (`lib/render/ubl`) väntar till fas 5; dokumentet är
   redan format efter standarden.
-- **Kryptering av personnummer** i `rot_buyers`: tabellen har strikt RLS
-  (bara owner/admin), kryptering med nyckel i Supabase Vault läggs till när
-  en andra organisation finns.
+- ~~**Kryptering av personnummer**~~ gjort med 0023 (fas 5).
 - `lib/rot.ts` (kalkylatorn på sajten och offerten) läser fortfarande sina
   egna konstanter; den byter till `rulesAt()` när offertkoden inte ändras av
   någon annan.
@@ -597,8 +730,9 @@ och lagras inte. Kreditfaktura är en egen faktura med `kind = credit` och
 negativa belopp; inget utfärdat raderas.
 
 **Känsliga uppgifter.** Personnummer och fastighetsbeteckningar ligger i en
-egen tabell `rot_buyers` med striktare RLS (bara `owner`/`admin`), krypterade
-med `pgcrypto`, och visas aldrig i portalen. Supabase-projektet ligger i en
+egen tabell `rot_buyers` med striktare RLS (bara `owner`/`admin`), och
+personnumren är krypterade med `pgcrypto` och nyckel i Supabase Vault, även i
+fakturadokumentet (0023). De visas aldrig i portalen. Supabase-projektet ligger i en
 EU-region. Varje organisation får ett personuppgiftsbiträdesavtal när
 produkten säljs (fas 5).
 
