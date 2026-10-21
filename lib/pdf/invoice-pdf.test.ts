@@ -151,50 +151,47 @@ test("invoice, credit note, ROT and reverse charge render to a one-page PDF", as
   }
 });
 
-test("an invoice prints the amount to pay with bankgiro and OCR", async () => {
+test("an invoice puts the buyer in the window and prints bankgiro, OCR and the amount to pay", async () => {
   const t = await textOf(invoice("foretag"));
   assert.match(t, /^Faktura$/m);
-  assert.match(t, /ATT BETALA/);
-  assert.match(t, /Betalas till bankgiro 5555-1234, ange OCR 1000175/);
-  assert.match(t, /^4 313,00$/m); // 150 + 6 × 550 = 3 450 net + 862,50 VAT, rounded up 0,50
-  assert.match(t, /Moms 25 % 862,50 \(3 450,00\)/);
-  assert.match(t, /Enligt räntelagen, referensränta \+ 8 %/);
+  assert.match(t, /^Faktureras till\nBygg Söder AB\nBräckevägen 12\n417 03 Göteborg$/m);
+  assert.match(t, /^Förfallodatum\n2026-11-09$/m);
+  assert.match(t, /^Att betala\n4 313,00 kr$/m); // 150 + 6 × 550 = 3 450 net + 862,50 VAT, rounded up 0,50
+  assert.match(t, /^Bankgiro\n5555-1234$/m);
+  assert.match(t, /^OCR-nummer\n1000175$/m);
+  assert.match(t, /Ange OCR-numret 1000175 vid betalning/);
+  assert.match(t, /Underlag 25 %: 3 450,00 kr · utgående moms 862,50 kr/);
   assert.match(t, /Godkänd för F-skatt/);
   assert.doesNotMatch(t, /ROT-avdrag/);
 });
 
-test("a credit note has its own heading, negative amounts and no OCR", async () => {
+test("a credit note has its own heading, negative lines and no payment box", async () => {
   const t = await textOf(credit());
   assert.match(t, /^Kreditfaktura$/m);
   assert.match(t, /Krediterar faktura 10001/);
-  assert.match(t, /ATT BETALA/);
-  assert.match(t, /^-4 313,00$/m);
+  assert.match(t, /^-3 300,00$/m);
+  assert.match(t, /^Att återfå\n4 313,00 kr$/m);
   assert.doesNotMatch(t, /OCR/);
+  assert.doesNotMatch(t, /Att betala/);
 });
 
 test("a ROT invoice shows the deduction before the amount to pay", async () => {
   const t = await textOf(rot());
-  assert.match(t, /^ROT-avdrag$/m);
+  assert.match(t, /^ROT-avdrag\n-1 237,50$/m);
   assert.match(t, /Skatteverkets godkännande/);
   assert.match(t, /19850412-XXXX/);
   assert.match(t, /Göteborg Tolered 1:23/);
-  assert.match(t, /ange OCR 1000175/);
+  assert.match(t, /^Att betala\n3 075,00 kr$/m);
+  assert.match(t, /^OCR-nummer\n1000175$/m);
 });
 
-test("reverse charge prints the sentence and the buyer's VAT number, with no VAT", async () => {
+test("reverse charge prints the sentence and the buyer's VAT number", async () => {
   const t = await textOf(reverseCharge());
-  assert.match(t, /Omvänd betalningsskyldighet för byggtjänster gäller/);
-  assert.match(t, /SE556000000001/);
-  assert.match(t, /Omvänd moms 0,00 \(3 450,00\)/);
+  assert.match(t, /^Omvänd betalningsskyldighet\. Köparen redovisar momsen/m);
+  assert.match(t, /Köparens momsregistreringsnummer: SE556000000001/);
+  assert.match(t, /^Att betala\n3 450,00 kr$/m);
 });
 
 test("40 lines continue on a second page", async () => {
   assert.equal(pages(await render("lang", long())), 2);
-});
-
-test("late interest reads as a value in the terms column", async () => {
-  const { lateInterestValue } = await load();
-  assert.equal(lateInterestValue(""), "Enligt räntelagen");
-  assert.equal(lateInterestValue("Dröjsmålsränta enligt räntelagen, referensräntan plus 8 procentenheter."), "Enligt räntelagen, referensränta + 8 %");
-  assert.equal(lateInterestValue("10 %"), "10 %");
 });
