@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Faktureringsmanualen</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Användarmanual för Binaafys faktureringssystem: inställningar, kunder, fakturor, betalningar, rättelser, ROT och bokföring.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: en innehållsräls i antracit till vänster, en läskolumn på kräm; i utskrift ett kapitel per sida. */
+:root {
+  --bg: #f5f2ed;
+  --paper: #fbfaf7;
+  --sunk: #eeeae3;
+  --ink: #1e2c37;
+  --ink-2: #4b5763;
+  --ink-3: #5e6a76;
+  --line: rgba(30, 44, 55, 0.14);
+  --line-strong: rgba(30, 44, 55, 0.3);
+  --rail: #18232c;
+  --rail-ink: #f5f2ed;
+  --rail-ink-2: #a9b3bd;
+  --orange: #f7802e;
+  --orange-text: #a94c0c;
+  --tip-bg: #fbeee2;
+  --tip-line: rgba(169, 76, 12, 0.28);
+  --gap-bg: #eeeae3;
+  --font-body: "Plus Jakarta Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141d24;
+    --paper: #1b2731;
+    --sunk: #22303b;
+    --ink: #eef0f1;
+    --ink-2: #c3cad1;
+    --ink-3: #a3adb7;
+    --line: rgba(238, 240, 241, 0.14);
+    --line-strong: rgba(238, 240, 241, 0.3);
+    --rail: #0f171d;
+    --rail-ink: #f5f2ed;
+    --rail-ink-2: #a9b3bd;
+    --orange: #f7802e;
+    --orange-text: #ffa564;
+    --tip-bg: #2d2620;
+    --tip-line: rgba(255, 165, 100, 0.3);
+    --gap-bg: #22303b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141d24;
+  --paper: #1b2731;
+  --sunk: #22303b;
+  --ink: #eef0f1;
+  --ink-2: #c3cad1;
+  --ink-3: #a3adb7;
+  --line: rgba(238, 240, 241, 0.14);
+  --line-strong: rgba(238, 240, 241, 0.3);
+  --rail: #0f171d;
+  --rail-ink: #f5f2ed;
+  --rail-ink-2: #a9b3bd;
+  --orange: #f7802e;
+  --orange-text: #ffa564;
+  --tip-bg: #2d2620;
+  --tip-line: rgba(255, 165, 100, 0.3);
+  --gap-bg: #22303b;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-padding-top: 16px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--orange-text); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; border-radius: 2px; }
+code { font-family: var(--font-mono); font-size: 0.88em; background: var(--sunk); padding: 1px 5px; border-radius: 4px; }
+
+.layout { display: grid; grid-template-columns: 1fr; min-height: 100%; }
+@media (min-width: 1040px) { .layout { grid-template-columns: 280px minmax(0, 1fr); } }
+
+/* Innehållsrälsen */
+.toc { display: none; }
+@media (min-width: 1040px) {
+  .toc {
+    display: block;
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--rail);
+    color: var(--rail-ink);
+    padding-block: 28px;
+    padding-inline: 22px;
+  }
+}
+.toc-brand { margin: 0 0 18px; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--rail-ink-2); }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.toc a {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: baseline;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--rail-ink);
+  text-decoration: none;
+  font-size: 14.5px;
+}
+.toc a:hover { background: rgba(245, 242, 237, 0.08); }
+.toc-no { font-variant-numeric: tabular-nums; color: var(--orange); font-weight: 600; font-size: 13px; }
+
+/* Läskolumnen */
+.doc {
+  min-width: 0;
+  max-width: 820px;
+  width: 100%;
+  margin-inline: auto;
+  padding-block: 40px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (min-width: 700px) { .doc { padding-left: max(40px, env(safe-area-inset-left, 0px)); padding-right: max(40px, env(safe-area-inset-right, 0px)); } }
+
+.eyebrow, .chapter-no, .cover-toc-label, .tip-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.eyebrow { margin: 0 0 10px; color: var(--orange-text); }
+h1 { margin: 0 0 18px; font-size: clamp(34px, 5.4vw, 52px); line-height: 1.05; letter-spacing: -0.035em; font-weight: 700; text-wrap: balance; }
+h2 { margin: 4px 0 0; font-size: clamp(28px, 4vw, 38px); line-height: 1.1; letter-spacing: -0.03em; font-weight: 700; text-wrap: balance; }
+h3 { margin: 34px 0 10px; font-size: 20px; line-height: 1.25; letter-spacing: -0.02em; font-weight: 650; text-wrap: balance; }
+p { margin: 0 0 14px; max-width: 68ch; text-wrap: pretty; }
+strong { font-weight: 650; }
+
+.cover { padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+.cover-toc { margin-top: 26px; }
+.cover-toc-label { margin: 0 0 8px; color: var(--ink-3); }
+.cover-toc ol { list-style: none; margin: 0; padding: 0; columns: 2 240px; column-gap: 28px; }
+.cover-toc li { break-inside: avoid; }
+.cover-toc a { display: grid; grid-template-columns: 28px 1fr; padding: 3px 0; color: var(--ink); text-decoration: none; }
+.cover-toc a:hover { color: var(--orange-text); }
+@media (min-width: 1040px) { .cover-toc { display: none; } }
+
+.chapter { padding-top: 52px; }
+.chapter-head { margin-bottom: 14px; }
+.chapter-no { color: var(--orange-text); }
+.purpose { font-size: 18px; line-height: 1.5; color: var(--ink-2); }
+.purpose em { font-style: normal; }
+
+/* Numrerade steg: siffran är ordningen man klickar i */
+ol.steps { list-style: none; counter-reset: step; margin: 0 0 18px; padding: 0; display: grid; gap: 8px; max-width: 70ch; }
+ol.steps > li { counter-increment: step; position: relative; padding-left: 40px; min-height: 28px; }
+ol.steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #18232c;
+  font-size: 13.5px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  font-variant-numeric: tabular-nums;
+}
+ul { margin: 0 0 16px; padding-left: 20px; max-width: 70ch; }
+ul li { margin-bottom: 6px; }
+ul li::marker { color: var(--orange); }
+ol.steps ul { margin: 8px 0 0; }
+
+figure { margin: 20px 0 26px; }
+figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #f5f2ed;
+}
+figcaption { margin-top: 8px; font-size: 13.5px; color: var(--ink-3); }
+
+.tip {
+  margin: 22px 0 26px;
+  padding: 14px 18px 4px;
+  background: var(--tip-bg);
+  border: 1px solid var(--tip-line);
+  border-radius: 10px;
+  max-width: 72ch;
+}
+.tip-label { margin: 0 0 4px; color: var(--orange-text); }
+
+.gap { font-size: 14px; color: var(--ink-3); background: var(--gap-bg); padding: 10px 14px; border-radius: 8px; max-width: 72ch; }
+.gap em { font-style: normal; }
+
+.table-wrap { overflow-x: auto; margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; line-height: 1.5; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); background: var(--sunk); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; min-width: 150px; }
+
+.faq { padding: 14px 0 2px; border-top: 1px solid var(--line); max-width: 72ch; }
+.faq-q { font-weight: 650; margin-bottom: 6px; }
+
+.doc-foot { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--ink-3); }
+
+/* Utskrift: A4, ett kapitel per sida, ljus även om skärmen är mörk */
+@media print {
+  @page { size: A4; margin: 16mm 15mm 18mm; }
+  :root, :root[data-theme="dark"], :root:not([data-theme="light"]) {
+    --bg: #ffffff; --paper: #ffffff; --sunk: #f1eee8; --ink: #1e2c37; --ink-2: #3f4b56; --ink-3: #56626d;
+    --line: rgba(30, 44, 55, 0.18); --line-strong: rgba(30, 44, 55, 0.35); --orange-text: #a94c0c;
+    --tip-bg: #fbeee2; --tip-line: rgba(169, 76, 12, 0.35); --gap-bg: #f1eee8; color-scheme: light;
+  }
+  body { font-size: 10.5pt; line-height: 1.5; background: #fff; }
+  .layout { display: block; }
+  .toc { display: none !important; }
+  .doc { max-width: none; padding: 0; }
+  .cover-toc { display: block !important; }
+  .chapter { break-before: page; padding-top: 0; }
+  h2, h3, .chapter-head { break-after: avoid; }
+  figure, .tip, .gap, .table-wrap, .faq, tr { break-inside: avoid; }
+  figure img { max-height: 115mm; width: auto; }
+  a { color: inherit; text-decoration: none; }
+  ol.steps > li::before { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .tip, .gap, th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .table-wrap { overflow: visible; }
+}
+
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="Innehåll">
+<p class="toc-brand">Binaafy · Fakturering</p>
+<ol><li><a href="#1-komma-igång"><span class="toc-no">1</span>Komma igång</a></li><li><a href="#2-inställningar"><span class="toc-no">2</span>Inställningar</a></li><li><a href="#3-kunder"><span class="toc-no">3</span>Kunder</a></li><li><a href="#4-skapa-en-faktura"><span class="toc-no">4</span>Skapa en faktura</a></li><li><a href="#5-granska-och-utfärda"><span class="toc-no">5</span>Granska och utfärda</a></li><li><a href="#6-skicka"><span class="toc-no">6</span>Skicka</a></li><li><a href="#7-betalningar"><span class="toc-no">7</span>Betalningar</a></li><li><a href="#8-påminnelser-och-ränta"><span class="toc-no">8</span>Påminnelser och ränta</a></li><li><a href="#9-rätta-fel"><span class="toc-no">9</span>Rätta fel</a></li><li><a href="#10-rot"><span class="toc-no">10</span>ROT</a></li><li><a href="#11-återkommande-fakturor"><span class="toc-no">11</span>Återkommande fakturor</a></li><li><a href="#12-byggprojekt-och-betalplaner"><span class="toc-no">12</span>Byggprojekt och betalplaner</a></li><li><a href="#13-ekonomi-och-bokföring"><span class="toc-no">13</span>Ekonomi och bokföring</a></li><li><a href="#14-organisation-och-api"><span class="toc-no">14</span>Organisation och API</a></li><li><a href="#15-kundportalen-och-kundens-vy"><span class="toc-no">15</span>Kundportalen och kundens vy</a></li><li><a href="#16-vanliga-frågor"><span class="toc-no">16</span>Vanliga frågor</a></li></ol>
+</nav>
+<main class="doc">
+<header class="cover" id="start">
+<p class="eyebrow">Användarmanual · version oktober 2026</p>
+<h1>Fakturering i Binaafys admin</h1>
+<p>För dig som skapar fakturor, sköter inställningar och ROT, eller granskar bokföringen. Manualen följer arbetsgången från första inloggning till export för revisorn. Du behöver inga förkunskaper i ekonomi; ord som <em>OCR</em>, <em>kreditfaktura</em> och <em>verifikation</em> förklaras där de dyker upp.</p>
+<p>Skärmbilderna är tagna i testorganisationen <strong>Testbolag AB</strong> med påhittade kunder (Rättelseprov Andersson, Mottagarprov Torki). Era egna sidor ser likadana ut men med Binaafys uppgifter.</p>
+<p><strong>Vem läser vad</strong></p>
+<div class="table-wrap"><table><thead><tr><th>Du är</th><th>Läs särskilt</th></tr></thead><tbody><tr><td>Personal som fakturerar</td><td>1, 3, 4, 5, 6, 7, 8, 9 och Vanliga frågor</td></tr><tr><td>Ägare eller administratör</td><td>Allt, särskilt 2 (Inställningar), 10 (ROT), 13 (Ekonomi) och 14 (Organisation)</td></tr><tr><td>Revisor eller redovisningskonsult</td><td>1, 9, 13 och Vanliga frågor</td></tr></tbody></table></div>
+<div class="cover-toc"><p class="cover-toc-label">Innehåll</p><ol><li><a href="#1-komma-igång"><span class="toc-no">1</span>Komma igång</a></li><li><a href="#2-inställningar"><span class="toc-no">2</span>Inställningar</a></li><li><a href="#3-kunder"><span class="toc-no">3</span>Kunder</a></li><li><a href="#4-skapa-en-faktura"><span class="toc-no">4</span>Skapa en faktura</a></li><li><a href="#5-granska-och-utfärda"><span class="toc-no">5</span>Granska och utfärda</a></li><li><a href="#6-skicka"><span class="toc-no">6</span>Skicka</a></li><li><a href="#7-betalningar"><span class="toc-no">7</span>Betalningar</a></li><li><a href="#8-påminnelser-och-ränta"><span class="toc-no">8</span>Påminnelser och ränta</a></li><li><a href="#9-rätta-fel"><span class="toc-no">9</span>Rätta fel</a></li><li><a href="#10-rot"><span class="toc-no">10</span>ROT</a></li><li><a href="#11-återkommande-fakturor"><span class="toc-no">11</span>Återkommande fakturor</a></li><li><a href="#12-byggprojekt-och-betalplaner"><span class="toc-no">12</span>Byggprojekt och betalplaner</a></li><li><a href="#13-ekonomi-och-bokföring"><span class="toc-no">13</span>Ekonomi och bokföring</a></li><li><a href="#14-organisation-och-api"><span class="toc-no">14</span>Organisation och API</a></li><li><a href="#15-kundportalen-och-kundens-vy"><span class="toc-no">15</span>Kundportalen och kundens vy</a></li><li><a href="#16-vanliga-frågor"><span class="toc-no">16</span>Vanliga frågor</a></li></ol></div>
+</header>
+<section class="chapter" id="1-komma-igång" aria-labelledby="1-komma-igång-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 1</span><h2 id="1-komma-igång-h">Komma igång</h2></header>
+<p class="purpose"><em>Syfte: hitta rätt i admin och veta vilket företag och vilken roll du arbetar med.</em></p>
+<h3 id="logga-in">Logga in</h3>
+<ol class="steps"><li>Gå till <strong>binaafy.se/admin</strong> (under utveckling <code>localhost:3000/admin</code>).</li><li>Logga in med din <strong>e-post</strong> och ditt <strong>lösenord</strong>. Är du nyss inbjuden, använd länken i inbjudan första gången (se kapitel 14).</li><li>Klicka på <strong>Idag</strong> (eller logotypen) för att se det som väntar på dig: nya förfrågningar, försenade faser och förfallna fakturor.</li></ol>
+<h3 id="menyn">Menyn</h3>
+<p>Menyn högst upp har <strong>Idag</strong>, <strong>Inkorg</strong> (förfrågningar från webbplatsen), <strong>Offerter</strong>, <strong>Projekt</strong>, <strong>Fakturor</strong> och <strong>Ekonomi</strong>. Under <strong>Ekonomi</strong> finns Översikt, Kunder, ROT och RUT, Återkommande fakturor, Bankfil samt Export och bokföring. Den orange knappen <strong>+ Ny</strong> skapar snabbt en offert, ett projekt, en faktura eller en kund.</p>
+<figure><img src="img/01-meny.png" alt="Menyn med Ekonomi utfälld" loading="lazy"><figcaption>Menyn med Ekonomi utfälld</figcaption></figure>
+<h3 id="organisationsväxlaren">Organisationsväxlaren</h3>
+<p>Kugghjulet längst till höger öppnar <strong>Inställningar och konto</strong>. Där står vilket företag du arbetar i och din roll, och rullistan byter företag om du är medlem i flera (till exempel Binaafy AB och Testbolag AB). Där finns också Inställningar, Organisation och roller, API och Logga ut.</p>
+<figure><img src="img/02-organisationsvaxlare.png" alt="Kugghjulsmenyn med organisationsväxlaren" loading="lazy"><figcaption>Kugghjulsmenyn med organisationsväxlaren</figcaption></figure>
+<ol class="steps"><li>Klicka på kugghjulet.</li><li>Välj företag i rullistan. Sidan laddas om och visar det företagets ekonomi.</li><li>Kontrollera namnet överst i menyn innan du skapar något.</li></ol>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Allt du gör hamnar i det företag som är valt. En faktura som utfärdas i fel företag får ett nummer i det företagets serie och kan inte flyttas. Testa nya saker i Testbolag AB, aldrig i Binaafy AB.</p></aside>
+<h3 id="roller">Roller</h3>
+<p>Varje person har en roll per företag. Rollen styr vad hen ser och får göra.</p>
+<div class="table-wrap"><table><thead><tr><th>Roll</th><th>Får göra</th></tr></thead><tbody><tr><td>Ägare</td><td>Allt, även ändra ägare och organisationen</td></tr><tr><td>Administratör</td><td>Allt utom ägarfrågor: inställningar, medlemmar, API-nycklar</td></tr><tr><td>Personal</td><td>Fakturor, kunder, betalningar, projekt</td></tr><tr><td>Redovisningskonsult</td><td>Läser ekonomi, fakturor och bokföring, laddar ner SIE. Skriver inget</td></tr><tr><td>Läsbehörighet</td><td>Läser ekonomi och fakturor</td></tr></tbody></table></div>
+<figure><img src="img/03-organisation-roller.png" alt="Organisationssidan med medlemmar, inbjudan och roller" loading="lazy"><figcaption>Organisationssidan med medlemmar, inbjudan och roller</figcaption></figure>
+</section>
+<section class="chapter" id="2-inställningar" aria-labelledby="2-inställningar-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 2</span><h2 id="2-inställningar-h">Inställningar</h2></header>
+<p class="purpose"><em>Syfte: ange en gång det som ska stå på varje faktura och styra påminnelser och bokföring.</em> Sidan nås via kugghjulet › <strong>Inställningar</strong>. Den sköts av ägaren eller en administratör.</p>
+<ol class="steps"><li>Fyll i varje avsnitt (beskrivs nedan).</li><li>Klicka <strong>Spara inställningarna</strong> i den mörka listen längst ner. Listen visar "Inga osparade ändringar" när allt är sparat.</li><li>Nya fakturor använder de nya uppgifterna. Redan utfärdade fakturor behåller det som gällde när de utfärdades.</li></ol>
+<h3 id="företaget-på-fakturan">Företaget på fakturan</h3>
+<figure><img src="img/04-installningar-foretaget.png" alt="Avsnittet Företaget på fakturan" loading="lazy"><figcaption>Avsnittet Företaget på fakturan</figcaption></figure>
+<div class="table-wrap"><table><thead><tr><th>Fält</th><th>Betyder</th><th>Hamnar på fakturan</th></tr></thead><tbody><tr><td>Företagsnamn</td><td>Det juridiska namnet, t.ex. Binaafy AB</td><td>Överst till vänster, i sidfoten och som avsändare i mejlet</td></tr><tr><td>Organisationsnummer</td><td>10 siffror med bindestreck</td><td>Sidfoten</td></tr><tr><td>Momsregistreringsnummer</td><td>SE + organisationsnumret utan bindestreck + 01</td><td>Sidfoten; krävs vid omvänd moms</td></tr><tr><td>E-post</td><td>Svar på fakturamejl går hit</td><td>Sidfoten och "Frågor:" på den publika sidan</td></tr><tr><td>Telefon</td><td>Valfritt</td><td>Sidfoten</td></tr><tr><td>Undertecknare</td><td>Namnet som står under mejl och påminnelser</td><td>Mejlet; "Vår referens" om inget annat anges</td></tr><tr><td>Gatuadress, postnummer, ort</td><td>Företagets adress</td><td>Avsändarraden; orten blir "säte" i sidfoten</td></tr><tr><td>Godkänd för F-skatt</td><td>Bocka i om företaget har F-skatt</td><td>Texten "Godkänd för F-skatt" i sidfoten</td></tr></tbody></table></div>
+<h3 id="betalning">Betalning</h3>
+<figure><img src="img/05-installningar-betalning.png" alt="Avsnittet Betalning" loading="lazy"><figcaption>Avsnittet Betalning</figcaption></figure>
+<div class="table-wrap"><table><thead><tr><th>Fält</th><th>Betyder</th><th>Hamnar på fakturan</th></tr></thead><tbody><tr><td>Bankgiro</td><td>Företagets bankgironummer</td><td>Betalningsrutan längst ner</td></tr><tr><td>Plusgiro, IBAN, BIC</td><td>Valfria; IBAN/BIC behövs för betalning från utlandet</td><td>Betalningsrutan</td></tr><tr><td>Swish-nummer (företag)</td><td>Swish Företag-numret, 123 xxx xx xx</td><td>Ger <strong>Swish-QR-koden</strong> på PDF:en, i portalen och på den publika sidan</td></tr><tr><td>Bankgirot har OCR-avtal</td><td>Bocka i bara om banken har aktiverat OCR-referenskontroll på bankgirot</td><td>Med avtal står <strong>OCR-nummer</strong> på fakturan; utan står <strong>Referens</strong> med fakturanumret som kunden skriver som meddelande</td></tr></tbody></table></div>
+<p>Minst ett betalsätt krävs för att kunna utfärda.</p>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Bocka inte i "OCR-avtal" förrän banken bekräftat avtalet. Utan avtal kan banken avvisa eller tappa OCR-numret och betalningen blir svår att matcha. Ändringen gäller bara fakturor som utfärdas efteråt.</p></aside>
+<h3 id="villkor">Villkor</h3>
+<figure><img src="img/06-installningar-villkor.png" alt="Avsnittet Villkor" loading="lazy"><figcaption>Avsnittet Villkor</figcaption></figure>
+<ul><li><strong>Betalningsvillkor, dagar</strong>, separat för privatpersoner, företag och byggföretag. Förfallodagen räknas ut från fakturadatum plus antal dagar. En kund kan ha egna villkor i kundregistret; de går före.</li><li><strong>Dröjsmålsränta, text på fakturan</strong>: texten som står längst ner, normalt "Dröjsmålsränta enligt räntelagen, referensräntan plus 8 procentenheter."</li></ul>
+<h3 id="påminnelser-och-bokföring">Påminnelser och bokföring</h3>
+<figure><img src="img/07-installningar-paminnelser-bokforing.png" alt="Avsnitten Påminnelser och Bokföring" loading="lazy"><figcaption>Avsnitten Påminnelser och Bokföring</figcaption></figure>
+<ul><li><strong>Dagar efter förfallodagen innan första påminnelsen</strong> och <strong>Dagar mellan påminnelser</strong>.</li><li><strong>Påminnelseavgift även till privatpersoner</strong>: bocka bara i om era avtalsvillkor med kunden säger att avgift tas ut. Annars tas avgift (60 kr) bara från företag.</li><li><strong>Skicka påminnelser automatiskt varje morgon</strong>: av som standard. När det är av skickar ni påminnelser själva med knappen på fakturan (se kapitel 8).</li><li><strong>Räkenskapsåret börjar</strong>: används i SIE-filen.</li><li><strong>Konton</strong>: vilka konton i kontoplanen fakturor, betalningar och påminnelser bokförs på. Lämna tomt för BAS-kontot inom parentes; ändra bara i samråd med redovisningskonsulten.</li></ul>
+<h3 id="nummerserier">Nummerserier</h3>
+<figure><img src="img/08-installningar-nummerserier.png" alt="Nummerserierna" loading="lazy"><figcaption>Nummerserierna</figcaption></figure>
+<p>Längst ner visas serierna: <strong>F</strong> för fakturor (löpande, 1, 2, 3 …) och <strong>V</strong> för verifikationer (bokföringsposter, börjar om varje år). Serierna är obrutna: varje nummer används en gång och inget hoppas över. De kan inte ändras här, eftersom en serie som redan gett nummer aldrig får börja om.</p>
+</section>
+<section class="chapter" id="3-kunder" aria-labelledby="3-kunder-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 3</span><h2 id="3-kunder-h">Kunder</h2></header>
+<p class="purpose"><em>Syfte: lägga upp kunden en gång så att moms, ROT och mottagare blir rätt på varje faktura.</em> Sidan nås via <strong>Ekonomi › Kunder</strong> eller knappen <strong>Kunder</strong> på fakturalistan.</p>
+<figure><img src="img/09-kunder-lista.png" alt="Kundregistret" loading="lazy"><figcaption>Kundregistret</figcaption></figure>
+<h3 id="ny-kund">Ny kund</h3>
+<ol class="steps"><li>Klicka <strong>Ny kund</strong>.</li><li>Välj <strong>kundtyp</strong> (se tabellen nedan). Formuläret ändras efter typen.</li><li>Fyll i namn, e-post och adress. För företag och byggföretag även organisationsnummer.</li><li>Ange vid behov egna <strong>Betalningsvillkor, dagar</strong> och interna anteckningar.</li><li>Klicka <strong>Skapa kunden</strong>.</li></ol>
+<div class="table-wrap"><table><thead><tr><th>Kundtyp</th><th>Priser</th><th>Moms</th><th>ROT</th></tr></thead><tbody><tr><td><strong>Privatperson</strong></td><td>Visas inklusive moms</td><td>Vanlig moms</td><td>Kan dras på arbete</td></tr><tr><td><strong>Företag</strong></td><td>Visas exklusive moms med momsrad</td><td>Vanlig moms</td><td>Nej</td></tr><tr><td><strong>Byggföretag</strong></td><td>Exklusive moms</td><td><strong>Omvänd betalningsskyldighet</strong>: ingen moms på fakturan, köparen redovisar momsen. Texten "Omvänd betalningsskyldighet" skrivs ut</td><td>Nej</td></tr></tbody></table></div>
+<figure><img src="img/10-kund-byggforetag.png" alt="Ny kund med kundtypen Byggföretag vald" loading="lazy"><figcaption>Ny kund med kundtypen Byggföretag vald</figcaption></figure>
+<p>Byggföretag gäller när ni säljer byggtjänster till ett annat företag i byggbranschen, till exempel som underentreprenör. Då krävs köparens <strong>momsregistreringsnummer</strong>. Fältet <strong>Peppol-id</strong> behövs bara om kunden vill ha e-faktura.</p>
+<h3 id="flera-e-postmottagare">Flera e-postmottagare</h3>
+<p>En kund kan ha flera fakturamottagare och kopiemottagare.</p>
+<figure><img src="img/11-kund-epostmottagare.png" alt="Fälten Fakturor till och Kopia till" loading="lazy"><figcaption>Fälten Fakturor till och Kopia till</figcaption></figure>
+<ul><li><strong>E-post</strong>: kundens vanliga adress.</li><li><strong>Fakturor till (valfritt)</strong>: en eller flera adresser, med komma eller radbrytning emellan (högst tio). Lämnas fältet tomt går fakturor och påminnelser till e-postadressen ovan.</li><li><strong>Kopia till (valfritt)</strong>: får fakturor och påminnelser som kopia, till exempel en projektledare.</li></ul>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Mottagarna "fryses" på fakturan när den utfärdas. Ändrar du kundens adresser efteråt går senare utskick och påminnelser för gamla fakturor fortfarande till de adresser som gällde då. Behöver en enstaka faktura gå till någon annan, skriv adressen i fältet <em>Fler mottagare för just den här fakturan</em> när du skickar.</p></aside>
+</section>
+<section class="chapter" id="4-skapa-en-faktura" aria-labelledby="4-skapa-en-faktura-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 4</span><h2 id="4-skapa-en-faktura-h">Skapa en faktura</h2></header>
+<p class="purpose"><em>Syfte: få fram ett utkast med rätt kund, rader och ROT.</em> Ett <strong>utkast</strong> går att ändra fritt och har inget nummer än.</p>
+<figure><img src="img/12-fakturor-lista.png" alt="Fakturalistan med flikar och nyckeltal" loading="lazy"><figcaption>Fakturalistan med flikar och nyckeltal</figcaption></figure>
+<p>Fakturalistan (<strong>Fakturor</strong>) visar <em>Att få in</em>, <em>Förfallet</em>, antal utkast och betalda, och flikarna Alla, Utkast, Obetalda, Förfallna, Betalda och Krediterade/makulerade. Sökrutan söker på nummer, kund, rubrik eller OCR.</p>
+<p>Det finns tre sätt att skapa en faktura.</p>
+<h3 id="a-från-en-kund">A. Från en kund</h3>
+<ol class="steps"><li>Klicka <strong>Ny faktura</strong> (eller <strong>+ Ny › Faktura</strong>).</li><li>Välj kund i listan under <em>För en kund i registret</em>. Saknas kunden: <strong>Lägg till kund</strong>.</li><li>Klicka <strong>Skapa tomt utkast</strong>.</li></ol>
+<figure><img src="img/13-ny-faktura.png" alt="Ny faktura: välj kund eller utgå från en offert" loading="lazy"><figcaption>Ny faktura: välj kund eller utgå från en offert</figcaption></figure>
+<h3 id="b-från-en-accepterad-offert">B. Från en accepterad offert</h3>
+<ol class="steps"><li>Öppna offerten under <strong>Offerter</strong>.</li><li>Klicka <strong>Skapa faktura från offerten</strong> i sidopanelen (<em>Fakturera</em>). Knappen finns när offerten är accepterad.</li><li>Ett utkast öppnas med kund, rader, ROT-personer och villkor från offerten.</li></ol>
+<h3 id="c-från-en-betalplan">C. Från en betalplan</h3>
+<p>Har projektet en betalplan skapas delfakturorna från projektet med <strong>Skapa faktura</strong> på det steg som kan faktureras. Se kapitel 12.</p>
+<h3 id="fyll-i-utkastet">Fyll i utkastet</h3>
+<figure><img src="img/14-utkast-overst.png" alt="Överst i utkastet: rubrik, datum och villkor" loading="lazy"><figcaption>Överst i utkastet: rubrik, datum och villkor</figcaption></figure>
+<ol class="steps"><li><strong>Rubrik</strong>: vad fakturan gäller, t.ex. "Badrumsrenovering, Bräckevägen 12".</li><li><strong>Fakturadatum</strong> (i dag som standard) och <strong>Betalningsvillkor, dagar</strong>. Förfallodagen visas under fältet.</li><li><strong>Arbetet utfört</strong>: datum eller period, om det skiljer sig från fakturadatumet (momslagen kräver det).</li><li><strong>Vår referens</strong>, <strong>Ert ordernummer</strong> och <strong>Text under rubriken</strong> (t.ex. vilken offert och vilket steg fakturan avser).</li><li>Kontrollera kundens namn, e-post och adress under <em>Kund</em>. Ändringar här gäller bara den här fakturan.</li></ol>
+<h3 id="rader-och-enheter">Rader och enheter</h3>
+<figure><img src="img/15-utkast-rader.png" alt="Rader med typ, antal, enhet, à-pris och moms" loading="lazy"><figcaption>Rader med typ, antal, enhet, à-pris och moms</figcaption></figure>
+<ol class="steps"><li>Klicka <strong>Lägg till rad</strong> för varje post.</li><li>Skriv vad som ingår ("Rivning och plattsättning badrum"). <strong>Moment</strong> är en valfri rubrik som grupperar rader.</li><li>Välj <strong>typ</strong>: <em>Arbete</em>, <em>Material</em> eller <em>Övrigt</em>. Det avgör ROT, som bara räknas på arbete.</li><li>Skriv <strong>antal</strong> och <strong>enhet</strong>: <em>tim</em> för timmar, <em>st</em> för styck, <em>m²</em>, <em>lpm</em> (löpmeter) och så vidare. Timmar i enheten <em>tim</em> används också i ROT-begäran till Skatteverket.</li><li>Skriv <strong>à-pris</strong> (pris per enhet). Knappen <em>Inkl. moms / Exkl. moms</em> växlar hur du skriver priset; systemet räknar om.</li><li>Välj <strong>moms</strong>: 25 % för nästan allt bygg, 12 % eller 6 % i specialfall, <em>Momsfri</em> bara när det verkligen gäller.</li><li>Pilarna flyttar raden, × tar bort den.</li></ol>
+<h3 id="rot-fälten">ROT-fälten</h3>
+<figure><img src="img/16-utkast-rot.png" alt="ROT-avdraget med köpare, personnummer och fastighet" loading="lazy"><figcaption>ROT-avdraget med köpare, personnummer och fastighet</figcaption></figure>
+<p>ROT gäller privatpersoner och arbete i bostaden. 2026 är avdraget 30 % av arbetskostnaden inklusive moms, högst 50 000 kr per person och år.</p>
+<ol class="steps"><li>Bocka i <strong>ROT-avdrag</strong>.</li><li>Välj <strong>antal köpare</strong> som delar på avdraget (t.ex. två makar som äger huset tillsammans).</li><li>Välj <strong>var arbetet utfördes</strong>: <em>Småhus</em> (fyll i <strong>fastighetsbeteckning</strong>, t.ex. "Göteborg Bräcke 1:23") eller <em>Bostadsrätt</em> (föreningens organisationsnummer och lägenhetsnummer).</li><li>Fyll i varje köpares <strong>namn</strong> och <strong>personnummer</strong>. <em>Utrymme kvar i år</em> är valfritt och enligt kundens egen uppgift.</li><li>Klicka <strong>Spara utkastet</strong>. Summan visar Arbete, Material, moms, ROT-avdrag och <em>Att betala</em>.</li></ol>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Personnumret krypteras när utkastet sparas och visas sedan som ÅÅÅÅMMDD-XXXX, även på fakturan. Vill du byta det, skriv ett helt nytt. Fakturan kan inte utfärdas utan personnummer och fastighet. Om kundens utrymme inte räcker avvisar Skatteverket begäran och kunden får betala resten.</p></aside>
+<p>Längst ner finns <strong>Förhandsgranska PDF</strong> (överst på sidan), <strong>Gör återkommande</strong>, <strong>Spara utkastet</strong> och <strong>Ta bort utkastet</strong>. Ett utkast som inte ska användas kan tas bort; det har inget nummer och lämnar inga spår i bokföringen.</p>
+</section>
+<section class="chapter" id="5-granska-och-utfärda" aria-labelledby="5-granska-och-utfärda-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 5</span><h2 id="5-granska-och-utfärda-h">Granska och utfärda</h2></header>
+<p class="purpose"><em>Syfte: låsa fakturan, ge den ett nummer och bokföra den.</em> Först när fakturan är <strong>utfärdad</strong> är den en riktig faktura.</p>
+<ol class="steps"><li>Spara utkastet.</li><li>Klicka <strong>Utfärda fakturan…</strong> i rutan <em>Utfärda</em> (under redigeraren). Står det något i rutan som saknas, till exempel en rad eller ett personnummer, rätta det först.</li><li>Granskningsfönstret visar PDF:en till vänster och en sammanfattning till höger: kund, att betala, förfallodag, ROT, omvänd moms och antal rader. Läs PDF:en från början till slut.</li><li>Stämmer allt: klicka <strong>Utfärda nu</strong>. Annars <strong>Tillbaka</strong>, ändra och spara.</li></ol>
+<figure><img src="img/17-granska-utfarda.png" alt="Granska fakturan: PDF och sammanfattning före Utfärda nu" loading="lazy"><figcaption>Granska fakturan: PDF och sammanfattning före Utfärda nu</figcaption></figure>
+<h3 id="vad-som-händer-när-du-utfärdar">Vad som händer när du utfärdar</h3>
+<ul><li>Fakturan får <strong>nästa nummer</strong> i serien F.</li><li>Innehållet <strong>låses</strong> och får en kontrollsumma (hash). Det ändras aldrig mer, inte ens av en administratör.</li><li>Referensen sätts: <strong>OCR-nummer</strong> (fakturanumret med längd- och kontrollsiffra) om bankgirot har OCR-avtal, annars <strong>Referens</strong> = fakturanumret.</li><li>En <strong>verifikation</strong> (bokföringspost) skapas i serien V: kundfordran, försäljning och moms, och vid ROT en fordran på Skatteverket.</li><li>Säljaruppgifter, villkor och mottagare fryses som de är i Inställningar och kundregistret just då.</li></ul>
+<figure><img src="img/18-faktura-utfardad.png" alt="En utfärdad faktura: låst, med kund, datum och betalning" loading="lazy"><figcaption>En utfärdad faktura: låst, med kund, datum och betalning</figcaption></figure>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>En utfärdad faktura kan aldrig ändras eller tas bort. Det är lagen (bokföringslagen och momslagen), inte en begränsning i systemet. Fel rättas med en ny handling som hänvisar till originalet, se kapitel 9. Granska därför PDF:en noga, särskilt kundens namn, belopp och personnummer.</p></aside>
+</section>
+<section class="chapter" id="6-skicka" aria-labelledby="6-skicka-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 6</span><h2 id="6-skicka-h">Skicka</h2></header>
+<p class="purpose"><em>Syfte: få fakturan till kunden och notera att den är skickad.</em></p>
+<h3 id="mejla-fakturan">Mejla fakturan</h3>
+<figure><img src="img/19-skicka.png" alt="Skicka till kund med mottagare och meddelande" loading="lazy"><figcaption>Skicka till kund med mottagare och meddelande</figcaption></figure>
+<ol class="steps"><li>Öppna den utfärdade fakturan och gå till rutan <strong>Skicka till kund</strong>.</li><li>Kontrollera mottagarna på raden <em>Till</em> (från kundens Fakturor till och Kopia till).</li><li>Lägg vid behov till <strong>Fler mottagare för just den här fakturan</strong>.</li><li>Skriv ett eget <strong>Meddelande</strong> eller lämna tomt för standardtexten med belopp, förfallodag och OCR/referens.</li><li>Klicka <strong>Skicka till N mottagare</strong>. Mejlet har PDF:en bifogad och en länk till den publika fakturasidan. Fakturan får status <strong>Skickad</strong> och utskicket syns i tidslinjen.</li></ol>
+<h3 id="markera-skickad-post-eller-annat-sätt">Markera skickad (post eller annat sätt)</h3>
+<figure><img src="img/20-markera-skickad.png" alt="Markera skickad när fakturan lämnats på annat sätt" loading="lazy"><figcaption>Markera skickad när fakturan lämnats på annat sätt</figcaption></figure>
+<p>Har kunden ingen e-post, eller lämnade du fakturan på papper: skriv hur i fältet (t.ex. "post" eller "lämnad på plats") och klicka <strong>Markera skickad</strong>. Saknar kunden e-post står det i rutan.</p>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Så fort fakturan är skickad eller markerad skickad går den inte längre att makulera. Rättelser görs då med ändringsfaktura eller kreditfaktura.</p></aside>
+<h3 id="den-publika-fakturasidan-och-swish-qr">Den publika fakturasidan och Swish-QR</h3>
+<p>Varje utfärdad faktura har en egen sida utan inloggning, med en lång slumpad adress (<em>Publik sida utan inloggning</em> under Skicka-rutan). Kunden ser belopp, förfallodag, hur man betalar och kan visa eller ladda ner PDF:en. Sidan syns inte i sökmotorer.</p>
+<figure><img src="img/21-publik-fakturasida.png" alt="Den publika fakturasidan" loading="lazy"><figcaption>Den publika fakturasidan</figcaption></figure>
+<p>Om ett <strong>Swish-nummer</strong> finns under Inställningar › Betalning visas en <strong>Swish-QR-kod</strong> på PDF:en, i portalen och på den publika sidan. Kunden skannar den i Swish-appen, och belopp och meddelande (OCR eller fakturanummer) fylls i automatiskt. Testbolag AB har inget Swish-nummer, därför syns ingen QR-kod på bilderna.</p>
+<figure><img src="img/22-publik-fakturasida-mobil.png" alt="Samma sida i mobilen" loading="lazy"><figcaption>Samma sida i mobilen</figcaption></figure>
+</section>
+<section class="chapter" id="7-betalningar" aria-labelledby="7-betalningar-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 7</span><h2 id="7-betalningar-h">Betalningar</h2></header>
+<p class="purpose"><em>Syfte: notera när kunden betalat så att fakturan blir Betald och bokföringen stämmer.</em> Det finns två sätt: för hand, eller genom bankens fil.</p>
+<h3 id="registrera-för-hand">Registrera för hand</h3>
+<figure><img src="img/23-registrera-betalning.png" alt="Betalningar, tidslinje och Registrera betalning" loading="lazy"><figcaption>Betalningar, tidslinje och Registrera betalning</figcaption></figure>
+<ol class="steps"><li>Öppna fakturan. Under <em>Betalningar</em> står vad som är betalt och vad som är kvar.</li><li>I rutan <strong>Registrera betalning</strong>: kontrollera <strong>Belopp</strong> (förifyllt med det som är kvar) och <strong>Betaldatum</strong>.</li><li>Välj <strong>Sätt</strong>: Bankgiro, Swish, Kort eller Annat. Skriv gärna referens (OCR, Swish-referens).</li><li>Klicka <strong>Registrera betalning</strong>.</li></ol>
+<p><strong>Delbetalning:</strong> skriv det belopp som faktiskt kom in. Fakturan blir <em>delbetald</em> och resten står kvar som obetalt. Registrera nästa del när den kommer.</p>
+<h3 id="bankfilen-camt054-och-matchningen">Bankfilen (camt.054) och matchningen</h3>
+<p>Banken kan ge en fil med alla inbetalningar till bankgirot (Bankgiro Inbetalningar, formatet ISO 20022 camt.054). Det gamla formatet BgMax slutar Bankgirot skicka efter 27 november 2026.</p>
+<figure><img src="img/24-bankfil.png" alt="Inbetalningar från banken" loading="lazy"><figcaption>Inbetalningar från banken</figcaption></figure>
+<ol class="steps"><li>Hämta filen i internetbanken (Bankgiro Inbetalningar, camt.054).</li><li>Gå till <strong>Ekonomi › Bankfil</strong>, välj filen och klicka <strong>Läs in filen</strong>.</li><li>Under <strong>Att matcha</strong> visas varje inbetalning med datum, avsändare, referens, belopp och ett <strong>förslag</strong>:<ul><li><em>OCR stämmer</em> (säkrast),</li><li><em>Fakturanumret står i meddelandet</em>,</li><li><em>Belopp och namn stämmer</em>,</li><li><em>Bara beloppet stämmer</em> (kontrollera noga). Förslaget visar också <em>delbetalning, X kvar</em> eller <em>X för mycket</em> om beloppet inte stämmer exakt.</li></ul></li><li>Kontrollera förslaget, välj annan faktura i listan om det behövs och klicka <strong>Registrera</strong>.</li><li>Är inbetalningen inte en kundfaktura (t.ex. en återbetalning från leverantör): klicka <strong>Inte en faktura</strong>.</li></ol>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Inget bokförs förrän du klickar <strong>Registrera</strong>. Läs in samma fil bara en gång. Betalningar på en ändringsfaktura registreras alltid på originalfakturan (samma OCR/referens), se kapitel 9.</p></aside>
+<p class="gap"><em>Bilden visar sidan utan inlästa poster; i testmiljön fanns ingen bankfil att läsa in.</em></p>
+</section>
+<section class="chapter" id="8-påminnelser-och-ränta" aria-labelledby="8-påminnelser-och-ränta-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 8</span><h2 id="8-påminnelser-och-ränta-h">Påminnelser och ränta</h2></header>
+<p class="purpose"><em>Syfte: påminna kunden när en faktura är förfallen och ta ut avgift och ränta enligt lag.</em></p>
+<p>När en faktura är förfallen och obetald dyker rutan <strong>Påminnelse 1</strong> (2, 3 …) upp på fakturasidan, och fakturan syns under <em>Förfallna</em> och på Ekonomi-översikten.</p>
+<ol class="steps"><li>Öppna den förfallna fakturan.</li><li>Läs sammanfattningen i rutan <em>Påminnelse</em>: belopp kvar, eventuell avgift och ränta.</li><li>Välj <strong>Mejla påminnelsen med PDF</strong> (till kundens mottagare) eller <strong>Registrera bara (skickad på annat sätt)</strong>.</li><li>Klicka <strong>Påminn</strong> och bekräfta. Avgift och ränta bokförs och händelsen syns i tidslinjen.</li></ol>
+<p>Regler som systemet följer:</p>
+<ul><li><strong>Påminnelseavgift 60 kr</strong> tas bara ut från företag, och från privatpersoner bara om det är avtalat och påslaget i Inställningar.</li><li><strong>Dröjsmålsränta</strong> enligt räntelagen: referensräntan plus 8 procentenheter, räknad från förfallodagen eller från förra påminnelsen.</li><li>Antal dagar före första påminnelsen och mellan påminnelser styrs av Inställningar › Påminnelser.</li><li>Är automatiken påslagen skickar systemet påminnelserna själv varje morgon.</li></ul>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Kontrollera att kunden inte redan betalat (läs in bankfilen först) innan du påminner. En faktura som fått en påminnelse kan inte makuleras.</p></aside>
+<p class="gap"><em>Ingen bild: ingen faktura i testmiljön var förfallen, så påminnelserutan gick inte att visa.</em></p>
+</section>
+<section class="chapter" id="9-rätta-fel" aria-labelledby="9-rätta-fel-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 9</span><h2 id="9-rätta-fel-h">Rätta fel</h2></header>
+<p class="purpose"><em>Syfte: rätta en utfärdad faktura på det sätt som lagen kräver.</em> En utfärdad faktura ändras aldrig; varje rättelse blir en ny handling med eget nummer som hänvisar till originalet.</p>
+<p>Längst ner på en utfärdad faktura finns rutan <strong>Rätta</strong>:</p>
+<figure><img src="img/25-ratta-knappar.png" alt="Rätta: Rätta uppgifter, Rätta belopp, Makulera, Kreditera" loading="lazy"><figcaption>Rätta: Rätta uppgifter, Rätta belopp, Makulera, Kreditera</figcaption></figure>
+<h3 id="beslutstabell">Beslutstabell</h3>
+<div class="table-wrap"><table><thead><tr><th>Situation</th><th>Använd</th><th>Resultat</th></tr></thead><tbody><tr><td>Fakturan är utfärdad men <strong>inte skickad</strong>, ingen betalning eller påminnelse, och den ska inte finnas alls (fel kund, dubbel)</td><td><strong>Makulera…</strong></td><td>Fakturan blir ogiltig men behåller sitt nummer; bokföringen vänds</td></tr><tr><td>Fel <strong>namn, adress, referens, ordernummer, rubrik, text eller radbenämning</strong>, beloppen stämmer</td><td><strong>Rätta uppgifter…</strong></td><td>En <strong>ändringsfaktura</strong> med nästa nummer, samma belopp, OCR och förfallodag</td></tr><tr><td>Fel <strong>antal, pris, moms eller ROT</strong>, ingen betalning registrerad</td><td><strong>Rätta belopp…</strong></td><td>En <strong>kreditfaktura</strong> för hela beloppet plus ett <strong>nytt utkast</strong> att rätta och utfärda</td></tr><tr><td>Kunden ska få <strong>avdrag eller återbetalning</strong> för en del (t.ex. prisavdrag), eller fakturan är redan betald</td><td><strong>Kreditera…</strong></td><td>Ett <strong>kreditfakturautkast</strong> som du ändrar till rätt belopp och utfärdar</td></tr><tr><td>Fakturan är <strong>skickad</strong> och ska inte gälla alls</td><td><strong>Kreditera…</strong> (hela beloppet) eller <strong>Rätta belopp…</strong></td><td>Kreditfaktura som nollställer</td></tr></tbody></table></div>
+<p>Knappar som inte går att använda för fakturan visas inte eller förklarar varför.</p>
+<h3 id="makulera">Makulera</h3>
+<figure><img src="img/26-makulera-dialog.png" alt="Makulera faktura 9: orsak krävs" loading="lazy"><figcaption>Makulera faktura 9: orsak krävs</figcaption></figure>
+<ol class="steps"><li>Klicka <strong>Makulera…</strong>.</li><li>Skriv <strong>varför</strong> (t.ex. "Fel kund, fakturerad två gånger"). Orsaken krävs och sparas.</li><li>Klicka <strong>Makulera faktura N</strong>.</li></ol>
+<p>Fakturan får status <strong>Makulerad</strong>, PDF:en stämplas MAKULERAD och en <em>rättelsepost</em> daterad i dag vänder bokföringen. Numret finns kvar så att serien är obruten.</p>
+<figure><img src="img/27-makulerad-faktura.png" alt="En makulerad faktura med orsak" loading="lazy"><figcaption>En makulerad faktura med orsak</figcaption></figure>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Makulera går bara innan fakturan skickats. Har kunden fått den måste ni kreditera i stället, så att kunden också får en handling som tar bort den.</p></aside>
+<h3 id="rätta-uppgifter-ändringsfaktura">Rätta uppgifter (ändringsfaktura)</h3>
+<ol class="steps"><li>Klicka <strong>Rätta uppgifter…</strong>.</li><li>Ändra det som är fel: kundens namn och adress, Er referens, Ert ordernummer, Vår referens, rubrik, text eller radernas benämning.</li><li>Rutan <strong>Texten på ändringsfakturan</strong> visar automatiskt vad som ändrats, t.ex. "Ändringsfaktura. Ersätter faktura 8. Ändrade uppgifter: er referens från (tomt) till 'Anna Torki'."</li><li>Klicka <strong>Utfärda ändringsfaktura</strong> och skicka den sedan till kunden (kapitel 6).</li></ol>
+<figure><img src="img/28-ratta-uppgifter.png" alt="Rätta uppgifter: ändringstexten skrivs automatiskt" loading="lazy"><figcaption>Rätta uppgifter: ändringstexten skrivs automatiskt</figcaption></figure>
+<p>Ändringsfakturan bokförs inte (beloppet är redan bokfört på originalet). Originalet får texten "Rättad genom faktura N".</p>
+<figure><img src="img/29-andringsfaktura.png" alt="En ändringsfaktura med hänvisning till originalet" loading="lazy"><figcaption>En ändringsfaktura med hänvisning till originalet</figcaption></figure>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Betalningar registreras alltid på <strong>originalfakturan</strong>, aldrig på ändringsfakturan. Kunden betalar med samma OCR/referens som förut, och bankmatchningen hittar originalet själv.</p></aside>
+<h3 id="rätta-belopp-kredit-och-ny-faktura">Rätta belopp (kredit och ny faktura)</h3>
+<figure><img src="img/30-ratta-belopp.png" alt="Rätta beloppen: kreditfaktura plus nytt utkast" loading="lazy"><figcaption>Rätta beloppen: kreditfaktura plus nytt utkast</figcaption></figure>
+<ol class="steps"><li>Klicka <strong>Rätta belopp…</strong> och läs vad som kommer att hända.</li><li>Klicka <strong>Kreditera och skapa nytt utkast</strong>.</li><li>En kreditfaktura för hela beloppet utfärdas direkt, och originalet blir <strong>Krediterad</strong>.</li><li>Ett nytt utkast öppnas med samma kund, rader och villkor och texten "Ersätter faktura N, krediterad med K.". Rätta beloppen, granska och utfärda.</li><li>Skicka både kreditfakturan och den nya fakturan till kunden.</li></ol>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Rätta belopp stoppas om fakturan har betalningar; använd då <strong>Kreditera…</strong> för skillnaden. Ligger fakturan i en ROT-begäran som skickats till Skatteverket måste begäran hanteras först.</p></aside>
+<h3 id="kreditera-för-hand">Kreditera för hand</h3>
+<p><strong>Kreditera…</strong> skapar ett kreditfakturautkast som speglar originalet med minusbelopp. Ändra raderna till det kunden ska få tillbaka (en del eller allt), granska och utfärda. När krediten täcker hela fakturan blir originalet Krediterad.</p>
+<figure><img src="img/31-kreditfaktura.png" alt="En kreditfaktura" loading="lazy"><figcaption>En kreditfaktura</figcaption></figure>
+</section>
+<section class="chapter" id="10-rot" aria-labelledby="10-rot-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 10</span><h2 id="10-rot-h">ROT</h2></header>
+<p class="purpose"><em>Syfte: begära ROT-avdraget från Skatteverket när kunden betalat sin del, och registrera utbetalningen.</em> Sköts normalt av ägaren. Sidan heter <strong>Ekonomi › ROT och RUT</strong>.</p>
+<figure><img src="img/32-rot.png" alt="ROT-begäran: klart att begära, hos Skatteverket, senast och utbetalt" loading="lazy"><figcaption>ROT-begäran: klart att begära, hos Skatteverket, senast och utbetalt</figcaption></figure>
+<p>Översikten visar fyra tal: <strong>Klart att begära</strong>, <strong>Hos Skatteverket</strong>, <strong>Senast</strong> (sista dag att begära för det som betalats i år, 31 januari året efter) och <strong>Utbetalt</strong>.</p>
+<ol class="steps"><li>När en ROT-faktura är <strong>fullt betald</strong> dyker den upp under <strong>Att begära</strong>, märkt <em>Komplett</em> eller med det som saknas.</li><li>Ge begäran ett <strong>namn</strong> (högst 16 tecken, t.ex. "ROT 2610") och välj <strong>typ av arbete</strong> (Bygg, El, VVS …).</li><li>Klicka <strong>Skapa begäran (N fakturor, X kr)</strong>. Ofullständiga fakturor lämnas utanför.</li><li>Under <em>Pågående begäran</em>: <strong>1. Ladda ner XML-filen</strong>.</li><li><strong>2.</strong> Logga in i Skatteverkets e-tjänst <em>Rot och rut – företag</em>, ladda upp filen och signera.</li><li><strong>3. Markera som skickad</strong>.</li><li>När Skatteverket betalat ut: skriv <strong>Utbetalt, kr</strong> och <strong>Datum</strong> och klicka <strong>Registrera utbetalning</strong>. Beloppet bokförs mot ROT-fordran.</li><li>Avslår Skatteverket: skriv motiveringen och klicka <strong>Markera avvisad</strong>. Kunden ska då betala den del som inte godkändes; skicka en ny faktura för den.</li></ol>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Delbetalda fakturor kommer inte med förrän allt är betalt. Begär senast 31 januari året efter att kunden betalade. Personnumren i filen är kompletta (tolv siffror) men visas aldrig i klartext i listorna.</p></aside>
+<p class="gap"><em>Bilden visar sidan utan väntande begäran; i testmiljön fanns ingen betald ROT-faktura.</em></p>
+</section>
+<section class="chapter" id="11-återkommande-fakturor" aria-labelledby="11-återkommande-fakturor-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 11</span><h2 id="11-återkommande-fakturor-h">Återkommande fakturor</h2></header>
+<p class="purpose"><em>Syfte: fakturera avtal som återkommer varje månad, kvartal eller år utan att skriva om fakturan.</em> Sidan heter <strong>Ekonomi › Återkommande fakturor</strong>; du kan också klicka <strong>Gör återkommande</strong> på en faktura.</p>
+<figure><img src="img/33-aterkommande.png" alt="Gör en faktura återkommande" loading="lazy"><figcaption>Gör en faktura återkommande</figcaption></figure>
+<ol class="steps"><li>Under <em>Gör en faktura återkommande</em>, välj vilken faktura den ska <strong>utgå från</strong>. Rader, kund, villkor och betalningsuppgifter följer med; nummer, datum, OCR och ROT gör det inte.</li><li>Ge avtalet ett <strong>namn</strong> (t.ex. "Serviceavtal, Kund AB").</li><li>Välj <strong>intervall</strong>: varje månad, kvartal eller år.</li><li>Välj datum för <strong>första fakturan</strong>. Fakturan avser perioden från det datumet till dagen före nästa.</li><li>Bocka i <strong>Utfärda automatiskt</strong> om fakturan ska utfärdas direkt; annars blir det ett utkast som du granskar.</li><li>Klicka <strong>Spara återkommande faktura</strong>.</li></ol>
+<p>Varje morgon skapar systemet de fakturor som ska ut. Översikten visar aktiva avtal, belopp per månad och vad som skapas i dag. Avtal kan pausas och tas bort; för att ändra ett avtal, ta bort det och gör ett nytt från en uppdaterad faktura.</p>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Utskicket görs alltid för hand, även när fakturan utfärdas automatiskt. Titta på <em>Utkast</em> och <em>Obetalda</em> varje månad.</p></aside>
+</section>
+<section class="chapter" id="12-byggprojekt-och-betalplaner" aria-labelledby="12-byggprojekt-och-betalplaner-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 12</span><h2 id="12-byggprojekt-och-betalplaner-h">Byggprojekt och betalplaner</h2></header>
+<p class="purpose"><em>Syfte: fakturera ett större jobb i delar och följa projektets ekonomi.</em> Projekten finns under <strong>Projekt</strong>.</p>
+<figure><img src="img/34-byggprojekt.png" alt="Byggprojekt" loading="lazy"><figcaption>Byggprojekt</figcaption></figure>
+<ol class="steps"><li>Skapa projektet från en <strong>accepterad offert</strong> (<strong>Nytt projekt</strong> eller från offerten) och bjud in kunden till portalen.</li><li>På projektsidan finns rutan <strong>Ekonomi</strong>: offert, godkända ÄTA (ändrings- och tilläggsarbeten), fakturerat, betalt och kvar.</li><li>Under <strong>Betalplan</strong>, välj en mall och klicka <strong>Använd planen</strong>:<ul><li><strong>30 / 40 / 30</strong>: 30 % vid start, 40 % när en vald fas är klar, resten vid klart projekt.</li><li><strong>50 / 50</strong>: hälften vid start, resten vid klart projekt.</li><li><strong>Allt vid klart</strong>: en faktura när projektet är klart, inklusive ÄTA.</li></ul></li><li>Varje steg visar procent, när det faktureras och ungefärligt belopp. När steget kan faktureras (fasen är bockad klar eller datumet har kommit) visas knappen <strong>Skapa faktura</strong>. Annars står skälet.</li><li><strong>Skapa faktura</strong> öppnar ett utkast med stegets rader, fördelade på arbete och material så att ROT blir rätt. Granska och utfärda som vanligt.</li><li><strong>Slutfakturan</strong> tar resten av offerten plus alla godkända ÄTA som egna rader.</li></ol>
+<p><strong>Kostnader och marginal:</strong> under projektets ekonomi kan ni lägga in kostnader (leverantörsfaktura, material, timmar med internt timpris). Projektet visar då täckningsbidrag, marginal och <em>upparbetat men ej fakturerat</em>. Kostnaderna är interna siffror och syns inte för kunden eller i bokföringsexporten.</p>
+<p><strong>Projektrapporten</strong> (dokumentationen med foton som kunden får när projektet är klart) nås från projektsidan och är inte en del av faktureringen.</p>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Inget faktureras av sig självt. Knappen <em>Skapa faktura</em> visas också på Ekonomi-översiktens <em>Att göra</em>, men någon måste trycka och utfärda.</p></aside>
+<p class="gap"><em>Bilden visar projektlistan utan projekt; i testmiljön fanns inget projekt med betalplan.</em></p>
+</section>
+<section class="chapter" id="13-ekonomi-och-bokföring" aria-labelledby="13-ekonomi-och-bokföring-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 13</span><h2 id="13-ekonomi-och-bokföring-h">Ekonomi och bokföring</h2></header>
+<p class="purpose"><em>Syfte: se hur det går, och lämna bokföringen till redovisningskonsulten.</em></p>
+<h3 id="översikten">Översikten</h3>
+<p><strong>Ekonomi › Översikt</strong> räknas fram ur fakturor, betalningar och betalplaner. Ingenting skrivs in här.</p>
+<figure><img src="img/35-ekonomi-oversikt.png" alt="Ekonomi-översikten" loading="lazy"><figcaption>Ekonomi-översikten</figcaption></figure>
+<div class="table-wrap"><table><thead><tr><th>Ruta</th><th>Betyder</th></tr></thead><tbody><tr><td>Att få in</td><td>Allt som är utfärdat och inte betalt</td></tr><tr><td>Förfallet</td><td>Det av ovan där förfallodagen har passerat</td></tr><tr><td>Väntas in denna vecka</td><td>Förfaller inom veckan</td></tr><tr><td>ROT hos Skatteverket</td><td>Begärt men inte utbetalt</td></tr><tr><td>Fakturerat i månaden</td><td>Utfärdat i månaden, inklusive moms</td></tr></tbody></table></div>
+<p>Längre ner: <strong>Kassaprognos 8 veckor</strong> (förfallodagar och planerade steg i betalplaner), <strong>Obetalt per ålder</strong>, snitt dagar till betalning, <strong>Att göra</strong>, fakturerat per månad, utgående moms, största obetalda kunder och senaste händelser.</p>
+<figure><img src="img/36-ekonomi-kassaprognos.png" alt="Kassaprognos och obetalt per ålder" loading="lazy"><figcaption>Kassaprognos och obetalt per ålder</figcaption></figure>
+<h3 id="sie-export-för-bokföringen">SIE-export för bokföringen</h3>
+<p>Varje faktura, betalning och påminnelse har redan en verifikation. Sidan <strong>Ekonomi › Export och bokföring</strong> samlar dem per månad.</p>
+<figure><img src="img/37-bokforing-sie.png" alt="Bokföringen för oktober: SIE-fil, nyckeltal och momsdeklarationen" loading="lazy"><figcaption>Bokföringen för oktober: SIE-fil, nyckeltal och momsdeklarationen</figcaption></figure>
+<ol class="steps"><li>Välj månad i raden av flikar (okt 26, sep 26 …).</li><li>Kontrollera antal verifikationer, utgående moms och omvänd moms.</li><li>Klicka <strong>Ladda ner SIE4-fil</strong> och läs in den i bokföringsprogrammet (Fortnox, Visma m.fl.).</li><li>Underlaget till <strong>momsdeklarationen</strong> (ruta 05–12, 41, 42) visas på sidan. Inköp och ingående moms (ruta 48) kommer från bokföringen.</li></ol>
+<h3 id="periodlåsning">Periodlåsning</h3>
+<figure><img src="img/38-las-perioden.png" alt="Lås perioden" loading="lazy"><figcaption>Lås perioden</figcaption></figure>
+<p>När SIE-filen är inläst i bokföringen: klicka <strong>Lås [månad]</strong>. Därefter tar systemet inte emot nya verifikationer daterade den månaden, så filen och bokföringen kan inte glida isär. Bara månader som är slut kan låsas.</p>
+<aside class="tip"><p class="tip-label">Tänk på</p><p>Lås inte förrän redovisningskonsulten bekräftat att filen är inläst. En låst månad kan inte ta emot rättelser; de bokförs i stället i den öppna perioden.</p></aside>
+<h3 id="full-export">Full export</h3>
+<figure><img src="img/39-full-export.png" alt="Full export: CSV, PDF-arkiv och JSON" loading="lazy"><figcaption>Full export: CSV, PDF-arkiv och JSON</figcaption></figure>
+<p>För revisorn, för Excel eller för att ta med sig allt:</p>
+<ul><li><strong>CSV för Excel</strong>: <em>Fakturor</em>, <em>Betalningar</em> eller <em>Kunder</em>, med valfritt datumintervall. Öppnas direkt i svensk Excel. Utkast kommer inte med.</li><li><strong>PDF-arkiv (zip)</strong>: varje utfärdad faktura och kreditfaktura som PDF, plus en innehållsförteckning (index.csv).</li><li><strong>Allt som JSON</strong>: inställningar, kunder, fakturor, betalningar, verifikationer, ROT, betalplaner och händelseloggen. Ägare och administratörer får personnummer i klartext, övriga maskerade.</li></ul>
+<p>Varje nedladdning loggas med vem som gjorde den.</p>
+</section>
+<section class="chapter" id="14-organisation-och-api" aria-labelledby="14-organisation-och-api-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 14</span><h2 id="14-organisation-och-api-h">Organisation och API</h2></header>
+<p class="purpose"><em>Syfte: bjuda in kollegor och revisor, och koppla andra system.</em> Sköts av ägaren eller en administratör.</p>
+<h3 id="bjuda-in">Bjuda in</h3>
+<ol class="steps"><li>Kugghjulet › <strong>Organisation och roller</strong>.</li><li>Under <strong>Bjud in</strong>: skriv e-postadressen, välj roll (se kapitel 1) och klicka <strong>Bjud in</strong>.</li><li>Den inbjudna får en länk som gäller i 14 dagar och loggar in med samma e-postadress. Om mejl inte är påslaget visas länken på sidan så att du kan skicka den själv.</li><li>En inbjudan som inte används kan <strong>dras tillbaka</strong>.</li></ol>
+<p>Längst ner finns <strong>Skapa en ny organisation</strong>, för ett nytt företag med egna serier och inställningar.</p>
+<h3 id="api-och-webhooks">API och webhooks</h3>
+<figure><img src="img/40-api.png" alt="API-nycklar och webhooks" loading="lazy"><figcaption>API-nycklar och webhooks</figcaption></figure>
+<p>För utvecklare som vill koppla t.ex. en webbshop: under <strong>API</strong> skapas nycklar (<em>Läsa</em> eller <em>Läsa och skriva</em>) som bara ser det egna företagets kunder och fakturor. <strong>Webhooks</strong> skickar ett meddelande till en annan adress när något händer (faktura utfärdad, betald, påminnelse …). Nyckeln visas bara en gång när den skapas; spara den på ett säkert ställe och återkalla den när den inte behövs.</p>
+</section>
+<section class="chapter" id="15-kundportalen-och-kundens-vy" aria-labelledby="15-kundportalen-och-kundens-vy-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 15</span><h2 id="15-kundportalen-och-kundens-vy-h">Kundportalen och kundens vy</h2></header>
+<p class="purpose"><em>Syfte: veta vad kunden ser, så att du kan svara på frågor.</em></p>
+<p><strong>Den publika fakturasidan</strong> (kapitel 6) är det kunden alltid når via länken i mejlet, utan inloggning: belopp, förfallodag, bankgiro och OCR/referens, Swish-QR om Swish-nummer finns, raderna och PDF:en.</p>
+<p><strong>Kundportalen</strong> (<em>Mitt projekt</em>, binaafy.se/mitt-projekt) är för kunder med ett byggprojekt. Kunden loggar in med sin e-post och ser fliken <strong>Fakturor</strong> med:</p>
+<ul><li>varje faktura med belopp, förfallodag och status (märke för obetalda),</li><li>PDF:en, Swish-QR, bankgiro och OCR/referens,</li><li>vid ROT: arbete och material inklusive moms, ROT-avdraget och texten "ROT-avdraget begär vi hos Skatteverket när du har betalat. Du behöver inte göra något."</li><li>en tidslinje utan interna anteckningar.</li></ul>
+<p>Kostnader, marginal och interna anteckningar syns aldrig för kunden.</p>
+<p class="gap"><em>Ingen bild av portalen: din inloggning hör inte till något kundprojekt, och i testmiljön fanns inget projekt med kund. Bilderna av den publika fakturasidan visar samma uppgifter som portalens faktura.</em></p>
+</section>
+<section class="chapter" id="16-vanliga-frågor" aria-labelledby="16-vanliga-frågor-h">
+<header class="chapter-head"><span class="chapter-no">Kapitel 16</span><h2 id="16-vanliga-frågor-h">Vanliga frågor</h2></header>
+<div class="faq"><p class="faq-q">Jag utfärdade en faktura med fel uppgift. Kan jag ändra den?</p><p>Nej, aldrig. Se beslutstabellen i kapitel 9: makulera om den inte skickats, annars ändringsfaktura (fel uppgift) eller kreditfaktura (fel belopp).</p></div>
+<div class="faq"><p class="faq-q">Varför har fakturan "Referens" och inget OCR-nummer?</p><p>Bankgirot har inget OCR-avtal (Inställningar › Betalning). Kunden skriver då fakturanumret som meddelande. Det fungerar lika bra för matchningen.</p></div>
+<div class="faq"><p class="faq-q">Kunden betalade fel belopp.</p><p>Registrera det som faktiskt kom in. För lite: fakturan blir delbetald och resten står kvar. För mycket: kontakta kunden och betala tillbaka, eller kreditera om det är avtalat.</p></div>
+<div class="faq"><p class="faq-q">Kunden betalade på ändringsfakturan.</p><p>Registrera betalningen på originalfakturan. Systemet stoppar betalning på en ändringsfaktura.</p></div>
+<div class="faq"><p class="faq-q">Varför kan jag inte trycka på Makulera?</p><p>Fakturan är redan skickad, har en betalning, påminnelse, ändringsfaktura eller ROT-begäran. Använd Kreditera eller Rätta belopp.</p></div>
+<div class="faq"><p class="faq-q">Kan jag ta bort ett utkast?</p><p>Ja, med <strong>Ta bort utkastet</strong>. Utkast har inget nummer. Utfärdade fakturor kan aldrig tas bort.</p></div>
+<div class="faq"><p class="faq-q">Fakturanumren hoppar, saknas nummer?</p><p>Nej. Serien F är obruten. Makulerade fakturor och kreditfakturor behåller sina nummer och syns under fliken Krediterade/makulerade.</p></div>
+<div class="faq"><p class="faq-q">Kunden fick inte mejlet.</p><p>Kontrollera mottagarna i Skicka-rutan och kundens <em>Fakturor till</em>. Skicka igen, eller skicka länken till den publika sidan via sms.</p></div>
+<div class="faq"><p class="faq-q">Vad betyder statusarna?</p><p><em>Utkast</em> (kan ändras), <em>Utfärdad</em> (låst, inte skickad), <em>Skickad</em>, <em>Delbetald</em>, <em>Betald</em>, <em>Förfallen</em>, <em>Krediterad</em>, <em>Makulerad</em>.</p></div>
+<div class="faq"><p class="faq-q">Jag ser inte Inställningar eller Bokföringen.</p><p>Din roll ger inte åtkomst. Be ägaren ändra din roll under Organisation och roller.</p></div>
+<div class="faq"><p class="faq-q">Revisorn vill ha allt för året.</p><p>Bjud in revisorn som <em>Redovisningskonsult</em>. Hen kan själv ladda ner SIE-filer per månad, CSV och PDF-arkivet under Export och bokföring.</p></div>
+<div class="faq"><p class="faq-q">ROT-begäran avvisades.</p><p>Markera den avvisad på ROT-sidan med Skatteverkets motivering, och fakturera kunden för den del som inte godkändes.</p></div>
+</section>
+<footer class="doc-foot"><p>Binaafy AB · Göteborg. Skärmbilderna är tagna i testorganisationen Testbolag AB med påhittade kunder.</p></footer>
+</main>
+</div>
+</body>
+</html>
