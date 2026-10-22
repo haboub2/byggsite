@@ -85,7 +85,15 @@ export default async function PublicInvoice({ params }: { params: Promise<{ toke
             )}
           </section>
         ) : (
-          <p className="pub-paid">{inv.kind === "credit" ? "Kreditfaktura." : `Betald${inv.paidAt ? ` ${inv.paidAt.slice(0, 10)}` : ""}. Tack!`}</p>
+          <p className="pub-paid">
+            {inv.kind === "credit"
+              ? "Kreditfaktura."
+              : inv.kind === "correction"
+                ? `Ändringsfaktura. Den rättar uppgifter på faktura ${d.references.precedingInvoiceNumber ?? ""}; beloppet är detsamma och betalas enligt den fakturan, med ${ref.label.toLowerCase()} ${ref.value}.`
+                : inv.status === "void"
+                  ? "Makulerad. Fakturan gäller inte och ska inte betalas."
+                  : `Betald${inv.paidAt ? ` ${inv.paidAt.slice(0, 10)}` : ""}. Tack!`}
+          </p>
         )}
 
         <table className="inv-table pub-table">

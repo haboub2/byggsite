@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { customerSchema } from "../core/customers/schema";
-import { buyerSchema, invoiceDocumentSchema, invoiceLineSchema, referencesSchema, rotSchema } from "../core/documents/invoice";
+import { INVOICE_KINDS, buyerSchema, invoiceDocumentSchema, invoiceLineSchema, referencesSchema, rotSchema } from "../core/documents/invoice";
 import { INVOICE_LIST_TABS, INVOICE_STATUSES } from "../core/invoices/store-types";
 
 /**
@@ -94,7 +94,7 @@ export const invoiceResourceSchema = z.object({
   id: z.string().uuid(),
   series: z.string(),
   number: z.string().nullable(),
-  kind: z.enum(["invoice", "credit"]),
+  kind: z.enum(INVOICE_KINDS),
   status: z.enum(INVOICE_STATUSES),
   customerId: z.string().uuid().nullable(),
   projectId: z.string().uuid().nullable(),

@@ -130,7 +130,7 @@ export function stepGross(step: PaymentPlanStep, quoteLines: InvoiceLine[], invo
   return step.amountOre ?? 0;
 }
 
-export type InvoiceLike = { kind: "invoice" | "credit"; status: string; payableOre: Ore; paidOre: Ore; rotOre: Ore; totalOre: Ore };
+export type InvoiceLike = { kind: "invoice" | "credit" | "correction";status: string; payableOre: Ore; paidOre: Ore; rotOre: Ore; totalOre: Ore };
 
 export type ProjectEconomy = {
   quoteGross: Ore;
@@ -149,7 +149,8 @@ export function projectEconomy(quoteLines: InvoiceLine[], changeOrders: ChangeOr
   const quoteGross = grossTotal(quoteLines);
   const approved = changeOrders.filter((c) => c.status === "approved").reduce((s, c) => s + Math.trunc(c.amount) * 100, 0);
   const pending = changeOrders.filter((c) => c.status === "pending").reduce((s, c) => s + Math.trunc(c.amount) * 100, 0);
-  const issued = invoices.filter((i) => i.status !== "draft" && i.status !== "void");
+  // A change invoice repeats its original's amounts; only the original counts.
+  const issued = invoices.filter((i) => i.status !== "draft" && i.status !== "void" && i.kind !== "correction");
   const invoiced = issued.reduce((s, i) => s + i.totalOre, 0); // credits are negative
   const paid = issued.filter((i) => i.kind === "invoice").reduce((s, i) => s + i.paidOre, 0);
   const outstanding = issued.filter((i) => i.kind === "invoice" && i.status !== "credited").reduce((s, i) => s + (i.payableOre - i.paidOre), 0);

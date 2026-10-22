@@ -14,12 +14,16 @@ import {
   createInvoice,
   deleteDraft,
   getInvoice,
+  issueCorrection,
   issueInvoice,
   IssueError,
   markSent,
   registerPayment,
   updateInvoiceDraft,
+  voidInvoice,
 } from "@/lib/core/invoices/store";
+import { creditAndRedraft } from "@/lib/core/invoices/amend";
+import { correctionEditsSchema } from "@/lib/core/invoices/correction";
 import { sendInvoiceMail } from "@/lib/core/invoices/send";
 import { parseKronor } from "@/lib/core/money";
 import type { Actor } from "@/lib/core/events";
@@ -183,6 +187,64 @@ export async function creditInvoiceAction(formData: FormData): Promise<void> {
   const creditId = await createCreditNote(id, check.email);
   revalidatePath(LIST, "layout");
   redirect(`${LIST}/${creditId}?kredit=1`);
+}
+
+/** Makulera: an issued, unsent invoice without payments. Reason required. */
+export async function voidInvoiceAction(_prev: InvoiceToolState, formData: FormData): Promise<InvoiceToolState> {
+  const check = await checkAdmin();
+  if (!check.ok) return { error: "Du saknar behörighet." };
+  const id = String(formData.get("id") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!reason) return { error: "Skriv varför fakturan makuleras." };
+  try {
+    const { number, entryNumber } = await voidInvoice(id, reason.slice(0, 500), actorOf(check.email));
+    revalidatePath(LIST, "layout");
+    return { ok: true, message: `Faktura ${number} är makulerad. Bokföringen är vänd med verifikation ${entryNumber}.` };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Kunde inte makulera." };
+  }
+}
+
+export type CorrectionState = InvoiceToolState & { fieldErrors?: Record<string, string> };
+
+/** Rätta uppgifter: issue a change invoice with the edited details, then open it. */
+export async function correctInvoiceAction(_prev: CorrectionState, formData: FormData): Promise<CorrectionState> {
+  const check = await checkAdmin();
+  if (!check.ok) return { error: "Du saknar behörighet. Logga in igen." };
+  const id = String(formData.get("id") ?? "");
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(formData.get("payload") ?? ""));
+  } catch {
+    return { error: "Formuläret kunde inte läsas. Ladda om sidan och försök igen." };
+  }
+  const parsed = correctionEditsSchema.safeParse(raw);
+  if (!parsed.success) return { error: "Några fält behöver rättas.", fieldErrors: fieldErrors(parsed.error.issues) };
+  let created: { id: string; number: string };
+  try {
+    created = await issueCorrection(id, parsed.data, actorOf(check.email));
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Kunde inte utfärda ändringsfakturan." };
+  }
+  revalidatePath(LIST, "layout");
+  redirect(`${LIST}/${created.id}?rattad=1`);
+}
+
+/** Rätta belopp: credit in full (issued at once) and open a new draft with the same content. */
+export async function correctAmountsAction(_prev: InvoiceToolState, formData: FormData): Promise<InvoiceToolState> {
+  const check = await checkAdmin();
+  if (!check.ok) return { error: "Du saknar behörighet." };
+  const id = String(formData.get("id") ?? "");
+  let draftId: string;
+  try {
+    const defaults = await getSellerDefaults();
+    ({ draftId } = await creditAndRedraft(id, actorOf(check.email), check.email, (doc) => applySellerDefaults(doc, defaults)));
+  } catch (err) {
+    if (err instanceof IssueError) return { error: "Kreditfakturan kunde inte utfärdas.", problems: err.problems };
+    return { error: err instanceof Error ? err.message : "Kunde inte rätta beloppen." };
+  }
+  revalidatePath(LIST, "layout");
+  redirect(`${LIST}/${draftId}?ersatter=1`);
 }
 
 export async function deleteInvoiceDraft(formData: FormData): Promise<void> {

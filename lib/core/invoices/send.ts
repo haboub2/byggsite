@@ -21,6 +21,7 @@ export async function sendInvoiceMail(inv: InvoiceRecord, message: string): Prom
   if (!key) throw new Error("Resend är inte kopplat (RESEND_API_KEY saknas). Ladda ner PDF:en och mejla den själv så länge.");
   if (!from) throw new Error("Avsändaradressen är inte verifierad (MAIL_FROM saknas). Ladda ner PDF:en och mejla den själv så länge.");
   if (inv.status === "draft") throw new Error("Utfärda fakturan innan den skickas.");
+  if (inv.status === "void") throw new Error(`${invoiceLabel(inv)} är makulerad och skickas inte.`);
   const to = inv.document.buyer.email;
   if (!to) throw new Error("Kunden saknar e-postadress.");
 
@@ -33,11 +34,14 @@ export async function sendInvoiceMail(inv: InvoiceRecord, message: string): Prom
   const brand = d.seller.name || site.brand;
   const label = invoiceLabel(inv);
   const isCredit = inv.kind === "credit";
+  const isCorrection = inv.kind === "correction";
   const ref = paymentReference(d);
   const pay = `${formatOre(Math.abs(t.payable), { decimals: 0, currency: true })}`;
 
   const body = message.trim()
     ? message
+    : isCorrection
+      ? `Hej ${firstName},\n\nBifogat hittar du ändringsfaktura ${inv.number}. Den ersätter faktura ${d.references.precedingInvoiceNumber} och rättar uppgifter på den; beloppet är detsamma. Att betala: ${pay} senast ${d.dueDate}, om du inte redan har betalat. ${ref.instruction}\n\nHör av dig om något är oklart.`
     : isCredit
       ? `Hej ${firstName},\n\nBifogat hittar du kreditfaktura ${inv.number} som avser faktura ${d.references.precedingInvoiceNumber}. Beloppet ${pay} regleras mot fakturan eller återbetalas.\n\nHör av dig om något är oklart.`
       : `Hej ${firstName},\n\nBifogat hittar du faktura ${inv.number}${d.title ? ` för ${d.title.toLowerCase()}` : ""}. Att betala: ${pay} senast ${d.dueDate}${t.rot ? ", ROT-avdraget är redan avdraget" : ""}. ${ref.instruction}\n\nHör av dig om något är oklart.`;

@@ -11,7 +11,7 @@ import type { Ore } from "./money";
 export type DashInvoice = {
   id: string;
   number: string | null;
-  kind: "invoice" | "credit";
+  kind: "invoice" | "credit" | "correction";
   status: string;
   buyerName: string;
   customerId: string | null;
@@ -30,7 +30,8 @@ export type DashInvoice = {
 export type PlannedInflow = { expectedOn: string; amountOre: Ore; label: string };
 
 const open = (i: DashInvoice) => i.kind === "invoice" && ["issued", "sent", "partially_paid"].includes(i.status);
-const issued = (i: DashInvoice) => i.status !== "draft" && i.status !== "void";
+// A change invoice repeats its original's amounts; only the original counts.
+const issued = (i: DashInvoice) => i.status !== "draft" && i.status !== "void" && i.kind !== "correction";
 const remaining = (i: DashInvoice) => i.payableOre - i.paidOre;
 
 /** Monday of the week that holds `date`. */

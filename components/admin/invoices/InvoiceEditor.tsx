@@ -192,6 +192,7 @@ export default function InvoiceEditor({ id, initial }: { id: string; initial: In
           />
           <TextField label="Arbetet utfört (datum eller period, valfritt)" path="deliveryDate" value={d.deliveryDate ?? ""} onChange={(v) => set("deliveryDate")(v || null)} placeholder="2026-10-09" hint="Momslagen vill ha datumet när det skiljer sig från fakturadatumet." />
           <TextField label="Vår referens" path="references.ourReference" value={d.references.ourReference} onChange={setRef("ourReference")} placeholder="Lämnas tomt används undertecknaren." />
+          <TextField label="Ert ordernummer (valfritt)" path="references.orderReference" value={d.references.orderReference ?? ""} onChange={(v) => setRef("orderReference")(v.trim() ? v : undefined)} placeholder="Kundens beställnings- eller ordernummer" />
           <TextArea label="Text under rubriken" path="note" value={d.note} onChange={set("note")} rows={3} hint="Till exempel vilken offert och vilket steg i betalplanen fakturan avser." />
         </div>
       </fieldset>

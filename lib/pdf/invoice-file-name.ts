@@ -14,6 +14,6 @@ const fileSafe = (v: string, max: number) =>
  *  Without server-only imports, so the export archive and its tests can name
  *  files the way the e-mail does. */
 export function invoiceFileName(inv: { kind: InvoiceKind; number: string | null; document: { seller: { name: string }; buyer: { name: string } } }): string {
-  const word = inv.kind === "credit" ? "Kreditfaktura" : "Faktura";
+  const word = inv.kind === "credit" ? "Kreditfaktura" : inv.kind === "correction" ? "Andringsfaktura" : "Faktura";
   return [word, inv.number ?? "utkast", fileSafe(inv.document.seller.name, 30), fileSafe(inv.document.buyer.name, 40)].filter(Boolean).join("-") + ".pdf";
 }

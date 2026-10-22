@@ -1,6 +1,6 @@
 import { formatKronor, formatOre, roundToKronor, type Ore } from "../../core/money";
 import { invoiceTotals } from "../../core/invoices/totals";
-import { PEPPOL_ID, paymentReference, type InvoiceDocument, type InvoiceLine } from "../../core/documents/invoice";
+import { INVOICE_TYPE_CODE, PEPPOL_ID, paymentReference, type InvoiceDocument, type InvoiceLine } from "../../core/documents/invoice";
 
 /**
  * Peppol BIS Billing 3.0 (UBL 2.1) for one invoice document. An invoice
@@ -117,6 +117,7 @@ export function validatePeppol(doc: InvoiceDocument, opts: PeppolOptions = {}): 
   if (!doc.buyer.city) errors.push("Köparens adress saknar ort.");
   if (!doc.buyer.countryCode) errors.push("Köparens adress saknar land.");
   if (doc.lines.length === 0) errors.push("Fakturan måste ha minst en rad.");
+  if (doc.kind === "correction" && !doc.references.precedingInvoiceNumber) errors.push("En ändringsfaktura måste hänvisa till fakturan den ersätter.");
   if (doc.kind === "credit") {
     if (!doc.references.precedingInvoiceNumber) errors.push("En kreditfaktura måste hänvisa till fakturan den krediterar.");
     // BR-CO-25: a positive amount due needs a due date or payment terms; a credit note has no due date.
@@ -129,7 +130,7 @@ export function validatePeppol(doc: InvoiceDocument, opts: PeppolOptions = {}): 
 
 export function peppolFileName(doc: Pick<InvoiceDocument, "kind" | "number">): string {
   const number = (doc.number ?? "utkast").replace(/[^A-Za-z0-9-]+/g, "-");
-  return `${doc.kind === "credit" ? "kreditfaktura" : "faktura"}-${number}-peppol.xml`;
+  return `${doc.kind === "credit" ? "kreditfaktura" : doc.kind === "correction" ? "andringsfaktura" : "faktura"}-${number}-peppol.xml`;
 }
 
 const TAX_EXEMPTION: Record<InvoiceLine["vatCategory"], { code?: string; reason: string } | null> = {
@@ -202,7 +203,9 @@ export function renderPeppolInvoice(doc: InvoiceDocument, opts: PeppolOptions = 
   const rotAmount = rot ? formatOre(Math.abs(rot.deduction)) : "";
   const afterRot = rot ? formatKronor(Math.abs(totals.payable)) : "";
 
+  // Peppol allows one invoice note (BT-22); a change invoice's text comes first in it.
   const notes = [
+    doc.correctionNote ?? "",
     doc.note,
     doc.se.reverseCharge ? "Omvänd betalningsskyldighet" : "",
     rot ? `ROT-avdrag ${rotAmount} kr begärs av säljaren hos Skatteverket. Att betala efter ROT-avdrag: ${afterRot}.` : "",
@@ -218,7 +221,7 @@ export function renderPeppolInvoice(doc: InvoiceDocument, opts: PeppolOptions = 
   el("cbc:ID", doc.number ?? "UTKAST");
   el("cbc:IssueDate", doc.issueDate);
   if (!credit) el("cbc:DueDate", doc.dueDate);
-  el(credit ? "cbc:CreditNoteTypeCode" : "cbc:InvoiceTypeCode", credit ? "381" : "380");
+  el(credit ? "cbc:CreditNoteTypeCode" : "cbc:InvoiceTypeCode", INVOICE_TYPE_CODE[doc.kind]);
   if (notes.length) el("cbc:Note", notes.map((n) => n.trim()).join("\n"));
   el("cbc:DocumentCurrencyCode", cur);
   el("cbc:BuyerReference", present(doc.buyer.reference) ? doc.buyer.reference : present(doc.buyer.name) ? doc.buyer.name : "-");
@@ -228,7 +231,13 @@ export function renderPeppolInvoice(doc: InvoiceDocument, opts: PeppolOptions = 
     el("cbc:EndDate", doc.period.end);
     close("cac:InvoicePeriod");
   }
-  if (credit && present(doc.references.precedingInvoiceNumber)) {
+  if (present(doc.references.orderReference ?? "")) {
+    open("cac:OrderReference");
+    el("cbc:ID", doc.references.orderReference ?? "");
+    close("cac:OrderReference");
+  }
+  // BG-3 preceding invoice: the invoice a credit note credits or a change invoice (384) corrects.
+  if ((credit || doc.kind === "correction") && present(doc.references.precedingInvoiceNumber)) {
     open("cac:BillingReference");
     open("cac:InvoiceDocumentReference");
     el("cbc:ID", doc.references.precedingInvoiceNumber);

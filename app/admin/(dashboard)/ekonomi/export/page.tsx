@@ -12,7 +12,7 @@ const MONTH = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "a
 const SHORT = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
 const monthLabel = (p: string) => `${MONTH[Number(p.slice(5, 7)) - 1]} ${p.slice(0, 4)}`;
 const BOXES: (keyof VatBoxes)[] = ["05", "06", "07", "42", "10", "11", "12", "41"];
-const SOURCE_LABEL: Record<string, string> = { invoice: "Faktura", credit: "Kreditfaktura", payment: "Betalning", reminder: "Påminnelse", reversal: "Vändning" };
+const SOURCE_LABEL: Record<string, string> = { invoice: "Faktura", credit: "Kreditfaktura", payment: "Betalning", reminder: "Påminnelse", reversal: "Rättelsepost" };
 
 /**
  * Bokföringen: one month of the ledger at a time. The SIE 4 file for the

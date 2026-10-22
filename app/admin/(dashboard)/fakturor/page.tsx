@@ -35,7 +35,7 @@ export default async function InvoicesList({ searchParams }: { searchParams: Pro
             <span className="eyebrow">Admin</span>
             <h1>Fakturor</h1>
             <p className="admin-intro">
-              Fakturor skapas från en accepterad offert eller för en kund i registret. En utfärdad faktura är låst; fel rättas med kreditfaktura. Säljaruppgifterna kommer från{" "}
+              Fakturor skapas från en accepterad offert eller för en kund i registret. En utfärdad faktura är låst; fel uppgifter rättas med ändringsfaktura och fel belopp med kreditfaktura. Säljaruppgifterna kommer från{" "}
               <Link href="/admin/installningar" className="link-quiet">
                 Inställningar
               </Link>
@@ -126,7 +126,12 @@ export default async function InvoicesList({ searchParams }: { searchParams: Pro
                         {inv.number ?? "Utkast"} · {inv.document.buyer.name || "Utan kund"}
                       </strong>
                       <span className="inbox-meta">
-                        {inv.kind === "credit" ? "Kreditfaktura" : CUSTOMER_TYPE_LABEL[inv.document.buyer.type].replace(" (omvänd betalningsskyldighet)", "")}
+                        {inv.kind === "credit"
+                          ? "Kreditfaktura"
+                          : inv.kind === "correction"
+                            ? `Ändringsfaktura till ${inv.document.references.precedingInvoiceNumber ?? ""}`
+                            : CUSTOMER_TYPE_LABEL[inv.document.buyer.type].replace(" (omvänd betalningsskyldighet)", "")}
+                        {inv.correctedBy ? " · rättad med ändringsfaktura" : ""}
                         {inv.document.se.reverseCharge ? " · omvänd moms" : ""}
                         {inv.rotOre ? ` · ROT ${kr(Math.abs(inv.rotOre))}` : ""}
                         {inv.document.title ? ` · ${inv.document.title}` : ""}
@@ -134,7 +139,7 @@ export default async function InvoicesList({ searchParams }: { searchParams: Pro
                       </span>
                     </span>
                     <span className="inbox-side">
-                      <strong>{kr(inv.payableOre)}</strong>
+                      {inv.kind === "correction" ? <span title="Beloppet räknas på originalfakturan">ingår i {inv.document.references.precedingInvoiceNumber}</span> : <strong>{kr(inv.payableOre)}</strong>}
                       {inv.status === "partially_paid" ? <span>{kr(remaining)} kvar</span> : <time dateTime={inv.updatedAt}>{formatWhen(inv.updatedAt)}</time>}
                     </span>
                   </Link>

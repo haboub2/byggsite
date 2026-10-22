@@ -9,6 +9,106 @@ delfakturor → ÄTA → slutfaktura → ROT) är produktens första säljargume
 Prototypen av gränssnittet finns som design-canvas (sju skärmar: fakturalista,
 faktura, projektekonomi, kundportal i mobil, PDF, ROT-begäran, dashboard).
 
+## Läge 2026-10-22: rättelser (makulera, ändringsfaktura, rätta och skapa ny, granska)
+
+Juridisk grund: bokföringslagen 5 kap. 9 § och BFNAR 2013:2 punkt 5.15–5.16
+tillåter att en verifikation rättas om det framgår när och av vem och den
+ursprungliga uppgiften finns kvar, och en bokförd post rättas med en egen
+rättelsepost (punkt 2.17–2.18). Momslagen (2023:200) 17 kap. 22 § och
+Skatteverkets ställningstagande 2024-06-11 (dnr 8-2900380) kräver att varje
+ändring av en utfärdad faktura görs med en ändringsfaktura som otvetydigt
+hänvisar till ursprungsfakturans nummer, och att fakturans uppgifter är
+oförändrade under hela lagringstiden. Faktureringsskyldigheten gäller även
+privatpersoner vid byggtjänster (17 kap. 11 §), så alla Binaafys fakturor
+omfattas: en utfärdad faktura ändras aldrig, varje rättelse är en ny handling
+med eget nummer och hänvisning till originalet.
+
+Migration 0025 är körd i Supabase och flödena är provade i webbläsaren i
+organisationen **Testbolag AB** (inte Binaafy, eftersom utfärdade testfakturor
+aldrig går att ta bort och annars skulle ta nummer i Binaafys riktiga serie),
+med provkunden "Rättelseprov Andersson". Faktura 1 utfärdades via
+granskningssteget (PDF:en syntes i dialogen) och makulerades med orsak: V1
+vändes av V2 "Makulering av faktura 1", och PDF:en fick stämpeln och
+vattenstämpeln MAKULERAD. Faktura 2 utfärdades, markerades skickad (Makulera
+försvann) och rättades: ändringsfaktura 3 fick texten "Ändringsfaktura.
+Ersätter faktura 2. Ändrade uppgifter: kundens namn från 'Rättelseprov
+Andersson' till 'Rättelseprov Anderson'.", referens 2 och samma förfallodag,
+ingen verifikation, och faktura 2:s PDF stämplades "Rättad genom faktura 3".
+Faktura 4 rättades med Rätta belopp: kreditfaktura 5 utfärdades (V5 vände
+V4), 4 blev krediterad och ett utkast öppnades med "Ersätter faktura 4,
+krediterad med 5." (utkastet togs sedan bort). Listan visade 2 000 kr att få
+in och en obetald faktura, och kundfordringarna i oktober var 2 000 kr.
+
+| Del | Fil |
+|---|---|
+| Migration 0025 | `supabase/migrations/0025_invoice_corrections.sql`: kolumnerna `voided_at`, `voided_by`, `void_reason`, `corrected_by` (originalet → senaste ändringsfakturan), `corrects_invoice_id` (ändringsfakturan → originalet), `kind` får `'correction'`; `void_invoice`, `issue_correction_invoice`, `invoice_amount_basis`; frystriggern och insert-vakten släpper bara igenom makulering och `corrected_by` från funktionerna (transaktionslokal inställning med fakturans id), en makulerad faktura är helt låst; `register_payment` stoppar betalning på en ändringsfaktura |
+| Prov | `supabase/tests/0025_corrections.sql` (PGlite, i en transaktion som rullas tillbaka): skickad och betald faktura kan inte makuleras, orsak krävs, status kan inte sättas direkt, annan organisation stoppas, rättelseposten vänder utfärdandet konto för konto, makulerad faktura är låst; ändringsfakturan hänvisar till originalet, har dess OCR och förfallodag, bokförs inte, originalet är oförändrat, betalning på ändringsfakturan stoppas, nummerserien 1–6 är obruten genom två rättelser |
+| Ändringstexten | `lib/core/invoices/correction.ts` (testad i `correction.test.ts`): vad som får ändras (`correctionEditsSchema`), diffen ("kundens namn från 'X' till 'Y'"), texten "Ändringsfaktura. Ersätter faktura N. Ändrade uppgifter: …", `amountBasis` som speglar databasens kontroll |
+| Lagret | `lib/core/invoices/store.ts`: `voidInvoice`, `issueCorrection`, `correctionBase`/`effectiveDocument` (senaste versionen av uppgifterna), demoläget i minnet; `lib/core/invoices/amend.ts`: `amountCorrectionBlocker`, `creditAndRedraft` (Rätta belopp) |
+| Listorna | `lib/core/invoices/store-types.ts`: `isOpen` (bara `kind = 'invoice'`), `isBooked`, `inTab`, `countInvoiceList` utan server-only, testade; dashboarden, projektekonomin, betalplanerna, påminnelserna och CSV-exporten hoppar över ändringsfakturor |
+| Gränssnittet | `components/admin/invoices/InvoiceTools.tsx` (granskningsdialogen vid Utfärda, Makulera…, Rätta belopp…), `components/admin/invoices/CorrectionForm.tsx` och `/admin/fakturor/[id]/ratta` (Rätta uppgifter…), banderoller på fakturasidan, fakturalistan, portalen och den publika sidan |
+| PDF, Peppol, e-post | `lib/pdf/InvoicePdf.tsx` (rubriken "Ändringsfaktura", "Ersätter faktura N", ändringstexten i en ruta under huvudet, stämplarna MAKULERAD med vattenstämpel och "Rättad genom faktura N"), `lib/pdf/render-invoice.tsx`, typkod 384 och BillingReference i Peppol, eget mejl för ändringsfakturan |
+
+Beslut:
+
+- **Makulera** går bara när fakturan är utfärdad men inte skickad
+  (`status = 'issued'`, `sent_at` tom), är en vanlig faktura och saknar
+  betalningar, ROT-begäran, kreditfaktura (även utkast), ändringsfaktura och
+  påminnelser. Numret behålls. Rättelseposten har utfärdandets rader med
+  debet och kredit omvända, texten "Makulering av faktura N", dagens datum
+  (Europe/Stockholm) och `source_type = 'reversal'` med utfärdandets
+  verifikation som `source_id`; i Bokföringen heter källan nu Rättelsepost.
+  Orsaken är obligatorisk och står i händelsen `invoice.voided`, på
+  fakturasidan och i tidslinjen men inte på PDF:en.
+- **Ändringsfakturan** (`kind = 'correction'`, typkod 384) får ändra kundens
+  namn och adress, Er referens, ordernummer (nytt fält
+  `references.orderReference`, BT-13, även i redigeraren och på PDF:en), Vår
+  referens, rubriken, texten och radernas benämning. Allt som avgör belopp,
+  moms, ROT, villkor och datum kontrolleras lika med originalet både i appen
+  och i databasen. Den utfärdas direkt med nästa nummer i fakturaserien,
+  fakturadatum i dag, originalets OCR och förfallodag, hela innehållet och
+  texten `correctionNote` (BT-22 först i Peppol). Den skapar ingen
+  verifikation; beloppskolumnerna är originalets så att PDF och lista visar
+  rätt belopp, men den räknas aldrig (`isBooked`, `isOpen`) och CSV-raden har
+  0 kr. En andra rättelse utgår från den senaste ändringsfakturan och
+  `corrected_by` pekar om.
+- **Betalningar på en ändringsfaktura stoppas** med "Registrera betalningen
+  på faktura N", både i appen och i `register_payment`; det var enklare och
+  tydligare än att styra om dem. Bankfilens matchning hittar originalet på
+  samma OCR, eftersom bara vanliga fakturor är öppna. Utan OCR-avtal är
+  referensen på ändringsfakturan originalets nummer.
+- **Rätta belopp** krediterar hela fakturan med en kreditfaktura som
+  utfärdas direkt och skapar ett nytt utkast med originalets (eller den
+  senaste ändringsfakturans) kund, rader, referenser och villkor och raden
+  "Ersätter faktura N, krediterad med K." först i texten. Fakturor med
+  betalningar stoppas: `register_payment` kan inte kvitta en betalning mot en
+  ny faktura utan ny migration. En faktura i en ROT-begäran som skickats till
+  Skatteverket stoppas med att begäran måste återkallas först; ligger den i
+  ett utkast till begäran stoppas den tills den tagits bort ur begäran.
+- **Granska innan Utfärda**: knappen Utfärda öppnar en dialog med PDF:en
+  (den vanliga PDF-routen i en iframe, laddas om varje gång) och kund, belopp
+  att betala, förfallodag, ROT och omvänd moms, med texten att fakturan låses,
+  får nästa nummer och rättas med ändrings- eller kreditfaktura. Först där
+  finns "Utfärda nu". Samma för kreditfakturor.
+- **Statusen `void` heter Makulerad** (tidigare Annullerad), syns under fliken
+  Krediterade/makulerade och räknas inte i dashboarden eller CSV-exporten.
+
+Kvar:
+
+- **Kvittning vid Rätta belopp på betalda fakturor**: kräver en
+  databasfunktion som flyttar betalningen från originalet till den nya
+  fakturan (eller registrerar kreditfakturans saldo som betalning) i samma
+  transaktion.
+- **`invoice.corrected` är ingen webhook-händelse**, eftersom den loggas på
+  både originalet och ändringsfakturan; lägg till den i `is_webhook_event`
+  med en av raderna om en integratör behöver den.
+- **Inte provat i webbläsaren**: mejlet för ändringsfakturan (MAIL_FROM är
+  tom), ROT-stoppet vid Rätta belopp, demoläget och Peppol-XML:en med typkod
+  384 (den senare täcks av typkontrollen, inte av ett test).
+
+Kontroll: 10 nya tester, 291 gröna totalt (`npm test`), typkontroll och lint
+utan fel, och PGlite-proven 0021–0025 gröna.
+
 ## Läge 2026-10-20: full export (grundkrav 6)
 
 Grundkrav 6 är uppfyllt: utöver SIE4 per period och Peppol-XML per faktura

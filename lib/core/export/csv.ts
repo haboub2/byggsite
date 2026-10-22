@@ -1,4 +1,4 @@
-import { CUSTOMER_TYPE_LABEL } from "../documents/invoice";
+import { CUSTOMER_TYPE_LABEL, INVOICE_KIND_LABEL } from "../documents/invoice";
 import type { InvoiceRecord } from "../invoices/store";
 import { INVOICE_STATUS_LABEL } from "../invoices/store-types";
 import { byNumber, inRange, issuedInvoices, PAYMENT_METHOD_LABEL, type DateRange, type ExportCustomer, type ExportPayment } from "./model";
@@ -91,21 +91,28 @@ type CsvInvoice = Pick<
   "id" | "series" | "number" | "kind" | "status" | "customerId" | "document" | "totalOre" | "vatOre" | "rotOre" | "payableOre" | "paidOre" | "issuedOn" | "dueOn" | "ocr" | "createdAt"
 >;
 
+/**
+ * The amounts a row adds to a sum over the file: a change invoice repeats its
+ * original's amounts and a voided invoice is reversed in the ledger, so both
+ * carry 0 (the PDF archive and the JSON file keep their documents).
+ */
+const own = (i: CsvInvoice, ore: number) => (i.kind === "correction" || i.status === "void" ? 0 : ore);
+
 export const invoiceColumns: CsvColumn<CsvInvoice>[] = [
   { header: "Fakturanummer", value: (i) => i.number ?? "" },
-  { header: "Typ", value: (i) => (i.kind === "credit" ? "Kreditfaktura" : "Faktura") },
+  { header: "Typ", value: (i) => (i.kind === "correction" ? csvText(`Ändringsfaktura till ${i.document.references.precedingInvoiceNumber ?? ""}`) : INVOICE_KIND_LABEL[i.kind]) },
   { header: "Fakturadatum", value: (i) => i.issuedOn ?? "" },
   { header: "Förfallodag", value: (i) => i.dueOn ?? "" },
   { header: "Kund", value: (i) => csvText(i.document.buyer.name) },
   { header: "Organisationsnummer", value: (i) => csvText(i.document.buyer.orgNr) },
-  { header: "Netto", value: (i) => csvAmount(i.totalOre - i.vatOre) },
-  { header: "Moms", value: (i) => csvAmount(i.vatOre) },
-  { header: "Totalt", value: (i) => csvAmount(i.totalOre) },
-  { header: "ROT-avdrag", value: (i) => csvAmount(i.rotOre) },
-  { header: "Att betala", value: (i) => csvAmount(i.payableOre) },
-  { header: "Betalt", value: (i) => csvAmount(i.paidOre) },
+  { header: "Netto", value: (i) => csvAmount(own(i, i.totalOre - i.vatOre)) },
+  { header: "Moms", value: (i) => csvAmount(own(i, i.vatOre)) },
+  { header: "Totalt", value: (i) => csvAmount(own(i, i.totalOre)) },
+  { header: "ROT-avdrag", value: (i) => csvAmount(own(i, i.rotOre)) },
+  { header: "Att betala", value: (i) => csvAmount(own(i, i.payableOre)) },
+  { header: "Betalt", value: (i) => csvAmount(own(i, i.paidOre)) },
   // What the customer still owes, as the invoice list counts it: a credit note settles another invoice and is never open.
-  { header: "Kvar", value: (i) => csvAmount(i.kind === "credit" || i.status === "credited" || i.status === "void" ? 0 : i.payableOre - i.paidOre) },
+  { header: "Kvar", value: (i) => csvAmount(i.kind !== "invoice" || i.status === "credited" || i.status === "void" ? 0 : i.payableOre - i.paidOre) },
   { header: "Status", value: (i) => INVOICE_STATUS_LABEL[i.status] ?? i.status },
   { header: "OCR", value: (i) => i.ocr ?? "" },
   { header: "Valuta", value: (i) => i.document.currency },

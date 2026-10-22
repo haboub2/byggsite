@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createHash } from "node:crypto";
 import InvoiceEditor from "@/components/admin/invoices/InvoiceEditor";
-import { CreditInvoiceButton, DeleteDraft, IssueInvoiceForm, MarkSentForm, RegisterPaymentForm, SendInvoiceForm, SendReminderForm } from "@/components/admin/invoices/InvoiceTools";
+import { CorrectAmountsForm, CreditInvoiceButton, DeleteDraft, IssueInvoiceForm, MarkSentForm, RegisterPaymentForm, SendInvoiceForm, SendReminderForm, VoidInvoiceForm } from "@/components/admin/invoices/InvoiceTools";
 import { reminderDue, reminderText } from "@/lib/core/reminders/reminders";
 import { reminderSettings } from "@/lib/core/reminders/store";
 import { publicInvoiceUrl } from "@/lib/core/invoices/public";
@@ -12,7 +12,8 @@ import { formatOre } from "@/lib/core/money";
 import { CUSTOMER_TYPE_LABEL, LINE_KIND_LABEL, paymentReference, validateForIssue } from "@/lib/core/documents/invoice";
 import { customerSummary, invoiceTotals } from "@/lib/core/invoices/totals";
 import { EVENT_LABEL } from "@/lib/core/events";
-import { INVOICE_STATUS_LABEL, getInvoice, invoiceLabel, isOpen, isOverdue, listInvoiceEvents, listInvoicePayments } from "@/lib/core/invoices/store";
+import { INVOICE_STATUS_LABEL, correctionBlocker, getInvoice, invoiceLabel, isOpen, isOverdue, listInvoiceEvents, listInvoicePayments } from "@/lib/core/invoices/store";
+import { amountCorrectionBlocker } from "@/lib/core/invoices/amend";
 import { applySellerDefaults, getSellerDefaults } from "@/lib/core/invoices/seller";
 import { todayIso } from "@/lib/quotes/schema";
 import { requireRole } from "@/lib/admin";
@@ -22,9 +23,9 @@ import { RevealPersonalNumber } from "@/components/admin/invoices/RevealPersonal
 const kr = (ore: number) => formatOre(ore, { decimals: 0, currency: true });
 const sek = (ore: number) => formatOre(ore);
 
-export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ kredit?: string }> }) {
+export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ kredit?: string; rattad?: string; ersatter?: string }> }) {
   const { id } = await params;
-  const { kredit } = await searchParams;
+  const { kredit, rattad, ersatter } = await searchParams;
   const inv = await getInvoice(id);
   if (!inv) notFound();
   const isDraft = inv.status === "draft";
@@ -39,6 +40,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
     const version = createHash("sha1").update(JSON.stringify(d)).digest("hex").slice(0, 12);
     // The gate checks the document as it will be frozen: with today's seller settings applied.
     const problems = validateForIssue({ ...applySellerDefaults(d, await getSellerDefaults()), number: null });
+    const draftTotals = invoiceTotals(d);
     return (
       <section className="sec sec--tight">
         <div className="container">
@@ -65,13 +67,31 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
             </div>
           </div>
           {kredit && <p className="admin-flash">Kreditfakturan är skapad som utkast och speglar originalet. Ändra rader om bara en del ska krediteras, och utfärda sedan.</p>}
+          {ersatter && (
+            <p className="admin-flash">
+              Originalet är krediterat i sin helhet och kreditfakturan är utfärdad. Det här är den nya fakturan som ersätter det, med samma kund, rader och villkor: rätta beloppen, spara och utfärda.
+            </p>
+          )}
 
           <div className="quote-layout">
             <InvoiceEditor key={version} id={inv.id} initial={d} />
             <aside className="lead-aside quote-aside">
               <div>
                 <h2 className="lead-h2">Utfärda</h2>
-                <IssueInvoiceForm id={inv.id} problems={problems} isCredit={inv.kind === "credit"} />
+                <IssueInvoiceForm
+                  id={inv.id}
+                  problems={problems}
+                  isCredit={inv.kind === "credit"}
+                  summary={{
+                    buyer: d.buyer.name,
+                    payableLabel: inv.kind === "credit" ? "Att återfå" : "Att betala",
+                    payable: kr(Math.abs(draftTotals.payable)),
+                    dueDate: inv.kind === "credit" ? null : d.dueDate,
+                    rot: draftTotals.rot && draftTotals.rot.deduction !== 0 ? `${kr(Math.abs(draftTotals.rot.deduction))} begärs från Skatteverket` : null,
+                    reverseCharge: d.se.reverseCharge,
+                    lines: d.lines.length,
+                  }}
+                />
               </div>
               <div>
                 <h2 className="lead-h2">Att betala</h2>
@@ -87,6 +107,16 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   }
 
   const [events, payments] = await Promise.all([listInvoiceEvents(inv.id), listInvoicePayments(inv.id)]);
+  // The other end of a correction: the change invoice that replaced this one, or the original this one replaces.
+  const [correction, original] = await Promise.all([
+    inv.correctedBy ? getInvoice(inv.correctedBy) : null,
+    inv.correctsInvoiceId ? getInvoice(inv.correctsInvoiceId) : null,
+  ]);
+  const isVoid = inv.status === "void";
+  const canFix = inv.kind === "invoice" && !isVoid && inv.status !== "credited";
+  const detailsBlocked = canFix ? correctionBlocker(inv) : null;
+  const amountsBlocked = canFix ? await amountCorrectionBlocker(inv.id) : null;
+  const canVoid = inv.kind === "invoice" && inv.status === "issued" && !inv.sentAt && inv.paidOre === 0 && !inv.correctedBy && inv.reminders === 0;
   const totals = invoiceTotals(d);
   const sum = customerSummary(d, totals);
   const overdue = isOverdue(inv, today);
@@ -118,6 +148,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
               {d.buyer.name} · {CUSTOMER_TYPE_LABEL[d.buyer.type]}
               {d.references.quoteNumber ? ` · enligt offert ${d.references.quoteNumber}` : ""}
               {inv.creditsInvoiceId && d.references.precedingInvoiceNumber ? ` · krediterar faktura ${d.references.precedingInvoiceNumber}` : ""}
+              {inv.kind === "correction" && d.references.precedingInvoiceNumber ? ` · ersätter faktura ${d.references.precedingInvoiceNumber}` : ""}
             </p>
           </div>
           <div className="lead-quick">
@@ -140,11 +171,40 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           </div>
         </div>
 
+        {rattad && inv.kind === "correction" && (
+          <p className="admin-flash">Ändringsfakturan är utfärdad som nummer {inv.number}. Skicka den till kunden; betalningen registreras på faktura {d.references.precedingInvoiceNumber}.</p>
+        )}
+
         <div className="quote-layout" style={{ marginTop: 24 }}>
           <div className="inv-view">
+            {isVoid && (
+              <p className="inv-banner" data-kind="void">
+                <strong>
+                  Makulerad{inv.voidedAt ? ` ${formatDateTime(inv.voidedAt)}` : ""}
+                  {inv.voidedBy ? ` av ${inv.voidedBy}` : ""}
+                </strong>
+                Orsak: {inv.voidReason}. Fakturan skickades aldrig och gäller inte. Numret {inv.number} finns kvar i serien, och bokföringen är vänd med en rättelsepost.
+              </p>
+            )}
+            {correction && (
+              <p className="inv-banner" data-kind="corrected">
+                <strong>
+                  Rättad genom <Link href={`/admin/fakturor/${correction.id}`}>faktura {correction.number}</Link>
+                </strong>
+                Ändringsfakturan ersätter uppgifterna här. Beloppet är detsamma; betalningar och påminnelser hör till den här fakturan.
+              </p>
+            )}
+            {inv.kind === "correction" && (
+              <p className="inv-banner" data-kind="correction">
+                <strong>
+                  Ändringsfaktura till {original ? <Link href={`/admin/fakturor/${original.id}`}>faktura {original.number}</Link> : `faktura ${d.references.precedingInvoiceNumber}`}
+                </strong>
+                {d.correctionNote} Den bokförs inte; betalningar registreras på originalet, med samma {paymentReference(d).ocr ? "OCR-nummer" : "referens"} och förfallodag.
+              </p>
+            )}
             <p className="inv-locked">
               Låst vid utfärdandet {inv.issuedOn}
-              {inv.createdBy ? ` · ${inv.createdBy}` : ""}. Ändras aldrig; fel rättas med kreditfaktura.
+              {inv.createdBy ? ` · ${inv.createdBy}` : ""}. Ändras aldrig; fel uppgifter rättas med ändringsfaktura och fel belopp med kreditfaktura.
               {inv.sha256 ? ` Dokumentets hash ${inv.sha256.slice(0, 12)}…` : ""}
             </p>
 
@@ -329,10 +389,14 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                     ))}
                   </ul>
                 )}
+                {inv.kind === "correction" ? (
+                  <p className="inv-remaining">Betalningar registreras på {original ? <Link href={`/admin/fakturor/${original.id}`}>faktura {original.number}</Link> : `faktura ${d.references.precedingInvoiceNumber}`}.</p>
+                ) : (
                 <p className="inv-remaining">
                   Betalt {kr(inv.paidOre)} av {kr(inv.payableOre)}
-                  {remaining > 0 && inv.kind !== "credit" ? ` · ${kr(remaining)} kvar` : ""}
+                  {remaining > 0 && isOpen(inv) ? ` · ${kr(remaining)} kvar` : ""}
                 </p>
+                )}
               </div>
               <div>
                 <h2 className="lead-h2">Tidslinje</h2>
@@ -340,9 +404,12 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                   {events.map((e, i) => (
                     <li key={`${e.at}-${i}`}>
                       <span>
-                        {EVENT_LABEL[e.type]?.text ?? e.type}
+                        {e.type === "invoice.corrected" && e.data.corrects ? `Utfärdad som ändringsfaktura ${e.data.number}` : (EVENT_LABEL[e.type]?.text ?? e.type)}
                         {e.type === "invoice.issued" && e.data.number ? ` som ${e.data.number}` : ""}
                         {e.type === "invoice.sent" && e.data.to ? ` till ${e.data.to}` : ""}
+                        {e.type === "invoice.voided" && e.data.reason ? `: ${e.data.reason}` : ""}
+                        {e.type === "invoice.corrected" && e.data.correctionNumber ? ` genom faktura ${e.data.correctionNumber}` : ""}
+                        {e.type === "invoice.corrected" && e.data.corrects ? `, ersätter faktura ${e.data.corrects}` : ""}
                         {e.type === "payment.received" && typeof e.data.amount === "number" ? ` ${kr(e.data.amount)}` : ""}
                         {e.type === "invoice.reminded" && typeof e.data.level === "number" ? ` (${e.data.level})` : ""}
                         {e.type === "invoice.reminded" && typeof e.data.fee === "number" && e.data.fee > 0 ? ` · avgift ${kr(e.data.fee)}` : ""}
@@ -372,6 +439,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                 <RegisterPaymentForm id={inv.id} remainingKronor={(remaining / 100).toLocaleString("sv-SE").replace(/ /g, " ")} today={today} />
               </div>
             )}
+            {!isVoid && (
             <div>
               <h2 className="lead-h2">Skicka till kund</h2>
               <SendInvoiceForm id={inv.id} email={d.buyer.email} ready={mailReady} />
@@ -385,11 +453,30 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                 </p>
               )}
             </div>
-            {inv.kind === "invoice" && inv.status !== "credited" && (
-              <div>
-                <h2 className="lead-h2">Rätta</h2>
+            )}
+            {canFix && (
+              <div style={{ display: "grid", gap: 8 }}>
+                <h2 className="lead-h2" style={{ marginBottom: 4 }}>
+                  Rätta
+                </h2>
+                {detailsBlocked ? (
+                  <span className="efield-hint">{detailsBlocked}</span>
+                ) : (
+                  <Link href={`/admin/fakturor/${inv.id}/ratta`} className="btn btn-ghost quote-aside-btn">
+                    Rätta uppgifter…
+                  </Link>
+                )}
+                <span className="efield-hint">Namn, adress, referenser, rubrik, text eller radernas benämning: en ändringsfaktura med samma belopp.</span>
+                <CorrectAmountsForm id={inv.id} number={inv.number ?? ""} amount={kr(Math.abs(inv.payableOre))} blocked={amountsBlocked} />
+                <span className="efield-hint">Fel antal, pris, moms eller ROT: kreditfaktura för hela beloppet och ett nytt utkast.</span>
+                {canVoid && (
+                  <>
+                    <VoidInvoiceForm id={inv.id} number={inv.number ?? ""} />
+                    <span className="efield-hint">Bara innan fakturan har skickats: den blir ogiltig och bokföringen vänds.</span>
+                  </>
+                )}
                 <CreditInvoiceButton id={inv.id} number={inv.number ?? ""} />
-                <span className="efield-hint">En kreditfaktura speglar den här fakturan. Utfärda den, och skapa sedan en ny faktura om något ska faktureras om.</span>
+                <span className="efield-hint">Kreditera en del eller allt för hand, som ett utkast du ändrar innan du utfärdar.</span>
               </div>
             )}
           </aside>

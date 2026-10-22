@@ -50,7 +50,7 @@ export default async function PortalInvoices({ params }: { params: Promise<{ id:
                   {d.references.planStep ? ` · delfaktura ${d.references.planStep.step} av ${d.references.planStep.of}` : ""}
                 </span>
                 <span className="etag" data-status={overdue ? "declined" : inv.status === "paid" ? "approved" : "pending"}>
-                  {overdue ? "Förfallen" : credit ? "Kreditfaktura" : INVOICE_STATUS_LABEL[inv.status]}
+                  {overdue ? "Förfallen" : credit ? "Kreditfaktura" : inv.kind === "correction" ? "Ändringsfaktura" : INVOICE_STATUS_LABEL[inv.status]}
                 </span>
               </div>
               <h3 style={{ fontSize: 26, letterSpacing: "-0.02em", marginTop: 4 }}>
@@ -60,6 +60,7 @@ export default async function PortalInvoices({ params }: { params: Promise<{ id:
               <p className="portal-ata-desc">
                 {d.title}
                 {inv.dueOn && openNow ? ` · förfaller ${formatDay(inv.dueOn)}` : inv.paidAt ? ` · betald ${formatDay(inv.paidAt)}` : ""}
+                {inv.kind === "correction" ? ` · rättar uppgifter på faktura ${d.references.precedingInvoiceNumber ?? ""}, samma belopp` : ""}
               </p>
 
               {openNow && d.paymentMeans.swish && (

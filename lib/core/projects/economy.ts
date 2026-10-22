@@ -14,7 +14,7 @@ export const COST_KIND_LABEL: Record<CostKind, string> = { supplier: "Leverantö
 
 export type CostLike = { kind: CostKind; amountOre: Ore };
 export type PhaseShareLike = { duration_days: number; done_at: string | null; change_order_id: string | null };
-export type InvoicedLike = { kind: "invoice" | "credit"; status: string; totalOre: Ore; vatOre: Ore; lines: Pick<InvoiceLine, "unitPriceOre" | "quantity" | "changeOrderId">[] };
+export type InvoicedLike = { kind: "invoice" | "credit" | "correction";status: string; totalOre: Ore; vatOre: Ore; lines: Pick<InvoiceLine, "unitPriceOre" | "quantity" | "changeOrderId">[] };
 
 /** Amount of an hours row: hours × internal rate, rounded to whole öre. */
 export function hoursAmount(hours: number, hourlyRateOre: Ore): Ore {
@@ -24,13 +24,13 @@ export function hoursAmount(hours: number, hourlyRateOre: Ore): Ore {
 
 /** Issued invoices and credit notes excl. VAT (credits are negative). ROT is still revenue: Skatteverket pays it. */
 export function invoicedNet(invoices: InvoicedLike[]): Ore {
-  return invoices.filter((i) => i.status !== "draft" && i.status !== "void").reduce((s, i) => s + i.totalOre - i.vatOre, 0);
+  return invoices.filter((i) => i.status !== "draft" && i.status !== "void" && i.kind !== "correction").reduce((s, i) => s + i.totalOre - i.vatOre, 0);
 }
 
 /** The part of the invoiced net that is ÄTA lines, which the quote's phases do not cover. */
 function changeOrderNet(invoices: InvoicedLike[]): Ore {
   return invoices
-    .filter((i) => i.status !== "draft" && i.status !== "void")
+    .filter((i) => i.status !== "draft" && i.status !== "void" && i.kind !== "correction")
     .reduce((s, i) => s + (i.kind === "credit" ? -1 : 1) * i.lines.filter((l) => l.changeOrderId).reduce((t, l) => t + Math.abs(lineAmount(l.unitPriceOre, l.quantity)), 0), 0);
 }
 

@@ -25,10 +25,18 @@ export const CUSTOMER_TYPE_LABEL: Record<CustomerType, string> = {
   byggforetag: "Byggföretag (omvänd betalningsskyldighet)",
 };
 
-export const INVOICE_KINDS = ["invoice", "credit"] as const;
+/**
+ * invoice: an ordinary invoice. credit: a credit note against one. correction:
+ * a change invoice (ändringsfaktura, momslagen 17 kap. 22 §) that corrects the
+ * details of an issued invoice, never its amounts; it repeats the original's
+ * content with the corrected details and carries no amounts of its own in the
+ * ledger, lists or payments.
+ */
+export const INVOICE_KINDS = ["invoice", "credit", "correction"] as const;
 export type InvoiceKind = (typeof INVOICE_KINDS)[number];
-/** BT-3 invoice type code: 380 commercial invoice, 381 credit note. */
-export const INVOICE_TYPE_CODE: Record<InvoiceKind, "380" | "381"> = { invoice: "380", credit: "381" };
+export const INVOICE_KIND_LABEL: Record<InvoiceKind, string> = { invoice: "Faktura", credit: "Kreditfaktura", correction: "Ändringsfaktura" };
+/** BT-3 invoice type code: 380 commercial invoice, 381 credit note, 384 corrected invoice. */
+export const INVOICE_TYPE_CODE: Record<InvoiceKind, "380" | "381" | "384"> = { invoice: "380", credit: "381", correction: "384" };
 
 export const VAT_CATEGORIES = ["S", "AE", "E"] as const;
 export const VAT_RATES = [25, 12, 6, 0] as const;
@@ -172,8 +180,10 @@ export const referencesSchema = z.object({
   projectId: z.string().uuid().nullable().default(null),
   /** Payment plan step, "steg 2 av 3". */
   planStep: z.object({ step: z.number().int().min(1), of: z.number().int().min(1) }).nullable().default(null),
-  /** BT-25 preceding invoice number, required on a credit note. */
+  /** BT-25 preceding invoice number, required on a credit note and a change invoice. */
   precedingInvoiceNumber: z.string().nullable().default(null),
+  /** BT-13 purchase order reference: the buyer's order number. */
+  orderReference: text(80, "Ert ordernummer").optional(),
   /** BT-10 is on the buyer; this is our contact (BT-34 seller contact). */
   ourReference: text(80, "Vår referens").default(""),
 });
@@ -220,6 +230,12 @@ export const invoiceDocumentSchema = z.object({
   title: text(160, "Rubrik").default(""),
   /** BT-22 invoice note: the free text under the heading. */
   note: text(2000, "Text").default(""),
+  /**
+   * On a change invoice: what it changes and which invoice it replaces,
+   * generated from the difference ("Ändringsfaktura. Ersätter faktura 10007.
+   * Ändrade uppgifter: …"). Printed under the heading, before the note.
+   */
+  correctionNote: text(2000, "Ändringstext").optional(),
   references: referencesSchema.default({}),
   seller: sellerSchema,
   buyer: buyerSchema,
@@ -260,7 +276,12 @@ export function showsInclVat(buyer: Pick<Buyer, "type">): boolean {
  * matching also recognises (lib/core/payments/matching.ts). A document
  * issued before the choice existed has no flag and keeps its OCR number.
  */
-export function paymentReference(doc: { number: string | null; paymentMeans: { ocr: string | null; ocrAgreement?: boolean } }): {
+export function paymentReference(doc: {
+  number: string | null;
+  kind?: InvoiceKind;
+  references?: { precedingInvoiceNumber: string | null };
+  paymentMeans: { ocr: string | null; ocrAgreement?: boolean };
+}): {
   ocr: boolean;
   /** "OCR-nummer" or "Referens". */
   label: string;
@@ -269,7 +290,9 @@ export function paymentReference(doc: { number: string | null; paymentMeans: { o
   instruction: string;
 } {
   const ocr = doc.paymentMeans.ocrAgreement !== false;
-  const value = (ocr ? doc.paymentMeans.ocr : null) ?? doc.number ?? "";
+  // A change invoice is paid as its original: same OCR, and without one the original's number.
+  const number = doc.kind === "correction" ? (doc.references?.precedingInvoiceNumber ?? doc.number) : doc.number;
+  const value = (ocr ? doc.paymentMeans.ocr : null) ?? number ?? "";
   return ocr
     ? { ocr, label: "OCR-nummer", value, instruction: `Ange OCR-numret ${value} vid betalning.` }
     : { ocr, label: "Referens", value, instruction: `Ange fakturanummer ${value} som meddelande vid betalning.` };
@@ -323,6 +346,7 @@ export function validateForIssue(doc: InvoiceDocument): string[] {
   if (doc.kind === "credit") {
     if (!doc.references.precedingInvoiceNumber) errors.push("En kreditfaktura måste hänvisa till fakturan den krediterar.");
   }
+  if (doc.kind === "correction") errors.push("En ändringsfaktura utfärdas från fakturan den rättar, med Rätta uppgifter.");
   return errors;
 }
 

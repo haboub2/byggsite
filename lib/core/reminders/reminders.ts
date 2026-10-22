@@ -41,7 +41,7 @@ export type ReminderInput = {
   remindedAt: string | null;
   customerType: CustomerType;
   status: string;
-  kind: "invoice" | "credit";
+  kind: "invoice" | "credit" | "correction";
 };
 
 export type ReminderPlan = {
@@ -68,7 +68,7 @@ export function daysOverdue(inv: Pick<ReminderInput, "dueOn">, today: string): n
  * not overdue, nothing unpaid, a credit note, too soon after the last one.
  */
 export function reminderDue(inv: ReminderInput, today: string, settings: ReminderSettings = DEFAULT_REMINDER_SETTINGS): ReminderPlan | null {
-  if (inv.kind === "credit") return null;
+  if (inv.kind !== "invoice") return null;
   if (!["issued", "sent", "partially_paid"].includes(inv.status)) return null;
   const remaining = inv.payableOre - inv.paidOre;
   if (remaining <= 0) return null;

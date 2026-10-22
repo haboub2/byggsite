@@ -1,9 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { sendReminderAction } from "@/app/admin/reminder-actions";
 import {
+  correctAmountsAction,
   creditInvoiceAction,
+  voidInvoiceAction,
   deleteInvoiceDraft,
   issueInvoiceAction,
   markInvoiceSent,
@@ -12,21 +14,51 @@ import {
   type InvoiceToolState,
 } from "@/app/admin/invoice-actions";
 
-/** Utfärda: the gate. Disabled while the saved draft has problems; lists them. */
-export function IssueInvoiceForm({ id, problems, isCredit }: { id: string; problems: string[]; isCredit: boolean }) {
+/** What the review step shows next to the PDF, formatted on the server from the saved draft. */
+export type IssueSummary = {
+  buyer: string;
+  /** "Att betala" or, on a credit note, "Att återfå". */
+  payableLabel: string;
+  payable: string;
+  dueDate: string | null;
+  rot: string | null;
+  reverseCharge: boolean;
+  lines: number;
+};
+
+function Feedback({ state }: { state: InvoiceToolState }) {
+  if (!state.error && !state.message) return null;
+  return (
+    <span className={`form-feedback ${state.error ? "error" : "success"}`} role="status">
+      {state.error ?? state.message}
+    </span>
+  );
+}
+
+/**
+ * Utfärda: the gate. Disabled while the saved draft has problems; otherwise
+ * opens the review step (the PDF as it will look, and what it says) where
+ * "Utfärda nu" issues it.
+ */
+export function IssueInvoiceForm({ id, problems, isCredit, summary }: { id: string; problems: string[]; isCredit: boolean; summary: IssueSummary }) {
   const [state, action, pending] = useActionState<InvoiceToolState, FormData>(issueInvoiceAction, {});
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [preview, setPreview] = useState(0);
   const blocked = problems.length > 0;
   const shown = state.problems ?? problems;
+  const what = isCredit ? "kreditfakturan" : "fakturan";
   return (
-    <form
-      action={action}
-      onSubmit={(e) => {
-        if (!window.confirm(`Utfärda ${isCredit ? "kreditfakturan" : "fakturan"}? Den får sitt nummer och låses. Fel rättas sedan bara med kreditfaktura.`)) e.preventDefault();
-      }}
-    >
-      <input type="hidden" name="id" value={id} />
-      <button type="submit" className="btn btn-primary quote-aside-btn" disabled={pending || blocked}>
-        {pending ? "Utfärdar…" : isCredit ? "Utfärda kreditfakturan" : "Utfärda fakturan"}
+    <div>
+      <button
+        type="button"
+        className="btn btn-primary quote-aside-btn"
+        disabled={blocked}
+        onClick={() => {
+          setPreview((n) => n + 1);
+          dialog.current?.showModal();
+        }}
+      >
+        {isCredit ? "Utfärda kreditfakturan…" : "Utfärda fakturan…"}
       </button>
       {shown.length > 0 && (
         <ul className="inv-problems" aria-label="Det här saknas">
@@ -36,12 +68,153 @@ export function IssueInvoiceForm({ id, problems, isCredit }: { id: string; probl
         </ul>
       )}
       {!blocked && shown.length === 0 && <span className="efield-hint">Allt momslagen kräver finns. Spara eventuella ändringar först; det är den sparade versionen som utfärdas.</span>}
-      {(state.error || state.message) && (
-        <span className={`form-feedback ${state.error ? "error" : "success"}`} role="status">
-          {state.error ?? state.message}
-        </span>
-      )}
-    </form>
+
+      <dialog ref={dialog} className="inv-dialog inv-dialog--wide" aria-labelledby={`review-${id}`}>
+        <div className="inv-review">
+          <div className="inv-review-pdf">{preview > 0 && <iframe key={preview} src={`/admin/fakturor/${id}/pdf#navpanes=0&view=FitH`} title="Förhandsvisning av PDF:en" />}</div>
+          <form action={action} className="inv-review-side">
+            <input type="hidden" name="id" value={id} />
+            <h2 id={`review-${id}`} className="inv-dialog-h">Granska {what}</h2>
+            <dl className="inv-review-facts">
+              <div>
+                <dt>Kund</dt>
+                <dd>{summary.buyer || "Saknas"}</dd>
+              </div>
+              <div>
+                <dt>{summary.payableLabel}</dt>
+                <dd>
+                  <strong>{summary.payable}</strong>
+                </dd>
+              </div>
+              {summary.dueDate && (
+                <div>
+                  <dt>Förfallodag</dt>
+                  <dd>{summary.dueDate}</dd>
+                </div>
+              )}
+              <div>
+                <dt>ROT-avdrag</dt>
+                <dd>{summary.rot ?? "Nej"}</dd>
+              </div>
+              <div>
+                <dt>Omvänd moms</dt>
+                <dd>{summary.reverseCharge ? "Ja, köparen redovisar momsen" : "Nej"}</dd>
+              </div>
+              <div>
+                <dt>Rader</dt>
+                <dd>{summary.lines}</dd>
+              </div>
+            </dl>
+            <p className="inv-dialog-text">
+              När du utfärdar låses {what} och får nästa nummer i serien. Den kan sedan aldrig ändras: fel uppgifter rättas med en ändringsfaktura och fel belopp med en kreditfaktura.
+            </p>
+            <p className="efield-hint">Det är den sparade versionen som utfärdas. Har du ändrat något i redigeraren, stäng och spara först.</p>
+            {state.problems && state.problems.length > 0 && (
+              <ul className="inv-problems">
+                {state.problems.map((p) => (
+                  <li key={p}>{p}</li>
+                ))}
+              </ul>
+            )}
+            <Feedback state={state} />
+            <div className="inv-dialog-actions">
+              <button type="submit" className="btn btn-primary" disabled={pending}>
+                {pending ? "Utfärdar…" : "Utfärda nu"}
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => dialog.current?.close()} disabled={pending}>
+                Tillbaka
+              </button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+    </div>
+  );
+}
+
+/** Makulera: only an issued invoice that never reached the customer. Reason required; the ledger is reversed. */
+export function VoidInvoiceForm({ id, number }: { id: string; number: string }) {
+  const [state, action, pending] = useActionState<InvoiceToolState, FormData>(voidInvoiceAction, {});
+  const dialog = useRef<HTMLDialogElement>(null);
+  return (
+    <div>
+      <button type="button" className="btn btn-ghost quote-aside-btn" onClick={() => dialog.current?.showModal()}>
+        Makulera…
+      </button>
+      <dialog ref={dialog} className="inv-dialog" aria-labelledby={`void-${id}`}>
+        <form action={action}>
+          <input type="hidden" name="id" value={id} />
+          <h2 id={`void-${id}`} className="inv-dialog-h">
+            Makulera faktura {number}?
+          </h2>
+          <p className="inv-dialog-text">
+            Fakturan har inte skickats till kunden. Den blir ogiltig men finns kvar med sitt nummer, så nummerserien förblir obruten. Bokföringen vänds med en rättelsepost daterad i dag, och PDF:en stämplas MAKULERAD.
+          </p>
+          <div className="efield">
+            <label htmlFor={`reason-${id}`}>Varför makuleras den?</label>
+            <textarea id={`reason-${id}`} name="reason" rows={3} maxLength={500} required placeholder="Till exempel: fel kund, fakturerad två gånger." />
+          </div>
+          <Feedback state={state} />
+          <div className="inv-dialog-actions">
+            <button type="submit" className="btn btn-danger" disabled={pending}>
+              {pending ? "Makulerar…" : `Makulera faktura ${number}`}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => dialog.current?.close()} disabled={pending}>
+              Avbryt
+            </button>
+          </div>
+        </form>
+      </dialog>
+    </div>
+  );
+}
+
+/** Rätta belopp: credit in full, issued at once, and a new draft with the same content. */
+export function CorrectAmountsForm({ id, number, amount, blocked }: { id: string; number: string; amount: string; blocked: string | null }) {
+  const [state, action, pending] = useActionState<InvoiceToolState, FormData>(correctAmountsAction, {});
+  const dialog = useRef<HTMLDialogElement>(null);
+  return (
+    <div>
+      <button type="button" className="btn btn-ghost quote-aside-btn" onClick={() => dialog.current?.showModal()} disabled={Boolean(blocked)} title={blocked ?? undefined}>
+        Rätta belopp…
+      </button>
+      {blocked && <span className="efield-hint">{blocked}</span>}
+      <dialog ref={dialog} className="inv-dialog" aria-labelledby={`amounts-${id}`}>
+        <form action={action}>
+          <input type="hidden" name="id" value={id} />
+          <h2 id={`amounts-${id}`} className="inv-dialog-h">
+            Rätta beloppen på faktura {number}
+          </h2>
+          <p className="inv-dialog-text">En utfärdad faktura ändras aldrig. Så här går det till:</p>
+          <ol className="inv-dialog-steps">
+            <li>
+              En <strong>kreditfaktura för hela beloppet</strong>, {amount}, skapas och utfärdas direkt med nästa nummer i serien. Den bokförs, och faktura {number} markeras som krediterad.
+            </li>
+            <li>
+              Ett <strong>nytt utkast</strong> skapas med samma kund, rader, referenser och villkor, och texten &quot;Ersätter faktura {number}, krediterad med …&quot;.
+            </li>
+            <li>Utkastet öppnas i redigeraren. Rätta beloppen där och utfärda det; det får då ett eget nummer.</li>
+          </ol>
+          <p className="efield-hint">Skicka både kreditfakturan och den nya fakturan till kunden.</p>
+          {state.problems && state.problems.length > 0 && (
+            <ul className="inv-problems">
+              {state.problems.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+          )}
+          <Feedback state={state} />
+          <div className="inv-dialog-actions">
+            <button type="submit" className="btn btn-primary" disabled={pending}>
+              {pending ? "Krediterar…" : "Kreditera och skapa nytt utkast"}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => dialog.current?.close()} disabled={pending}>
+              Avbryt
+            </button>
+          </div>
+        </form>
+      </dialog>
+    </div>
   );
 }
 

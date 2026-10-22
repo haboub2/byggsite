@@ -2,9 +2,10 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { getDb } from "../db";
 import { isDemo } from "../../leads";
-import { invoiceDocumentSchema, validateForIssue, type InvoiceDocument, type InvoiceKind } from "../documents/invoice";
+import { INVOICE_KIND_LABEL, invoiceDocumentSchema, validateForIssue, type InvoiceDocument, type InvoiceKind } from "../documents/invoice";
 import { invoiceTotals } from "./totals";
-import { postInvoice, postPayment, type PaymentMethod, type Posting } from "../ledger/posting";
+import { postInvoice, postPayment, reversal, type PaymentMethod, type Posting } from "../ledger/posting";
+import { correctionDocument, type CorrectionEdits } from "./correction";
 import { ocrFor } from "../ocr";
 import { makeEvent, type Actor, type CoreEvent, type EventType } from "../events";
 import { todayIso } from "../../quotes/schema";
@@ -14,14 +15,15 @@ import { currentChart } from "../org/settings-store";
 /**
  * The invoices table (supabase/migrations/0014_core.sql) and the functions
  * around it (issue_invoice, register_payment, mark_invoice_sent,
- * mark_invoice_credited in 0014/0015). Read with the admin's session so RLS
+ * mark_invoice_credited in 0014/0015; void_invoice and
+ * issue_correction_invoice in 0025). Read with the admin's session so RLS
  * decides; the state changes go through the database functions so each one
  * is a single transaction. Demo mode replays the same rules in memory,
  * including the ledger, so the admin can be used without Supabase.
  */
 
-import { INVOICE_LIST_TABS, INVOICE_STATUSES, INVOICE_STATUS_LABEL, type InvoiceListTab, type InvoiceStatus } from "./store-types";
-export { INVOICE_LIST_TABS, INVOICE_STATUSES, INVOICE_STATUS_LABEL, INVOICE_TAB_LABEL, type InvoiceListTab, type InvoiceStatus } from "./store-types";
+import { INVOICE_LIST_TABS, INVOICE_STATUSES, INVOICE_STATUS_LABEL, countInvoiceList, inTab, isOpen, type InvoiceCounts, type InvoiceListTab, type InvoiceStatus } from "./store-types";
+export { INVOICE_LIST_TABS, INVOICE_STATUSES, INVOICE_STATUS_LABEL, INVOICE_TAB_LABEL, isBooked, isOpen, type InvoiceCounts, type InvoiceListTab, type InvoiceStatus } from "./store-types";
 
 export type InvoiceRecord = {
   id: string;
@@ -49,6 +51,14 @@ export type InvoiceRecord = {
   remindedAt: string | null;
   reminders: number;
   publicToken: string | null;
+  /** Set when the invoice was voided (makulerad) with void_invoice. */
+  voidedAt: string | null;
+  voidedBy: string | null;
+  voidReason: string | null;
+  /** On an original: its latest change invoice. */
+  correctedBy: string | null;
+  /** On a change invoice: the original it corrects. */
+  correctsInvoiceId: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -91,6 +101,11 @@ type Row = {
   reminded_at: string | null;
   reminders: number;
   public_token?: string | null;
+  voided_at?: string | null;
+  voided_by?: string | null;
+  void_reason?: string | null;
+  corrected_by?: string | null;
+  corrects_invoice_id?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -122,6 +137,11 @@ const fromRow = (r: Row): InvoiceRecord => ({
   remindedAt: r.reminded_at,
   reminders: r.reminders,
   publicToken: r.public_token ?? null,
+  voidedAt: r.voided_at ?? null,
+  voidedBy: r.voided_by ?? null,
+  voidReason: r.void_reason ?? null,
+  correctedBy: r.corrected_by ?? null,
+  correctsInvoiceId: r.corrects_invoice_id ?? null,
   createdBy: r.created_by,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
@@ -147,17 +167,12 @@ function draftColumns(document: InvoiceDocument) {
   };
 }
 
-/** Unpaid and waiting for the customer. A credit note is never "open": it settles the original. */
-export function isOpen(inv: Pick<InvoiceRecord, "status" | "kind">): boolean {
-  return inv.kind !== "credit" && (inv.status === "issued" || inv.status === "sent" || inv.status === "partially_paid");
-}
-
 export function isOverdue(inv: Pick<InvoiceRecord, "status" | "kind" | "dueOn">, today = todayIso()): boolean {
   return isOpen(inv) && !!inv.dueOn && inv.dueOn < today;
 }
 
 export function invoiceLabel(inv: Pick<InvoiceRecord, "kind" | "number">): string {
-  const word = inv.kind === "credit" ? "Kreditfaktura" : "Faktura";
+  const word = INVOICE_KIND_LABEL[inv.kind] ?? "Faktura";
   return inv.number ? `${word} ${inv.number}` : `${word}, utkast`;
 }
 
@@ -180,23 +195,6 @@ export function invoiceFiltersToQuery(f: InvoiceFilters): string {
   if (f.customerId) p.set("kund", f.customerId);
   const s = p.toString();
   return s ? `?${s}` : "";
-}
-
-function inTab(inv: InvoiceRecord, tab: InvoiceListTab | undefined, today: string): boolean {
-  switch (tab) {
-    case undefined:
-      return true;
-    case "draft":
-      return inv.status === "draft";
-    case "open":
-      return isOpen(inv);
-    case "overdue":
-      return isOverdue(inv, today);
-    case "paid":
-      return inv.status === "paid";
-    case "credited":
-      return inv.status === "credited" || inv.kind === "credit";
-  }
 }
 
 function matchesText(inv: InvoiceRecord, q: string): boolean {
@@ -252,18 +250,8 @@ export async function listInvoices(f: InvoiceFilters = {}): Promise<InvoiceRecor
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
-export type InvoiceCounts = Record<InvoiceListTab | "all", number> & { openOre: number; overdueOre: number };
-
 export async function countInvoices(f: Omit<InvoiceFilters, "tab"> = {}): Promise<InvoiceCounts> {
-  const all = await listInvoices({ ...f, tab: undefined });
-  const today = todayIso();
-  const counts: InvoiceCounts = { all: all.length, draft: 0, open: 0, overdue: 0, paid: 0, credited: 0, openOre: 0, overdueOre: 0 };
-  for (const inv of all) {
-    for (const tab of INVOICE_LIST_TABS) if (inTab(inv, tab, today)) counts[tab]++;
-    if (isOpen(inv)) counts.openOre += inv.payableOre - inv.paidOre;
-    if (isOverdue(inv, today)) counts.overdueOre += inv.payableOre - inv.paidOre;
-  }
-  return counts;
+  return countInvoiceList(await listInvoices({ ...f, tab: undefined }), todayIso());
 }
 
 export async function getInvoice(id: string): Promise<InvoiceRecord | null> {
@@ -360,6 +348,11 @@ export async function createInvoice(
       reminded_at: null,
       reminders: 0,
       public_token: randomBytes(16).toString("hex"),
+      voided_at: null,
+      voided_by: null,
+      void_reason: null,
+      corrected_by: null,
+      corrects_invoice_id: null,
       created_by: createdBy,
       created_at: now,
       updated_at: now,
@@ -503,7 +496,8 @@ export async function markSent(id: string, to: string, actor: Actor): Promise<vo
     const r = demo().invoices.find((x) => x.id === id);
     if (!r) throw new Error("Fakturan finns inte.");
     if (r.status === "draft") throw new Error("Utfärda fakturan innan den skickas.");
-    r.sent_at ??= new Date().toISOString();
+    if (r.status === "void") throw new Error(`${invoiceLabel(fromRow(r))} är makulerad och skickas inte.`);
+    r.sent_at ??=new Date().toISOString();
     if (r.status === "issued") r.status = "sent";
     r.updated_at = new Date().toISOString();
     demoEvent("invoice", id, "invoice.sent", { number: r.number, to }, actor);
@@ -521,6 +515,10 @@ export async function registerPayment(
 ): Promise<{ status: InvoiceStatus; paidOre: number }> {
   const inv = await getInvoice(id);
   if (!inv) throw new Error("Fakturan finns inte.");
+  if (inv.kind === "correction") {
+    // The original keeps the receivable; a payment on its change invoice is stopped (also in register_payment, 0025).
+    throw new Error(`${invoiceLabel(inv)} tar inte emot betalningar. Registrera betalningen på faktura ${inv.document.references.precedingInvoiceNumber ?? ""}.`);
+  }
   if (!isOpen(inv) && inv.status !== "paid") throw new Error(`${invoiceLabel(inv)} kan inte ta emot betalningar i status ${INVOICE_STATUS_LABEL[inv.status]}.`);
   if (!Number.isSafeInteger(input.amountOre) || input.amountOre === 0) throw new Error("Beloppet måste vara ett tal, inte noll.");
   const paymentId = crypto.randomUUID();
@@ -580,15 +578,18 @@ export async function listInvoicesForPortal(projectId: string): Promise<InvoiceR
   return all.filter((inv) => inv.status !== "draft" && inv.status !== "void").sort((a, b) => (b.issuedOn ?? "").localeCompare(a.issuedOn ?? ""));
 }
 
-/** A credit note draft that mirrors an issued invoice. Issue it like any invoice. */
+/** A credit note draft that mirrors an issued invoice (with the details of its latest change invoice). Issue it like any invoice. */
 export async function createCreditNote(id: string, createdBy: string | null): Promise<string> {
   const inv = await getInvoice(id);
   if (!inv) throw new Error("Fakturan finns inte.");
   if (inv.status === "draft") throw new Error("Ett utkast tas bort i stället för att krediteras.");
+  if (inv.status === "void") throw new Error(`${invoiceLabel(inv)} är makulerad och krediteras inte.`);
   if (inv.kind === "credit") throw new Error("En kreditfaktura krediteras inte.");
+  if (inv.kind === "correction") throw new Error(`${invoiceLabel(inv)} har inga egna belopp. Kreditera faktura ${inv.document.references.precedingInvoiceNumber ?? ""} i stället.`);
   const today = todayIso();
   const doc: InvoiceDocument = {
-    ...inv.document,
+    ...(await effectiveDocument(inv)),
+    correctionNote: undefined,
     kind: "credit",
     number: null,
     issueDate: today,
@@ -600,6 +601,128 @@ export async function createCreditNote(id: string, createdBy: string | null): Pr
     paymentMeans: { ...inv.document.paymentMeans, ocr: null },
   };
   return createInvoice({ document: doc, quoteId: inv.quoteId, projectId: inv.projectId, creditsInvoiceId: inv.id }, createdBy);
+}
+
+/**
+ * The document as it stands after any change invoices: the latest change
+ * invoice's, or the invoice's own. Amounts are the same either way; names,
+ * addresses and references follow the correction.
+ */
+export async function effectiveDocument(inv: InvoiceRecord): Promise<InvoiceDocument> {
+  return (await correctionBase(inv)).document;
+}
+
+/* ---------- corrections (0025) ---------- */
+
+/**
+ * Makulera: an issued invoice that never reached the customer and has no
+ * payments, ROT claim, credit note, change invoice or reminder. Keeps its
+ * number, gets a reversing entry dated today ("Makulering av faktura N",
+ * BFNAR 2013:2 punkt 2.17–2.18) and is locked as void.
+ */
+export async function voidInvoice(id: string, reason: string, actor: Actor): Promise<{ number: string; entryNumber: string }> {
+  const why = reason.trim();
+  if (!why) throw new Error("Ange varför fakturan makuleras.");
+  if (why.length > 500) throw new Error("Orsaken får vara högst 500 tecken.");
+  if (isDemo()) {
+    const r = demo().invoices.find((x) => x.id === id);
+    if (!r) throw new Error("Fakturan finns inte.");
+    const label = invoiceLabel(fromRow(r));
+    if (r.kind !== "invoice") throw new Error(`${label} kan inte makuleras.`);
+    if (r.status === "draft") throw new Error("Ett utkast tas bort i stället för att makuleras.");
+    if (r.status === "void") throw new Error(`${label} är redan makulerad.`);
+    if (r.paid_ore !== 0 || demo().payments.some((p) => p.invoiceId === id)) throw new Error(`${label} har registrerade betalningar och kan inte makuleras. Rätta den med kreditfaktura.`);
+    const credit = demo().invoices.find((x) => x.credits_invoice_id === id);
+    if (credit) throw new Error(`${label} har en kreditfaktura (${credit.number ?? "utkast"}) och kan inte makuleras.`);
+    if (r.corrected_by) throw new Error(`${label} är rättad med en ändringsfaktura och kan inte makuleras.`);
+    if (r.reminders > 0) throw new Error(`${label} har påminnelser och kan inte makuleras.`);
+    if (r.status !== "issued" || r.sent_at) throw new Error(`${label} är skickad till kunden och kan inte makuleras. Rätta den med ändringsfaktura eller kreditfaktura.`);
+    const issued = demo().journal.find((e) => e.source.type === "invoice" && e.source.id === id);
+    if (!issued) throw new Error(`Utfärdandets verifikation för ${label.toLowerCase()} saknas.`);
+    const entryNumber = demoJournal({ ...reversal(issued, todayIso(), why), text: `Makulering av faktura ${r.number}` });
+    Object.assign(r, { status: "void", voided_at: new Date().toISOString(), voided_by: actor.name, void_reason: why, updated_at: new Date().toISOString() });
+    demoEvent("invoice", id, "invoice.voided", { number: r.number, reason: why, entry: entryNumber, reverses: issued.number }, actor);
+    return { number: r.number ?? "", entryNumber };
+  }
+  const supabase = await getDb();
+  const { data, error } = await supabase.rpc("void_invoice", { p_invoice: id, p_reason: why, p_actor: actor });
+  if (error) throw new Error(`Kunde inte makulera: ${error.message}`);
+  const result = data as { number: string; entryNumber: string };
+  return { number: result.number, entryNumber: result.entryNumber };
+}
+
+/** What a change invoice for `inv` starts from: the latest version of the details, and the earlier change invoice's number. */
+export async function correctionBase(inv: InvoiceRecord): Promise<{ document: InvoiceDocument; previousNumber: string | null }> {
+  if (!inv.correctedBy) return { document: inv.document, previousNumber: null };
+  const latest = await getInvoice(inv.correctedBy);
+  return latest ? { document: latest.document, previousNumber: latest.number } : { document: inv.document, previousNumber: null };
+}
+
+/** Why `inv` cannot get a change invoice, or null when it can. */
+export function correctionBlocker(inv: Pick<InvoiceRecord, "kind" | "status" | "number">): string | null {
+  if (inv.kind === "credit") return "En kreditfaktura rättas inte med ändringsfaktura.";
+  if (inv.kind === "correction") return "Rätta originalfakturan, inte ändringsfakturan.";
+  if (inv.status === "draft") return "Ett utkast ändras direkt.";
+  if (inv.status === "void") return `Faktura ${inv.number} är makulerad och kan inte rättas.`;
+  if (inv.status === "credited") return `Faktura ${inv.number} är krediterad och kan inte rättas med ändringsfaktura.`;
+  return null;
+}
+
+/**
+ * Rätta uppgifter: issue a change invoice with the next number that repeats
+ * the invoice with corrected details, refers to it and keeps its OCR and due
+ * date. No journal entry; the original keeps the amounts and the payments
+ * and is marked corrected_by.
+ */
+export async function issueCorrection(id: string, edits: CorrectionEdits, actor: Actor): Promise<{ id: string; number: string; changes: string[] }> {
+  const inv = await getInvoice(id);
+  if (!inv) throw new Error("Fakturan finns inte.");
+  const blocked = correctionBlocker(inv);
+  if (blocked) throw new Error(blocked);
+  const base = await correctionBase(inv);
+  const { document, changes } = correctionDocument(base.document, edits, { originalNumber: inv.number ?? "", previousNumber: base.previousNumber, issueDate: todayIso() });
+  const parsed = invoiceDocumentSchema.parse(document);
+
+  if (isDemo()) {
+    const r = demo().invoices.find((x) => x.id === id)!;
+    const number = String(demo().seq++);
+    const frozen: InvoiceDocument = { ...parsed, number, dueDate: r.due_on ?? parsed.dueDate, paymentMeans: { ...parsed.paymentMeans, ocr: r.ocr } };
+    const now = new Date().toISOString();
+    const row: Row = {
+      ...r,
+      id: crypto.randomUUID(),
+      number,
+      kind: "correction",
+      status: "issued",
+      credits_invoice_id: null,
+      corrects_invoice_id: r.id,
+      corrected_by: null,
+      document: frozen,
+      paid_ore: 0,
+      issued_on: frozen.issueDate,
+      sha256: createHash("sha256").update(JSON.stringify(frozen)).digest("hex"),
+      sent_at: null,
+      paid_at: null,
+      reminded_at: null,
+      reminders: 0,
+      public_token: randomBytes(16).toString("hex"),
+      created_by: actor.name,
+      created_at: now,
+      updated_at: now,
+    };
+    demo().invoices.push(row);
+    Object.assign(r, { corrected_by: row.id, updated_at: now });
+    const text = changes.join("; ");
+    demoEvent("invoice", r.id, "invoice.corrected", { number: r.number, correctionNumber: number, correction: row.id, previous: base.previousNumber, changes: text }, actor);
+    demoEvent("invoice", row.id, "invoice.corrected", { number, corrects: r.number, original: r.id, previous: base.previousNumber, changes: text }, actor);
+    return { id: row.id, number, changes };
+  }
+
+  const supabase = await getDb();
+  const { data, error } = await supabase.rpc("issue_correction_invoice", { p_original: id, p_document: parsed, p_changes: changes.join("; "), p_actor: actor });
+  if (error) throw new Error(`Kunde inte utfärda ändringsfakturan: ${error.message}`);
+  const result = data as { id: string; number: string };
+  return { id: result.id, number: result.number, changes };
 }
 
 /** The demo ledger, for the SIE export and the dashboard while there is no database. */

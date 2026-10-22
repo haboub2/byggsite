@@ -2,7 +2,7 @@ import { Document, Font, Page, Text, View, Image, StyleSheet } from "@react-pdf/
 import type { Style } from "@react-pdf/stylesheet";
 import { formatOre } from "../core/money";
 import { rulesAt } from "../core/rules";
-import { LINE_KIND_LABEL, paymentReference, type InvoiceDocument } from "../core/documents/invoice";
+import { INVOICE_KIND_LABEL, LINE_KIND_LABEL, paymentReference, type InvoiceDocument } from "../core/documents/invoice";
 import { customerSummary, invoiceTotals, type InvoiceTotals } from "../core/invoices/totals";
 import { maskPersonalNumber } from "../core/rot/pnr";
 import { JAKARTA_BOLD, JAKARTA_ITALIC, JAKARTA_MEDIUM, JAKARTA_REGULAR } from "./fonts";
@@ -45,6 +45,7 @@ const INK3 = "#6b7680";
 const ORANGE = "#f7802e";
 const LINE = "#e3e0d9";
 const PAPER = "#f6f4ef";
+const RED = "#b42318";
 const X = 46;
 const MM = 72 / 25.4;
 const A4_HEIGHT = 841.89;
@@ -64,6 +65,12 @@ const s = StyleSheet.create({
   title: { fontSize: 24, lineHeight: 1.1, fontWeight: 700, letterSpacing: -0.6, textAlign: "right" },
   number: { fontSize: 12, lineHeight: 1.3, fontWeight: 700, textAlign: "right", marginTop: 2 },
   credit: { fontSize: 8.5, lineHeight: 1.3, color: INK2, textAlign: "right", marginTop: 2 },
+  stamp: { alignSelf: "flex-end", marginTop: 8, borderWidth: 1.6, borderColor: RED, borderRadius: 3, paddingVertical: 4, paddingHorizontal: 8 },
+  stampText: { fontSize: 11, lineHeight: 1.2, fontWeight: 700, letterSpacing: 1.2, color: RED, textAlign: "right", textTransform: "uppercase" },
+  stampDetail: { fontSize: 7.5, lineHeight: 1.3, color: RED, textAlign: "right", marginTop: 2, maxWidth: 220 },
+  watermark: { position: "absolute", top: 370, left: 30, right: 30, fontSize: 76, fontWeight: 700, letterSpacing: 4, color: RED, opacity: 0.16, textAlign: "center", transform: "rotate(-30deg)" },
+  correction: { marginTop: 18, backgroundColor: PAPER, borderLeftWidth: 3, borderLeftColor: ORANGE, paddingVertical: 8, paddingHorizontal: 11 },
+  correctionText: { fontSize: 9.5, lineHeight: 1.5, color: INK },
 
   window: { flexDirection: "row", alignItems: "flex-start", marginTop: 20, minHeight: 100 },
   details: { width: WINDOW_LEFT - X - 34 },
@@ -156,13 +163,20 @@ export type InvoicePdfProps = {
   swishQr?: Buffer | null;
   /** The organisation's logo as a data URI; null prints the seller's name. */
   logo?: string | null;
+  /**
+   * What happened to the invoice after it was issued, stamped on the copy
+   * without touching the frozen document: "void" (makulerad) also gets a
+   * watermark on every page; "corrected" names the change invoice.
+   */
+  stamp?: { kind: "void" | "corrected"; text: string; detail?: string } | null;
 };
 
-export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer, customerNumber, swishQr = null, logo = null }: InvoicePdfProps) {
+export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer, customerNumber, swishQr = null, logo = null, stamp = null }: InvoicePdfProps) {
   const sum = customerSummary(doc, totals);
   const rules = rulesAt(doc.issueDate);
   const isCredit = doc.kind === "credit";
-  const title = isCredit ? "Kreditfaktura" : "Faktura";
+  const isCorrection = doc.kind === "correction";
+  const title = INVOICE_KIND_LABEL[doc.kind];
   const inclVat = sum.inclVat;
   const seller = doc.seller;
   const buyer = doc.buyer;
@@ -195,8 +209,20 @@ export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer,
             <Text style={s.title}>{title}</Text>
             <Text style={s.number}>Nr {doc.number ?? "UTKAST"}</Text>
             {isCredit && refs.precedingInvoiceNumber ? <Text style={s.credit}>Krediterar faktura {refs.precedingInvoiceNumber}</Text> : null}
+            {isCorrection && refs.precedingInvoiceNumber ? <Text style={s.credit}>Ersätter faktura {refs.precedingInvoiceNumber}</Text> : null}
+            {stamp ? (
+              <View style={s.stamp}>
+                <Text style={s.stampText}>{stamp.text}</Text>
+                {stamp.detail ? <Text style={s.stampDetail}>{clean(stamp.detail)}</Text> : null}
+              </View>
+            ) : null}
           </View>
         </View>
+        {stamp?.kind === "void" ? (
+          <Text style={s.watermark} fixed>
+            MAKULERAD
+          </Text>
+        ) : null}
 
         <View style={s.window}>
           <View style={s.details}>
@@ -205,11 +231,13 @@ export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer,
             {!isCredit ? <Detail k="Förfallodatum" v={doc.dueDate} bold /> : null}
             <Detail k="Kundnummer" v={customerNumber ?? ""} />
             <Detail k="Er referens" v={buyer.reference} />
+            <Detail k="Ert ordernr" v={refs.orderReference ?? ""} />
             <Detail k="Vår referens" v={refs.ourReference || signer} />
             {!isCredit ? <Detail k="Villkor" v={pm.termsText} /> : null}
             <Detail k={doc.period ? "Period" : "Utfört"} v={doc.period ? `${doc.period.start} – ${doc.period.end}` : (doc.deliveryDate ?? "")} />
             <Detail k="Avser" v={refs.quoteNumber ? `Offert ${refs.quoteNumber}${refs.planStep ? `, steg ${refs.planStep.step} av ${refs.planStep.of}` : ""}` : ""} />
             {isCredit ? <Detail k="Krediterar" v={refs.precedingInvoiceNumber ? `Faktura ${refs.precedingInvoiceNumber}` : ""} /> : null}
+            {isCorrection ? <Detail k="Ersätter" v={refs.precedingInvoiceNumber ? `Faktura ${refs.precedingInvoiceNumber}` : ""} bold /> : null}
           </View>
           {/* In the envelope's window: nothing but the recipient. */}
           <View style={s.address}>
@@ -222,10 +250,15 @@ export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer,
           </View>
         </View>
 
+        {doc.correctionNote ? (
+          <View style={s.correction} wrap={false}>
+            <Lines text={doc.correctionNote} style={s.correctionText} />
+          </View>
+        ) : null}
         {doc.title ? <Text style={s.h1}>{clean(doc.title)}</Text> : null}
         {doc.note ? <Lines text={doc.note} style={s.note} /> : null}
 
-        <View style={[s.th, doc.title || doc.note ? {} : { marginTop: 22 }]} fixed>
+        <View style={[s.th, doc.title || doc.note || doc.correctionNote ? {} : { marginTop: 22 }]} fixed>
           <Text style={[s.cDesc, s.thText]}>Beskrivning</Text>
           <Text style={[s.cKind, s.thText]}>Typ</Text>
           <Text style={[s.cQty, s.thText]}>Antal</Text>
