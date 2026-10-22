@@ -7,23 +7,25 @@ import { formatOre } from "../money";
 import { invoiceTotals } from "./totals";
 import { paymentReference } from "../documents/invoice";
 import { invoiceLabel, type InvoiceRecord } from "./store";
+import { sendRecipients, type Recipients } from "./recipients";
 
 const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 /**
  * E-mail the invoice to the customer with the PDF attached. Same
  * requirements as the quote mail: Resend and a verified sender (MAIL_FROM).
- * Returns the address it went to.
+ * Goes to the recipients frozen in the document, with copies, plus `extra`
+ * (addresses added for just this send). Returns who it went to.
  */
-export async function sendInvoiceMail(inv: InvoiceRecord, message: string): Promise<string> {
+export async function sendInvoiceMail(inv: InvoiceRecord, message: string, extra: readonly string[] = []): Promise<Recipients> {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.MAIL_FROM;
   if (!key) throw new Error("Resend är inte kopplat (RESEND_API_KEY saknas). Ladda ner PDF:en och mejla den själv så länge.");
   if (!from) throw new Error("Avsändaradressen är inte verifierad (MAIL_FROM saknas). Ladda ner PDF:en och mejla den själv så länge.");
   if (inv.status === "draft") throw new Error("Utfärda fakturan innan den skickas.");
   if (inv.status === "void") throw new Error(`${invoiceLabel(inv)} är makulerad och skickas inte.`);
-  const to = inv.document.buyer.email;
-  if (!to) throw new Error("Kunden saknar e-postadress.");
+  const recipients = sendRecipients(inv.document, extra);
+  if (!recipients.to.length) throw new Error("Kunden saknar e-postadress.");
 
   const settings = await getOrgSettings(inv.orgId || undefined);
   const d = inv.document;
@@ -46,9 +48,10 @@ export async function sendInvoiceMail(inv: InvoiceRecord, message: string): Prom
       ? `Hej ${firstName},\n\nBifogat hittar du kreditfaktura ${inv.number} som avser faktura ${d.references.precedingInvoiceNumber}. Beloppet ${pay} regleras mot fakturan eller återbetalas.\n\nHör av dig om något är oklart.`
       : `Hej ${firstName},\n\nBifogat hittar du faktura ${inv.number}${d.title ? ` för ${d.title.toLowerCase()}` : ""}. Att betala: ${pay} senast ${d.dueDate}${t.rot ? ", ROT-avdraget är redan avdraget" : ""}. ${ref.instruction}\n\nHör av dig om något är oklart.`;
 
-  await new Resend(key).emails.send({
+  const { error } = await new Resend(key).emails.send({
     from,
-    to,
+    to: recipients.to,
+    ...(recipients.cc.length ? { cc: recipients.cc } : {}),
     replyTo: settings.company.email || undefined,
     subject: `${label} från ${brand}${d.title ? `: ${d.title}` : ""}`,
     html: `
@@ -66,5 +69,6 @@ export async function sendInvoiceMail(inv: InvoiceRecord, message: string): Prom
     `,
     attachments: [{ filename: invoiceFileName(inv), content: pdf }],
   });
-  return to;
+  if (error) throw new Error(`Mejlet kunde inte skickas: ${error.message}`);
+  return recipients;
 }

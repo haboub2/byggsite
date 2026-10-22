@@ -9,6 +9,40 @@ delfakturor → ÄTA → slutfaktura → ROT) är produktens första säljargume
 Prototypen av gränssnittet finns som design-canvas (sju skärmar: fakturalista,
 faktura, projektekonomi, kundportal i mobil, PDF, ROT-begäran, dashboard).
 
+## Läge 2026-10-22: flera e-postmottagare (0026)
+
+En kund kan ha flera fakturamottagare och kopiemottagare. Kundformuläret har
+fälten **Fakturor till** och **Kopia till** (adresser med komma eller
+radbrytning emellan, högst tio per fält, var och en validerad som e-post).
+Tomt Fakturor till betyder kundens vanliga e-postadress. Kolumnerna är
+`customers.invoice_emails` och `customers.cc_emails` (text[], default tom).
+
+- **Frysning vid utfärdande.** `issueInvoice` hämtar kundens listor och
+  fryser dem i dokumentet som `se.recipients { to, cc }`; `buyer.email`
+  (BT-58) är kvar som huvudadress. Ett senare utskick eller en påminnelse om
+  en gammal faktura går därför till adresserna som gällde då. Dokument
+  utfärdade före 0026 saknar listan och går till `buyer.email`. Logiken är
+  rena funktioner i `lib/core/invoices/recipients.ts` (tester bredvid).
+- **Utskick.** `sendInvoiceMail` och påminnelsemejlet skickar till alla
+  to-adresser med cc, och avbryter om Resend svarar med fel (så fakturan inte
+  markeras skickad i onödan). Skicka-rutan visar listan och har fältet
+  *Fler mottagare för just den här fakturan*, som bara gäller det utskicket.
+- **Händelser.** `mark_invoice_sent` och `register_reminder` tar i 0026 emot
+  `p_recipients`; `invoice.sent` och `invoice.reminded` får `data.recipients
+  { to, cc }` bredvid `data.to` (mottagarna som text). Markera skickad och
+  Registrera bara skickar ingen lista och fungerar som förut.
+- **API och export.** Kundresursen i API v1 tar och ger `invoiceEmails` och
+  `ccEmails` (camelCase som övriga fält); OpenAPI-specen genereras från
+  schemat. JSON-exporten tar med båda listorna.
+
+Provat 2026-10-22 i **Testbolag AB** efter att 0026 körts: kunden
+"Mottagarprov Torki" fick ibrahimtorki+a@gmail.com och +b som Fakturor till
+(en felaktig adress stoppades med meddelande), faktura 8 utfärdades och
+skickades till båda. Resend tog emot utskicket utan fel (nyckeln får bara
+skicka, så mejlet går inte att slå upp via API:t), och JSON-exporten visade
+listan fryst i faktura 8 och `invoice.sent` med `recipients.to` = båda
+adresserna.
+
 ## Läge 2026-10-22: rättelser (makulera, ändringsfaktura, rätta och skapa ny, granska)
 
 Juridisk grund: bokföringslagen 5 kap. 9 § och BFNAR 2013:2 punkt 5.15–5.16

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { recipientsSchema } from "../invoices/recipients";
 
 /**
  * The invoice document (docs/fakturering.md, grundkrav 3). One JSON object
@@ -249,6 +250,14 @@ export const invoiceDocumentSchema = z.object({
       rot: rotSchema.nullable().default(null),
       /** Late-interest clause as printed. */
       lateInterestText: text(200, "Dröjsmålsränta").default(""),
+      /**
+       * Who the invoice and its reminders are mailed to, frozen from the
+       * customer's lists at issue (lib/core/invoices/recipients.ts). The
+       * standard has one buyer e-mail (BT-58, buyer.email), which stays the
+       * main address. Absent on drafts and on documents issued before the
+       * list existed: then buyer.email alone.
+       */
+      recipients: recipientsSchema.optional(),
     })
     .default({}),
 });

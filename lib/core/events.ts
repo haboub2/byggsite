@@ -70,13 +70,16 @@ export type Actor =
   | { kind: "system"; name: string }
   | { kind: "customer"; id: string; name: string };
 
+/** A value in an event's data: a plain value, or a small nested list such as the recipients ({ to: [...], cc: [...] }). */
+export type EventValue = string | number | boolean | null | string[] | { [key: string]: EventValue };
+
 export type CoreEvent = {
   orgId: string;
   aggregateType: AggregateType;
   aggregateId: string;
   type: EventType;
   /** Small, serialisable facts about the change: amounts, recipients, numbers. Never whole documents. */
-  data: Record<string, string | number | boolean | null>;
+  data: Record<string, EventValue>;
   actor: Actor;
   /** ISO timestamp. */
   at: string;

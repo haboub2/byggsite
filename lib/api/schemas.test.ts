@@ -45,6 +45,28 @@ test("customer create: type and name are required, the rest defaults", () => {
   assert.equal(customerCreateSchema.safeParse({ type: "foretag", name: "X", orgNr: "12345" }).success, false);
 });
 
+test("customer create: invoice and copy recipients, validated and deduplicated", () => {
+  const r = customerCreateSchema.parse({ type: "foretag", name: "Bergs Bygg AB", invoiceEmails: ["ekonomi@bergs.se", " Ekonomi@bergs.se ", "inkop@bergs.se"], ccEmails: ["pl@bergs.se"] });
+  assert.deepEqual(r.invoiceEmails, ["ekonomi@bergs.se", "inkop@bergs.se"]);
+  assert.deepEqual(r.ccEmails, ["pl@bergs.se"]);
+  assert.deepEqual(customerCreateSchema.parse({ type: "privat", name: "Anna" }).invoiceEmails, [], "defaults to an empty list");
+  const bad = customerCreateSchema.safeParse({ type: "privat", name: "Anna", invoiceEmails: ["anna@example.se", "inte-en-adress"] });
+  assert.equal(bad.success, false);
+  assert.match(issuesToDetailsPure((bad as { error: z.ZodError }).error).invoiceEmails, /inte-en-adress/);
+  const many = customerCreateSchema.safeParse({ type: "privat", name: "Anna", ccEmails: Array.from({ length: 11 }, (_, i) => `a${i}@example.se`) });
+  assert.equal(many.success, false);
+});
+
+test("openapi: the customer resource has the recipient lists", () => {
+  const doc = openApiDocument("https://example.se") as unknown as { components: { schemas: Record<string, { properties: Record<string, { type: string; maxItems?: number }>; required?: string[] }> } };
+  const customer = doc.components.schemas.Customer;
+  assert.equal(customer.properties.invoiceEmails.type, "array");
+  assert.ok(customer.required?.includes("ccEmails"));
+  const create = doc.components.schemas.CustomerCreate;
+  assert.equal(create.properties.invoiceEmails.maxItems, 10);
+  assert.ok(!create.required?.includes("invoiceEmails"), "optional when creating");
+});
+
 test("list query coerces the limit and rejects unknown statuses", () => {
   assert.equal(invoiceListQuerySchema.parse({ limit: "5" }).limit, 5);
   assert.equal(invoiceListQuerySchema.safeParse({ status: "lost" }).success, false);

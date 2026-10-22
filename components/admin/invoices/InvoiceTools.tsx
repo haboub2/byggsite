@@ -13,6 +13,7 @@ import {
   sendInvoice,
   type InvoiceToolState,
 } from "@/app/admin/invoice-actions";
+import { invalidEmails, parseEmailList, recipientsText, type Recipients } from "@/lib/core/invoices/recipients";
 
 /** What the review step shows next to the PDF, formatted on the server from the saved draft. */
 export type IssueSummary = {
@@ -218,14 +219,24 @@ export function CorrectAmountsForm({ id, number, amount, blocked }: { id: string
   );
 }
 
-export function SendInvoiceForm({ id, email, ready }: { id: string; email: string; ready: boolean }) {
+export function SendInvoiceForm({ id, recipients, ready }: { id: string; recipients: Recipients; ready: boolean }) {
   const [state, action, pending] = useActionState<InvoiceToolState, FormData>(sendInvoice, {});
+  const [extra, setExtra] = useState("");
+  const extraList = parseEmailList(extra);
+  const badExtra = invalidEmails(extraList);
+  const all = { to: [...recipients.to, ...extraList.filter((v) => !badExtra.includes(v))], cc: recipients.cc };
+  const canSend = ready && all.to.length > 0;
   return (
     <form
       action={action}
       className="lead-note"
       onSubmit={(e) => {
-        if (!window.confirm(`Mejla fakturan med PDF till ${email}?`)) e.preventDefault();
+        if (badExtra.length) {
+          e.preventDefault();
+          window.alert(`Rätta adressen: ${badExtra.join(", ")}`);
+          return;
+        }
+        if (!window.confirm(`Mejla fakturan med PDF till ${recipientsText(all)}?`)) e.preventDefault();
       }}
     >
       <input type="hidden" name="id" value={id} />
@@ -234,12 +245,37 @@ export function SendInvoiceForm({ id, email, ready }: { id: string; email: strin
           Mejl från sajten är inte påslaget (Resend och en verifierad avsändaradress, se docs/setup-forms.md). Ladda ner PDF:en, mejla den själv och markera som skickad nedan.
         </p>
       )}
-      {ready && !email && <p className="efield-hint">Kunden saknar e-postadress.</p>}
+      {ready && !recipients.to.length && <p className="efield-hint">Kunden saknar e-postadress. Lägg till en mottagare nedan.</p>}
+      {recipients.to.length > 0 && (
+        <dl className="efield-hint" style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 12px", margin: "0 0 10px" }}>
+          <dt>Till</dt>
+          <dd style={{ margin: 0, overflowWrap: "anywhere" }}>{recipients.to.join(", ")}</dd>
+          {recipients.cc.length > 0 && (
+            <>
+              <dt>Kopia</dt>
+              <dd style={{ margin: 0, overflowWrap: "anywhere" }}>{recipients.cc.join(", ")}</dd>
+            </>
+          )}
+        </dl>
+      )}
+      <label htmlFor={`extra-${id}`}>Fler mottagare för just den här fakturan (valfritt)</label>
+      <input
+        id={`extra-${id}`}
+        name="extra"
+        inputMode="email"
+        value={extra}
+        onChange={(e) => setExtra(e.target.value)}
+        placeholder="namn@exempel.se, annan@exempel.se"
+        maxLength={2000}
+        disabled={!ready}
+        aria-invalid={badExtra.length > 0}
+      />
+      {badExtra.length > 0 && <span className="efield-error">Inte en giltig e-postadress: {badExtra.join(", ")}</span>}
       <label htmlFor={`msg-${id}`}>Meddelande (valfritt)</label>
-      <textarea id={`msg-${id}`} name="message" rows={3} placeholder="Lämnas tomt för ett standardmeddelande med belopp, förfallodatum och OCR." maxLength={4000} disabled={!ready || !email} />
+      <textarea id={`msg-${id}`} name="message" rows={3} placeholder="Lämnas tomt för ett standardmeddelande med belopp, förfallodatum och OCR." maxLength={4000} disabled={!canSend} />
       <div className="lead-note-foot">
-        <button type="submit" className="btn btn-dark" disabled={pending || !ready || !email}>
-          {pending ? "Skickar…" : `Skicka till ${email || "kunden"}`}
+        <button type="submit" className="btn btn-dark" disabled={pending || !canSend}>
+          {pending ? "Skickar…" : all.to.length > 1 || all.cc.length ? `Skicka till ${all.to.length + all.cc.length} mottagare` : `Skicka till ${all.to[0] || "kunden"}`}
         </button>
       </div>
       {(state.error || state.message) && (
@@ -312,8 +348,9 @@ export function RegisterPaymentForm({ id, remainingKronor, today }: { id: string
 }
 
 /** Påminn: mails the reminder with the PDF, or just records one sent some other way. */
-export function SendReminderForm({ id, email, ready, summary }: { id: string; email: string; ready: boolean; summary: string }) {
+export function SendReminderForm({ id, recipients, ready, summary }: { id: string; recipients: Recipients; ready: boolean; summary: string }) {
   const [state, action, pending] = useActionState<InvoiceToolState, FormData>(sendReminderAction, {});
+  const email = recipientsText(recipients);
   return (
     <form
       action={action}

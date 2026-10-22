@@ -89,6 +89,8 @@ export function buildJsonExport(data: ExportData, exportedAt: string = new Date(
         orgNr: c.orgNr,
         vatNr: c.vatNr,
         email: c.email,
+        invoiceEmails: c.invoiceEmails,
+        ccEmails: c.ccEmails,
         phone: c.phone,
         street: c.street,
         postalCode: c.postalCode,

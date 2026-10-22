@@ -19,6 +19,8 @@ type Row = {
   org_nr: string;
   vat_nr: string;
   email: string;
+  invoice_emails?: string[] | null;
+  cc_emails?: string[] | null;
   phone: string;
   street: string;
   postal_code: string;
@@ -40,6 +42,8 @@ const fromRow = (r: Row): Customer => ({
   orgNr: r.org_nr,
   vatNr: r.vat_nr,
   email: r.email,
+  invoiceEmails: r.invoice_emails ?? [],
+  ccEmails: r.cc_emails ?? [],
   phone: r.phone,
   street: r.street,
   postalCode: r.postal_code,
@@ -59,6 +63,8 @@ const toRow = (c: CustomerInput) => ({
   org_nr: c.orgNr,
   vat_nr: c.vatNr,
   email: c.email,
+  invoice_emails: c.invoiceEmails,
+  cc_emails: c.ccEmails,
   phone: c.phone,
   street: c.street,
   postal_code: c.postalCode,

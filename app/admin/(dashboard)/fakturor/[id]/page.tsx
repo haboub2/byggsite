@@ -12,6 +12,7 @@ import { formatOre } from "@/lib/core/money";
 import { CUSTOMER_TYPE_LABEL, LINE_KIND_LABEL, paymentReference, validateForIssue } from "@/lib/core/documents/invoice";
 import { customerSummary, invoiceTotals } from "@/lib/core/invoices/totals";
 import { EVENT_LABEL } from "@/lib/core/events";
+import { documentRecipients, eventRecipientsText } from "@/lib/core/invoices/recipients";
 import { INVOICE_STATUS_LABEL, correctionBlocker, getInvoice, invoiceLabel, isOpen, isOverdue, listInvoiceEvents, listInvoicePayments } from "@/lib/core/invoices/store";
 import { amountCorrectionBlocker } from "@/lib/core/invoices/amend";
 import { applySellerDefaults, getSellerDefaults } from "@/lib/core/invoices/seller";
@@ -406,7 +407,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                       <span>
                         {e.type === "invoice.corrected" && e.data.corrects ? `Utfärdad som ändringsfaktura ${e.data.number}` : (EVENT_LABEL[e.type]?.text ?? e.type)}
                         {e.type === "invoice.issued" && e.data.number ? ` som ${e.data.number}` : ""}
-                        {e.type === "invoice.sent" && e.data.to ? ` till ${e.data.to}` : ""}
+                        {(e.type === "invoice.sent" || e.type === "invoice.reminded") && eventRecipientsText(e.data) && eventRecipientsText(e.data) !== "manuellt" ? ` till ${eventRecipientsText(e.data)}` : ""}
                         {e.type === "invoice.voided" && e.data.reason ? `: ${e.data.reason}` : ""}
                         {e.type === "invoice.corrected" && e.data.correctionNumber ? ` genom faktura ${e.data.correctionNumber}` : ""}
                         {e.type === "invoice.corrected" && e.data.corrects ? `, ersätter faktura ${e.data.corrects}` : ""}
@@ -430,7 +431,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
             {plan && (
               <div>
                 <h2 className="lead-h2">Påminnelse {plan.level}</h2>
-                <SendReminderForm id={inv.id} email={d.buyer.email} ready={mailReady} summary={`${reminderText(plan, inv.number ?? "", inv.dueOn ?? "")}${inv.reminders ? ` Tidigare påminnelser: ${inv.reminders}.` : ""}`} />
+                <SendReminderForm id={inv.id} recipients={documentRecipients(d)} ready={mailReady} summary={`${reminderText(plan, inv.number ?? "", inv.dueOn ?? "")}${inv.reminders ? ` Tidigare påminnelser: ${inv.reminders}.` : ""}`} />
               </div>
             )}
             {isOpen(inv) && (
@@ -442,7 +443,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
             {!isVoid && (
             <div>
               <h2 className="lead-h2">Skicka till kund</h2>
-              <SendInvoiceForm id={inv.id} email={d.buyer.email} ready={mailReady} />
+              <SendInvoiceForm id={inv.id} recipients={documentRecipients(d)} ready={mailReady} />
               {!inv.sentAt && <MarkSentForm id={inv.id} />}
               {publicUrl && (
                 <p className="efield-hint" style={{ marginTop: 10, wordBreak: "break-all" }}>

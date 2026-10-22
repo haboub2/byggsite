@@ -5,11 +5,15 @@ import { EditorForm, TextArea, TextField } from "../content/EditorForm";
 import { saveCustomer } from "@/app/admin/customer-actions";
 import { CUSTOMER_TYPES, CUSTOMER_TYPE_LABEL, type CustomerType } from "@/lib/core/documents/invoice";
 import type { CustomerInput } from "@/lib/core/customers/schema";
+import { parseEmailList } from "@/lib/core/invoices/recipients";
 
 export default function CustomerForm({ id, initial }: { id: string | null; initial: CustomerInput }) {
   const [c, setC] = useState(initial);
   const set = <K extends keyof CustomerInput>(k: K) => (v: CustomerInput[K]) => setC((prev) => ({ ...prev, [k]: v }));
   const business = c.type !== "privat";
+  // The address lists are typed as text; the record holds the parsed list, the field keeps what was typed.
+  const [invoiceEmailsText, setInvoiceEmailsText] = useState(initial.invoiceEmails.join(", "));
+  const [ccEmailsText, setCcEmailsText] = useState(initial.ccEmails.join(", "));
 
   return (
     <EditorForm action={saveCustomer} hidden={{ id: id ?? "" }} submitLabel={id ? "Spara kunden" : "Skapa kunden"} value={c} initial={initial}>
@@ -51,7 +55,38 @@ export default function CustomerForm({ id, initial }: { id: string | null; initi
               hint="Kundens adress i Peppol. Lämnas tomt används 0007 och organisationsnumret."
             />
           )}
-          <TextField label="E-post" path="email" inputMode="email" value={c.email} onChange={set("email")} hint="Fakturor mejlas hit." />
+          <TextField
+            label="E-post"
+            path="email"
+            inputMode="email"
+            value={c.email}
+            onChange={set("email")}
+            hint={c.invoiceEmails.length ? "Kundens adress. Fakturor går till adresserna under Fakturor till." : "Fakturor mejlas hit."}
+          />
+          <TextArea
+            label="Fakturor till (valfritt)"
+            path="invoiceEmails"
+            value={invoiceEmailsText}
+            onChange={(v) => {
+              setInvoiceEmailsText(v);
+              set("invoiceEmails")(parseEmailList(v));
+            }}
+            rows={2}
+            placeholder="ekonomi@kund.se, inkop@kund.se"
+            hint="En eller flera adresser, med komma eller radbrytning emellan. Lämnas tomt går fakturor och påminnelser till e-postadressen ovan."
+          />
+          <TextArea
+            label="Kopia till (valfritt)"
+            path="ccEmails"
+            value={ccEmailsText}
+            onChange={(v) => {
+              setCcEmailsText(v);
+              set("ccEmails")(parseEmailList(v));
+            }}
+            rows={2}
+            placeholder="projektledare@kund.se"
+            hint="Får fakturor och påminnelser som kopia."
+          />
           <TextField label="Telefon" path="phone" inputMode="tel" value={c.phone} onChange={set("phone")} />
           <div className="egrid egrid--address efield--wide">
             <TextField label="Gatuadress" path="street" value={c.street} onChange={set("street")} />

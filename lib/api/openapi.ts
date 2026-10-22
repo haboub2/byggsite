@@ -50,6 +50,7 @@ export function openApiDocument(baseUrl: string) {
         "Allt en nyckel ser och skapar hör till dess organisation. Belopp är heltal i öre. Datum ÅÅÅÅ-MM-DD.",
         "Skrivande anrop kräver Idempotency-Key: samma nyckel och kropp ger samma svar (headern Idempotent-Replayed: true), samma nyckel med annan kropp ger 422.",
         `Webhooks: POST med JSON till registrerade adresser för ${WEBHOOK_EVENT_TYPES.join(", ")}. Headern X-Signature är "t=<unix>,v1=<hex HMAC-SHA256 av "<t>.<kropp>" med endpointens hemlighet>". Upp till 8 försök med exponentiell väntan.`,
+        `invoice.sent och invoice.reminded har data.to (mottagarna som text) och, när fakturan mejlades, data.recipients med listorna to och cc. Kundens listor sätts med invoiceEmails och ccEmails och fryses in i fakturan (document.se.recipients) när den utfärdas.`,
       ].join("\n\n"),
     },
     servers: [{ url: `${baseUrl}/api/${API_VERSION}` }],

@@ -46,6 +46,7 @@ async function selectAll(table: string, columns: string, orgId: string, order: s
 const str = (v: unknown): string => (v === null || v === undefined ? "" : String(v));
 const strOrNull = (v: unknown): string | null => (v === null || v === undefined ? null : String(v));
 const num = (v: unknown): number => Number(v ?? 0);
+const strs = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
 const numOrNull = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 
 /* ---------- demo stores (globalThis, as the stores keep them) ---------- */
@@ -67,6 +68,8 @@ const customerFromRow = (r: Row): ExportCustomer => ({
   orgNr: str(r.org_nr),
   vatNr: str(r.vat_nr),
   email: str(r.email),
+  invoiceEmails: strs(r.invoice_emails),
+  ccEmails: strs(r.cc_emails),
   phone: str(r.phone),
   street: str(r.street),
   postalCode: str(r.postal_code),

@@ -93,8 +93,8 @@ function demoOrg() {
   const utkast = invoice(anna, "2026-10-18", [line({ unitPriceOre: 100 })], { draft: true });
   const invoices = [utkast, badrum, kontor, kredit];
   const customers: ExportCustomer[] = [
-    { id: "00000000-0000-4000-8000-0000000000a1", type: "privat", name: "Anna Lindqvist", company: "", orgNr: "", vatNr: "", email: "anna@example.se", phone: "+46 70 123 45 67", street: "Bräckevägen 12", postalCode: "417 03", city: "Göteborg", reference: "", peppolId: "", defaultTermsDays: 14, notes: 'Ringer "efter" lunch;\nportkod 1234', createdAt: "2026-09-01T10:00:00.000Z", updatedAt: "2026-09-01T10:00:00.000Z", deletedAt: null },
-    { id: "00000000-0000-4000-8000-0000000000b2", type: "foretag", name: '=HYPERLINK("http://x")', company: 'Bygg; "Söder" AB', orgNr: "556677-8899", vatNr: "", email: "", phone: "", street: "", postalCode: "", city: "", reference: "", peppolId: "", defaultTermsDays: 30, notes: "", createdAt: "2026-09-01T22:30:00.000Z", updatedAt: "2026-09-01T22:30:00.000Z", deletedAt: "2026-10-01T09:00:00.000Z" },
+    { id: "00000000-0000-4000-8000-0000000000a1", type: "privat", name: "Anna Lindqvist", company: "", orgNr: "", vatNr: "", email: "anna@example.se", invoiceEmails: [], ccEmails: [], phone: "+46 70 123 45 67", street: "Bräckevägen 12", postalCode: "417 03", city: "Göteborg", reference: "", peppolId: "", defaultTermsDays: 14, notes: 'Ringer "efter" lunch;\nportkod 1234', createdAt: "2026-09-01T10:00:00.000Z", updatedAt: "2026-09-01T10:00:00.000Z", deletedAt: null },
+    { id: "00000000-0000-4000-8000-0000000000b2", type: "foretag", name: '=HYPERLINK("http://x")', company: 'Bygg; "Söder" AB', orgNr: "556677-8899", vatNr: "", email: "", invoiceEmails: ["ekonomi@soder.se", "inkop@soder.se"], ccEmails: ["pl@soder.se"], phone: "", street: "", postalCode: "", city: "", reference: "", peppolId: "", defaultTermsDays: 30, notes: "", createdAt: "2026-09-01T22:30:00.000Z", updatedAt: "2026-09-01T22:30:00.000Z", deletedAt: "2026-10-01T09:00:00.000Z" },
   ];
   const payments: ExportPayment[] = [
     { id: "p2", amountOre: 1_250_000, currency: "SEK", method: "bankgiro", paidOn: "2026-09-30", reference: kontor.ocr!, note: "", bankTransactionId: null, createdBy: null, createdAt: "2026-09-30T12:00:00.000Z", allocations: [{ invoiceId: kontor.id, amountOre: 1_250_000 }] },
@@ -287,6 +287,8 @@ test("json export: top level, öre as integers, full documents, sorted and stabl
 
   assert.equal(json.customers.length, 2, "removed customers too");
   assert.equal(json.customers[1].deletedAt, "2026-10-01T09:00:00.000Z");
+  assert.deepEqual(json.customers[1].invoiceEmails, ["ekonomi@soder.se", "inkop@soder.se"], "the mailing lists are exported");
+  assert.deepEqual(json.customers[1].ccEmails, ["pl@soder.se"]);
   assert.deepEqual(json.payments.map((p) => p.id), ["p1", "p2"]);
   assert.equal(json.payments[1].allocations[0].invoiceNumber, "10002");
   assert.equal(json.payments[0].amountOre, -5);

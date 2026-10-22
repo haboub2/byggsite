@@ -25,6 +25,7 @@ import {
 import { creditAndRedraft } from "@/lib/core/invoices/amend";
 import { correctionEditsSchema } from "@/lib/core/invoices/correction";
 import { sendInvoiceMail } from "@/lib/core/invoices/send";
+import { invalidEmails, MAX_RECIPIENTS, parseEmailList, recipientsText } from "@/lib/core/invoices/recipients";
 import { parseKronor } from "@/lib/core/money";
 import type { Actor } from "@/lib/core/events";
 import type { PaymentMethod } from "@/lib/core/ledger/posting";
@@ -135,14 +136,21 @@ export async function sendInvoice(_prev: InvoiceToolState, formData: FormData): 
   if (!check.ok) return { error: "Du saknar behörighet." };
   const inv = await getInvoice(String(formData.get("id") ?? ""));
   if (!inv) return { error: "Fakturan finns inte." };
+  // "Fler mottagare för just den här fakturan": this send only, never saved on the customer.
+  const extra = parseEmailList(String(formData.get("extra") ?? "").slice(0, 2000));
+  const bad = invalidEmails(extra);
+  if (bad.length) return { error: `${bad.join(", ")} är inte ${bad.length === 1 ? "en giltig e-postadress" : "giltiga e-postadresser"}.` };
+  if (extra.length > MAX_RECIPIENTS) return { error: `Högst ${MAX_RECIPIENTS} extra mottagare.` };
+  let sentTo: string;
   try {
-    const to = await sendInvoiceMail(inv, String(formData.get("message") ?? "").slice(0, 4000));
-    await markSent(inv.id, to, actorOf(check.email));
+    const recipients = await sendInvoiceMail(inv, String(formData.get("message") ?? "").slice(0, 4000), extra);
+    await markSent(inv.id, recipients, actorOf(check.email));
+    sentTo = recipientsText(recipients);
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Kunde inte skicka." };
   }
   revalidatePath(LIST, "layout");
-  return { ok: true, message: `Skickad till ${inv.document.buyer.email}.` };
+  return { ok: true, message: `Skickad till ${sentTo}.` };
 }
 
 /** Mark as sent without mailing (handed over some other way). */

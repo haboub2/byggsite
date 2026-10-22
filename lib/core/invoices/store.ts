@@ -11,6 +11,8 @@ import { makeEvent, type Actor, type CoreEvent, type EventType } from "../events
 import { todayIso } from "../../quotes/schema";
 import { currentOrgId, readOrgId } from "../org/current";
 import { currentChart } from "../org/settings-store";
+import { getCustomer } from "../customers/store";
+import { recipientsText, resolveRecipients, type Recipients } from "./recipients";
 
 /**
  * The invoices table (supabase/migrations/0014_core.sql) and the functions
@@ -431,7 +433,8 @@ export async function issueInvoice(id: string, actor: Actor, prepare?: (doc: Inv
   const inv = await getInvoice(id);
   if (!inv) throw new Error("Fakturan finns inte.");
   if (inv.status !== "draft") throw new Error(`${invoiceLabel(inv)} är redan utfärdad.`);
-  const doc: InvoiceDocument = { ...(prepare ? prepare(inv.document) : inv.document), number: null };
+  const prepared = prepare ? prepare(inv.document) : inv.document;
+  const doc: InvoiceDocument = { ...prepared, number: null, se: await withRecipients(prepared, inv.customerId) };
   const problems = validateForIssue(doc);
   if (problems.length) throw new IssueError(problems);
   const totals = invoiceTotals(doc);
@@ -477,6 +480,17 @@ export async function issueInvoice(id: string, actor: Actor, prepare?: (doc: Inv
   return result;
 }
 
+/** The document's `se` with the customer's current mailing lists frozen in (lib/core/invoices/recipients.ts). */
+async function withRecipients(doc: InvoiceDocument, customerId: string | null): Promise<InvoiceDocument["se"]> {
+  const id = customerId ?? doc.buyer.customerId;
+  const customer = id ? await getCustomer(id) : null;
+  const recipients = resolveRecipients(customer, doc.buyer.email);
+  const se = { ...doc.se };
+  if (recipients.to.length || recipients.cc.length) se.recipients = recipients;
+  else delete se.recipients;
+  return se;
+}
+
 async function markCredited(invoiceId: string, creditId: string, actor: Actor): Promise<void> {
   if (isDemo()) {
     const orig = demo().invoices.find((x) => x.id === invoiceId);
@@ -491,7 +505,13 @@ async function markCredited(invoiceId: string, creditId: string, actor: Actor): 
   if (error) throw new Error(`Kreditfakturan är utfärdad men originalet kunde inte markeras: ${error.message}`);
 }
 
-export async function markSent(id: string, to: string, actor: Actor): Promise<void> {
+/**
+ * Mark as sent and log invoice.sent. `to` is the recipient list of a mailing
+ * (logged in full) or free text for one handed over some other way ("post").
+ */
+export async function markSent(id: string, to: string | Recipients, actor: Actor): Promise<void> {
+  const recipients = typeof to === "string" ? null : to;
+  const toText = typeof to === "string" ? to : recipientsText(to);
   if (isDemo()) {
     const r = demo().invoices.find((x) => x.id === id);
     if (!r) throw new Error("Fakturan finns inte.");
@@ -500,11 +520,12 @@ export async function markSent(id: string, to: string, actor: Actor): Promise<vo
     r.sent_at ??=new Date().toISOString();
     if (r.status === "issued") r.status = "sent";
     r.updated_at = new Date().toISOString();
-    demoEvent("invoice", id, "invoice.sent", { number: r.number, to }, actor);
+    demoEvent("invoice", id, "invoice.sent", { number: r.number, to: toText, ...(recipients ? { recipients } : {}) }, actor);
     return;
   }
   const supabase = await getDb();
-  const { error } = await supabase.rpc("mark_invoice_sent", { p_invoice: id, p_to: to, p_actor: actor });
+  // p_recipients only when there is a list, so marking by hand also works against the function before 0026.
+  const { error } = await supabase.rpc("mark_invoice_sent", { p_invoice: id, p_to: toText, p_actor: actor, ...(recipients ? { p_recipients: recipients } : {}) });
   if (error) throw new Error(`Kunde inte markera som skickad: ${error.message}`);
 }
 

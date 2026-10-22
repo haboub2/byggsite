@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CUSTOMER_TYPES, ORG_NR, PEPPOL_ID, VAT_NR, type Buyer } from "../documents/invoice";
+import { emailListSchema } from "../invoices/recipients";
 
 /**
  * The customer register (customers table). What the invoice buyer block is
@@ -16,6 +17,10 @@ export const customerSchema = z.object({
   orgNr: text(13, "Organisationsnummer").refine((v) => v === "" || ORG_NR.test(v), "Organisationsnummer skrivs 559123-4567."),
   vatNr: text(16, "Momsregistreringsnummer").refine((v) => v === "" || VAT_NR.test(v), "Momsregistreringsnummer skrivs SE559123456701."),
   email: z.union([z.literal(""), z.string().trim().email("Ange en giltig e-postadress.")]),
+  /** "Fakturor till": where invoices and reminders are mailed. Empty: `email`. */
+  invoiceEmails: emailListSchema("Fakturor till"),
+  /** "Kopia till": copied on every invoice and reminder. */
+  ccEmails: emailListSchema("Kopia till"),
   phone: text(30, "Telefon"),
   street: text(120, "Gatuadress"),
   postalCode: text(10, "Postnummer"),
@@ -43,6 +48,8 @@ export const emptyCustomer: CustomerInput = {
   orgNr: "",
   vatNr: "",
   email: "",
+  invoiceEmails: [],
+  ccEmails: [],
   phone: "",
   street: "",
   postalCode: "",

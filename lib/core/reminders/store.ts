@@ -12,6 +12,7 @@ import { postReminder } from "../ledger/posting";
 import { makeEvent, type Actor } from "../events";
 import { demoJournalEntries, getInvoice, invoiceLabel, listInvoices, type InvoiceRecord } from "../invoices/store";
 import { todayIso } from "../../quotes/schema";
+import { documentRecipients, recipientsText, type Recipients } from "../invoices/recipients";
 import { reminderDue, reminderText, type ReminderPlan, type ReminderSettings } from "./reminders";
 
 /**
@@ -46,12 +47,13 @@ export async function listDueReminders(today = todayIso()): Promise<DueReminder[
 
 const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-async function mailReminder(inv: InvoiceRecord, plan: ReminderPlan): Promise<string> {
+/** Mails the reminder to the invoice's recipients (frozen at issue), with copies. Returns who it went to. */
+async function mailReminder(inv: InvoiceRecord, plan: ReminderPlan): Promise<Recipients> {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.MAIL_FROM;
   if (!key || !from) throw new Error("Mejl är inte påslaget (RESEND_API_KEY och MAIL_FROM). Registrera påminnelsen ändå och skicka den själv.");
-  const to = inv.document.buyer.email;
-  if (!to) throw new Error("Kunden saknar e-postadress.");
+  const recipients = documentRecipients(inv.document);
+  if (!recipients.to.length) throw new Error("Kunden saknar e-postadress.");
   const settings = await getOrgSettings();
   const d = inv.document;
   const pdf = await renderInvoicePdf(inv);
@@ -59,9 +61,10 @@ async function mailReminder(inv: InvoiceRecord, plan: ReminderPlan): Promise<str
   const kr = (ore: number) => formatOre(ore, { decimals: 0, currency: true });
   const firstName = d.buyer.type === "privat" ? d.buyer.name.split(" ")[0] : d.buyer.reference || d.buyer.name;
   const body = `Hej ${firstName},\n\nVi saknar betalning för faktura ${inv.number}${d.title ? ` (${d.title})` : ""} som förföll ${inv.dueOn}. ${reminderText(plan, inv.number ?? "", inv.dueOn ?? "")}\n\nHar du redan betalat de senaste dagarna kan du bortse från den här påminnelsen.`;
-  await new Resend(key).emails.send({
+  const { error } = await new Resend(key).emails.send({
     from,
-    to,
+    to: recipients.to,
+    ...(recipients.cc.length ? { cc: recipients.cc } : {}),
     replyTo: settings.company.email || undefined,
     subject: `Påminnelse ${plan.level}: faktura ${inv.number} från ${d.seller.name || site.brand}`,
     html: `
@@ -80,7 +83,8 @@ async function mailReminder(inv: InvoiceRecord, plan: ReminderPlan): Promise<str
     `,
     attachments: [{ filename: invoiceFileName(inv), content: pdf }],
   });
-  return to;
+  if (error) throw new Error(`Påminnelsen kunde inte mejlas: ${error.message}`);
+  return recipients;
 }
 
 /** Send (when `mail`) and record one reminder. Returns what was recorded. */
@@ -94,7 +98,8 @@ export async function sendReminder(invoiceId: string, actor: Actor, options: { m
     { ...(await reminderSettings()), graceDays: 0, daysBetween: 1 }
   );
   if (!plan) throw new Error(`${invoiceLabel(inv)} är inte förfallen eller påmindes nyss.`);
-  const sentTo = options.mail ? await mailReminder(inv, plan) : "manuellt";
+  const recipients = options.mail ? await mailReminder(inv, plan) : null;
+  const sentTo = recipients ? recipientsText(recipients) : "manuellt";
   const posting = postReminder({ reminderId: crypto.randomUUID(), fee: plan.feeOre, interest: plan.interestOre, date: today, text: `Påminnelse ${plan.level} ${invoiceLabel(inv).toLowerCase()} ${inv.document.buyer.name}`, dimensions: { projectId: inv.projectId, customerId: inv.customerId } }, chartFromSettings(await getOrgSettings()));
 
   if (isDemo()) {
@@ -106,11 +111,11 @@ export async function sendReminder(invoiceId: string, actor: Actor, options: { m
       row.updated_at = row.reminded_at;
     }
     if (plan.feeOre + plan.interestOre > 0) demoJournalEntries().push({ id: crypto.randomUUID(), number: `${today.slice(0, 4)}-p`, ...posting });
-    g.__binaafyInvoices?.events.push({ id: crypto.randomUUID(), ...makeEvent({ orgId: "demo", aggregateType: "invoice", aggregateId: invoiceId, type: "invoice.reminded", data: { number: inv.number, level: plan.level, fee: plan.feeOre, interest: plan.interestOre, to: sentTo }, actor }) });
+    g.__binaafyInvoices?.events.push({ id: crypto.randomUUID(), ...makeEvent({ orgId: "demo", aggregateType: "invoice", aggregateId: invoiceId, type: "invoice.reminded", data: { number: inv.number, level: plan.level, fee: plan.feeOre, interest: plan.interestOre, to: sentTo, ...(recipients ? { recipients } : {}) }, actor }) });
     return { plan, sentTo };
   }
   const supabase = await getDb();
-  const { error } = await supabase.rpc("register_reminder", { p_invoice: invoiceId, p_fee: plan.feeOre, p_interest: plan.interestOre, p_sent_to: sentTo, p_posting: plan.feeOre + plan.interestOre > 0 ? posting : { text: "", lines: [] }, p_actor: actor });
+  const { error } = await supabase.rpc("register_reminder", { p_invoice: invoiceId, p_fee: plan.feeOre, p_interest: plan.interestOre, p_sent_to: sentTo, p_posting: plan.feeOre + plan.interestOre > 0 ? posting : { text: "", lines: [] }, p_actor: actor, ...(recipients ? { p_recipients: recipients } : {}) });
   if (error) throw new Error(`Påminnelsen gick iväg men kunde inte registreras: ${error.message}`);
   return { plan, sentTo };
 }
