@@ -102,8 +102,9 @@ Kvar:
 - **`invoice.corrected` är ingen webhook-händelse**, eftersom den loggas på
   både originalet och ändringsfakturan; lägg till den i `is_webhook_event`
   med en av raderna om en integratör behöver den.
-- **Inte provat i webbläsaren**: mejlet för ändringsfakturan (MAIL_FROM är
-  tom), ROT-stoppet vid Rätta belopp, demoläget och Peppol-XML:en med typkod
+- **Inte provat i webbläsaren**: mejlet för ändringsfakturan (`MAIL_FROM` är
+  tom i den lokala `.env.local`; i Vercel är både den och `RESEND_API_KEY`
+  satta, så det kan provas i preview eller produktion), ROT-stoppet vid Rätta belopp, demoläget och Peppol-XML:en med typkod
   384 (den senare täcks av typkontrollen, inte av ett test).
 
 Kontroll: 10 nya tester, 291 gröna totalt (`npm test`), typkontroll och lint
