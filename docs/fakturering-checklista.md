@@ -20,7 +20,7 @@ Lagtexten bakom besluten står i `docs/fakturering.md` under respektive läge.
   efteråt.
 - [ ] **Kontrollera att Vercel-bygget av main är grönt** (du, 2 min). Vercel →
   Deployments. Ingen av oss har tittat efter merge:arna.
-- [ ] **Rensa testdata** (du, 5 min). Kör `supabase/reset-invoicing.sql` i
+- [x] **Rensa testdata** (gjort 2026-10-23). Kör `supabase/reset-invoicing.sql` i
   SQL-editorn: tar bort testfakturor, betalningar, verifikat och nollställer
   nummerserierna. Ta sedan bort Testbolag AB för hand (organisationen,
   medlemskapet, API-nyckeln och webhooken), skriptet rör inte
