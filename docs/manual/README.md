@@ -2,7 +2,7 @@
 
 För dig som skapar fakturor, sköter inställningar och ROT, eller granskar bokföringen. Manualen följer arbetsgången från första inloggning till export för revisorn. Du behöver inga förkunskaper i ekonomi; ord som *OCR*, *kreditfaktura* och *verifikation* förklaras där de dyker upp.
 
-Skärmbilderna är tagna i testorganisationen **Testbolag AB** med påhittade kunder (Rättelseprov Andersson, Mottagarprov Torki). Era egna sidor ser likadana ut men med Binaafys uppgifter.
+Skärmbilderna är tagna i testorganisationen **Testbolag AB** med påhittade kunder (Rättelseprov Andersson, Mottagarprov Torki och allt som heter *Manualprov*). Bankgiro och Swish-nummer på bilderna är påhittade och går inte att betala till. Era egna sidor ser likadana ut men med Binaafys uppgifter.
 
 **Vem läser vad**
 
@@ -202,6 +202,8 @@ Det finns tre sätt att skapa en faktura.
 2. Klicka **Skapa faktura från offerten** i sidopanelen (*Fakturera*). Knappen finns när offerten är accepterad.
 3. Ett utkast öppnas med kund, rader, ROT-personer och villkor från offerten.
 
+![En accepterad offert med Skapa faktura från offerten under Fakturera](img/13b-offert-skapa-faktura.png)
+
 ### C. Från en betalplan
 
 Har projektet en betalplan skapas delfakturorna från projektet med **Skapa faktura** på det steg som kan faktureras. Se kapitel 12.
@@ -299,9 +301,11 @@ Varje utfärdad faktura har en egen sida utan inloggning, med en lång slumpad a
 
 ![Den publika fakturasidan](img/21-publik-fakturasida.png)
 
-Om ett **Swish-nummer** finns under Inställningar › Betalning visas en **Swish-QR-kod** på PDF:en, i portalen och på den publika sidan. Kunden skannar den i Swish-appen, och belopp och meddelande (OCR eller fakturanummer) fylls i automatiskt. Testbolag AB har inget Swish-nummer, därför syns ingen QR-kod på bilderna.
+Om ett **Swish-nummer** finns under Inställningar › Betalning visas en **Swish-QR-kod** på PDF:en, i portalen och på den publika sidan. Kunden skannar den i Swish-appen, och belopp och meddelande (OCR eller fakturanummer) fylls i automatiskt. Bilderna ovan togs innan Testbolag AB hade ett Swish-nummer, därför saknar de QR-kod.
 
 ![Samma sida i mobilen](img/22-publik-fakturasida-mobil.png)
+
+![Den publika fakturasidan med Swish-QR-koden bredvid beloppet](img/22b-swish-qr.png)
 
 ---
 
@@ -337,9 +341,11 @@ Banken kan ge en fil med alla inbetalningar till bankgirot (Bankgiro Inbetalning
 4. Kontrollera förslaget, välj annan faktura i listan om det behövs och klicka **Registrera**.
 5. Är inbetalningen inte en kundfaktura (t.ex. en återbetalning från leverantör): klicka **Inte en faktura**.
 
-> **Tänk på:** Inget bokförs förrän du klickar **Registrera**. Läs in samma fil bara en gång. Betalningar på en ändringsfaktura registreras alltid på originalfakturan (samma OCR/referens), se kapitel 9.
+![Att matcha: tre inbetalningar med förslag](img/24b-bankfil-matchning.png)
 
-*Bilden visar sidan utan inlästa poster; i testmiljön fanns ingen bankfil att läsa in.*
+I exemplet hittas faktura 10 på meddelandet "Faktura 10", faktura 2 på belopp och namn, och återbetalningen på 350 kr får inget förslag.
+
+> **Tänk på:** Inget bokförs förrän du klickar **Registrera**. Läs in samma fil bara en gång. Betalningar på en ändringsfaktura registreras alltid på originalfakturan (samma OCR/referens), se kapitel 9.
 
 ---
 
@@ -354,6 +360,8 @@ När en faktura är förfallen och obetald dyker rutan **Påminnelse 1** (2, 3 �
 3. Välj **Mejla påminnelsen med PDF** (till kundens mottagare) eller **Registrera bara (skickad på annat sätt)**.
 4. Klicka **Påminn** och bekräfta. Avgift och ränta bokförs och händelsen syns i tidslinjen.
 
+![Påminnelse 1 på en förfallen faktura till ett företag](img/24c-paminnelse.png)
+
 Regler som systemet följer:
 
 - **Påminnelseavgift 60 kr** tas bara ut från företag, och från privatpersoner bara om det är avtalat och påslaget i Inställningar.
@@ -362,8 +370,6 @@ Regler som systemet följer:
 - Är automatiken påslagen skickar systemet påminnelserna själv varje morgon.
 
 > **Tänk på:** Kontrollera att kunden inte redan betalat (läs in bankfilen först) innan du påminner. En faktura som fått en påminnelse kan inte makuleras.
-
-*Ingen bild: ingen faktura i testmiljön var förfallen, så påminnelserutan gick inte att visa.*
 
 ---
 
@@ -440,7 +446,7 @@ Fakturan får status **Makulerad**, PDF:en stämplas MAKULERAD och en *rättelse
 
 *Syfte: begära ROT-avdraget från Skatteverket när kunden betalat sin del, och registrera utbetalningen.* Sköts normalt av ägaren. Sidan heter **Ekonomi › ROT och RUT**.
 
-![ROT-begäran: klart att begära, hos Skatteverket, senast och utbetalt](img/32-rot.png)
+![ROT-begäran: en betald faktura under Att begära, märkt Komplett](img/32-rot.png)
 
 Översikten visar fyra tal: **Klart att begära**, **Hos Skatteverket**, **Senast** (sista dag att begära för det som betalats i år, 31 januari året efter) och **Utbetalt**.
 
@@ -453,9 +459,11 @@ Fakturan får status **Makulerad**, PDF:en stämplas MAKULERAD och en *rättelse
 7. När Skatteverket betalat ut: skriv **Utbetalt, kr** och **Datum** och klicka **Registrera utbetalning**. Beloppet bokförs mot ROT-fordran.
 8. Avslår Skatteverket: skriv motiveringen och klicka **Markera avvisad**. Kunden ska då betala den del som inte godkändes; skicka en ny faktura för den.
 
-> **Tänk på:** Delbetalda fakturor kommer inte med förrän allt är betalt. Begär senast 31 januari året efter att kunden betalade. Personnumren i filen är kompletta (tolv siffror) men visas aldrig i klartext i listorna.
+![En nyskapad begäran (Utkast): 1. Ladda ner XML-filen, 2. ladda upp hos Skatteverket, 3. Markera som skickad](img/32b-rot-begaran.png)
 
-*Bilden visar sidan utan väntande begäran; i testmiljön fanns ingen betald ROT-faktura.*
+![Samma begäran när den är skickad: Registrera utbetalning eller Markera avvisad](img/32c-rot-skickad.png)
+
+> **Tänk på:** Delbetalda fakturor kommer inte med förrän allt är betalt. Begär senast 31 januari året efter att kunden betalade. Personnumren i filen är kompletta (tolv siffror) men visas aldrig i klartext i listorna.
 
 ---
 
@@ -482,7 +490,7 @@ Varje morgon skapar systemet de fakturor som ska ut. Översikten visar aktiva av
 
 *Syfte: fakturera ett större jobb i delar och följa projektets ekonomi.* Projekten finns under **Projekt**.
 
-![Byggprojekt](img/34-byggprojekt.png)
+![Byggprojekt: listan och faser som borde vara klara](img/34-byggprojekt.png)
 
 1. Skapa projektet från en **accepterad offert** (**Nytt projekt** eller från offerten) och bjud in kunden till portalen.
 2. På projektsidan finns rutan **Ekonomi**: offert, godkända ÄTA (ändrings- och tilläggsarbeten), fakturerat, betalt och kvar.
@@ -494,13 +502,15 @@ Varje morgon skapar systemet de fakturor som ska ut. Översikten visar aktiva av
 5. **Skapa faktura** öppnar ett utkast med stegets rader, fördelade på arbete och material så att ROT blir rätt. Granska och utfärda som vanligt.
 6. **Slutfakturan** tar resten av offerten plus alla godkända ÄTA som egna rader.
 
+![Betalplanen 30 / 40 / 30: steg 1 kan faktureras, steg 2 väntar på att fasen Tätskikt bockas klar](img/34b-betalplan.png)
+
+Fakturan från steg 1 heter "30 % vid start" och har en rad för arbete och en för material, så att ROT bara räknas på arbetet.
+
 **Kostnader och marginal:** under projektets ekonomi kan ni lägga in kostnader (leverantörsfaktura, material, timmar med internt timpris). Projektet visar då täckningsbidrag, marginal och *upparbetat men ej fakturerat*. Kostnaderna är interna siffror och syns inte för kunden eller i bokföringsexporten.
 
 **Projektrapporten** (dokumentationen med foton som kunden får när projektet är klart) nås från projektsidan och är inte en del av faktureringen.
 
 > **Tänk på:** Inget faktureras av sig självt. Knappen *Skapa faktura* visas också på Ekonomi-översiktens *Att göra*, men någon måste trycka och utfärda.
-
-*Bilden visar projektlistan utan projekt; i testmiljön fanns inget projekt med betalplan.*
 
 ---
 
@@ -593,9 +603,11 @@ För utvecklare som vill koppla t.ex. en webbshop: under **API** skapas nycklar 
 - vid ROT: arbete och material inklusive moms, ROT-avdraget och texten "ROT-avdraget begär vi hos Skatteverket när du har betalat. Du behöver inte göra något."
 - en tidslinje utan interna anteckningar.
 
+![Kundportalens flik Fakturor: delfaktura 1 av 3 med Swish-QR, bankgiro och ROT-avdraget](img/40b-kundportal-fakturor.png)
+
 Kostnader, marginal och interna anteckningar syns aldrig för kunden.
 
-*Ingen bild av portalen: din inloggning hör inte till något kundprojekt, och i testmiljön fanns inget projekt med kund. Bilderna av den publika fakturasidan visar samma uppgifter som portalens faktura.*
+Vill du se portalen som kunden ser den: klicka **Visa som kund** överst på projektsidan.
 
 ---
 
