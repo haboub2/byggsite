@@ -79,6 +79,37 @@ export async function notify(input: {
   }
 }
 
+/** Someone registered interest in the invoicing product (/fakturering): tell the team (MAIL_TO). Never throws. */
+export async function productInterestMail(input: { product: string; company: string; email: string; rows: [string, string][] }) {
+  const resend = client();
+  if (!resend) {
+    console.warn(`[mail] RESEND_API_KEY not set — interest notice skipped (${input.email}).`);
+    return;
+  }
+  const { company } = await getContent();
+  const rows = input.rows
+    .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#6b7280;vertical-align:top">${esc(k)}</td><td style="white-space:pre-wrap">${esc(v)}</td></tr>`)
+    .join("");
+  const admin = `${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") || "https://binaafy.se"}/admin/intresse`;
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to: teamAddresses(company.email),
+      replyTo: input.email,
+      subject: `Intresse för ${input.product} — ${input.company.slice(0, 80)}`,
+      html: `
+        <div style="font-family:sans-serif;font-size:14px;color:#14161a">
+          <h2 style="margin:0 0 12px">Ny intresseanmälan: ${esc(input.product)}</h2>
+          <table>${rows}</table>
+          <p style="margin-top:16px"><a href="${admin}">Alla anmälningar i admin</a></p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("[mail] productInterestMail failed", err);
+  }
+}
+
 /** Auto-reply to the submitter. Never throws — a failed auto-reply must not fail the request. */
 export async function autoreply(input: { kind: LeadKind; division: Division; name: string; email: string }) {
   const resend = client();

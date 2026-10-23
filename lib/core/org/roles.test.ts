@@ -33,7 +33,7 @@ test("the website's content only for owner/admin in the organisation that owns t
   assert.equal(hasAccess("owner", "site", true), true);
   assert.equal(hasAccess("admin", "site", true), true);
   assert.equal(hasAccess("staff", "site", true), false);
-  for (const p of ["/admin/innehall/foretaget", "/admin/innehall/offert", "/admin/innehall/projekt/ny"]) {
+  for (const p of ["/admin/innehall/foretaget", "/admin/innehall/offert", "/admin/innehall/projekt/ny", "/admin/intresse", "/admin/intresse/csv"]) {
     assert.equal(canOpenAdminPath("owner", p), false, p);
     assert.equal(canOpenAdminPath("owner", p, true), true, p);
     assert.equal(canOpenAdminPath("staff", p, true), false, p);

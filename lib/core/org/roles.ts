@@ -57,8 +57,8 @@ export function assignableRoles(role: Role): Role[] {
  * admin is for staff and up; the proxy sends readers to Ekonomi.
  */
 const READER_PATHS = ["/admin/idag", "/admin/sok", "/admin/ekonomi", "/admin/fakturor", "/admin/kunder", "/admin/rot", "/admin/organisation"];
-/** The website's content: only for "site" (owner/admin in the organisation that owns the site). */
-const SITE_PATHS = ["/admin/innehall"];
+/** The website's content and its interest registrations: only for "site" (owner/admin in the organisation that owns the site). */
+const SITE_PATHS = ["/admin/innehall", "/admin/intresse"];
 /** Paths any signed-in user may open, member or not: accepting an invitation, starting an organisation. */
 export const OPEN_ADMIN_PATHS = ["/admin/login", "/admin/inbjudan", "/admin/ny-organisation"];
 

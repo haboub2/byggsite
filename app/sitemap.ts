@@ -6,6 +6,7 @@ import { listPublishedCases } from "@/lib/cases";
 import { listPublishedProjects } from "@/lib/projects";
 import { CONTENT_UPDATED } from "@/lib/seo";
 import { guides } from "@/lib/guides";
+import { PRODUCT_PATH } from "@/lib/product";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [projects, cases] = await Promise.all([listPublishedProjects(), listPublishedCases()]);
@@ -36,6 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry("/mjukvara/case", 0.5),
     ...cases.map((c) => entry(`/mjukvara/case/${c.slug}`, 0.5)),
     entry("/mjukvara/brief", 0.6),
+    entry(PRODUCT_PATH, 0.6),
     entry("/guider", 0.7, "weekly"),
     ...guides.map((g) => ({ ...entry(`/guider/${g.slug}`, 0.8), lastModified: new Date(g.updated) })),
     entry("/referenser", 0.7, "weekly"),

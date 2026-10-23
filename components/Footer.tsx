@@ -3,6 +3,7 @@ import { services } from "@/lib/placeholder";
 import { getContent } from "@/lib/content/store";
 import { softwareAreas } from "@/lib/software-content";
 import { projectsReady } from "@/lib/projects";
+import { PRODUCT_NAME, PRODUCT_PATH } from "@/lib/product";
 
 export default async function Footer() {
   const year = new Date().getFullYear();
@@ -34,6 +35,8 @@ export default async function Footer() {
             </Link>
           ))}
           <Link href="/mjukvara/case">Case</Link>
+          <h4>För byggföretag</h4>
+          <Link href={PRODUCT_PATH}>{PRODUCT_NAME}</Link>
         </div>
 
         <div className="ftr-col">

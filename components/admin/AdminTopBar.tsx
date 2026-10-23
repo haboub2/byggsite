@@ -100,6 +100,7 @@ export default function AdminTopBar(p: AdminTopBarProps) {
     { href: "/admin/innehall/omdomen", label: "Webbplatsen: omdömen", access: "site" },
     { href: "/admin/innehall/garanti", label: "Webbplatsen: garanti", access: "site" },
     { href: "/admin/innehall/offert", label: "Offertuppgifter", access: "site" },
+    { href: "/admin/intresse", label: "Intresse för faktureringen", access: "site" },
     { href: "/admin/installningar", label: "Inställningar", access: "admin" },
     { href: "/admin/organisation", label: "Organisation och roller", access: "read" },
     { href: "/admin/api", label: "API", access: "admin" },
