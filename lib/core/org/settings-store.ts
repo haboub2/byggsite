@@ -23,14 +23,23 @@ async function contentFallback(): Promise<OrgSettings> {
   return settingsFromContent({ company, quote, env: process.env });
 }
 
-export type StoredSettings = { orgId: string; settings: OrgSettings; saved: boolean; updatedAt: string | null };
+export type StoredSettings = {
+  orgId: string;
+  settings: OrgSettings;
+  saved: boolean;
+  updatedAt: string | null;
+  /** Top-level groups in the stored row: create_organization stores only "company", the settings page all of them. */
+  savedKeys: string[];
+};
+
+const keysOf = (data: unknown): string[] => (data && typeof data === "object" ? Object.keys(data) : []);
 
 export async function getOrgSettingsRecord(orgId?: string): Promise<StoredSettings> {
   const org = orgId ?? (await currentOrgId());
   const fallback = await contentFallback();
   if (isDemo()) {
     const data = g.__binaafyOrgSettings?.[org];
-    return { orgId: org, settings: resolveOrgSettings(data, () => fallback), saved: !!data, updatedAt: null };
+    return { orgId: org, settings: resolveOrgSettings(data, () => fallback), saved: !!data, updatedAt: null, savedKeys: keysOf(data) };
   }
   const supabase = await getDb();
   const [{ data, error }, isFirst] = await Promise.all([
@@ -44,6 +53,7 @@ export async function getOrgSettingsRecord(orgId?: string): Promise<StoredSettin
     settings: resolveOrgSettings(stored, isFirst ? () => fallback : undefined),
     saved: !!data && Object.keys(stored as object).length > 0,
     updatedAt: (data?.updated_at as string | undefined) ?? null,
+    savedKeys: keysOf(stored),
   };
 }
 

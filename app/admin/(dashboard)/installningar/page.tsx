@@ -27,7 +27,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             : "Inget är sparat här än: fälten är förifyllda från Företaget och Offertuppgifter (som offerterna fortsätter att läsa). Spara en gång så gäller inställningarna här för fakturorna."}
         </p>
         {ny && <p className="form-feedback">Organisationen är skapad. Fyll i uppgifterna nedan innan första fakturan.</p>}
-        <OrgSettingsEditor initial={settings} defaults={defaults} lastSaved={updatedAt && saved ? { at: updatedAt, by: null } : undefined} />
+        <p className="efield-hint" style={{ marginTop: 8 }}>
+          Ny här? <Link href="/admin/kom-igang">Startguiden</Link> visar vad som saknas.
+        </p>
+        <OrgSettingsEditor initial={settings} defaults={defaults} siteOrg={check.site} lastSaved={updatedAt && saved ? { at: updatedAt, by: null } : undefined} />
 
         <h2 style={{ marginTop: 48, fontSize: 22 }}>Swish Handel</h2>
         <p className="admin-intro">

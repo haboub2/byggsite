@@ -74,6 +74,22 @@ export const paymentSettingsSchema = z.object({
     .default({}),
 });
 
+/** The logo on invoices and quotes: a PNG or JPEG as a data URI, resized in the browser (OrgSettingsEditor). */
+export const LOGO_DATA_URI_RE = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+=*$/;
+export const LOGO_MAX_LENGTH = 200_000;
+
+export const brandingSettingsSchema = z.object({
+  /**
+   * Empty: the PDF prints the company name instead. The organisation that
+   * owns the website ignores this and uses the site's logo (lib/quotes/profile-store.ts).
+   */
+  logo: z
+    .string()
+    .max(LOGO_MAX_LENGTH, "Logotypen är för stor. Välj en mindre bild.")
+    .refine((v) => v === "" || LOGO_DATA_URI_RE.test(v), "Logotypen ska vara en PNG- eller JPEG-bild.")
+    .default(""),
+});
+
 export const termsSettingsSchema = z.object({
   privat: days("Villkor privatpersoner").default(30),
   foretag: days("Villkor företag").default(30),
@@ -148,6 +164,7 @@ export const chartSettingsSchema = z.object({
 export const orgSettingsSchema = z.object({
   company: companySettingsSchema.default({}),
   payment: paymentSettingsSchema.default({}),
+  branding: brandingSettingsSchema.default({}),
   /** Payment terms in days per customer type, for new invoices. */
   terms: termsSettingsSchema.default({}),
   lateInterestText: text(200, "Dröjsmålsränta").default(""),

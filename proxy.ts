@@ -11,7 +11,8 @@ const ORG_COOKIE = "org";
  *                     read-only members only reach Ekonomi, fakturor, kunder and
  *                     ROT (lib/core/org/roles.ts); a signed-in user without a
  *                     membership is sent to the portal, except to accept an
- *                     invitation or start an organisation. The website's
+ *                     invitation, start an organisation or finish a
+ *                     registration (/admin itself shows that choice). The website's
  *                     content (/admin/innehall) is only for owners and admins
  *                     of the organisation that owns the site (default_org()).
  *                     Nobody signed out gets past /admin/login.
@@ -58,8 +59,9 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    // An invitation link shows its own sign-in for the invited address.
-    if (pathname.startsWith("/admin/inbjudan/")) return response;
+    // An invitation link shows its own sign-in for the invited address; the
+    // registration landing sends to the login with its token kept (0033).
+    if (pathname.startsWith("/admin/inbjudan/") || pathname === "/admin/registrera" || pathname.startsWith("/admin/registrera/")) return response;
     const to = new URL(login, request.url);
     if (isAdmin && pathname !== "/admin") to.searchParams.set("next", pathname);
     return NextResponse.redirect(to);
@@ -72,7 +74,9 @@ export async function proxy(request: NextRequest) {
     const rows = (data ?? []) as { org_id: string; role: string }[];
     const wanted = request.cookies.get(ORG_COOKIE)?.value;
     const current = rows.find((r) => r.org_id === wanted) ?? rows[0];
-    if (!current || !isRole(current.role)) return NextResponse.redirect(new URL("/mitt-projekt", request.url));
+    // Without a membership, /admin itself shows the choice to start an organisation
+    // (the layout); everything else goes to the portal, where customers belong.
+    if (!current || !isRole(current.role)) return pathname === "/admin" ? response : NextResponse.redirect(new URL("/mitt-projekt", request.url));
     // default_org() is security definer: the site's organisation, whichever the user can see.
     const siteOrg = isSiteAdminPath(pathname) && (await supabase.rpc("default_org")).data === current.org_id;
     if (!canOpenAdminPath(current.role as Role, pathname, siteOrg)) return NextResponse.redirect(new URL("/admin/ekonomi", request.url));

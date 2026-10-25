@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export const CONSENT_KEY = "binaafy-cookie-consent";
 export const CONSENT_EVENT = "binaafy-consent-change";
@@ -11,6 +12,8 @@ type Consent = "granted" | "denied";
 export default function CookieConsent() {
   const [choice, setChoice] = useState<Consent | null>(null);
   const [ready, setReady] = useState(false);
+  // The website's question, not the app's: never over the admin login or the portal.
+  const app = /^\/(admin|mitt-projekt)(\/|$)/.test(usePathname() ?? "");
 
   useEffect(() => {
     let stored: string | null = null;
@@ -35,7 +38,7 @@ export default function CookieConsent() {
     window.dispatchEvent(new Event(CONSENT_EVENT));
   }
 
-  if (!ready || choice !== null) return null;
+  if (app || !ready || choice !== null) return null;
 
   return (
     <div className="cookie-banner" role="dialog" aria-label="Cookies" aria-live="polite">

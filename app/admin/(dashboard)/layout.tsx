@@ -7,6 +7,8 @@ import { hasAccess, ROLE_LABEL, type Access } from "@/lib/core/org/roles";
 import { signOut } from "@/app/admin/actions";
 import AdminTopBar from "@/components/admin/AdminTopBar";
 import { loadNavCounts } from "@/lib/admin/today";
+import { loadOnboarding, type Onboarding } from "@/lib/core/org/onboarding-store";
+import OnboardingBanner from "@/components/admin/OnboardingBanner";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -30,6 +32,9 @@ export default async function AdminDashboardLayout({
             <p style={{ marginTop: 8 }}>
               <Link href="/admin/ny-organisation">Starta en organisation</Link> eller be om en inbjudan.
             </p>
+            <p style={{ marginTop: 8 }}>
+              Kund hos ett företag? <Link href="/mitt-projekt">Till Mitt projekt</Link>
+            </p>
             <form action={signOut} style={{ marginTop: 16 }}>
               <button type="submit" className="btn btn-ghost">
                 Logga ut
@@ -44,7 +49,16 @@ export default async function AdminDashboardLayout({
   const orgs = (await listMyMemberships()).map((m) => ({ id: m.orgId, name: m.name }));
   const access = (["read", "write", "admin", "owner", "site"] as Access[]).filter((a) => hasAccess(check.role, a, check.site));
 
-  const counts = await loadNavCounts(access);
+  // The start guide's banner, for those who can work through it, until every step is done.
+  const [counts, onboarding] = await Promise.all([
+    loadNavCounts(access),
+    access.includes("write")
+      ? loadOnboarding(check.orgId, check.site).catch((err): Onboarding | null => {
+          console.error("[onboarding] load failed:", err instanceof Error ? err.message : err);
+          return null;
+        })
+      : null,
+  ]);
 
   return (
     <div className="admin">
@@ -63,6 +77,14 @@ export default async function AdminDashboardLayout({
           Demoläge: exempeldata, bara på din egen dator. Ändringar sparas inte på riktigt förrän Supabase är kopplat
           (docs/setup-forms.md).
         </p>
+      )}
+      {onboarding && !onboarding.progress.complete && (
+        <OnboardingBanner
+          orgId={check.orgId}
+          done={onboarding.progress.done}
+          total={onboarding.progress.total}
+          next={onboarding.progress.next}
+        />
       )}
       <main>{children}</main>
     </div>

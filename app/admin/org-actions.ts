@@ -106,6 +106,18 @@ export async function saveOrgSettingsAction(_prev: ContentActionState, formData:
   return { ok: true, savedAt: new Date().toISOString() };
 }
 
+/** "Godkänn förvalet" in the start guide: save the settings as they are, so the terms count as looked at. */
+export async function approveDefaultTermsAction(): Promise<void> {
+  const check = await requireRole("admin");
+  if (!check.ok) return;
+  try {
+    await saveOrgSettings(await getOrgSettings(), actorOf(check.email));
+  } catch (err) {
+    console.error("[org] approve default terms:", err instanceof Error ? err.message : err);
+  }
+  revalidatePath("/admin", "layout");
+}
+
 /* ---------- members ---------- */
 
 async function mailInvitation(to: string, link: string, orgName: string, roleLabel: string, from: string): Promise<boolean> {

@@ -1,11 +1,14 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { checkAdmin } from "@/lib/admin";
-import { STATUSES, updateLead, type LeadStatus } from "@/lib/leads";
+import { STATUSES, isDemo, updateLead, type LeadStatus } from "@/lib/leads";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { safeAdminNext } from "@/lib/core/org/roles";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function signIn(formData: FormData) {
   if (!isSupabaseConfigured()) {
@@ -24,9 +27,44 @@ export async function signIn(formData: FormData) {
     return { error: "Fel e-post eller lösenord." };
   }
 
-  const next = String(formData.get("next") ?? "");
   // Only back into admin, never to another site.
-  redirect(/^\/admin(\/[\w\-/]*)?$/.test(next) && next !== "/admin" ? next : "/admin/idag");
+  const next = safeAdminNext(String(formData.get("next") ?? ""));
+  redirect(next && next !== "/admin" ? next : "/admin/idag");
+}
+
+export type LoginLinkState = { ok?: boolean; error?: string; email?: string };
+
+/**
+ * "Logga in med e-postlänk": a one-time link to an existing account, never a
+ * new one (registering is /registrera). The answer is the same whether the
+ * address has an account or not, so the form does not tell who has one.
+ */
+export async function requestLoginLink(_prev: LoginLinkState, formData: FormData): Promise<LoginLinkState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Ange en giltig e-postadress." };
+  // Demo mode sends nothing but shows the answer, so the page can be tried.
+  if (isDemo()) return { ok: true, email };
+  if (!isSupabaseConfigured()) return { error: "Supabase är inte konfigurerat ännu." };
+  const h = await headers();
+  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!rateLimit(`login-link:${ip}`)) return { error: "För många länkar härifrån. Försök igen om en stund." };
+
+  const next = safeAdminNext(String(formData.get("next") ?? "")) ?? "/admin/idag";
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? (host?.startsWith("localhost") || host?.startsWith("127.") ? "http" : "https");
+  const origin = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false, emailRedirectTo: `${origin}/mitt-projekt/callback?next=${encodeURIComponent(next)}` },
+  });
+  if (error && /rate limit|security purposes/i.test(error.message)) return { error: "Vänta en minut innan du begär en ny länk." };
+  // An unknown address ("Signups not allowed for otp") gets the same answer as a known one.
+  if (error && !/signups? not allowed|user not found/i.test(error.message)) {
+    console.error("[login] otp failed:", error.message);
+    return { error: "Kunde inte skicka länken just nu. Försök igen om en stund." };
+  }
+  return { ok: true, email };
 }
 
 export async function signOut() {

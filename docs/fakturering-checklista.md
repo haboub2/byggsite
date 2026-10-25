@@ -265,6 +265,32 @@ som en session var.
 - [ ] **Företagsuppgifter på org.nr** (du avtal, Opus en dag, senare).
   Roaring eller motsvarande för att fylla i kund från organisationsnummer
   och, som tillval, kreditupplysning.
+- [ ] **Kör migration 0033** (du). `supabase/migrations/0033_self_registration.sql`
+  i SQL-editorn, sedan `supabase/tests/0033_registration.sql` (ska sluta med
+  "Prov 0033: alla gick igenom"). Utan den svarar /registrera att
+  registreringen inte kunde sparas.
+- [ ] **Supabase Auth för självregistrering** (du, 10 min). Authentication →
+  Providers → Email: "Allow new users to sign up" måste vara **på**
+  (`shouldCreateUser: true`); docs/supabase-mail/README.md säger i dag av,
+  så det ändras. Mejlmallarna "Confirm signup" och "Magic Link" går nu
+  också till nya företag och till admin-inloggning via länk, men Magic
+  Link-mallen talar om "Mitt projekt": skriv dem så att de passar båda.
+  OTP-giltigheten ska vara kvar på 3600 s, för inloggningssidan säger
+  "gäller i en timme" (`LOGIN_LINK_VALIDITY` i `lib/product.ts`).
+  Redirect-adressen `/mitt-projekt/callback**` finns redan och täcker
+  `?next=/admin/registrera/klar?r=…`. `SUPABASE_SERVICE_ROLE_KEY` måste
+  finnas i Vercel (finns, punkt 1).
+- [ ] **Användarvillkor och personuppgiftsbiträdesavtal som sidor** (du).
+  Kryssrutan på /registrera säger att man godkänner dem, men sidorna finns
+  inte än. Länka dem från kryssrutan när de finns (se punkten om
+  biträdesavtal ovan).
+- [ ] **Manualen som webbsida** (vi). Startguidens kort "Manualen" visar
+  "Kommer snart" tills `PRODUCT_MANUAL_URL` i `lib/product.ts` pekar på
+  den publicerade manualen (docs/manual).
+- [ ] **Prova självregistreringen i produktion** (vi). Registrera ett
+  provföretag på /registrera med en egen adress, öppna länken, gå igenom
+  startguiden, ta bort provorganisationen efteråt. I demoläge är flödet
+  provat (länken visas på skärmen i stället för att mejlas).
 - [ ] **Inbjudningar och roller provade med ett riktigt andra konto** (vi).
   RLS-proven körs i PGlite; ett riktigt konto som bara är medlem i en
   annan organisation har inte provats i webbläsaren.
