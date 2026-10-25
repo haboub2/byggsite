@@ -25,6 +25,8 @@ test("staff opens everything; anyone opens invitations and a new organisation", 
   assert.equal(canOpenAdminPath("staff", "/admin/offerter"), true);
   assert.equal(canOpenAdminPath(null, "/admin/inbjudan/abc"), true);
   assert.equal(canOpenAdminPath(null, "/admin/ny-organisation"), true);
+  assert.equal(canOpenAdminPath(null, "/admin/registrera/klar"), true);
+  assert.equal(canOpenAdminPath(null, "/admin/registrerad"), false);
   assert.equal(canOpenAdminPath(null, "/admin/ekonomi"), false);
 });
 

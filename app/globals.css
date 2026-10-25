@@ -81,6 +81,10 @@ p { text-wrap: pretty; }
 .link-arrow svg { width: 14px; height: 14px; }
 .link-quiet { color: var(--ink-2); border-bottom: 1px solid var(--line-strong); padding-bottom: 2px; font-size: 14px; }
 .link-quiet:hover { color: var(--ink); border-color: var(--ink); }
+button.link-quiet { background: none; border-width: 0 0 1px; cursor: pointer; font: inherit; font-size: 14px; }
+/* /admin/login */
+.login-box { max-width: 380px; margin: 0 auto; }
+.login-links { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
 .on-dark .link-quiet, .lhero .link-quiet, .phero .link-quiet { color: var(--on-dark-2); border-color: var(--line-dark-strong); }
 .on-dark .link-quiet:hover, .lhero .link-quiet:hover, .phero .link-quiet:hover { color: var(--on-dark); border-color: var(--on-dark); }
 .on-dark .link-arrow { color: var(--orange); }
@@ -912,6 +916,14 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .note-card .eyebrow { color: var(--on-dark-3); }
 .note-card strong { display: block; margin-top: 10px; font-size: 26px; font-weight: 600; letter-spacing: -0.03em; }
 .note-card p { margin-top: 10px; color: var(--on-dark-2); font-size: 15px; line-height: 1.65; }
+.note-card a { color: var(--on-dark); text-decoration: underline; text-underline-offset: 3px; }
+.note-card a:hover { color: var(--orange); }
+/* /registrera: what happens after the form */
+.reg-next { margin-top: 6px; counter-reset: reg; }
+.reg-next li { counter-increment: reg; padding: 12px 0 12px 34px; position: relative; border-bottom: 1px solid var(--line-dark-strong); }
+.reg-next li::before { content: counter(reg, decimal-leading-zero); position: absolute; left: 0; top: 14px; font-size: 12px; color: var(--on-dark-3); font-variant-numeric: tabular-nums; }
+.note-card .reg-next strong { margin-top: 0; font-size: 16px; letter-spacing: -0.01em; }
+.note-card .reg-next p { margin-top: 2px; font-size: 14px; }
 
 /* ===== Forms ===== */
 .form-layout {
@@ -1100,6 +1112,29 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .admin-bar-right { display: flex; align-items: center; gap: 16px; }
 .admin-user { font-size: 13px; color: var(--on-dark-3); }
 .admin-demo { background: var(--orange); color: var(--dark); font-size: 13.5px; font-weight: 500; text-align: center; padding: 8px var(--gutter); }
+.btn-sm { min-height: 36px; padding: 7px 14px; font-size: 14px; }
+
+/* Start guide (/admin/kom-igang) and its banner */
+.onb-banner { background: var(--paper); border-bottom: 1px solid var(--line); }
+.onb-banner-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; padding-block: 10px; font-size: 14.5px; }
+.onb-banner-text strong { margin-right: 6px; }
+.onb-banner-actions { display: flex; align-items: center; gap: 16px; }
+.onb-progress { display: flex; align-items: center; gap: 14px; margin-top: 24px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.onb-bar { flex: 1; max-width: 320px; height: 6px; background: var(--bg-deep); border-radius: 3px; overflow: hidden; }
+.onb-bar span { display: block; height: 100%; background: var(--success); transition: width .3s var(--ease); }
+.onb-steps { margin-top: 20px; border-top: 1px solid var(--line); }
+.onb-step { display: grid; grid-template-columns: 36px 1fr auto; gap: 16px; align-items: center; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.onb-n { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; font-weight: 600; border: 1px solid var(--line-strong); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.onb-step--done .onb-n { background: var(--success); border-color: var(--success); color: #fff; }
+.onb-step--next .onb-n { border-color: var(--orange-press); color: var(--orange-text); }
+.onb-main h2 { font-size: 17px; letter-spacing: -0.01em; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.onb-main p { margin-top: 4px; color: var(--ink-2); font-size: 14.5px; line-height: 1.5; }
+.onb-status { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.onb-step--done .onb-status { color: var(--success); }
+@media (max-width: 560px) {
+  .onb-step { grid-template-columns: 32px 1fr; }
+  .onb-step > :last-child { grid-column: 2; justify-self: start; }
+}
 
 /* Inbox */
 .inbox-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
@@ -1165,6 +1200,8 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .egrid--address { grid-template-columns: 2fr 1fr 1.4fr; }
 .efield { display: grid; gap: 5px; align-content: start; }
 .efield--wide { grid-column: 1 / -1; }
+.logo-preview { display: block; max-width: 240px; max-height: 80px; object-fit: contain; object-position: left center; padding: 10px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.efieldset[id] { scroll-margin-top: 90px; }
 .efield label { font-size: 13px; font-weight: 500; color: var(--ink-2); }
 .efield input, .chips-add input {
   width: 100%; min-height: 42px; padding: 9px 12px; font-size: 15px;

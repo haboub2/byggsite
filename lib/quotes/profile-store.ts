@@ -17,7 +17,7 @@ import { BLANK_QUOTE_TEXTS, quoteProfile, type QuoteProfile } from "./profile";
 export async function getQuoteProfile(orgId?: string | null): Promise<QuoteProfile> {
   const org = orgId || (await currentOrgId());
   const [settings, isSite] = await asSystem(() => Promise.all([getOrgSettings(org), isSiteOrg(org)]), org);
-  if (!isSite) return quoteProfile(settings, BLANK_QUOTE_TEXTS, { brand: settings.company.legalName, logo: null });
+  if (!isSite) return quoteProfile(settings, BLANK_QUOTE_TEXTS, { brand: settings.company.legalName, logo: settings.branding.logo || null });
   const { quote } = await getContent();
   return quoteProfile(settings, quote, { brand: site.brand, logo: LOGO_DATA_URI });
 }

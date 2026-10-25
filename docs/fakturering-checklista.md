@@ -265,6 +265,21 @@ som en session var.
 - [ ] **Företagsuppgifter på org.nr** (du avtal, Opus en dag, senare).
   Roaring eller motsvarande för att fylla i kund från organisationsnummer
   och, som tillval, kreditupplysning.
+- [ ] **Kör migration 0033** (du). `supabase/migrations/0033_self_registration.sql`
+  i SQL-editorn, sedan `supabase/tests/0033_registration.sql` (ska sluta med
+  "Prov 0033: alla gick igenom"). Utan den svarar /registrera att
+  registreringen inte kunde sparas.
+- [ ] **Supabase Auth för självregistrering** (du, 5 min). Authentication →
+  Providers → Email: "Allow new users to sign up" måste vara på
+  (`shouldCreateUser: true`). Mejlmallarna "Confirm signup" och "Magic Link"
+  går till nya företag: skriv dem neutralt (Binaafy Fakturering, inte
+  byggfirman). Redirect-adressen `/mitt-projekt/callback**` finns redan och
+  täcker `?next=/admin/registrera/klar?r=…`. `SUPABASE_SERVICE_ROLE_KEY`
+  måste finnas i Vercel (finns, punkt 1).
+- [ ] **Prova självregistreringen i produktion** (vi). Registrera ett
+  provföretag på /registrera med en egen adress, öppna länken, gå igenom
+  startguiden, ta bort provorganisationen efteråt. I demoläge är flödet
+  provat (länken visas på skärmen i stället för att mejlas).
 - [ ] **Inbjudningar och roller provade med ett riktigt andra konto** (vi).
   RLS-proven körs i PGlite; ett riktigt konto som bara är medlem i en
   annan organisation har inte provats i webbläsaren.

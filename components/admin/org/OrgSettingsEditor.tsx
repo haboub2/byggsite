@@ -4,12 +4,24 @@ import { useState } from "react";
 import { EditorForm, TextArea, TextField, type LastSaved } from "../content/EditorForm";
 import { saveOrgSettingsAction } from "@/app/admin/org-actions";
 import { CHART_KEYS, CHART_KEY_LABEL, type OrgSettings } from "@/lib/core/org/settings";
+import LogoField from "./LogoField";
 
 const MONTHS = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"];
 const digits = (v: string) => Number(v.replace(/[^\d]/g, "")) || 0;
 
 /** /admin/installningar: everything the invoices, reminders and the ledger take from the organisation. */
-export default function OrgSettingsEditor({ initial, defaults, lastSaved }: { initial: OrgSettings; defaults: Record<string, string>; lastSaved?: LastSaved }) {
+export default function OrgSettingsEditor({
+  initial,
+  defaults,
+  lastSaved,
+  siteOrg = false,
+}: {
+  initial: OrgSettings;
+  defaults: Record<string, string>;
+  lastSaved?: LastSaved;
+  /** The organisation owns the website: its PDFs use the site's logo, so no logo field. */
+  siteOrg?: boolean;
+}) {
   const [s, setS] = useState(initial);
   const setIn =
     <K extends keyof OrgSettings>(group: K) =>
@@ -24,7 +36,7 @@ export default function OrgSettingsEditor({ initial, defaults, lastSaved }: { in
 
   return (
     <EditorForm action={saveOrgSettingsAction} value={s} initial={initial} lastSaved={lastSaved} submitLabel="Spara inställningarna" savedNote="Nya fakturor använder dem.">
-      <fieldset className="efieldset">
+      <fieldset className="efieldset" id="foretaget">
         <legend>Företaget på fakturan</legend>
         <p className="efield-hint">Säljaren på varje ny faktura. Utfärdade fakturor behåller det som stod när de utfärdades.</p>
         <div className="egrid">
@@ -46,7 +58,14 @@ export default function OrgSettingsEditor({ initial, defaults, lastSaved }: { in
         </label>
       </fieldset>
 
-      <fieldset className="efieldset">
+      {!siteOrg && (
+        <fieldset className="efieldset" id="logotyp">
+          <legend>Logotyp</legend>
+          <LogoField value={s.branding.logo} onChange={(v) => setS((p) => ({ ...p, branding: { ...p.branding, logo: v } }))} />
+        </fieldset>
+      )}
+
+      <fieldset className="efieldset" id="betalning">
         <legend>Betalning</legend>
         <p className="efield-hint">Minst ett sätt krävs för att utfärda. Swish-numret ger QR-koden på PDF:en och i portalen.</p>
         <div className="egrid">
@@ -73,7 +92,7 @@ export default function OrgSettingsEditor({ initial, defaults, lastSaved }: { in
         </p>
       </fieldset>
 
-      <fieldset className="efieldset">
+      <fieldset className="efieldset" id="villkor">
         <legend>Villkor</legend>
         <div className="egrid">
           <TextField label="Betalningsvillkor privatpersoner, dagar" path="terms.privat" inputMode="numeric" value={String(s.terms.privat)} onChange={(v) => terms("privat")(digits(v))} />

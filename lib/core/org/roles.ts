@@ -59,8 +59,12 @@ export function assignableRoles(role: Role): Role[] {
 const READER_PATHS = ["/admin/idag", "/admin/sok", "/admin/ekonomi", "/admin/fakturor", "/admin/kunder", "/admin/rot", "/admin/organisation"];
 /** The website's content and its interest registrations: only for "site" (owner/admin in the organisation that owns the site). */
 const SITE_PATHS = ["/admin/innehall", "/admin/intresse"];
-/** Paths any signed-in user may open, member or not: accepting an invitation, starting an organisation. */
-export const OPEN_ADMIN_PATHS = ["/admin/login", "/admin/inbjudan", "/admin/ny-organisation"];
+/**
+ * Paths any signed-in user may open, member or not: accepting an invitation,
+ * starting an organisation, finishing a self-registration (0033). The
+ * registration landing also handles a visitor who is not signed in yet.
+ */
+export const OPEN_ADMIN_PATHS = ["/admin/login", "/admin/inbjudan", "/admin/ny-organisation", "/admin/registrera"];
 
 export function isOpenAdminPath(pathname: string): boolean {
   return OPEN_ADMIN_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -78,4 +82,16 @@ export function canOpenAdminPath(role: Role | null | undefined, pathname: string
   // Readers see lists and documents, never the pages that create things.
   if (/\/(ny|aterkommande|bank)(\/|$)/.test(pathname)) return false;
   return READER_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+/**
+ * Where a login may send the user afterwards: an admin page, or the
+ * registration landing with its token (the only target that keeps a query).
+ * Anything else, another site included, gives null.
+ */
+export function safeAdminNext(next: string | null | undefined): string | null {
+  if (!next) return null;
+  if (/^\/admin(\/[\w\-/]*)?$/.test(next)) return next;
+  if (/^\/admin\/registrera\/klar\?r=[a-f0-9]{64}$/.test(next)) return next;
+  return null;
 }

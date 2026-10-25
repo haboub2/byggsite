@@ -103,16 +103,16 @@ export default async function InvoicingPage() {
         title="Fakturering byggd för byggföretag"
         lead="ROT, betalplaner och bankmatchning i samma verktyg, och allt lagligt rätt. Från godkänd offert till betald faktura utan att skriva något två gånger."
       >
-        <Link href="#intresse" className="btn btn-primary">
-          Anmäl intresse
+        <Link href="/registrera" className="btn btn-primary">
+          Registrera företaget
           <Icon name="arrow" strokeWidth={2} />
         </Link>
         <Link
-          href="#sa-fungerar-det"
+          href="#intresse"
           className="btn btn-ghost"
           style={{ color: "var(--on-dark)", borderColor: "var(--line-dark-strong)" }}
         >
-          Så fungerar det
+          Anmäl intresse
         </Link>
       </PageHero>
 
@@ -181,6 +181,9 @@ export default async function InvoicingPage() {
                 <strong>Vi använder det själva på Binaafy.</strong>
                 <p>Nu vill vi veta om fler vill ha det.</p>
                 <p>Pris sätts tillsammans med de första företagen.</p>
+                <p>
+                  Vill ni börja direkt? <Link href="/registrera">Registrera företaget</Link> och följ startguiden.
+                </p>
               </div>
             </Reveal>
           </div>
