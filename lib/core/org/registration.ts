@@ -40,6 +40,10 @@ export const registrationSchema = z.object({
     .toLowerCase()
     .max(320, "E-postadressen är för lång.")
     .email("Ange en giltig e-postadress."),
+  // The checkbox: authorised to sign for the company, accepts the terms and the data processing agreement.
+  accept: z
+    .string({ message: "Kryssa i att du är behörig och godkänner villkoren." })
+    .refine((v) => v === "on", { message: "Kryssa i att du är behörig och godkänner villkoren." }),
 });
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
@@ -50,7 +54,7 @@ export function registrationFromForm(form: FormData): Record<string, string | un
     const v = form.get(k);
     return typeof v === "string" ? v : undefined;
   };
-  return { orgName: get("orgName"), orgNr: get("orgNr"), contactName: get("contactName"), email: get("email") };
+  return { orgName: get("orgName"), orgNr: get("orgNr"), contactName: get("contactName"), email: get("email"), accept: get("accept") };
 }
 
 /** Why the landing could not finish, as /admin/registrera?fel=… shows it. */

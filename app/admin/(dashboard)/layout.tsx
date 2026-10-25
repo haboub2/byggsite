@@ -83,7 +83,7 @@ export default async function AdminDashboardLayout({
           orgId={check.orgId}
           done={onboarding.progress.done}
           total={onboarding.progress.total}
-          next={onboarding.progress.next && { title: onboarding.progress.next.title, href: onboarding.progress.next.href }}
+          next={onboarding.progress.next}
         />
       )}
       <main>{children}</main>

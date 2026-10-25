@@ -25,6 +25,9 @@ create table if not exists public.pending_registrations (
   email        text not null check (email = lower(email) and email ~ '^[^\s@]+@[^\s@]+\.[^\s@]+$'),
   token_hash   text not null unique,
   ip           text,
+  -- Kryssrutan: behörig att teckna företaget, godkänner villkoren och biträdesavtalet.
+  -- Servern sparar bara en registrering där den är ikryssad; tiden är när.
+  accepted_at  timestamptz not null default now(),
   created_at   timestamptz not null default now(),
   sent_at      timestamptz not null default now(),
   expires_at   timestamptz not null default now() + interval '7 days',
@@ -86,7 +89,7 @@ begin
   if found then
     update public.pending_registrations
        set org_name = v_name, org_nr = v_orgnr, contact_name = v_contact, token_hash = v_hash,
-           ip = left(p_ip, 64), sent_at = now(), expires_at = now() + interval '7 days'
+           ip = left(p_ip, 64), accepted_at = now(), sent_at = now(), expires_at = now() + interval '7 days'
      where id = v_id;
     return 'resent';
   end if;

@@ -11,13 +11,20 @@ faktura, projektekonomi, kundportal i mobil, PDF, ROT-begäran, dashboard).
 
 ## Läge: självregistrering (0033)
 
-Ett nytt byggföretag kommer igång utan inbjudan:
+Ett nytt byggföretag kommer igång utan inbjudan. De tre sidorna är byggda
+efter den godkända mockupen (designcanvas Main, LoggaIn och KomIgang) med
+webbplatsens klasser och färger.
 
 - **/registrera** (länkad från /fakturering, hjältens knapp och
-  intresserutan, och från inloggningen): företagsnamn, organisationsnummer
-  (krävs, samma regel som i inställningarna, tio siffror får bindestreck),
-  ditt namn, e-post och en honeypot. Rate limit per IP som
-  intresseformuläret (5 per 10 minuter). Server action
+  intresserutan, och från inloggningen): tvåspaltig, till vänster
+  "Registrera ditt byggföretag" med tre numrerade steg och en rad om pris
+  och export, till höger formuläret "Nytt företag": företagsnamn,
+  organisationsnummer (krävs, samma regel som i inställningarna, tio
+  siffror får bindestreck), ditt namn, e-post, en kryssruta (behörig att
+  teckna företaget, godkänner användarvillkoren och
+  personuppgiftsbiträdesavtalet; krävs, tiden sparas som `accepted_at`) och
+  en honeypot. Knappen "Skicka länken till min e-post". Rate limit per IP
+  som intresseformuläret (5 per 10 minuter). Server action
   `app/(site)/registrera/actions.ts` sparar en väntande registrering med
   `start_registration` (bara service role) och skickar en inloggningslänk
   med `signInWithOtp` (`shouldCreateUser: true`) till
@@ -25,9 +32,9 @@ Ett nytt byggföretag kommer igång utan inbjudan:
   Samma adress med en öppen registrering får samma rad med ny token (den
   gamla länken slutar gälla) och ett nytt mejl, aldrig en ny rad.
 - **`pending_registrations`** (0033): org_name, org_nr, contact_name, email,
-  `token_hash` (sha256, aldrig token i klartext), ip, created_at, sent_at,
-  expires_at (7 dagar), consumed_at, org_id. RLS utan policyer; bara
-  funktionerna rör tabellen.
+  `token_hash` (sha256, aldrig token i klartext), ip, accepted_at,
+  created_at, sent_at, expires_at (7 dagar), consumed_at, org_id. RLS utan
+  policyer; bara funktionerna rör tabellen.
 - **/admin/registrera/klar** (route handler, öppen väg i `OPEN_ADMIN_PATHS`):
   anropar `complete_registration(token)` som den inloggade. Funktionen
   kontrollerar token, giltighet och att den inloggade adressen är den
@@ -38,24 +45,34 @@ Ett nytt byggföretag kommer igång utan inbjudan:
   Problem (förbrukad, utgången, fel adress, saknas) visas på
   /admin/registrera?fel=…; utan session skickas man till inloggningen med
   vägen tillbaka bevarad.
-- **Startguiden /admin/kom-igang**: sex steg med status ur data
-  (`lib/core/org/onboarding.ts`): företagsuppgifter (namn, adress, org.nr,
-  momsreg.nr), betalning (bankgiro eller Swish), villkor (klart när
-  inställningssidan har sparats en gång, eller för webbplatsens
-  organisation innan dess), logotyp (webbplatsens organisation: alltid,
+- **Startguiden /admin/kom-igang** ("Kom igång med faktureringen"):
+  förloppsmätare "N av 5 klara" och fem kort i ordning, status ur data
+  (`lib/core/org/onboarding.ts`): Företaget på fakturan (namn, adress,
+  org.nr, momsreg.nr), Betalning (bankgiro eller Swish), Villkor och
+  påminnelser (knappen **Godkänn förvalet** sparar inställningarna som de
+  är; klart när inställningarna sparats en gång, eller för webbplatsens
+  organisation innan dess), Logotyp (webbplatsens organisation: alltid,
   via Offertuppgifter; andra: nytt fält `org_settings.branding.logo`, PNG
   eller JPEG som data-URI, högst 600 × 200 px, som `getQuoteProfile` nu
-  lämnar till fakturans och offertens PDF), första kunden och sist
-  "Skapa en provfaktura till dig själv" som länkar till Ny faktura med
-  äldsta kunden förifylld. Guiden visas som en banner i admin (för
-  personal och uppåt) tills alla steg är klara eller användaren klickar
-  Dölj. **Dölj sparas i localStorage per organisation och webbläsare**:
-  enklast, kräver ingen skrivbehörighet till inställningarna och inget
-  annat behöver veta. Guiden själv har en länk som visar bannern igen.
-- **Inloggningen** visar produktens namn (`PRODUCT_NAME`) och "Logga in"
-  för alla företag, plus "Logga in med e-postlänk" (`signInWithOtp` med
-  `shouldCreateUser: false`, samma svar oavsett om adressen har ett konto)
-  och "Registrera företag". Webbplatsens cookie-ruta visas inte under
+  lämnar till faktura, offert och projektrapport) och Första kunden. Klara
+  kort har grön bock, nästa kort orange ram. Därunder den mörka rutan
+  "Sist: en provfaktura till dig själv", låst tills alla fem steg är klara
+  och sedan en länk till Ny faktura med äldsta kunden förifylld, och tre
+  små kort (Bjud in kollegor, Bankfilen, Manualen; manualen har ingen
+  webbadress än, `PRODUCT_MANUAL_URL` i `lib/product.ts`). Guiden visas
+  som en banner under menyn (för personal och uppåt) tills de fem stegen
+  och provfakturan är klara eller användaren klickar **Dölj den nu**.
+  Dölj sparas i localStorage per organisation och webbläsare: enklast,
+  kräver ingen skrivbehörighet till inställningarna och inget annat
+  behöver veta. Guiden har en länk som visar bannern igen.
+- **Inloggningen** under produktens namn (`PRODUCT_NAME`) för alla
+  företag: e-post och "Skicka inloggningslänk" är huvudvägen
+  (`signInWithOtp` med `shouldCreateUser: false`, samma svar oavsett om
+  adressen har ett konto), lösenordet hopfällt under "Logga in med
+  lösenord" med samma e-postfält, en gul ruta "Länken skickad till … Den
+  gäller i en timme" (`LOGIN_LINK_VALIDITY`, ska stämma med Supabase
+  OTP-giltighet 3600 s; mockupen sa 15 minuter) och "Nytt företag?
+  Registrera på två minuter". Webbplatsens cookie-ruta visas inte under
   /admin och /mitt-projekt.
 - En inloggad användare utan medlemskap som öppnar /admin ser valet
   "Starta en organisation" (och en länk till Mitt projekt); proxyn skickar

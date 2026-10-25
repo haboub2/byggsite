@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { checkAdmin } from "@/lib/admin";
-import { STATUSES, updateLead, type LeadStatus } from "@/lib/leads";
+import { STATUSES, isDemo, updateLead, type LeadStatus } from "@/lib/leads";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { safeAdminNext } from "@/lib/core/org/roles";
@@ -32,7 +32,7 @@ export async function signIn(formData: FormData) {
   redirect(next && next !== "/admin" ? next : "/admin/idag");
 }
 
-export type LoginLinkState = { ok?: boolean; error?: string; message?: string };
+export type LoginLinkState = { ok?: boolean; error?: string; email?: string };
 
 /**
  * "Logga in med e-postlänk": a one-time link to an existing account, never a
@@ -40,9 +40,11 @@ export type LoginLinkState = { ok?: boolean; error?: string; message?: string };
  * address has an account or not, so the form does not tell who has one.
  */
 export async function requestLoginLink(_prev: LoginLinkState, formData: FormData): Promise<LoginLinkState> {
-  if (!isSupabaseConfigured()) return { error: "Supabase är inte konfigurerat ännu." };
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Ange en giltig e-postadress." };
+  // Demo mode sends nothing but shows the answer, so the page can be tried.
+  if (isDemo()) return { ok: true, email };
+  if (!isSupabaseConfigured()) return { error: "Supabase är inte konfigurerat ännu." };
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   if (!rateLimit(`login-link:${ip}`)) return { error: "För många länkar härifrån. Försök igen om en stund." };
@@ -62,7 +64,7 @@ export async function requestLoginLink(_prev: LoginLinkState, formData: FormData
     console.error("[login] otp failed:", error.message);
     return { error: "Kunde inte skicka länken just nu. Försök igen om en stund." };
   }
-  return { ok: true, message: `Om ${email} har ett konto kommer en inloggningslänk strax. Öppna den på den här enheten.` };
+  return { ok: true, email };
 }
 
 export async function signOut() {

@@ -269,13 +269,24 @@ som en session var.
   i SQL-editorn, sedan `supabase/tests/0033_registration.sql` (ska sluta med
   "Prov 0033: alla gick igenom"). Utan den svarar /registrera att
   registreringen inte kunde sparas.
-- [ ] **Supabase Auth för självregistrering** (du, 5 min). Authentication →
-  Providers → Email: "Allow new users to sign up" måste vara på
-  (`shouldCreateUser: true`). Mejlmallarna "Confirm signup" och "Magic Link"
-  går till nya företag: skriv dem neutralt (Binaafy Fakturering, inte
-  byggfirman). Redirect-adressen `/mitt-projekt/callback**` finns redan och
-  täcker `?next=/admin/registrera/klar?r=…`. `SUPABASE_SERVICE_ROLE_KEY`
-  måste finnas i Vercel (finns, punkt 1).
+- [ ] **Supabase Auth för självregistrering** (du, 10 min). Authentication →
+  Providers → Email: "Allow new users to sign up" måste vara **på**
+  (`shouldCreateUser: true`); docs/supabase-mail/README.md säger i dag av,
+  så det ändras. Mejlmallarna "Confirm signup" och "Magic Link" går nu
+  också till nya företag och till admin-inloggning via länk, men Magic
+  Link-mallen talar om "Mitt projekt": skriv dem så att de passar båda.
+  OTP-giltigheten ska vara kvar på 3600 s, för inloggningssidan säger
+  "gäller i en timme" (`LOGIN_LINK_VALIDITY` i `lib/product.ts`).
+  Redirect-adressen `/mitt-projekt/callback**` finns redan och täcker
+  `?next=/admin/registrera/klar?r=…`. `SUPABASE_SERVICE_ROLE_KEY` måste
+  finnas i Vercel (finns, punkt 1).
+- [ ] **Användarvillkor och personuppgiftsbiträdesavtal som sidor** (du).
+  Kryssrutan på /registrera säger att man godkänner dem, men sidorna finns
+  inte än. Länka dem från kryssrutan när de finns (se punkten om
+  biträdesavtal ovan).
+- [ ] **Manualen som webbsida** (vi). Startguidens kort "Manualen" visar
+  "Kommer snart" tills `PRODUCT_MANUAL_URL` i `lib/product.ts` pekar på
+  den publicerade manualen (docs/manual).
 - [ ] **Prova självregistreringen i produktion** (vi). Registrera ett
   provföretag på /registrera med en egen adress, öppna länken, gå igenom
   startguiden, ta bort provorganisationen efteråt. I demoläge är flödet

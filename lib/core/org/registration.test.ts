@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { REGISTRATION_TOKEN, normaliseOrgNr, registrationDonePath, registrationFromForm, registrationProblem, registrationSchema } from "./registration";
 import { safeAdminNext } from "./roles";
 
-const valid = { orgName: "Bergs Bygg AB", orgNr: "559123-4567", contactName: "Jonas Berg", email: "Jonas@BergsBygg.se" };
+const valid = { orgName: "Bergs Bygg AB", orgNr: "559123-4567", contactName: "Jonas Berg", email: "Jonas@BergsBygg.se", accept: "on" };
 
 test("a valid registration parses, with the address in lower case", () => {
   const r = registrationSchema.parse(valid);
@@ -28,6 +28,14 @@ test("name, contact and address are checked", () => {
   assert.equal(registrationSchema.safeParse({ ...valid, contactName: "  " }).success, false);
   assert.equal(registrationSchema.safeParse({ ...valid, email: "jonas@" }).success, false);
   assert.equal(registrationSchema.safeParse({ ...valid, email: undefined }).success, false);
+});
+
+test("the checkbox about authority and terms is required", () => {
+  for (const accept of [undefined, "", "off"]) {
+    const r = registrationSchema.safeParse({ ...valid, accept });
+    assert.equal(r.success, false, String(accept));
+    assert.equal(r.error?.issues[0]?.message, "Kryssa i att du är behörig och godkänner villkoren.");
+  }
 });
 
 test("the form's fields are read, unknown ones (the honeypot) ignored", () => {

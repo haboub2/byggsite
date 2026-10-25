@@ -4,9 +4,10 @@ import { isDemo } from "../../leads";
 import { listCustomers } from "../customers/store";
 import { listInvoices } from "../invoices/store";
 import { getOrgSettingsRecord } from "./settings-store";
-import { onboardingProgress, onboardingSteps, type OnboardingProgress, type OnboardingStep } from "./onboarding";
+import type { OrgSettings } from "./settings";
+import { onboardingProgress, onboardingSteps, trialInvoice, type OnboardingProgress, type OnboardingStep, type TrialInvoice } from "./onboarding";
 
-export type Onboarding = { steps: OnboardingStep[]; progress: OnboardingProgress };
+export type Onboarding = { steps: OnboardingStep[]; trial: TrialInvoice; progress: OnboardingProgress; settings: OrgSettings };
 
 /**
  * The start guide's data for an organisation: its settings, and how many
@@ -41,6 +42,8 @@ export async function loadOnboarding(orgId: string, siteOrg: boolean): Promise<O
     invoiceCount = invoices.count ?? 0;
   }
 
-  const steps = onboardingSteps({ settings: record.settings, termsReviewed, siteOrg, customerCount, firstCustomerId, invoiceCount });
-  return { steps, progress: onboardingProgress(steps) };
+  const input = { settings: record.settings, termsReviewed, siteOrg, customerCount, firstCustomerId, invoiceCount };
+  const steps = onboardingSteps(input);
+  const trial = trialInvoice(input, steps);
+  return { steps, trial, progress: onboardingProgress(steps, trial), settings: record.settings };
 }
