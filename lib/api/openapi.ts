@@ -5,13 +5,23 @@ import {
   customerCreateSchema,
   customerListQuerySchema,
   customerResourceSchema,
+  eventListQuerySchema,
+  eventPageSchema,
+  eventResourceSchema,
   invoiceCreateSchema,
   invoiceListQuerySchema,
   invoiceResourceSchema,
   issueResultSchema,
   paymentCreateSchema,
+  paymentListQuerySchema,
+  paymentPlanListQuerySchema,
+  paymentPlanResourceSchema,
+  paymentResourceSchema,
   paymentResultSchema,
+  rotClaimListQuerySchema,
+  rotClaimResourceSchema,
 } from "./schemas";
+import { DEFAULT_RATE_LIMITS } from "./rate-limit";
 
 /**
  * The OpenAPI document served at /api/v1/openapi.json. Request and response
@@ -21,11 +31,18 @@ import {
  */
 
 const json = (ref: string) => ({ "application/json": { schema: { $ref: `#/components/schemas/${ref}` } } });
-const ok = (description: string, ref: string) => ({ description, content: json(ref) });
+const header = (name: string) => ({ $ref: `#/components/headers/${name}` });
+/** Every response has X-Request-Id; once the key is known, also the rate limit headers. */
+const requestIdHeader = { "X-Request-Id": header("RequestId") };
+const rateHeaders = { ...requestIdHeader, "X-RateLimit-Limit": header("RateLimitLimit"), "X-RateLimit-Remaining": header("RateLimitRemaining"), "X-RateLimit-Reset": header("RateLimitReset") };
+const ok = (description: string, ref: string) => ({ description, headers: rateHeaders, content: json(ref) });
 const errors = {
   "401": { $ref: "#/components/responses/Unauthorized" },
   "403": { $ref: "#/components/responses/Forbidden" },
+  "429": { $ref: "#/components/responses/TooManyRequests" },
 };
+const notFound = { "404": { $ref: "#/components/responses/NotFound" } };
+const readErrors = { ...errors, "422": { $ref: "#/components/responses/ValidationError" } };
 const writeErrors = {
   ...errors,
   "409": { $ref: "#/components/responses/Conflict" },
@@ -50,15 +67,19 @@ export function openApiDocument(baseUrl: string) {
         "Allt en nyckel ser och skapar hör till dess organisation. Belopp är heltal i öre. Datum ÅÅÅÅ-MM-DD.",
         "Skrivande anrop kräver Idempotency-Key: samma nyckel och kropp ger samma svar (headern Idempotent-Replayed: true), samma nyckel med annan kropp ger 422.",
         `Webhooks: POST med JSON till registrerade adresser för ${WEBHOOK_EVENT_TYPES.join(", ")}. Headern X-Signature är "t=<unix>,v1=<hex HMAC-SHA256 av "<t>.<kropp>" med endpointens hemlighet>". Upp till 8 försök med exponentiell väntan.`,
+        `Anropsgränser per nyckel: ${DEFAULT_RATE_LIMITS.perMinute} anrop per minut och ${DEFAULT_RATE_LIMITS.perDay.toLocaleString("sv-SE")} per dygn (UTC) om inget annat är avtalat. Varje svar har X-RateLimit-Limit, X-RateLimit-Remaining och X-RateLimit-Reset (sekunder) för det fönster som ligger närmast sin gräns. Över gränsen: 429 med Retry-After (sekunder). Ett nekat anrop räknas inte.`,
+        "Varje svar har X-Request-Id. Ange det när du kontaktar oss om ett anrop; organisationens admin ser samma id under Admin → API → Anrop.",
+        "Personnummer (ROT) är alltid maskerade i API:t, ÅÅÅÅMMDD-XXXX, också i fakturans dokument.",
+        "invoice.corrected kommer två gånger: på originalet (data.correction, data.correctionNumber) och på ändringsfakturan (data.original, data.corrects).",
         `invoice.sent och invoice.reminded har data.to (mottagarna som text) och, när fakturan mejlades, data.recipients med listorna to och cc. Kundens listor sätts med invoiceEmails och ccEmails och fryses in i fakturan (document.se.recipients) när den utfärdas.`,
       ].join("\n\n"),
     },
     servers: [{ url: `${baseUrl}/api/${API_VERSION}` }],
     security: [{ apiKey: [] }],
-    tags: [{ name: "Kunder" }, { name: "Fakturor" }, { name: "Övrigt" }],
+    tags: [{ name: "Kunder" }, { name: "Fakturor" }, { name: "Betalningar" }, { name: "Betalplaner" }, { name: "ROT" }, { name: "Händelser" }, { name: "Övrigt" }],
     paths: {
       "/health": {
-        get: { tags: ["Övrigt"], summary: "Är API:et uppe?", security: [], responses: { "200": ok("OK", "Health") } },
+        get: { tags: ["Övrigt"], summary: "Är API:et uppe?", security: [], responses: { "200": { description: "OK", headers: requestIdHeader, content: json("Health") } } },
       },
       "/customers": {
         get: {
@@ -113,7 +134,7 @@ export function openApiDocument(baseUrl: string) {
         post: {
           tags: ["Fakturor"],
           summary: "Registrera en betalning",
-          description: "Bokförs 1930/1510. Negativt belopp är en återbetalning.",
+          description: "Bokförs 1930/1510. Negativt belopp är en återbetalning. Idempotent: skicka om med samma Idempotency-Key och kropp så registreras betalningen bara en gång.",
           parameters: [idParam("Fakturan"), idempotency],
           requestBody: { required: true, content: json("PaymentCreate") },
           responses: { "201": ok("Betalningen är registrerad", "PaymentResult"), "404": { $ref: "#/components/responses/NotFound" }, ...writeErrors },
@@ -124,13 +145,63 @@ export function openApiDocument(baseUrl: string) {
           tags: ["Fakturor"],
           summary: "Fakturan som PDF",
           parameters: [idParam("Fakturan")],
-          responses: { "200": { description: "PDF", content: { "application/pdf": { schema: { type: "string", format: "binary" } } } }, "404": { $ref: "#/components/responses/NotFound" }, ...errors },
+          responses: { "200": { description: "PDF", headers: rateHeaders, content: { "application/pdf": { schema: { type: "string", format: "binary" } } } }, "404": { $ref: "#/components/responses/NotFound" }, ...errors },
+        },
+      },
+      "/payments": {
+        get: {
+          tags: ["Betalningar"],
+          summary: "Lista betalningar",
+          description: "Senaste betalningsdag först, med vilka fakturor varje betalning gäller. Registrera en betalning med POST /invoices/{id}/payments. Kräver scope read.",
+          parameters: queryParams(paymentListQuerySchema),
+          responses: { "200": ok("Betalningarna", "PaymentList"), ...readErrors },
+        },
+      },
+      "/payment-plans": {
+        get: {
+          tags: ["Betalplaner"],
+          summary: "Lista betalplaner",
+          description: "Hur projektens offerter delas upp i fakturor, nyast först. Kräver scope read.",
+          parameters: queryParams(paymentPlanListQuerySchema),
+          responses: { "200": ok("Betalplanerna med sina steg", "PaymentPlanList"), ...readErrors },
+        },
+      },
+      "/payment-plans/{id}": {
+        get: { tags: ["Betalplaner"], summary: "Hämta en betalplan", parameters: [idParam("Betalplanen")], responses: { "200": ok("Betalplanen", "PaymentPlan"), ...notFound, ...errors } },
+      },
+      "/rot-claims": {
+        get: {
+          tags: ["ROT"],
+          summary: "Lista ROT-begäranden",
+          description: "Begäranden om utbetalning hos Skatteverket, nyast först. Personnummer är alltid maskerade. Kräver scope read.",
+          parameters: queryParams(rotClaimListQuerySchema),
+          responses: { "200": ok("Begärandena", "RotClaimList"), ...readErrors },
+        },
+      },
+      "/rot-claims/{id}": {
+        get: { tags: ["ROT"], summary: "Hämta en ROT-begäran", parameters: [idParam("Begäran")], responses: { "200": ok("Begäran", "RotClaim"), ...notFound, ...errors } },
+      },
+      "/events": {
+        get: {
+          tags: ["Händelser"],
+          summary: "Händelseloggen",
+          description:
+            "Allt som hänt i organisationen, en sida i taget (cursor-paginering på tid och id). Följ nextCursor tills den är null. Med order=asc kan en integration spara sista cursor och hämta det nya. Samma händelser som webhooks skickar, plus de interna. Kräver scope read.",
+          parameters: queryParams(eventListQuerySchema),
+          responses: { "200": ok("En sida händelser", "EventPage"), ...readErrors },
         },
       },
     },
     components: {
       securitySchemes: {
         apiKey: { type: "http", scheme: "bearer", description: "API-nyckel, bf_live_… eller bf_test_…" },
+      },
+      headers: {
+        RequestId: { description: "Anropets id, req_ + 24 hex. Finns i organisationens anropslogg.", schema: { type: "string" } },
+        RateLimitLimit: { description: "Gränsen för fönstret (minut eller dygn) som ligger närmast sin gräns.", schema: { type: "integer" } },
+        RateLimitRemaining: { description: "Anrop kvar i det fönstret.", schema: { type: "integer" } },
+        RateLimitReset: { description: "Sekunder tills fönstret börjar om.", schema: { type: "integer" } },
+        RetryAfter: { description: "Sekunder att vänta innan nästa anrop.", schema: { type: "integer" } },
       },
       parameters: {
         IdempotencyKey: {
@@ -147,6 +218,11 @@ export function openApiDocument(baseUrl: string) {
         NotFound: { description: "Finns inte i nyckelns organisation", content: json("Error") },
         Conflict: { description: "Går inte i resursens nuvarande status, eller ett anrop med samma Idempotency-Key pågår", content: json("Error") },
         ValidationError: { description: "Fel i anropet; details har fält → meddelande", content: json("Error") },
+        TooManyRequests: {
+          description: "Över nyckelns anropsgräns. Vänta Retry-After sekunder.",
+          headers: { ...rateHeaders, "Retry-After": header("RetryAfter") },
+          content: json("Error"),
+        },
       },
       schemas: {
         Health: {
@@ -182,6 +258,18 @@ export function openApiDocument(baseUrl: string) {
         IssueResult: zodToJsonSchema(issueResultSchema, "output"),
         PaymentCreate: zodToJsonSchema(paymentCreateSchema, "input"),
         PaymentResult: zodToJsonSchema(paymentResultSchema, "output"),
+        Payment: zodToJsonSchema(paymentResourceSchema, "output"),
+        PaymentList: { type: "object", properties: { data: { type: "array", items: { $ref: "#/components/schemas/Payment" } } }, required: ["data"] },
+        PaymentPlan: zodToJsonSchema(paymentPlanResourceSchema, "output"),
+        PaymentPlanList: { type: "object", properties: { data: { type: "array", items: { $ref: "#/components/schemas/PaymentPlan" } } }, required: ["data"] },
+        RotClaim: zodToJsonSchema(rotClaimResourceSchema, "output"),
+        RotClaimList: { type: "object", properties: { data: { type: "array", items: { $ref: "#/components/schemas/RotClaim" } } }, required: ["data"] },
+        Event: zodToJsonSchema(eventResourceSchema, "output"),
+        EventPage: {
+          type: "object",
+          properties: { data: { type: "array", items: { $ref: "#/components/schemas/Event" } }, nextCursor: (zodToJsonSchema(eventPageSchema, "output") as { properties: Record<string, unknown> }).properties.nextCursor },
+          required: ["data", "nextCursor"],
+        },
         WebhookEvent: {
           type: "object",
           description: "Kroppen i en webhook-leverans.",

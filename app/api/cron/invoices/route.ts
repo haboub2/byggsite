@@ -3,6 +3,8 @@ import { asSystem } from "@/lib/core/db";
 import { runDueRecurring } from "@/lib/core/invoices/recurring";
 import { listDueReminders, reminderSettings, sendReminder } from "@/lib/core/reminders/store";
 import { deliverDueWebhooks } from "@/lib/api/webhook-delivery";
+import { demoApiState } from "@/lib/api/demo";
+import { API_LOG_RETENTION_DAYS } from "@/lib/api/request-log";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isDemo } from "@/lib/leads";
 import { todayIso } from "@/lib/quotes/schema";
@@ -13,7 +15,8 @@ import { todayIso } from "@/lib/quotes/schema";
  * issued invoices when auto-issue is set), then finds the reminders that are
  * due and, when the organisation's settings say so, sends them; otherwise it
  * only reports, and the dashboard shows them under Att göra. Last, it
- * delivers the queued webhooks of all organisations.
+ * delivers the queued webhooks of all organisations and prunes the API
+ * request log (90 days).
  * Protected by CRON_SECRET, which Vercel sends as a bearer token.
  */
 export async function GET(request: NextRequest) {
@@ -60,7 +63,16 @@ export async function GET(request: NextRequest) {
   }
 
   const webhooks = await deliverDueWebhooks().catch((err) => ({ error: err instanceof Error ? err.message : String(err) }));
-  return Response.json({ ok: true, today, organizations: perOrg, webhooks });
+  const apiLog = await pruneApiLog().catch((err) => ({ error: err instanceof Error ? err.message : String(err) }));
+  return Response.json({ ok: true, today, organizations: perOrg, webhooks, apiLog });
+}
+
+/** api_requests older than the retention period, all organisations at once. */
+async function pruneApiLog(): Promise<{ removed: number }> {
+  if (isDemo()) return { removed: demoApiState().log.prune(API_LOG_RETENTION_DAYS) };
+  const { data, error } = await createAdminClient().rpc("api_prune_usage", { p_days: API_LOG_RETENTION_DAYS });
+  if (error) throw new Error(`Kunde inte rensa anropsloggen: ${error.message}`);
+  return { removed: Number(data ?? 0) };
 }
 
 async function listOrganizations(): Promise<{ id: string; name: string }[]> {

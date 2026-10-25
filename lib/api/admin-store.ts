@@ -1,31 +1,62 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { createClient } from "../supabase/server";
-import { currentOrgId } from "../core/org/current";
+import { currentOrgId, DEMO_ORG_ID } from "../core/org/current";
 import { WEBHOOK_EVENT_TYPES, type Actor } from "../core/events";
+import { isDemo } from "../leads";
 import { API_SCOPES, generateApiKey, type ApiScope } from "./keys";
 import { webhookUrlProblem } from "./webhooks";
+import { demoApiState, registerDemoApiKey } from "./demo";
+import { summarizeRequests, type ApiRequestLog, type KeyUsage } from "./request-log";
 
 /**
  * API keys and webhook endpoints as the admin page manages them, with the
  * session so RLS (api_keys_admin, webhook_endpoints_admin: owner/admin)
  * decides. The key itself is returned once from createApiKey and never
  * stored; the webhook secret is stored, since every delivery is signed with it.
+ * The request log (api_requests) is read the same way. Demo mode keeps keys
+ * and the log in memory (lib/api/demo.ts) and has no webhooks.
  */
 
-export type ApiKeyRow = { id: string; name: string; prefix: string; scopes: string[]; createdBy: string | null; createdAt: string; lastUsedAt: string | null; revokedAt: string | null };
+export type ApiKeyRow = {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  createdBy: string | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  ratePerMinute: number;
+  ratePerDay: number;
+};
 export type WebhookRow = { id: string; url: string; events: string[]; active: boolean; createdAt: string; secretHint: string };
 export type DeliveryRow = { id: string; url: string; type: string; attempt: number; status: number | null; deliveredAt: string | null; failedAt: string | null; nextAttemptAt: string; createdAt: string };
 
 export async function listApiKeys(): Promise<ApiKeyRow[]> {
+  if (isDemo())
+    return [...demoApiState().keys.values()]
+      .map((k) => ({ id: k.id, name: k.name, prefix: k.prefix, scopes: k.scopes, createdBy: null, createdAt: k.createdAt, lastUsedAt: k.lastUsedAt, revokedAt: k.revokedAt, ratePerMinute: k.limits.perMinute, ratePerDay: k.limits.perDay }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("api_keys")
-    .select("id, name, prefix, scopes, created_by, created_at, last_used_at, revoked_at")
+    .select("id, name, prefix, scopes, created_by, created_at, last_used_at, revoked_at, rate_per_minute, rate_per_day")
     .eq("org_id", await currentOrgId())
     .order("created_at", { ascending: false });
   if (error) throw new Error(`Kunde inte hämta nycklarna: ${error.message}`);
-  return (data ?? []).map((r) => ({ id: r.id, name: r.name, prefix: r.prefix, scopes: r.scopes, createdBy: r.created_by, createdAt: r.created_at, lastUsedAt: r.last_used_at, revokedAt: r.revoked_at }));
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    prefix: r.prefix,
+    scopes: r.scopes,
+    createdBy: r.created_by,
+    createdAt: r.created_at,
+    lastUsedAt: r.last_used_at,
+    revokedAt: r.revoked_at,
+    ratePerMinute: r.rate_per_minute,
+    ratePerDay: r.rate_per_day,
+  }));
 }
 
 export async function createApiKey(name: string, scopes: ApiScope[], actor: Actor): Promise<{ id: string; token: string }> {
@@ -35,6 +66,7 @@ export async function createApiKey(name: string, scopes: ApiScope[], actor: Acto
   if (!valid.length) throw new Error("Välj minst en behörighet.");
   const org = await currentOrgId();
   const key = generateApiKey(process.env.NODE_ENV === "production" ? "live" : "test");
+  if (isDemo()) return { id: registerDemoApiKey(key.token, { orgId: DEMO_ORG_ID, name: clean, scopes: valid }).id, token: key.token };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("api_keys")
@@ -47,6 +79,12 @@ export async function createApiKey(name: string, scopes: ApiScope[], actor: Acto
 }
 
 export async function revokeApiKey(id: string, actor: Actor): Promise<void> {
+  if (isDemo()) {
+    const key = [...demoApiState().keys.values()].find((k) => k.id === id && !k.revokedAt);
+    if (!key) throw new Error("Nyckeln finns inte eller är redan återkallad.");
+    key.revokedAt = new Date().toISOString();
+    return;
+  }
   const org = await currentOrgId();
   const supabase = await createClient();
   const { data, error } = await supabase.from("api_keys").update({ revoked_at: new Date().toISOString() }).eq("id", id).eq("org_id", org).is("revoked_at", null).select("id, name");
@@ -56,6 +94,7 @@ export async function revokeApiKey(id: string, actor: Actor): Promise<void> {
 }
 
 export async function listWebhooks(): Promise<WebhookRow[]> {
+  if (isDemo()) return [];
   const supabase = await createClient();
   const { data, error } = await supabase.from("webhook_endpoints").select("id, url, events, active, created_at, secret").eq("org_id", await currentOrgId()).order("created_at", { ascending: false });
   if (error) throw new Error(`Kunde inte hämta webhooks: ${error.message}`);
@@ -84,6 +123,7 @@ export async function removeWebhook(id: string, actor: Actor): Promise<void> {
 }
 
 export async function listDeliveries(limit = 20): Promise<DeliveryRow[]> {
+  if (isDemo()) return [];
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("webhook_deliveries")
@@ -114,4 +154,42 @@ export async function listDeliveries(limit = 20): Promise<DeliveryRow[]> {
     nextAttemptAt: r.next_attempt_at,
     createdAt: r.created_at,
   }));
+}
+
+/* ---------- request log ---------- */
+
+/** The latest calls, newest first, optionally for one key. */
+export async function listApiRequests(filter: { keyId?: string; limit?: number } = {}): Promise<ApiRequestLog[]> {
+  const limit = Math.min(filter.limit ?? 200, 500);
+  if (isDemo()) return demoApiState().log.list({ keyId: filter.keyId, limit });
+  const supabase = await createClient();
+  let q = supabase
+    .from("api_requests")
+    .select("org_id, key_id, request_id, method, path, status, duration_ms, idempotency_key, created_at")
+    .eq("org_id", await currentOrgId());
+  if (filter.keyId) q = q.eq("key_id", filter.keyId);
+  const { data, error } = await q.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(limit);
+  if (error) throw new Error(`Kunde inte hämta anropen: ${error.message}`);
+  return (data ?? []).map((r) => ({
+    orgId: r.org_id,
+    keyId: r.key_id,
+    requestId: r.request_id,
+    method: r.method,
+    path: r.path,
+    status: r.status,
+    durationMs: r.duration_ms,
+    idempotencyKey: r.idempotency_key,
+    createdAt: r.created_at,
+  }));
+}
+
+/** Calls and errors per key over the last 24 hours (api_request_stats, RLS: owner/admin). */
+export async function apiUsageLastDay(now = Date.now()): Promise<KeyUsage[]> {
+  const since = new Date(now - 86_400_000).toISOString();
+  if (isDemo()) return summarizeRequests(demoApiState().log.rows, since);
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("api_request_stats", { p_org: await currentOrgId(), p_since: since });
+  if (error) throw new Error(`Kunde inte räkna anropen: ${error.message}`);
+  type Row = { key_id: string | null; calls: number | string; errors: number | string; last_at: string | null };
+  return ((data ?? []) as Row[]).map((r) => ({ keyId: r.key_id, calls: Number(r.calls), errors: Number(r.errors), lastAt: r.last_at }));
 }

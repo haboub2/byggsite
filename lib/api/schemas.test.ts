@@ -5,6 +5,9 @@ import { customerCreateSchema, invoiceCreateSchema, paymentCreateSchema, invoice
 import { zodToJsonSchema } from "./zod-json-schema";
 import { openApiDocument } from "./openapi";
 import { issuesToDetailsPure } from "./validation";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { WEBHOOK_EVENT_TYPES } from "../core/events";
 
 const line = { id: "1", description: "Rivning", quantity: 8, unit: "tim", unitPriceOre: 52000, vatRate: 25, kind: "labor" };
 
@@ -100,7 +103,22 @@ test("zod to JSON schema: strings, numbers, enums, optional vs default, nullable
 
 test("the OpenAPI document has every route and resolvable schema refs", () => {
   const doc = openApiDocument("https://exempel.se");
-  for (const p of ["/customers", "/customers/{id}", "/invoices", "/invoices/{id}", "/invoices/{id}/issue", "/invoices/{id}/payments", "/invoices/{id}/pdf"]) assert.ok(doc.paths[p as keyof typeof doc.paths], p);
+  for (const p of [
+    "/customers",
+    "/customers/{id}",
+    "/invoices",
+    "/invoices/{id}",
+    "/invoices/{id}/issue",
+    "/invoices/{id}/payments",
+    "/invoices/{id}/pdf",
+    "/payments",
+    "/payment-plans",
+    "/payment-plans/{id}",
+    "/rot-claims",
+    "/rot-claims/{id}",
+    "/events",
+  ])
+    assert.ok(doc.paths[p as keyof typeof doc.paths], p);
   const text = JSON.stringify(doc);
   for (const m of text.matchAll(/"#\/components\/(schemas|responses|parameters)\/(\w+)"/g)) {
     const group = doc.components[m[1] as "schemas"] as Record<string, unknown>;
@@ -109,4 +127,36 @@ test("the OpenAPI document has every route and resolvable schema refs", () => {
   const create = doc.components.schemas.InvoiceCreate as { properties: Record<string, unknown>; required: string[] };
   assert.ok(create.properties.lines);
   assert.deepEqual(create.required, ["lines"]);
+});
+
+test("every path in the OpenAPI document has a route, and every authenticated one documents 429 and the headers", () => {
+  const doc = openApiDocument("https://exempel.se") as unknown as {
+    paths: Record<string, Record<string, { security?: unknown[]; responses: Record<string, { $ref?: string; headers?: Record<string, unknown> }> }>>;
+    components: { responses: Record<string, { headers?: Record<string, unknown> }> };
+  };
+  for (const [path, ops] of Object.entries(doc.paths)) {
+    const file = join(process.cwd(), "app/api/v1", ...path.split("/").filter(Boolean).map((seg) => seg.replace("{id}", "[id]")), "route.ts");
+    assert.ok(existsSync(file), `${path} → ${file}`);
+    for (const [method, op] of Object.entries(ops)) {
+      assert.ok(op.responses["200"]?.headers?.["X-Request-Id"] ?? op.responses["201"]?.headers?.["X-Request-Id"], `${method} ${path}: X-Request-Id`);
+      if (op.security?.length === 0) continue;
+      assert.equal(op.responses["429"]?.$ref, "#/components/responses/TooManyRequests", `${method} ${path}: 429`);
+    }
+  }
+  const tooMany = doc.components.responses.TooManyRequests.headers!;
+  for (const h of ["Retry-After", "X-RateLimit-Remaining", "X-Request-Id"]) assert.ok(tooMany[h], h);
+});
+
+test("webhooks: invoice.corrected can be subscribed to, and the contract lists it", () => {
+  assert.ok((WEBHOOK_EVENT_TYPES as readonly string[]).includes("invoice.corrected"));
+  const doc = openApiDocument("https://exempel.se");
+  assert.ok((doc.components.schemas.WebhookEvent as { properties: { type: { enum: string[] } } }).properties.type.enum.includes("invoice.corrected"));
+});
+
+test("the ROT claim schema only accepts masked personal numbers", () => {
+  const doc = openApiDocument("https://exempel.se") as unknown as { components: { schemas: { RotClaim: { properties: { items: { items: { properties: { personalNumber: { pattern: string } } } } } } } } };
+  const pattern = new RegExp(doc.components.schemas.RotClaim.properties.items.items.properties.personalNumber.pattern);
+  assert.ok(pattern.test("19850412-XXXX"));
+  assert.ok(!pattern.test("19850412-1234"));
+  assert.ok(!pattern.test("850412-1234"));
 });
