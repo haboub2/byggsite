@@ -59,6 +59,16 @@ export type RuleSet = {
     /** Against a consumer only if agreed in the contract; 0 by default. */
     consumerOre: Ore;
   };
+  collection: {
+    /** Inkassoavgift for a demand that meets 5 § inkassolagen (1974:182): lag (1981:739) 3 § 1 and 4 §, any debtor. */
+    demandFeeOre: Ore;
+    /** Förseningsersättning between businesses (lag 1981:739, 4 a §). Not charged by this product; the agency may. */
+    delayCompensationOre: Ore;
+    /** Shortest time to pay a demand sent by post, calendar days from sending (FFFS 2025:2, 4 kap. 7 §). */
+    minPayDays: number;
+    /** Bank days the debtor should always have from the presumed day of receipt (same). */
+    minBankDays: number;
+  };
   invoice: {
     /** Simplified invoices allowed below this gross amount incl. VAT (we never use them). */
     simplifiedInvoiceMaxOre: Ore;
@@ -84,6 +94,7 @@ const COMMON = {
   },
   lateInterest: { surchargePercent: 8 },
   reminderFee: { businessOre: 6_000, consumerOre: 0 },
+  collection: { demandFeeOre: 18_000, delayCompensationOre: 45_000, minPayDays: 8, minBankDays: 4 },
   invoice: { simplifiedInvoiceMaxOre: 400_000, retentionYears: 7 },
   rotClaim: { schemaVersion: 6, maxBuyersPerFile: 100, deadlineMonthDay: "01-31" },
 };

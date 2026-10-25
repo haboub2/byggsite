@@ -42,7 +42,42 @@ export type ReminderInput = {
   customerType: CustomerType;
   status: string;
   kind: "invoice" | "credit" | "correction";
+  /** Handed to a collection agency (invoices.collection_case_id, 0031): no more reminders. */
+  atCollection?: boolean;
+  /** An inkassokrav has been sent (0031): the next step is collection, not another reminder. */
+  demanded?: boolean;
 };
+
+/** The reminder input from an invoice record (lib/core/invoices/store.ts). */
+export function reminderInput(inv: {
+  payableOre: Ore;
+  paidOre: Ore;
+  dueOn: string | null;
+  reminders: number;
+  remindedAt: string | null;
+  status: string;
+  kind: ReminderInput["kind"];
+  document: { issueDate: string; buyer: { type: CustomerType } };
+  collectionCaseId?: string | null;
+  collectionDemandedOn?: string | null;
+}): ReminderInput {
+  return {
+    payableOre: inv.payableOre,
+    paidOre: inv.paidOre,
+    dueOn: inv.dueOn,
+    issueDate: inv.document.issueDate,
+    reminders: inv.reminders,
+    remindedAt: inv.remindedAt,
+    customerType: inv.document.buyer.type,
+    status: inv.status,
+    kind: inv.kind,
+    atCollection: Boolean(inv.collectionCaseId),
+    demanded: Boolean(inv.collectionDemandedOn),
+  };
+}
+
+/** The time the last reminder before collection gives the customer (reminderText says "inom tio dagar"). */
+export const LAST_REMINDER_PAY_DAYS = 10;
 
 export type ReminderPlan = {
   level: number;
@@ -69,6 +104,7 @@ export function daysOverdue(inv: Pick<ReminderInput, "dueOn">, today: string): n
  */
 export function reminderDue(inv: ReminderInput, today: string, settings: ReminderSettings = DEFAULT_REMINDER_SETTINGS): ReminderPlan | null {
   if (inv.kind !== "invoice") return null;
+  if (inv.atCollection || inv.demanded) return null;
   if (!["issued", "sent", "partially_paid"].includes(inv.status)) return null;
   const remaining = inv.payableOre - inv.paidOre;
   if (remaining <= 0) return null;

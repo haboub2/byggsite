@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { createHash } from "node:crypto";
 import InvoiceEditor from "@/components/admin/invoices/InvoiceEditor";
 import { CorrectAmountsForm, CreditInvoiceButton, DeleteDraft, IssueInvoiceForm, MarkSentForm, RegisterPaymentForm, SendInvoiceForm, SendReminderForm, VoidInvoiceForm } from "@/components/admin/invoices/InvoiceTools";
-import { reminderDue, reminderText } from "@/lib/core/reminders/reminders";
+import { reminderDue, reminderInput, reminderText } from "@/lib/core/reminders/reminders";
 import { reminderSettings } from "@/lib/core/reminders/store";
 import { publicInvoiceUrl } from "@/lib/core/invoices/public";
 import { formatDateTime } from "@/lib/admin-format";
@@ -20,6 +20,9 @@ import { todayIso } from "@/lib/quotes/schema";
 import { requireRole } from "@/lib/admin";
 import { maskPersonalNumber } from "@/lib/core/rot/pnr";
 import { RevealPersonalNumber } from "@/components/admin/invoices/RevealPersonalNumber";
+import { CaseControls, DemandForm, OpenCaseForm, type AmountRow } from "@/components/admin/invoices/CollectionTools";
+import { COLLECTION_STATUS_LABEL, collectionBlocker, collectionEventText, defaultPayBy, demandBlocker, isOpenCase, minimumPayBy } from "@/lib/core/collections/collections";
+import { claimFor, listCases, planDemand } from "@/lib/core/collections/store";
 
 const kr = (ore: number) => formatOre(ore, { decimals: 0, currency: true });
 const sek = (ore: number) => formatOre(ore);
@@ -122,9 +125,34 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const sum = customerSummary(d, totals);
   const overdue = isOverdue(inv, today);
   const remaining = inv.payableOre - inv.paidOre;
+  const reminderConf = await reminderSettings();
   const plan = overdue
-    ? reminderDue({ payableOre: inv.payableOre, paidOre: inv.paidOre, dueOn: inv.dueOn, issueDate: d.issueDate, reminders: inv.reminders, remindedAt: inv.remindedAt, customerType: d.buyer.type, status: inv.status, kind: inv.kind }, today, { ...(await reminderSettings()), graceDays: 0, daysBetween: 1 })
+    ? reminderDue(reminderInput(inv), today, { ...reminderConf, graceDays: 0, daysBetween: 1 })
     : null;
+  // Inkasso (0031): the inkassokrav and the case, for an unpaid invoice past its due date.
+  const cases = inv.kind === "invoice" ? await listCases({ invoiceId: inv.id }) : [];
+  const openCase = cases.find((c) => isOpenCase(c.status)) ?? null;
+  const demandBlocked = overdue ? demandBlocker(inv, today, reminderConf) : null;
+  const caseBlocked = overdue ? collectionBlocker(inv, today, reminderConf) : null;
+  const demand = overdue && !demandBlocked ? await planDemand(inv, defaultPayBy(today), today) : null;
+  const claim = overdue && !inv.collectionCaseId ? (await claimFor(inv, today)).claim : null;
+  const demandRows: AmountRow[] = demand
+    ? [
+        { label: "Kapital", value: kr(demand.remainingOre) },
+        ...(demand.earlierFeesOre ? [{ label: "Påminnelseavgifter", value: kr(demand.earlierFeesOre) }] : []),
+        ...(demand.earlierInterestOre ? [{ label: "Ränta på påminnelserna", value: kr(demand.earlierInterestOre) }] : []),
+        ...(demand.interestOre ? [{ label: "Dröjsmålsränta", detail: `${String(demand.interestPercent).replace(".", ",")} % från ${demand.interestFrom}`, value: kr(demand.interestOre) }] : []),
+        { label: "Inkassoavgift", detail: "Lag (1981:739), även för privatpersoner", value: kr(demand.feeOre) },
+      ]
+    : [];
+  const claimRows: AmountRow[] = claim
+    ? [
+        { label: "Kapital", value: kr(claim.capitalOre) },
+        { label: "Dröjsmålsränta", detail: `Från ${claim.interest.from}, i dag ${String(claim.interest.percentToday).replace(".", ",")} %`, value: kr(claim.interest.totalOre) },
+        ...(claim.reminderFeesOre ? [{ label: "Påminnelseavgifter", value: kr(claim.reminderFeesOre) }] : []),
+        ...(claim.demandFeeOre ? [{ label: "Inkassoavgift", value: kr(claim.demandFeeOre) }] : []),
+      ]
+    : [];
   const publicUrl = publicInvoiceUrl(inv.publicToken);
   const sections = [...new Set(d.lines.map((l) => l.section.trim()))];
   const grouped = sections.some(Boolean);
@@ -139,8 +167,8 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           <div>
             <span className="eyebrow">
               {label} ·{" "}
-              <span className="inv-status" data-status={overdue ? "overdue" : inv.status}>
-                {overdue ? "Förfallen" : INVOICE_STATUS_LABEL[inv.status]}
+              <span className="inv-status" data-status={inv.collectionCaseId ? "collection" : overdue ? "overdue" : inv.status}>
+                {inv.collectionCaseId ? "Hos inkasso" : overdue ? "Förfallen" : INVOICE_STATUS_LABEL[inv.status]}
               </span>
               {inv.sentAt ? ` · skickad ${formatDateTime(inv.sentAt)}` : ""}
             </span>
@@ -185,6 +213,26 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                   {inv.voidedBy ? ` av ${inv.voidedBy}` : ""}
                 </strong>
                 Orsak: {inv.voidReason}. Fakturan skickades aldrig och gäller inte. Numret {inv.number} finns kvar i serien, och bokföringen är vänd med en rättelsepost.
+              </p>
+            )}
+            {openCase && (
+              <p className="inv-banner" data-kind="collection">
+                <strong>
+                  Hos inkasso, ärende {openCase.reference} · {COLLECTION_STATUS_LABEL[openCase.status]}
+                  {openCase.agency ? ` · ${openCase.agency}` : ""}
+                  {openCase.externalRef ? ` (${openCase.externalRef})` : ""}
+                </strong>
+                Lämnad {openCase.createdAt.slice(0, 10)}
+                {openCase.sentAt ? `, skickad till bolaget ${openCase.sentAt.slice(0, 10)}` : ""}. Fakturan får inga fler påminnelser. Betalningar registreras som vanligt; när fakturan är betald stängs ärendet av sig självt.
+              </p>
+            )}
+            {!openCase && inv.collectionDemandedOn && isOpen(inv) && (
+              <p className="inv-banner" data-kind="collection">
+                <strong>Inkassokrav skickat {inv.collectionDemandedOn}</strong>
+                Kunden har till och med {inv.collectionDemandPayBy} att betala eller invända. Efter det kan fakturan lämnas till inkasso.{" "}
+                <a href={`/admin/fakturor/${inv.id}/inkassokrav`} target="_blank" rel="noopener">
+                  Visa inkassokravet
+                </a>
               </p>
             )}
             {correction && (
@@ -405,7 +453,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                   {events.map((e, i) => (
                     <li key={`${e.at}-${i}`}>
                       <span>
-                        {e.type === "invoice.corrected" && e.data.corrects ? `Utfärdad som ändringsfaktura ${e.data.number}` : (EVENT_LABEL[e.type]?.text ?? e.type)}
+                        {e.type === "invoice.collection" ? collectionEventText(e.data) : e.type === "invoice.corrected" && e.data.corrects ? `Utfärdad som ändringsfaktura ${e.data.number}` : (EVENT_LABEL[e.type]?.text ?? e.type)}
                         {e.type === "invoice.issued" && e.data.number ? ` som ${e.data.number}` : ""}
                         {(e.type === "invoice.sent" || e.type === "invoice.reminded") && eventRecipientsText(e.data) && eventRecipientsText(e.data) !== "manuellt" ? ` till ${eventRecipientsText(e.data)}` : ""}
                         {e.type === "invoice.voided" && e.data.reason ? `: ${e.data.reason}` : ""}
@@ -432,6 +480,52 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
               <div>
                 <h2 className="lead-h2">Påminnelse {plan.level}</h2>
                 <SendReminderForm id={inv.id} recipients={documentRecipients(d)} ready={mailReady} summary={`${reminderText(plan, inv.number ?? "", inv.dueOn ?? "")}${inv.reminders ? ` Tidigare påminnelser: ${inv.reminders}.` : ""}`} />
+              </div>
+            )}
+            {openCase && (
+              <div>
+                <h2 className="lead-h2">Inkassoärende {openCase.reference}</h2>
+                <CaseControls caseId={openCase.id} reference={openCase.reference} status={openCase.status} agency={openCase.agency} externalRef={openCase.externalRef} />
+              </div>
+            )}
+            {overdue && !openCase && (
+              <div style={{ display: "grid", gap: 8 }}>
+                <h2 className="lead-h2" style={{ marginBottom: 4 }}>
+                  Inkasso
+                </h2>
+                {demand ? (
+                  <>
+                    <DemandForm id={inv.id} number={inv.number ?? ""} rows={demandRows} total={kr(demand.totalOre)} defaultPayBy={demand.payBy} minPayBy={minimumPayBy(today)} recipients={documentRecipients(d)} ready={mailReady} />
+                    <span className="efield-hint">Eget inkassokrav med lagstadgad inkassoavgift {kr(demand.feeOre)} och minst åtta dagars frist. Skickas en gång.</span>
+                  </>
+                ) : inv.collectionDemandedOn ? (
+                  <a href={`/admin/fakturor/${inv.id}/inkassokrav`} target="_blank" rel="noopener" className="link-quiet">
+                    Inkassokravet {inv.collectionDemandedOn} (PDF)
+                  </a>
+                ) : demandBlocked ? (
+                  <span className="efield-hint">Inkassokrav: {demandBlocked}</span>
+                ) : null}
+                <OpenCaseForm id={inv.id} number={inv.number ?? ""} rows={claimRows} total={claim ? kr(claim.totalOre) : ""} asOf={today} blocked={caseBlocked} />
+              </div>
+            )}
+            {cases.some((c) => !isOpenCase(c.status)) && (
+              <div>
+                <h2 className="lead-h2">Tidigare inkassoärenden</h2>
+                <ul className="inv-list">
+                  {cases
+                    .filter((c) => !isOpenCase(c.status))
+                    .map((c) => (
+                      <li key={c.id}>
+                        <span>
+                          {c.reference} · {COLLECTION_STATUS_LABEL[c.status]}
+                          {c.closedAt ? ` ${c.closedAt.slice(0, 10)}` : ""}
+                        </span>
+                        <a href={`/admin/fakturor/inkasso/${c.id}/underlag`} className="link-quiet">
+                          Underlag
+                        </a>
+                      </li>
+                    ))}
+                </ul>
               </div>
             )}
             {isOpen(inv) && (

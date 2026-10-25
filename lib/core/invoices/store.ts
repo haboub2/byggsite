@@ -13,6 +13,7 @@ import { currentOrgId, readOrgId } from "../org/current";
 import { currentChart } from "../org/settings-store";
 import { getCustomer } from "../customers/store";
 import { recipientsText, resolveRecipients, type Recipients } from "./recipients";
+import { demoCollectionCases } from "../collections/demo";
 
 /**
  * The invoices table (supabase/migrations/0014_core.sql) and the functions
@@ -61,6 +62,11 @@ export type InvoiceRecord = {
   correctedBy: string | null;
   /** On a change invoice: the original it corrects. */
   correctsInvoiceId: string | null;
+  /** The open collection case (0031): the invoice is "Hos inkasso" and gets no more reminders. */
+  collectionCaseId: string | null;
+  /** When an inkassokrav was sent, and the last day it gives the customer. */
+  collectionDemandedOn: string | null;
+  collectionDemandPayBy: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -108,6 +114,9 @@ type Row = {
   void_reason?: string | null;
   corrected_by?: string | null;
   corrects_invoice_id?: string | null;
+  collection_case_id?: string | null;
+  collection_demanded_on?: string | null;
+  collection_demand_pay_by?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -144,6 +153,9 @@ const fromRow = (r: Row): InvoiceRecord => ({
   voidReason: r.void_reason ?? null,
   correctedBy: r.corrected_by ?? null,
   correctsInvoiceId: r.corrects_invoice_id ?? null,
+  collectionCaseId: r.collection_case_id ?? null,
+  collectionDemandedOn: r.collection_demanded_on ?? null,
+  collectionDemandPayBy: r.collection_demand_pay_by ?? null,
   createdBy: r.created_by,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
@@ -227,6 +239,18 @@ function demoJournal(posting: Posting): string {
   const number = `${year}-${n}`;
   demo().journal.push({ id: crypto.randomUUID(), number, ...posting });
   return number;
+}
+
+/** The trigger invoices_collection (0031) in memory: a paid or credited invoice leaves collection and its case closes. */
+function demoSettleCollection(r: Row, status: "paid" | "closed") {
+  const caseId = r.collection_case_id;
+  if (!caseId) return;
+  const c = demoCollectionCases().find((x) => x.id === caseId && (x.status === "prepared" || x.status === "sent"));
+  r.collection_case_id = null;
+  if (!c) return;
+  const reason = status === "paid" ? "betald" : "krediterad";
+  Object.assign(c, { status, closed_at: new Date().toISOString(), updated_at: new Date().toISOString(), note: [c.note, status === "paid" ? "Fakturan betald." : "Fakturan krediterad."].filter(Boolean).join("\n") });
+  demoEvent("invoice", r.id, "invoice.collection", { action: status, number: r.number, case: c.id, reference: c.reference, agency: c.agency, reason }, { kind: "system", name: "system" });
 }
 
 /* ---------- reads ---------- */
@@ -498,6 +522,7 @@ async function markCredited(invoiceId: string, creditId: string, actor: Actor): 
     if (!orig || !credit) return;
     if (-credit.payable_ore >= orig.payable_ore - orig.paid_ore) orig.status = "credited";
     demoEvent("invoice", invoiceId, "invoice.credited", { number: orig.number, creditNumber: credit.number, amount: -credit.payable_ore }, actor);
+    if (orig.status === "credited") demoSettleCollection(orig, "closed");
     return;
   }
   const supabase = await getDb();
@@ -573,6 +598,7 @@ export async function registerPayment(
     demoEvent("payment", paymentId, "payment.received", { invoice: id, number: r.number, amount: input.amountOre, method: input.method, paidOn: input.paidOn }, actor);
     if (changed && (status === "paid" || status === "partially_paid"))
       demoEvent("invoice", id, `invoice.${status}`, { number: r.number, paid, payable: r.payable_ore, amount: input.amountOre, method: input.method }, actor);
+    if (changed && status === "paid") demoSettleCollection(r, "paid");
     return { status, paidOre: paid };
   }
 

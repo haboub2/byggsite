@@ -105,9 +105,23 @@ finns redan (`Fakturor › Bank`).
   kryssar "Skicka påminnelser automatiskt varje morgon" om den dagliga
   körningen (cron 06:00 UTC) ska sköta det. Rekommendation: för hand de
   första månaderna.
-- [ ] **Inkasso** (Opus, senare, en dag). Export av en förfallen faktura
-  med påminnelsehistorik till inkassobolag (fil eller API hos t.ex.
-  Intrum, Svea). Inte byggt; krävs först när en kund inte betalar.
+- [x] **Inkasso** (gjort 2026-10-25, branch `claude/inkasso-ded3aa`,
+  migration 0031). På en förfallen faktura finns under *Inkasso* ett eget
+  **inkassokrav** (180 kr enligt lag, minst åtta dagars frist, PDF och
+  mejl, bokfört som påminnelseavgift) och **Lämna till inkasso…**, som
+  skapar ett ärende och ett underlag att ladda ner: fakturan, påminnelserna
+  och kravet som PDF, en sammanställning med ränta till dagens datum och en
+  CSV-rad som går att ladda upp hos inkassobolaget. Fakturan visas som *Hos
+  inkasso*, får inga fler påminnelser, och ärendet stängs när betalningen
+  registreras. Fliken *Inkasso* under Fakturor visar öppna ärenden. Lagstöd
+  och källor i docs/fakturering.md, läge 2026-10-25.
+- [ ] **Kör migration 0031** (du, med de andra migrationerna). Sedan
+  `supabase/tests/0031_collections.sql` i SQL-editorn; den ska sluta med
+  "Prov 0031: alla gick igenom".
+- [ ] **Välj inkassobolag** (du, när det behövs). Inget avtal krävs för att
+  använda underlaget; jämför pris per ärende och om bolaget tar emot
+  fil/CSV. Ärendet markeras skickat med bolagets namn och deras
+  ärendenummer.
 
 ## 4. ROT
 
