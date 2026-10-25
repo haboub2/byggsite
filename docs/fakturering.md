@@ -9,6 +9,88 @@ delfakturor → ÄTA → slutfaktura → ROT) är produktens första säljargume
 Prototypen av gränssnittet finns som design-canvas (sju skärmar: fakturalista,
 faktura, projektekonomi, kundportal i mobil, PDF, ROT-begäran, dashboard).
 
+## Läge 2026-10-25: bokföringen och exporten (0030)
+
+Fyra avgränsade förbättringar, provade med tester, PGlite och i demoläget
+men **inte mot Supabase**: migration 0030 är inte körd.
+
+**Period ej exporterad.** Under *Att göra* på Ekonomi står en rad per
+avslutad månad (de tolv senaste) som har verifikationer men varken
+SIE-export eller lås, med knappen *Exportera* till Bokföringen för den
+månaden. Efter den 10:e (momsdeklarationen för månaden ska in den 12:e
+månaden efter) blir raden för förra månaden röd och säger att den ska
+låsas också; är förra månaden exporterad men öppen står i stället *Lås
+september 2026*. Logiken är `periodTodos` i `lib/core/ledger/period.ts`
+(testad). SIE-nedladdningen loggar nu `export.sie` med `period` och
+`locked: false`, som låsningen redan gjorde med `locked: true`; en månad
+räknas som exporterad när någon sådan händelse finns. Provat i demoläget:
+en faktura daterad 15 september gav raden, SIE-filen bytte den mot *Lås*,
+låsningen tog bort den.
+
+**PDF-arkivet som bakgrundsjobb.** Har organisationen fler än 300
+utfärdade fakturor och kreditfakturor visar Full export *Bygg PDF-arkivet*
+i stället för nedladdningslänken (och `/pdf-arkiv` skickar tillbaka till
+sidan); mindre organisationer får zippen direkt som förut och kan välja
+*Bygg i bakgrunden och mejla länken*. Jobbet läggs i `export_jobs` och
+körs av `/api/cron/exports` (CRON_SECRET), som startas direkt efter
+beställningen, svarar 202 och arbetar efter svaret i upp till fyra minuter
+innan den anropar sig själv igen; dagliga cron startar kön också och tar
+bort utgångna filer. Jobbet fryser fakturorna och filnamnen, renderar
+delar om 50 till den privata bucketen `exports` under `<org>/<jobb>/`,
+sätter ihop zippen med `index.csv` först (i volymer under 45 MB om den blir
+större än Storage tar emot), mejlar en länk som gäller 7 dagar till den som
+beställde och loggar `export.pdf_archive` med `background: true`.
+Exportsidan visar de fem senaste jobben med status (laddar om sig själv
+medan ett pågår) och laddar ner via en signerad länk som gäller tio
+minuter. Saknas CRON_SECRET byggs jobbet i beställningens eget anrop efter
+svaret. Provat i demoläget: jobbet blev klart, och zippen hade
+`index.csv` och fakturans PDF.
+
+**Brutet räkenskapsår i verifikationsserien.** V numreras per räkenskapsår
+enligt `fiscalYearStart`. Etiketten i `journal_entries.fiscal_year` är
+kalenderåret då räkenskapsåret slutar (1 juli 2026 – 30 juni 2027 är
+2027, som inkomståret; ett kalenderår är sig självt), räknad av
+`fiscal_year_of()` i databasen och `fiscalYearLabel()` i appen.
+Funktionerna som bokför skrivs inte om, eftersom parallella migrationer
+arbetar i dem: en trigger på `journal_entries` rättar en V-verifikation
+som numrerats per kalenderår. Numret lämnas tillbaka till kalenderårets
+räknare, som är låst av transaktionen så att serien blir obruten, och
+verifikationen får nästa nummer i räkenskapsårets räknare. En trigger på
+`events` rättar händelsens `data.entry`. Befintliga verifikationer rörs
+inte. SIE-filens `#RAR` följde redan inställningen. Bokföringen visar
+räkenskapsåret, serien och hur många av årets månader som är låsta,
+låsningen loggar `fiscalYear`, och demoläget numrerar likadant.
+Inställningarna stoppar ett byte av räkenskapsår så länge verifikationer i
+olåsta månader skulle hamna i ett annat år än de är numrerade i; annars
+kunde samma V-nummer stå två gånger under samma `#RAR`.
+
+**Lint.** `eslint.config.mjs` undantar `.claude/worktrees/**` och
+`**/.next/**`, så `npm run lint` i huvudcheckouten går inte längre igenom
+andra worktrees; kvar är de fem gamla img-varningarna.
+
+| Del | Fil |
+|---|---|
+| Migration 0030 | `supabase/migrations/0030_export_jobs_fiscal_year.sql`: `export_jobs` (status, `files` [{id, name}] frysta vid start, `parts_done`, `outputs` [{path, name, bytes}], `locked_until` som lås per körning, unikt index för ett pågående jobb per organisation och slag; medlemmar läser och köar i eget namn), bucketen `exports` (privat, läsning för organisationens medlemmar efter första mappen, skrivning bara med service role), `fiscal_year_of`, triggrarna `journal_entries_fiscal_year` och `events_renumbered_entry` |
+| Prov | `supabase/tests/0030_export_jobs.sql` (köa i eget namn, inte två pågående, inte i annans namn eller organisation, ingen ändring av status, B ser varken A:s jobb eller filer, ingen medlem skriver i bucketen), `supabase/tests/0030_fiscal_year.sql` (organisation med räkenskapsår 1 juli–30 juni bredvid en med kalenderår: verifikationen före bytet orörd, juni 2026 är 2026-2, juli 2026 är 2027-1, betalningen i augusti 2027-2, juni 2026 därefter 2026-3 utan hål, 1 juli 2027 är 2028-1, räknarna, händelserna, makuleringen); båda faller när triggrarna tas bort |
+| Dashboarden | `periodTodos` i `lib/core/ledger/period.ts`, `journalEntryCounts` och `exportedPeriods` i `lib/core/ledger/store.ts`, `app/admin/(dashboard)/ekonomi/page.tsx`, loggningen i `…/ekonomi/export/sie/route.ts` |
+| Bakgrundsjobbet | `lib/core/export/jobs.ts` (gräns, delar, steg, sökvägar, status på svenska; testad), `lib/core/export/job-store.ts` (köa, körningen med lås, Storage, mejlet, utgång; demoläget i minnet och under `uploads/exports/`), `lib/core/export/archive.ts` (`renderArchivePart`, `assembleArchive` med volymer), `lib/zip.ts` (läser tillbaka datum), `app/api/cron/exports/route.ts`, `…/ekonomi/export/jobb/[id]/route.ts`, `requestPdfArchiveAction` i `app/admin/export-actions.ts`, `exportReadyMail` i `lib/mail.ts` |
+| Räkenskapsåret | `fiscalYearLabel` i `lib/core/org/settings.ts`, `fiscalYearChangeProblem` och `periodsBetween` i `lib/core/ledger/period.ts` (testade), stoppet i `saveOrgSettingsAction` (`app/admin/org-actions.ts`), `voidInvoice` läser det rättade numret |
+
+Inte provat: 0030 mot Supabase (Storage-uppladdning, signerade länkar,
+policyn på `storage.objects` i ett riktigt projekt), mejlet via Resend,
+kedjan av anrop till `/api/cron/exports` på Vercel (ett skydd av
+förhandsversioner kan stoppa anropet; dagliga cron tar då jobbet),
+gränsen 300 och volymerna i webbläsaren (demoläget hade en faktura;
+båda täcks av tester). Ett omläggningsår (förkortat eller förlängt
+räkenskapsår) får fel `#RAR` i SIE-filen, eftersom inställningen bara har
+startmånaden; numreringen blir ändå rätt så länge bytet görs vid ett
+årsskifte.
+
+Kontroll: 320 tester gröna (`npm test`), typkontroll ren, `npm run lint`
+utan fel (fem gamla img-varningar), PGlite-proven 0021–0025 och 0030
+gröna. Provet 0025 rättades: sedan 0026 stoppar `mark_invoice_sent` själv
+en makulerad faktura med ett annat felmeddelande.
+
 ## Läge 2026-10-22: flera e-postmottagare (0026)
 
 En kund kan ha flera fakturamottagare och kopiemottagare. Kundformuläret har
@@ -220,9 +302,10 @@ Kvar:
   portalen, API:t och PDF-arkivet. Medvetet beslut: Binaafys heter efter
   företagsnamnet på fakturan, inte varumärket (`Binaafy-AB` om säljaren
   heter Binaafy AB), och namnet ändras aldrig när fakturan väl är utfärdad.
-- **Allt byggs i minnet i ett anrop.** Zippen för en organisation med
-  tusentals fakturor bör bli ett bakgrundsjobb som lägger filen i Storage
-  och mejlar en länk; `maxDuration` är 300 s för zippen och 120 s för JSON.
+- ~~**Allt byggs i minnet i ett anrop.**~~ Gjort för PDF-arkivet: över 300
+  fakturor blir det ett bakgrundsjobb som lägger filen i Storage och mejlar
+  en länk, se *Läge 2026-10-25*. JSON-filen byggs fortfarande i anropet
+  (`maxDuration` 120 s).
 - **Projektkostnaderna** (`project_costs`), offerterna och portalens
   projekt är inte med i JSON-filen; den täcker faktureringskärnan.
 - **CSV för verifikationer** finns inte; SIE-filen och JSON-filen har dem.
@@ -302,8 +385,8 @@ Kvar efter fas 5:
   ~~**Projektrapporten**~~ läser sedan 2c6c741 avsändaren ur projektets
   organisation (`getQuoteProfile(project.org_id)`), företagsnamnet i stället
   för logotyp där ingen finns; `REPORT_VERSION` 2 ritar om cachade rapporter.
-- **Brutet räkenskapsår:** SIE-filen följer inställningen, men
-  verifikationsserien V numreras per kalenderår i databasen.
+- ~~**Brutet räkenskapsår**~~ Gjort med 0030: verifikationsserien V
+  numreras per räkenskapsår, se *Läge 2026-10-25*.
 - **Rutt- och anropsgränser per nyckel**, loggning av varje API-anrop i
   `events` och fler resurser (betalplaner, ROT, händelser) i API:t.
 - **Inbjudan via inloggningslänk** kräver att
@@ -543,8 +626,8 @@ Kvar efter fas 4:
 - ~~**Övrig full export**~~ (CSV för kunder, fakturor och betalningar,
   PDF-arkivet som zip, JSON av allt) är gjord, se *Läge 2026-10-20: full
   export*; ~~**Peppol-XML**~~ gjordes i fas 5.
-- **Att göra på dashboarden** visar ännu inte "period ej exporterad", och
-  låsningen har ingen påminnelse.
+- ~~**Att göra på dashboarden**~~ Gjort: "period ej exporterad" och
+  påminnelsen om låsning efter den 10:e, se *Läge 2026-10-25*.
 - **Kostnader läses in för hand.** Leverantörsfakturor som fil eller via
   bokföringen, och tidrapportering från fältet, är inte byggt. Kostnaderna
   syns inte i SIE-filen (inköp bokförs i bokföringsprogrammet).
