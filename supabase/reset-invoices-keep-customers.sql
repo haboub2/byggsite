@@ -43,14 +43,23 @@ delete from invoice_lines;
 update payment_plan_steps set invoice_id = null where invoice_id is not null;
 update change_orders set invoice_id = null where invoice_id is not null;
 
--- Fakturornas egna länkar till varandra (kredit, ändring, ersättning, kvittning).
-update invoices set
-  credits_invoice_id    = null,
-  corrects_invoice_id   = null,
-  corrected_by          = null,
-  replaces_invoice_id   = null,
-  offset_from_credit_id = null;
-delete from invoices;
+-- Fakturornas egna länkar till varandra. credits_invoice_id och
+-- corrects_invoice_id får inte nollas (check-villkoren kräver dem på kredit-
+-- och ändringsfakturor), så de tas bort i omgångar: först de fakturor som
+-- ingen annan pekar på, sedan nästa lager, tills tabellen är tom.
+update invoices set corrected_by = null, replaces_invoice_id = null, offset_from_credit_id = null
+  where corrected_by is not null or replaces_invoice_id is not null or offset_from_credit_id is not null;
+do $$
+begin
+  loop
+    delete from invoices i
+      where not exists (
+        select 1 from invoices j
+        where j.credits_invoice_id = i.id or j.corrects_invoice_id = i.id
+      );
+    exit when not found;
+  end loop;
+end $$;
 
 delete from export_jobs;
 delete from idempotency_keys;
