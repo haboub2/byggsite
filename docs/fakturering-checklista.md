@@ -12,7 +12,7 @@ Lagtexten bakom besluten står i `docs/fakturering.md` under respektive läge.
 
 ## 1. Driftsättning: det som måste vara på plats innan första riktiga fakturan
 
-- [ ] **Miljövariabler i Vercel** (du, 15 min). Project → Settings →
+- [x] **Miljövariabler i Vercel** (gjort 2026-10-25, inklusive CRON_SECRET). Project → Settings →
   Environment Variables, Production. Kopiera värdena från `.env.local`:
   `RESEND_API_KEY`, `MAIL_FROM` (noreply@binaafy.se, domänen är verifierad i
   Resend), `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`. Påminnelsernas
@@ -29,15 +29,15 @@ Lagtexten bakom besluten står i `docs/fakturering.md` under respektive läge.
 - [x] **Bestäm startnummer** (gjort: serien går från 10001). Serien börjar på 1 efter reset.
   Vill du börja på 10001 (som planen säger) så sätt det i
   `number_counters` i samma SQL-körning; be mig om raden.
-- [ ] **Inställningar › Företaget på fakturan** (du, 10 min). Kontrollera namn, adress,
+- [x] **Inställningar › Företaget på fakturan** (du, 10 min). Kontrollera namn, adress,
   org.nr, momsreg.nr `SE559603347101` mot registreringsbeviset, e-post och
   telefon. Det här fryses in på varje faktura.
-- [ ] **Inställningar › Betalning** (du, 5 min). Bankgiro, Swish-nummer
+- [x] **Inställningar › Betalning** (du, 5 min). Bankgiro, Swish-nummer
   (företag, börjar på 123), betalningsvillkor per kundtyp. Kryssa
   "Bankgirot har OCR-avtal" först när punkt 2 är klar.
 - [ ] **Offertuppgifter › Logotyp** (du). Samma logotyp används på
   faktura, offert och projektrapport.
-- [ ] **Supabase Auth → Redirect URLs** (du, 2 min). Lägg till
+- [x] **Supabase Auth → Redirect URLs** (gjort 2026-10-25, Site URL https://www.binaafy.se och tre callback-adresser). Lägg till
   `https://binaafy.se/mitt-projekt/callback**` så att inbjudningar och
   portalinloggning via länk fungerar.
 - [ ] **Supabase och Vercel i EU** (du, beslut). Planen rekommenderar att
