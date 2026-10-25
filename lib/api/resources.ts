@@ -1,66 +1,14 @@
 import "server-only";
-import { z } from "zod";
 import type { Customer } from "../core/customers/schema";
 import { customerToBuyer } from "../core/customers/schema";
 import { getCustomer } from "../core/customers/store";
 import { buyerSchema, lineForBuyer, newInvoiceDocument, type InvoiceDocument } from "../core/documents/invoice";
-import type { InvoiceRecord } from "../core/invoices/store";
 import { getSellerDefaults } from "../core/invoices/seller";
 import { todayIso } from "../quotes/schema";
-import type { customerResourceSchema, invoiceResourceSchema, InvoiceCreate } from "./schemas";
+import type { InvoiceCreate } from "./schemas";
 import { ApiProblem } from "./route";
 
-/** Rows as the API returns them: the resource schemas in lib/api/schemas.ts. */
-
-export function customerResource(c: Customer): z.infer<typeof customerResourceSchema> {
-  return {
-    id: c.id,
-    type: c.type,
-    name: c.name,
-    company: c.company,
-    orgNr: c.orgNr,
-    vatNr: c.vatNr,
-    email: c.email,
-    invoiceEmails: c.invoiceEmails,
-    ccEmails: c.ccEmails,
-    phone: c.phone,
-    street: c.street,
-    postalCode: c.postalCode,
-    city: c.city,
-    reference: c.reference,
-    peppolId: c.peppolId ?? "",
-    defaultTermsDays: c.defaultTermsDays,
-    createdAt: c.createdAt,
-    updatedAt: c.updatedAt,
-  };
-}
-
-export function invoiceResource(inv: InvoiceRecord): z.infer<typeof invoiceResourceSchema> {
-  return {
-    id: inv.id,
-    series: inv.series,
-    number: inv.number,
-    kind: inv.kind,
-    status: inv.status,
-    customerId: inv.customerId,
-    projectId: inv.projectId,
-    currency: "SEK",
-    totalOre: inv.totalOre,
-    vatOre: inv.vatOre,
-    rotOre: inv.rotOre,
-    payableOre: inv.payableOre,
-    paidOre: inv.paidOre,
-    issuedOn: inv.issuedOn,
-    dueOn: inv.dueOn,
-    ocr: inv.ocr,
-    sha256: inv.sha256,
-    sentAt: inv.sentAt,
-    paidAt: inv.paidAt,
-    createdAt: inv.createdAt,
-    updatedAt: inv.updatedAt,
-    document: inv.document,
-  };
-}
+export { customerResource, invoiceResource } from "./mappers";
 
 /**
  * A draft document from an API request: the seller and payment details from

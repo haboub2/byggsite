@@ -56,6 +56,7 @@ export const WEBHOOK_EVENT_TYPES = [
   "invoice.paid",
   "invoice.credited",
   "invoice.voided",
+  "invoice.corrected",
   "payment.received",
   "rot_claim.sent",
   "rot_claim.paid",

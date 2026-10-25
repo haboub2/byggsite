@@ -427,8 +427,9 @@ Kvar efter fas 5:
   för logotyp där ingen finns; `REPORT_VERSION` 2 ritar om cachade rapporter.
 - **Brutet räkenskapsår:** SIE-filen följer inställningen, men
   verifikationsserien V numreras per kalenderår i databasen.
-- **Rutt- och anropsgränser per nyckel**, loggning av varje API-anrop i
-  `events` och fler resurser (betalplaner, ROT, händelser) i API:t.
+- ~~**Rutt- och anropsgränser per nyckel**, loggning av varje API-anrop och
+  fler resurser (betalplaner, ROT, händelser) i API:t.~~ Gjort med 0029, se
+  avsnitt 5 nedan.
 - **Inbjudan via inloggningslänk** kräver att
   `<sajt>/mitt-projekt/callback**` finns bland Redirect URLs i Supabase
   Auth. Inbjudningsmejl kräver `MAIL_FROM`.
@@ -940,7 +941,41 @@ skulle göra. Serveråtgärderna i Next är tunna skal runt `lib/core`.
   `invoice.overdue`, `reminder.sent`, `rot_claim.sent`, `rot_claim.paid`.
 - OpenAPI-specifikation genererad ur zod-schemana, publicerad på
   `/api/v1/openapi.json`. Versionen ligger i URL:en.
-- Hastighetsgränser per nyckel. Loggning av varje anrop i `events`.
+- Hastighetsgränser per nyckel. Loggning av varje anrop i `api_requests`.
+
+**Läge 2026-10-25 (0029, `0029_api_usage.sql`):** varje nyckel har en gräns,
+600 anrop per minut och 20 000 per dygn (UTC) som standard, i
+`api_keys.rate_per_minute` och `rate_per_day`. Gränsen skyddar tjänsten och
+ändras av oss i SQL-editorn; en trigger håller kvar den när organisationens
+admin skapar eller ändrar en nyckel. Räkningen sker i Postgres,
+`api_check_rate(key_id)`, med två rader per nyckel i `api_rate_counters`
+(minut och dygn) som nollställs när fönstret byts och låses per anrop. Den
+fungerar därför lika från alla Vercel-instanser och växer inte. Ett nekat
+anrop räknas inte. Svaret 429 har `Retry-After`; alla svar med nyckel har
+`X-RateLimit-Limit`, `-Remaining` och `-Reset` för det fönster som ligger
+närmast sin gräns, och alla svar har `X-Request-Id`. Om funktionen inte går
+att anropa (till exempel innan 0029 körts) släpps anropet igenom och felet
+loggas. Ramen ligger i `lib/api/frame.ts` (nyckel → gräns → scope → handler
+→ headers → logg), databasdelen i `lib/api/auth.ts`, demoläget i
+`lib/api/demo.ts`, där API:t nu fungerar utan databas.
+
+Varje anrop med en känd nyckel skrivs till `api_requests` efter svaret
+(`after()`): metod, sökväg utan query, status, tid i ms, Idempotency-Key och
+request id. Aldrig kropp, query eller nyckel. owner/admin läser sin
+organisations rader. Adminsidan API har fliken **Anrop** med de senaste 200,
+filter per nyckel och per nyckel anrop och fel senaste dygnet
+(`api_request_stats`). Cron rensar loggen efter 90 dagar (`api_prune_usage`).
+
+Nya läsresurser: `GET /payment-plans` och `/payment-plans/{id}`,
+`GET /rot-claims` och `/rot-claims/{id}`, `GET /payments` (filter på
+faktura och datum, med fördelningen per faktura) och `GET /events`
+(cursor-paginering på tid och id, filter på aggregateType, aggregateId och
+type, `order=asc` för att följa loggen). Personnummer är alltid maskerade i
+API:t, också i fakturans dokument, och den krypterade kopian
+(`personalNumberSealed`) lämnar aldrig API:t. `POST /invoices/{id}/payments`
+fanns redan och är idempotent. `invoice.corrected` kan prenumereras på som
+webhook (kommer både på originalet och på ändringsfakturan). OpenAPI-specen
+beskriver allt detta, med 429 och headrarna.
 
 ### 6. Öre, obrutna serier, loggbok och full export
 
