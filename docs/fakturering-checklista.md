@@ -241,16 +241,16 @@ som en session var.
   2026-10-25, migration 0028, inte körd i Supabase än): betalningen flyttas
   från originalet till den nya fakturan när den utfärdas, i en transaktion.
   Se *Läge 2026-10-25: kvittning* i `docs/fakturering.md`.
-- [ ] **Ratt- och anropsgränser per API-nyckel**, loggning av varje
+- [x] **Ratt- och anropsgränser per API-nyckel** (gjort med 0029), loggning av varje
   API-anrop och fler resurser i API:t (betalplaner, ROT, händelser).
-- [ ] **PDF-arkivet som bakgrundsjobb** när en organisation har tusentals
+- [x] **PDF-arkivet som bakgrundsjobb** (gjort med 0030) när en organisation har tusentals
   fakturor (i dag byggs zippen i ett anrop, max 300 s).
-- [ ] **Dashboarden visar "period ej exporterad"** och påminner om
+- [x] **Dashboarden visar "period ej exporterad"** (gjort med 0030) och påminner om
   låsning.
-- [ ] **Brutet räkenskapsår** i verifikationsserien.
-- [ ] **`invoice.corrected` som webhook-händelse** om en integratör behöver
+- [x] **Brutet räkenskapsår** i verifikationsserien (gjort med 0030).
+- [x] **`invoice.corrected` som webhook-händelse** (gjort med 0029) om en integratör behöver
   den.
-- [ ] **Lint-konfigurationen** ska undanta `.claude/worktrees`, annars
+- [x] **Lint-konfigurationen** (gjord) ska undanta `.claude/worktrees`, annars
   rapporterar `npm run lint` tusentals fel från byggmappar.
 
 ## 9. Produkten: innan någon annan än Binaafy använder det
