@@ -8,6 +8,7 @@ import {
   isPeriodLocked,
   lockProblem,
   monthRange,
+  periodTodos,
   previousMonth,
   recentPeriods,
   sieFileName,
@@ -124,4 +125,28 @@ test("SIE file name", () => {
   assert.equal(sieFileName("Binaafy AB", "2026-10"), "binaafy-ab-2026-10.se");
   assert.equal(sieFileName("Åkesson & Söner Bygg", "2026-08"), "akesson-soner-bygg-2026-08.se");
   assert.equal(sieFileName("", "2026-08"), "bokforing-2026-08.se");
+});
+
+test("period todos: unexported ended months, and the lock reminder after the 10th", () => {
+  const entries = [
+    { period: "2026-07", count: 4 },
+    { period: "2026-08", count: 0 },
+    { period: "2026-09", count: 6 },
+    { period: "2026-10", count: 2 },
+    { period: "2026-06", count: 3 },
+  ];
+  const locks = [{ periodStart: "2026-06-01", periodEnd: "2026-06-30" }];
+  // Before the 10th: July and September not exported; June locked, August empty, October running.
+  assert.deepEqual(periodTodos({ entries, exported: [], locks, today: "2026-10-10" }), [
+    { kind: "export", period: "2026-07", entries: 4, lockDue: false },
+    { kind: "export", period: "2026-09", entries: 6, lockDue: false },
+  ]);
+  // After the 10th, September (last month) is due for locking as well.
+  assert.deepEqual(periodTodos({ entries, exported: ["2026-07"], locks, today: "2026-10-11" }), [{ kind: "export", period: "2026-09", entries: 6, lockDue: true }]);
+  // Exported but still open: the soft reminder.
+  assert.deepEqual(periodTodos({ entries, exported: ["2026-07", "2026-09"], locks, today: "2026-10-25" }), [{ kind: "lock", period: "2026-09", entries: 6 }]);
+  // Locked: nothing left.
+  assert.deepEqual(periodTodos({ entries, exported: ["2026-07"], locks: [...locks, { periodStart: "2026-09-01", periodEnd: "2026-09-30" }], today: "2026-10-25" }), []);
+  // January looks back at December of the year before.
+  assert.deepEqual(periodTodos({ entries: [{ period: "2026-12", count: 1 }], exported: ["2026-12"], locks: [], today: "2027-01-15" }), [{ kind: "lock", period: "2026-12", entries: 1 }]);
 });

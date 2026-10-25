@@ -14,11 +14,16 @@ import { stepGross } from "@/lib/core/plans/billing";
 import { quoteInvoiceLines } from "@/lib/core/invoices/from-plan";
 import { getQuote } from "@/lib/quotes/store";
 import { addDays } from "@/lib/core/rules";
+import { periodOf, periodTodos, previousMonth, recentPeriods } from "@/lib/core/ledger/period";
+import { exportedPeriods, journalEntryCounts, listPeriodLocks } from "@/lib/core/ledger/store";
 import { todayIso } from "@/lib/quotes/schema";
 
 const kr = (ore: number) => formatOre(ore, { decimals: 0, currency: true });
 const MONTH = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
 const monthName = (m: string) => MONTH[Number(m.slice(5, 7)) - 1];
+const FULL_MONTH = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"];
+const periodLabel = (p: string) => `${FULL_MONTH[Number(p.slice(5, 7)) - 1]} ${p.slice(0, 4)}`;
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
  * Ekonomi: money out, money coming in, and what needs doing. Every figure
@@ -27,14 +32,19 @@ const monthName = (m: string) => MONTH[Number(m.slice(5, 7)) - 1];
  */
 export default async function EkonomiPage() {
   const today = todayIso();
-  const [invoices, due, rot, unmatched, events, projects] = await Promise.all([
+  const [invoices, due, rot, unmatched, events, projects, entryCounts, exported, locks] = await Promise.all([
     listInvoices(),
     listDueReminders(today),
     rotSummary(),
     listBankTransactions("unmatched"),
     listRecentEvents(8),
     listProjects(),
+    // The twelve ended months the Bokföringen page offers.
+    journalEntryCounts(recentPeriods(previousMonth(periodOf(today)), 12)),
+    exportedPeriods(),
+    listPeriodLocks(),
   ]);
+  const periodRows = periodTodos({ entries: entryCounts, exported, locks, today });
   // Planned inflows: unbilled plan steps, placed on the project's end date (or in four weeks).
   // Step amounts are worked out as in ProjectEconomy: percent of the quote, or what the completion step has left.
   const planned: PlannedInflow[] = [];
@@ -221,7 +231,7 @@ export default async function EkonomiPage() {
           <section className="dash-card">
             <div className="dash-head">
               <h2 className="admin-h2">Att göra</h2>
-              <span className="inbox-meta">{due.length + (unmatched.length ? 1 : 0) + (rot.claimableCount ? 1 : 0) + (dash.todo.find((t) => t.kind === "draft")?.count ?? 0)} saker</span>
+              <span className="inbox-meta">{due.length + (unmatched.length ? 1 : 0) + (rot.claimableCount ? 1 : 0) + (dash.todo.find((t) => t.kind === "draft")?.count ?? 0) + periodRows.length} saker</span>
             </div>
             <ul className="dash-todo">
               {due.map(({ invoice, plan }) => (
@@ -277,7 +287,25 @@ export default async function EkonomiPage() {
                     </Link>
                   </li>
                 ))}
-              {due.length === 0 && unmatched.length === 0 && rot.claimableCount === 0 && !dash.todo.some((t) => t.kind === "draft") && <li className="inbox-meta">Inget att göra just nu.</li>}
+              {periodRows.map((t) => (
+                <li key={`period-${t.period}`} data-alert={t.kind === "export" && t.lockDue ? "1" : undefined}>
+                  <div>
+                    <strong>{t.kind === "export" ? `${capitalize(periodLabel(t.period))} är inte exporterad` : `Lås ${periodLabel(t.period)}`}</strong>
+                    <span className="inbox-meta">
+                      {t.entries} {t.entries === 1 ? "verifikation" : "verifikationer"}
+                      {t.kind === "export"
+                        ? t.lockDue
+                          ? ". Hämta SIE-filen till bokföringen och lås månaden; det är efter den 10:e."
+                          : ". Hämta SIE-filen till bokföringen."
+                        : ". SIE-filen är hämtad men månaden är öppen efter den 10:e."}
+                    </span>
+                  </div>
+                  <Link href={`/admin/ekonomi/export?period=${t.period}`} className="btn btn-ghost dash-btn">
+                    {t.kind === "export" ? "Exportera" : "Lås"}
+                  </Link>
+                </li>
+              ))}
+              {due.length === 0 && unmatched.length === 0 && rot.claimableCount === 0 && !dash.todo.some((t) => t.kind === "draft") && periodRows.length === 0 && <li className="inbox-meta">Inget att göra just nu.</li>}
             </ul>
           </section>
 

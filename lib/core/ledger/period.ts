@@ -90,6 +90,37 @@ export function lockProblem(locks: Pick<PeriodLock, "periodStart" | "periodEnd">
   return null;
 }
 
+/** Day of the month after which last month should be locked: the VAT return for a month is due on the 12th of the month after. */
+export const LOCK_REMINDER_AFTER_DAY = 10;
+
+export type PeriodTodo =
+  /** An ended month with entries that has neither been downloaded as SIE nor locked. `lockDue`: it is last month and past the 10th. */
+  | { kind: "export"; period: Period; entries: number; lockDue: boolean }
+  /** Last month has been exported but is still open after the 10th. */
+  | { kind: "lock"; period: Period; entries: number };
+
+/**
+ * What the dashboard says about the bookkeeping: one row per ended month
+ * that has entries but no SIE export and no lock (oldest first), and a soft
+ * reminder when last month is still open after the 10th. A month without
+ * entries needs neither. `exported` holds the months an export.sie event
+ * names; a lock counts as exported, since locking also logs export.sie.
+ */
+export function periodTodos(input: { entries: { period: Period; count: number }[]; exported: Iterable<Period>; locks: Pick<PeriodLock, "periodStart" | "periodEnd">[]; today: string }): PeriodTodo[] {
+  const current = periodOf(input.today);
+  const last = previousMonth(current);
+  const exported = new Set(input.exported);
+  const pastReminderDay = Number(input.today.slice(8, 10)) > LOCK_REMINDER_AFTER_DAY;
+  const out: PeriodTodo[] = [];
+  for (const { period, count } of [...input.entries].sort((a, b) => a.period.localeCompare(b.period))) {
+    if (count <= 0 || period >= current || isPeriodLocked(input.locks, period)) continue;
+    const lockDue = period === last && pastReminderDay;
+    if (!exported.has(period)) out.push({ kind: "export", period, entries: count, lockDue });
+    else if (lockDue) out.push({ kind: "lock", period, entries: count });
+  }
+  return out;
+}
+
 export function entriesIn(entries: LedgerEntry[], from: string, to: string): LedgerEntry[] {
   return entries.filter((e) => from <= e.date && e.date <= to).sort((a, b) => a.date.localeCompare(b.date) || a.number - b.number);
 }

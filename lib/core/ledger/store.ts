@@ -5,7 +5,7 @@ import { isDemo } from "../../leads";
 import { makeEvent, type Actor, type CoreEvent } from "../events";
 import { demoJournalEntries } from "../invoices/store";
 import { DEFAULT_ACCOUNT_NAMES } from "./posting";
-import { entriesIn, isPeriodLocked, monthRange, type LedgerEntry, type Period, type PeriodLock } from "./period";
+import { entriesIn, isPeriod, isPeriodLocked, monthRange, type LedgerEntry, type Period, type PeriodLock } from "./period";
 
 /**
  * The ledger as it is stored (journal_entries, journal_lines, accounts,
@@ -70,6 +70,42 @@ export async function listJournalEntries(range: { from: string; to: string }): P
     sourceType: r.source_type,
     lines: (r.journal_lines ?? []).map((l) => ({ account: l.account, debit: Number(l.debit_ore), credit: Number(l.credit_ore), text: l.text })),
   }));
+}
+
+/** How many entries each month holds: one count query per month, so the dashboard never reads the lines. */
+export async function journalEntryCounts(periods: Period[]): Promise<{ period: Period; count: number }[]> {
+  if (isDemo()) {
+    const all = demoJournalEntries();
+    return periods.map((period) => ({ period, count: all.filter((e) => e.date.startsWith(period)).length }));
+  }
+  const supabase = await getDb();
+  const org = await readOrgId();
+  return Promise.all(
+    periods.map(async (period) => {
+      const { from, to } = monthRange(period);
+      let q = supabase.from("journal_entries").select("id", { count: "exact", head: true });
+      if (org) q = q.eq("org_id", org);
+      const { count, error } = await q.gte("entry_date", from).lte("entry_date", to);
+      if (error) throw new Error(`Kunde inte räkna verifikationer: ${error.message}`);
+      return { period, count: count ?? 0 };
+    })
+  );
+}
+
+/** The months an export.sie event names: downloaded as SIE (or locked, which logs the same event). */
+export async function exportedPeriods(): Promise<Period[]> {
+  const periodOfEvent = (data: unknown) => {
+    const p = (data as { period?: unknown } | null)?.period;
+    return isPeriod(p) ? p : null;
+  };
+  if (isDemo()) return [...new Set((g.__binaafyInvoices?.events ?? []).filter((e) => e.type === "export.sie").map((e) => periodOfEvent(e.data)).filter((p): p is Period => p !== null))];
+  const supabase = await getDb();
+  const org = await readOrgId();
+  let q = supabase.from("events").select("data").eq("type", "export.sie");
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.order("created_at", { ascending: false }).limit(1000);
+  if (error) throw new Error(`Kunde inte hämta exporterna: ${error.message}`);
+  return [...new Set((data ?? []).map((r) => periodOfEvent(r.data)).filter((p): p is Period => p !== null))];
 }
 
 /** The chart of accounts, number → name. Falls back to the BAS names the core posts to. */
