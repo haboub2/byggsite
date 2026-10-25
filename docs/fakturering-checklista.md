@@ -85,11 +85,52 @@ finns redan (`Fakturor › Bank`).
   meddelande. Betalningen syns i Swish-appen och på kontoutdraget, och
   registreras i dag för hand (eller via bankfilen/öppen bankdata, där
   Swish-insättningar kommer med OCR i meddelandet).
-- [ ] **Swish Handel** (du avtal, Opus kod, senare). Ger ett API med
-  callback som kvitterar betalningen i samma sekund kunden swishar. Kräver
-  avtal med banken, klientcertifikat per Swish-nummer och kostar per
-  betalning. Vänta tills Swish-betalningarna är många; Swish Företag plus
-  bankdata täcker tills dess.
+- [~] **Swish Handel** (koden är klar och provad mot Swishs testmiljö
+  2026-10-25, migration 0032; du avtal och certifikat). Knappen *Betala med
+  Swish* på den publika fakturasidan och i portalen, och betalningen
+  kvitteras i samma sekund kunden godkänner i appen. Det här behövs för
+  produktion, i den ordningen:
+  1. **Avtal om Swish Handel** (du, banken, några dagar till ett par
+     veckor). Beställ "Swish Handel" (Swish för handel, e-handel/m-handel)
+     på ditt Swish-nummer hos banken där Swish Företag ligger, eller ett
+     nytt 123-nummer. Banken registrerar vem som får hantera certifikaten
+     (en person med Mobilt BankID). Kostnad per betalning enligt bankens
+     prislista (Swedbank ca 3 kr). Uppge att det är **egen integration**,
+     ingen teknisk leverantör.
+  2. **Certifikat via Swish Certificate Management** (du, 15 min,
+     [portal.swish.nu](https://portal.swish.nu), logga in med Mobilt
+     BankID). Skapa en CSR (`openssl req -new -newkey rsa:4096 -nodes
+     -keyout swish.key -out swish.csr`, eller låt portalen skapa nyckeln),
+     ladda upp den och hämta certifikatet (.pem). Certifikatet gäller två
+     år och är knutet till ett Swish-nummer. **Nyckeln och certifikatet
+     läggs aldrig i repot eller i chatten.**
+  3. **Miljövariabler i Vercel** (du, 10 min, Production): `SWISH_CERT_PEM`
+     (certifikatet med kedjan), `SWISH_KEY_PEM` (nyckeln),
+     `SWISH_KEY_PASSPHRASE` om nyckeln är krypterad, `SWISH_ENV=prod`,
+     `SWISH_CALLBACK_SECRET` (`openssl rand -hex 32`). Värdena kan vara
+     PEM-texten eller PEM:en base64-kodad på en rad. `SWISH_CA_PEM` behövs
+     inte i produktion (Swish använder DigiCert Global Root G2, som Node
+     litar på). Se `.env.example`.
+  4. **Callback-domänen** (inget att beställa, men kontrollera). Swish
+     anropar `https://binaafy.se/api/swish/callback` på port 443 med ett
+     certifikat från en vanlig CA, vilket Vercel har. `NEXT_PUBLIC_SITE_URL`
+     måste vara `https://binaafy.se`. Swish anropar från
+     `egress.api.getswish.se`; IP-filtrering är inte möjlig på Vercel och
+     behövs inte, eftersom adressen är signerad och varje PAID bekräftas
+     mot Swish innan något bokförs.
+  5. **Migrationen 0032** körs med de andra (Opus-sessionen samlar dem).
+  6. **Kontrollera under Inställningar › Swish Handel** att status är *På*,
+     miljön *Produktion*, certifikatet utfärdat för ditt Swish-nummer och
+     giltighetstiden. Provbetala 1 kr på en riktig faktura till dig själv
+     och se den kvitteras på fakturasidan.
+  7. **Förnya certifikatet** (du, vartannat år). Inställningssidan visar
+     när det går ut.
+
+  Fler organisationer: varje företag har sitt eget avtal och certifikat.
+  Under Inställningar › Betalning anges var certifikatet finns
+  (`env:SWISH_<NAMN>` eller `vault:swish_<namn>` i Supabase Vault, med
+  JSON `{"cert","key","environment":"prod"}`); webbplatsens organisation
+  använder `SWISH_*` om inget anges.
 
 ## 3. Mejl, påminnelser och inkasso
 

@@ -7,6 +7,8 @@ import { INVOICE_STATUS_LABEL, invoiceLabel, isOpen, isOverdue, listInvoiceEvent
 import { formatDay } from "@/lib/portal/format";
 import { getProjectBundle } from "@/lib/portal/store";
 import { todayIso } from "@/lib/quotes/schema";
+import { swishCommerceReady } from "@/lib/core/payments/swish-store";
+import { SwishPayButton } from "@/components/payments/SwishPayButton";
 
 export const metadata: Metadata = { title: "Fakturor" };
 
@@ -20,6 +22,8 @@ export default async function PortalInvoices({ params }: { params: Promise<{ id:
   const invoices = await listInvoicesForPortal(id);
   const today = todayIso();
   const open = invoices.filter((inv) => isOpen(inv));
+  // Swish Handel per organisation (normally one): "Betala med Swish" on open invoices.
+  const swishOrgs = new Set((await Promise.all([...new Set(open.map((inv) => inv.orgId))].map(async (org) => ((await swishCommerceReady(org)) ? org : null)))).filter(Boolean));
   const timelines = Object.fromEntries(await Promise.all(invoices.map(async (inv) => [inv.id, customerTimeline(await listInvoiceEvents(inv.id))] as const)));
 
   return (
@@ -91,6 +95,7 @@ export default async function PortalInvoices({ params }: { params: Promise<{ id:
                   </div>
                 </dl>
               )}
+              {openNow && remaining > 0 && swishOrgs.has(inv.orgId) && <SwishPayButton target={{ invoiceId: inv.id, projectId: id }} amountLabel={kr(remaining)} resumeKey={inv.id} />}
 
               <dl className="portal-ata-sums">
                 <div>

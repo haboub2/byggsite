@@ -2095,3 +2095,14 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .interest-priority { max-width: 34ch; white-space: pre-wrap; color: var(--ink-2); }
 .interest-delete { padding: 6px 12px; font-size: 13px; }
 @media (max-width: 640px) { .interest-table th:nth-child(3), .interest-table td:nth-child(3) { display: table-cell; } }
+
+/* ---- Swish Handel: betala direkt från fakturan (components/payments/SwishPayButton.tsx) ---- */
+.swish-pay { display: grid; gap: 10px; justify-items: start; }
+.swish-pay .field { max-width: 320px; }
+.swish-pay-wait { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.swish-pay-done { font-weight: 600; color: #155a37; }
+.swish-spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line-strong); border-top-color: var(--orange-press); animation: swish-spin .8s linear infinite; flex-shrink: 0; }
+@keyframes swish-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .swish-spinner { animation-duration: 2.4s; } }
+.swish-requests { margin-top: 18px; }
+.swish-requests small { color: var(--ink-3); }
