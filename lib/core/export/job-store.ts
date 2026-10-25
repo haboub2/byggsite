@@ -229,17 +229,16 @@ export async function requestExportJob(kind: ExportJobKind, who: { orgId: string
 /**
  * Start a run of the queue now instead of waiting for the daily cron: a
  * request to /api/cron/exports with the cron secret, which answers at once
- * and works after the response. Demo mode runs the queue in this process.
- * Never throws; a job that is not started here is picked up by the next run.
+ * and works after the response. Demo mode, or a deployment without
+ * CRON_SECRET, runs the queue in this process instead (the caller is inside
+ * after(), so it has the route's maxDuration). Never throws; a job that is
+ * not finished here is picked up by the next run.
  */
 export async function kickExportJobs(origin: string | null): Promise<void> {
-  if (isDemo()) {
-    await processExportJobs().catch((err) => console.error("[export-jobs] demo run failed:", err));
-    return;
-  }
   const secret = process.env.CRON_SECRET;
-  if (!secret || !origin) {
-    console.warn("[export-jobs] CRON_SECRET or origin missing; the daily cron picks the job up.");
+  if (isDemo() || !secret || !origin) {
+    if (!isDemo()) console.warn("[export-jobs] CRON_SECRET or origin missing; running the queue in this request.");
+    await processExportJobs().catch((err) => console.error("[export-jobs] run failed:", err));
     return;
   }
   try {

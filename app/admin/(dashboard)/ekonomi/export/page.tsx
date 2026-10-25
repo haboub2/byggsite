@@ -11,6 +11,9 @@ import { listAccounts, listJournalEntries, listPeriodLocks } from "@/lib/core/le
 import { getOrgSettings } from "@/lib/core/org/settings-store";
 import { todayIso } from "@/lib/quotes/schema";
 
+/** Queueing the PDF archive may run the queue after the response when CRON_SECRET is not set (lib/core/export/job-store.ts). */
+export const maxDuration = 300;
+
 const kr = (ore: number) => formatOre(ore, { decimals: 2, currency: true });
 const MONTH = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"];
 const SHORT = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
