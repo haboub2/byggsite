@@ -5,6 +5,7 @@ import { listDueReminders, reminderSettings, sendReminder } from "@/lib/core/rem
 import { deliverDueWebhooks } from "@/lib/api/webhook-delivery";
 import { demoApiState } from "@/lib/api/demo";
 import { API_LOG_RETENTION_DAYS } from "@/lib/api/request-log";
+import { expireExportJobs, kickExportJobs } from "@/lib/core/export/job-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isDemo } from "@/lib/leads";
 import { todayIso } from "@/lib/quotes/schema";
@@ -15,8 +16,9 @@ import { todayIso } from "@/lib/quotes/schema";
  * issued invoices when auto-issue is set), then finds the reminders that are
  * due and, when the organisation's settings say so, sends them; otherwise it
  * only reports, and the dashboard shows them under Att göra. Last, it
- * delivers the queued webhooks of all organisations and prunes the API
- * request log (90 days).
+ * delivers the queued webhooks of all organisations, prunes the API
+ * request log (90 days), removes background exports whose link has expired
+ * and starts the export queue (/api/cron/exports) in case a job is waiting.
  * Protected by CRON_SECRET, which Vercel sends as a bearer token.
  */
 export async function GET(request: NextRequest) {
@@ -64,7 +66,13 @@ export async function GET(request: NextRequest) {
 
   const webhooks = await deliverDueWebhooks().catch((err) => ({ error: err instanceof Error ? err.message : String(err) }));
   const apiLog = await pruneApiLog().catch((err) => ({ error: err instanceof Error ? err.message : String(err) }));
-  return Response.json({ ok: true, today, organizations: perOrg, webhooks, apiLog });
+  const exports = await expireExportJobs()
+    .then(async (expired) => {
+      await kickExportJobs(request.nextUrl.origin);
+      return { expired };
+    })
+    .catch((err) => ({ error: err instanceof Error ? err.message : String(err) }));
+  return Response.json({ ok: true, today, organizations: perOrg, webhooks, apiLog, exports });
 }
 
 /** api_requests older than the retention period, all organisations at once. */

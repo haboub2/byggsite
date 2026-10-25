@@ -3,11 +3,14 @@ import assert from "node:assert/strict";
 import {
   accountTotals,
   entriesIn,
+  fiscalYearChangeProblem,
   isLocked,
   isPeriod,
   isPeriodLocked,
   lockProblem,
   monthRange,
+  periodTodos,
+  periodsBetween,
   previousMonth,
   recentPeriods,
   sieFileName,
@@ -124,4 +127,49 @@ test("SIE file name", () => {
   assert.equal(sieFileName("Binaafy AB", "2026-10"), "binaafy-ab-2026-10.se");
   assert.equal(sieFileName("Åkesson & Söner Bygg", "2026-08"), "akesson-soner-bygg-2026-08.se");
   assert.equal(sieFileName("", "2026-08"), "bokforing-2026-08.se");
+});
+
+test("period todos: unexported ended months, and the lock reminder after the 10th", () => {
+  const entries = [
+    { period: "2026-07", count: 4 },
+    { period: "2026-08", count: 0 },
+    { period: "2026-09", count: 6 },
+    { period: "2026-10", count: 2 },
+    { period: "2026-06", count: 3 },
+  ];
+  const locks = [{ periodStart: "2026-06-01", periodEnd: "2026-06-30" }];
+  // Before the 10th: July and September not exported; June locked, August empty, October running.
+  assert.deepEqual(periodTodos({ entries, exported: [], locks, today: "2026-10-10" }), [
+    { kind: "export", period: "2026-07", entries: 4, lockDue: false },
+    { kind: "export", period: "2026-09", entries: 6, lockDue: false },
+  ]);
+  // After the 10th, September (last month) is due for locking as well.
+  assert.deepEqual(periodTodos({ entries, exported: ["2026-07"], locks, today: "2026-10-11" }), [{ kind: "export", period: "2026-09", entries: 6, lockDue: true }]);
+  // Exported but still open: the soft reminder.
+  assert.deepEqual(periodTodos({ entries, exported: ["2026-07", "2026-09"], locks, today: "2026-10-25" }), [{ kind: "lock", period: "2026-09", entries: 6 }]);
+  // Locked: nothing left.
+  assert.deepEqual(periodTodos({ entries, exported: ["2026-07"], locks: [...locks, { periodStart: "2026-09-01", periodEnd: "2026-09-30" }], today: "2026-10-25" }), []);
+  // January looks back at December of the year before.
+  assert.deepEqual(periodTodos({ entries: [{ period: "2026-12", count: 1 }], exported: ["2026-12"], locks: [], today: "2027-01-15" }), [{ kind: "lock", period: "2026-12", entries: 1 }]);
+});
+
+test("the months of a fiscal year, across new year", () => {
+  assert.deepEqual(periodsBetween("2026-07-01", "2027-06-30"), ["2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12", "2027-01", "2027-02", "2027-03", "2027-04", "2027-05", "2027-06"]);
+  assert.deepEqual(periodsBetween("2026-01-01", "2026-12-31").length, 12);
+  assert.deepEqual(periodsBetween("2026-10", "2026-10"), ["2026-10"]);
+});
+
+test("moving the fiscal year waits for open months numbered in another year", () => {
+  const v = (date: string, fiscalYear: number, number: number) => ({ series: "V", date, fiscalYear, number });
+  // Calendar year so far: September and October 2026 are V 2026-5 and 2026-6.
+  const entries = [v("2026-05-10", 2026, 1), v("2026-09-15", 2026, 5), v("2026-10-02", 2026, 6)];
+  const problem = fiscalYearChangeProblem(entries, [], "07-01");
+  assert.match(problem ?? "", /2 verifikationer i olåsta månader \(först V5 den 2026-09-15\)/);
+  // With July–December locked, May stays in the year ending 2026 either way: nothing is in the way.
+  const locks = [{ periodStart: "2026-07-01", periodEnd: "2026-12-31" }];
+  assert.equal(fiscalYearChangeProblem(entries, locks, "07-01"), null);
+  // Back to the calendar year, and entries already numbered per fiscal year.
+  assert.equal(fiscalYearChangeProblem(entries, [], "01-01"), null);
+  assert.equal(fiscalYearChangeProblem([v("2026-09-15", 2027, 1)], [], "07-01"), null);
+  assert.match(fiscalYearChangeProblem([v("2026-09-15", 2027, 1)], [], "01-01") ?? "", /1 verifikation i olåsta/);
 });

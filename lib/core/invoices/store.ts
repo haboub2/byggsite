@@ -12,6 +12,7 @@ import { makeEvent, type Actor, type CoreEvent, type EventType } from "../events
 import { todayIso } from "../../quotes/schema";
 import { currentOrgId, readOrgId } from "../org/current";
 import { currentChart } from "../org/settings-store";
+import { fiscalYearLabel, type OrgSettings } from "../org/settings";
 import { getCustomer } from "../customers/store";
 import { recipientsText, resolveRecipients, type Recipients } from "./recipients";
 import { demoMovePlanInvoice } from "../plans/store";
@@ -233,7 +234,9 @@ function demoEvent(aggregateType: CoreEvent["aggregateType"], aggregateId: strin
 }
 
 function demoJournal(posting: Posting): string {
-  const year = Number(posting.date.slice(0, 4));
+  // Numbered per fiscal year, as the database does since 0030; the demo has one organisation's settings.
+  const settings = Object.values((globalThis as unknown as { __binaafyOrgSettings?: Record<string, OrgSettings> }).__binaafyOrgSettings ?? {})[0];
+  const year = fiscalYearLabel(posting.date, settings?.fiscalYearStart);
   const n = (demo().verSeq[year] = (demo().verSeq[year] ?? 0) + 1);
   const number = `${year}-${n}`;
   demo().journal.push({ id: crypto.randomUUID(), number, ...posting });
@@ -802,7 +805,12 @@ export async function voidInvoice(id: string, reason: string, actor: Actor): Pro
   const supabase = await getDb();
   const { data, error } = await supabase.rpc("void_invoice", { p_invoice: id, p_reason: why, p_actor: actor });
   if (error) throw new Error(`Kunde inte makulera: ${error.message}`);
-  const result = data as { number: string; entryNumber: string };
+  const result = data as { number: string; entryNumber: string; entryId?: string };
+  // The function's own number is the calendar year's; with a broken fiscal year 0030 renumbers the entry, so read it back.
+  if (result.entryId) {
+    const { data: entry } = await supabase.from("journal_entries").select("fiscal_year, number").eq("id", result.entryId).maybeSingle();
+    if (entry) return { number: result.number, entryNumber: `${entry.fiscal_year}-${entry.number}` };
+  }
   return { number: result.number, entryNumber: result.entryNumber };
 }
 

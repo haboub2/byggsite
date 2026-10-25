@@ -268,6 +268,15 @@ export function fiscalYearFor(date: string, fiscalYearStart = "01-01"): { start:
   return { start, end: endDate.toISOString().slice(0, 10) };
 }
 
+/**
+ * The fiscal year's label in the voucher series (journal_entries.fiscal_year):
+ * the calendar year it ends in, so 1 July 2026 – 30 June 2027 is 2027 and a
+ * calendar year is itself. Mirrors fiscal_year_of() in 0030.
+ */
+export function fiscalYearLabel(date: string, fiscalYearStart = "01-01"): number {
+  return Number(fiscalYearFor(date, fiscalYearStart).end.slice(0, 4));
+}
+
 /** The settings, filled from Företaget and Offertuppgifter (the first organisation before org_settings is saved). */
 export function settingsFromContent(input: {
   company: { legalName: string; orgNr: string; street: string; postalCode: string; city: string; email: string; phoneDisplay: string };

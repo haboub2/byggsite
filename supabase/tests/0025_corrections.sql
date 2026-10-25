@@ -157,7 +157,11 @@ begin
   begin
     perform mark_invoice_sent(v_inv.id, 'x@prov.se', '{"kind":"system","name":"prov"}'::jsonb);
     raise exception 'En makulerad faktura kunde markeras skickad';
-  exception when feature_not_supported then null;
+  exception
+    -- Frystriggern (0025), eller sedan 0026 mark_invoice_sent själv: "Faktura N är makulerad och skickas inte."
+    when feature_not_supported then null;
+    when raise_exception then
+      if sqlerrm not like '%makulerad och skickas inte%' then raise; end if;
   end;
   begin
     perform void_invoice(v_inv.id, 'Igen', '{"kind":"system","name":"prov"}'::jsonb);

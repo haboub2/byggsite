@@ -9,7 +9,9 @@ import { isDemo } from "@/lib/leads";
 import { createClient } from "@/lib/supabase/server";
 import { ORG_COOKIE, listMyMemberships } from "@/lib/core/org/current";
 import { acceptInvitation, createInvitation, createOrganization, removeMember, revokeInvitation, setMemberRole } from "@/lib/core/org/members";
-import { saveOrgSettings } from "@/lib/core/org/settings-store";
+import { getOrgSettings, saveOrgSettings } from "@/lib/core/org/settings-store";
+import { fiscalYearChangeProblem } from "@/lib/core/ledger/period";
+import { listPeriodLocks, listVoucherNumbers } from "@/lib/core/ledger/store";
 import { orgSettingsSchema } from "@/lib/core/org/settings";
 import { ROLE_LABEL, assignableRoles, isRole } from "@/lib/core/org/roles";
 import type { Actor } from "@/lib/core/events";
@@ -89,6 +91,13 @@ export async function saveOrgSettingsAction(_prev: ContentActionState, formData:
     return { error: "Några fält behöver rättas innan det går att spara.", fieldErrors };
   }
   try {
+    // The voucher series follows the fiscal year (0030); moving it must not give two entries the same number in one year.
+    const current = await getOrgSettings();
+    if (current.fiscalYearStart !== parsed.data.fiscalYearStart) {
+      const [vouchers, locks] = await Promise.all([listVoucherNumbers(), listPeriodLocks()]);
+      const problem = fiscalYearChangeProblem(vouchers, locks, parsed.data.fiscalYearStart);
+      if (problem) return { error: problem, fieldErrors: { fiscalYearStart: problem } };
+    }
     await saveOrgSettings(parsed.data, actorOf(check.email));
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Kunde inte spara." };

@@ -107,7 +107,7 @@ export default function OrgSettingsEditor({ initial, defaults, lastSaved }: { in
                 );
               })}
             </select>
-            <span className="efield-hint">Används i SIE-filen (#RAR). Verifikationerna numreras per kalenderår.</span>
+            <span className="efield-hint">Verifikationsserien V börjar om på 1 när räkenskapsåret börjar, och SIE-filen (#RAR) följer samma år. Läggs om vid ett årsskifte; verifikationer i olåsta månader stoppar bytet.</span>
           </div>
         </div>
         <p className="efield-hint" style={{ marginTop: 12 }}>
