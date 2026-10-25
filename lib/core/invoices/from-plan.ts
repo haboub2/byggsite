@@ -4,7 +4,7 @@ import { buyerFromQuote, lineFromQuoteItem, rotBuyersFromQuote } from "./from-qu
 import { kindTotals, stepInvoiceLines, type ChangeOrderLike } from "../plans/billing";
 import type { PaymentPlan, PaymentPlanStep } from "../plans/schema";
 import { getSellerDefaults } from "./seller";
-import { listInvoices } from "./store";
+import { countsAsInvoiced, listInvoices } from "./store";
 import type { Quote } from "../../quotes/schema";
 import type { PortalProject } from "../../portal/schema";
 import { lineAmount } from "../money";
@@ -36,7 +36,7 @@ export async function invoiceDocumentForStep(input: {
   const earlier = await listInvoices({ projectId: project.id });
   const invoicedByKind = { labor: 0, material: 0, other: 0 };
   for (const inv of earlier) {
-    if (inv.status === "draft" || inv.status === "void" || inv.status === "credited" || inv.kind !== "invoice") continue;
+    if (!countsAsInvoiced(inv)) continue;
     for (const l of inv.document.lines) if (!l.changeOrderId) invoicedByKind[l.kind] += lineAmount(l.unitPriceOre, l.quantity);
   }
 

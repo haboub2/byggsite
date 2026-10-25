@@ -2,30 +2,32 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { getDb } from "../db";
 import { isDemo } from "../../leads";
-import { INVOICE_KIND_LABEL, invoiceDocumentSchema, validateForIssue, type InvoiceDocument, type InvoiceKind } from "../documents/invoice";
+import { INVOICE_KIND_LABEL, invoiceDocumentSchema, validateForIssue, type InvoiceDocument, type InvoiceKind, type InvoiceOffset } from "../documents/invoice";
 import { invoiceTotals } from "./totals";
-import { postInvoice, postPayment, reversal, type PaymentMethod, type Posting } from "../ledger/posting";
+import { postInvoice, postOffset, postPayment, reversal, type PaymentMethod, type PaymentSource, type Posting } from "../ledger/posting";
 import { correctionDocument, type CorrectionEdits } from "./correction";
 import { ocrFor } from "../ocr";
+import { formatOre } from "../money";
 import { makeEvent, type Actor, type CoreEvent, type EventType } from "../events";
 import { todayIso } from "../../quotes/schema";
 import { currentOrgId, readOrgId } from "../org/current";
 import { currentChart } from "../org/settings-store";
 import { getCustomer } from "../customers/store";
 import { recipientsText, resolveRecipients, type Recipients } from "./recipients";
+import { demoMovePlanInvoice } from "../plans/store";
 
 /**
  * The invoices table (supabase/migrations/0014_core.sql) and the functions
  * around it (issue_invoice, register_payment, mark_invoice_sent,
  * mark_invoice_credited in 0014/0015; void_invoice and
- * issue_correction_invoice in 0025). Read with the admin's session so RLS
+ * issue_correction_invoice in 0025; issue_replacement_invoice in 0028). Read with the admin's session so RLS
  * decides; the state changes go through the database functions so each one
  * is a single transaction. Demo mode replays the same rules in memory,
  * including the ledger, so the admin can be used without Supabase.
  */
 
 import { INVOICE_LIST_TABS, INVOICE_STATUSES, INVOICE_STATUS_LABEL, countInvoiceList, inTab, isOpen, type InvoiceCounts, type InvoiceListTab, type InvoiceStatus } from "./store-types";
-export { INVOICE_LIST_TABS, INVOICE_STATUSES, INVOICE_STATUS_LABEL, INVOICE_TAB_LABEL, isBooked, isOpen, type InvoiceCounts, type InvoiceListTab, type InvoiceStatus } from "./store-types";
+export { INVOICE_LIST_TABS, INVOICE_STATUSES, INVOICE_STATUS_LABEL, INVOICE_TAB_LABEL, countsAsInvoiced, isBooked, isOpen, refundDue, type InvoiceCounts, type InvoiceListTab, type InvoiceStatus } from "./store-types";
 
 export type InvoiceRecord = {
   id: string;
@@ -61,6 +63,10 @@ export type InvoiceRecord = {
   correctedBy: string | null;
   /** On a change invoice: the original it corrects. */
   correctsInvoiceId: string | null;
+  /** On an invoice from Rätta belopp: the credited original it replaces (0028). */
+  replacesInvoiceId: string | null;
+  /** On an invoice from Rätta belopp: the credit note its original's payments are offset against (0028). */
+  offsetFromCreditId: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -68,8 +74,9 @@ export type InvoiceRecord = {
 
 export type PaymentRecord = {
   id: string;
+  /** On this invoice; an offset moves a payment with -X on the original and +X on its replacement. */
   amountOre: number;
-  method: PaymentMethod;
+  method: PaymentSource;
   paidOn: string;
   reference: string;
   note: string;
@@ -108,6 +115,8 @@ type Row = {
   void_reason?: string | null;
   corrected_by?: string | null;
   corrects_invoice_id?: string | null;
+  replaces_invoice_id?: string | null;
+  offset_from_credit_id?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -144,6 +153,8 @@ const fromRow = (r: Row): InvoiceRecord => ({
   voidReason: r.void_reason ?? null,
   correctedBy: r.corrected_by ?? null,
   correctsInvoiceId: r.corrects_invoice_id ?? null,
+  replacesInvoiceId: r.replaces_invoice_id ?? null,
+  offsetFromCreditId: r.offset_from_credit_id ?? null,
   createdBy: r.created_by,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
@@ -306,7 +317,7 @@ export async function listInvoicePayments(invoiceId: string): Promise<PaymentRec
   const { data, error } = await q
     .order("created_at", { ascending: false });
   if (error) throw new Error(`Kunde inte hämta betalningar: ${error.message}`);
-  type Joined = { amount_ore: number; payments: { id: string; method: PaymentMethod; paid_on: string; reference: string; note: string; created_by: string | null; created_at: string } | null };
+  type Joined = { amount_ore: number; payments: { id: string; method: PaymentSource; paid_on: string; reference: string; note: string; created_by: string | null; created_at: string } | null };
   return ((data ?? []) as unknown as Joined[])
     .filter((r) => r.payments)
     .map((r) => ({
@@ -324,9 +335,19 @@ export async function listInvoicePayments(invoiceId: string): Promise<PaymentRec
 /* ---------- drafts ---------- */
 
 export async function createInvoice(
-  input: { document: InvoiceDocument; quoteId?: string | null; projectId?: string | null; creditsInvoiceId?: string | null },
+  input: {
+    document: InvoiceDocument;
+    quoteId?: string | null;
+    projectId?: string | null;
+    creditsInvoiceId?: string | null;
+    /** Rätta belopp: the credited original this draft replaces, and the credit note its payments are offset against. */
+    replacesInvoiceId?: string | null;
+    offsetFromCreditId?: string | null;
+  },
   createdBy: string | null
 ): Promise<string> {
+  // Only sent when set, so drafts are created as before against a database without 0028.
+  const replacement = input.replacesInvoiceId ? { replaces_invoice_id: input.replacesInvoiceId, offset_from_credit_id: input.offsetFromCreditId ?? null } : {};
   const document = invoiceDocumentSchema.parse({ ...input.document, number: null });
   const cols = draftColumns(document);
   const actor: Actor = createdBy ? { kind: "user", id: createdBy, name: createdBy } : { kind: "system", name: "system" };
@@ -355,6 +376,9 @@ export async function createInvoice(
       void_reason: null,
       corrected_by: null,
       corrects_invoice_id: null,
+      replaces_invoice_id: null,
+      offset_from_credit_id: null,
+      ...replacement,
       created_by: createdBy,
       created_at: now,
       updated_at: now,
@@ -373,6 +397,7 @@ export async function createInvoice(
       quote_id: input.quoteId ?? null,
       project_id: input.projectId ?? null,
       credits_invoice_id: input.creditsInvoiceId ?? null,
+      ...replacement,
       ...cols,
       created_by: createdBy,
     })
@@ -407,6 +432,8 @@ export async function updateInvoiceDraft(id: string, document: InvoiceDocument):
 }
 
 export async function deleteDraft(id: string): Promise<void> {
+  const blocked = await deleteBlocker(id);
+  if (blocked) throw new Error(blocked);
   if (isDemo()) {
     const r = demo().invoices.find((x) => x.id === id);
     if (r && r.status !== "draft") throw new Error("Utfärdade fakturor tas inte bort. Skapa en kreditfaktura.");
@@ -416,6 +443,34 @@ export async function deleteDraft(id: string): Promise<void> {
   const supabase = await getDb();
   const { error } = await supabase.from("invoices").delete().eq("id", id).eq("org_id", await currentOrgId()).eq("status", "draft");
   if (error) throw new Error(`Kunde inte ta bort: ${error.message}`);
+}
+
+let offsetColumns = false;
+/**
+ * Whether the database has 0028 (replaces_invoice_id and the offset), so
+ * Rätta belopp can link the draft and move payments. Checked once per
+ * process until it is there; demo mode always has it.
+ */
+export async function supportsOffset(): Promise<boolean> {
+  if (isDemo() || offsetColumns) return true;
+  const supabase = await getDb();
+  const { error } = await supabase.from("invoices").select("replaces_invoice_id").limit(1);
+  offsetColumns = !error;
+  return offsetColumns;
+}
+
+/**
+ * Why a draft cannot be deleted, or null. A draft from Rätta belopp on a
+ * paid invoice carries that payment: the original is credited and the money
+ * moves to this invoice when it is issued, so deleting it would strand the
+ * payment on a credited invoice.
+ */
+export async function deleteBlocker(id: string): Promise<string | null> {
+  const inv = await getInvoice(id);
+  if (!inv?.replacesInvoiceId || inv.status !== "draft") return null;
+  const original = await getInvoice(inv.replacesInvoiceId);
+  if (!original || original.paidOre === 0) return null;
+  return `Utkastet ersätter faktura ${original.number}, som kunden har betalat ${formatOre(original.paidOre, { decimals: 0, currency: true })} på. Betalningen flyttas hit när utkastet utfärdas, så det kan inte tas bort. Rätta raderna och utfärda det.`;
 }
 
 /* ---------- state changes, each one transaction in the database ---------- */
@@ -428,18 +483,39 @@ export class IssueError extends Error {
 }
 
 /** Utfärda: number, frozen document, hash, OCR, journal entry, event.
- *  `prepare` lets the caller refresh the seller block from the settings right before freezing. */
+ *  `prepare` lets the caller refresh the seller block from the settings right before freezing.
+ *  A draft from Rätta belopp is issued with issue_replacement_invoice (0028), which in the same
+ *  transaction moves the original's payments here (se.offset on the document, an offset entry). */
 export async function issueInvoice(id: string, actor: Actor, prepare?: (doc: InvoiceDocument) => InvoiceDocument): Promise<{ number: string; ocr: string }> {
   const inv = await getInvoice(id);
   if (!inv) throw new Error("Fakturan finns inte.");
   if (inv.status !== "draft") throw new Error(`${invoiceLabel(inv)} är redan utfärdad.`);
+  const replacing = inv.replacesInvoiceId ? await replacementOf(inv) : null;
   const prepared = prepare ? prepare(inv.document) : inv.document;
-  const doc: InvoiceDocument = { ...prepared, number: null, se: await withRecipients(prepared, inv.customerId) };
+  const se = await withRecipients(prepared, inv.customerId);
+  if (replacing?.offset) se.offset = replacing.offset;
+  else delete se.offset;
+  const doc: InvoiceDocument = { ...prepared, number: null, se };
   const problems = validateForIssue(doc);
   if (problems.length) throw new IssueError(problems);
+  const chart = isDemo() ? undefined : await currentChart();
   const totals = invoiceTotals(doc);
-  const posting = postInvoice(doc, totals, id, isDemo() ? undefined : await currentChart());
+  const posting = postInvoice(doc, totals, id, chart);
   const totalsJson = { total: totals.gross, vat: totals.vat, rot: totals.rot?.deduction ?? 0, payable: totals.payable };
+  const offsetPosting = replacing?.offset
+    ? postOffset(
+        {
+          invoiceId: id,
+          amount: replacing.offset.amountOre,
+          date: doc.issueDate,
+          fromNumber: replacing.offset.invoiceNumber,
+          toNumber: "{number}",
+          creditNumber: replacing.offset.creditNumber,
+          dimensions: { projectId: doc.references.projectId, customerId: doc.buyer.customerId },
+        },
+        chart
+      )
+    : null;
 
   if (isDemo()) {
     const r = demo().invoices.find((x) => x.id === id)!;
@@ -463,21 +539,79 @@ export async function issueInvoice(id: string, actor: Actor, prepare?: (doc: Inv
     });
     demoEvent("invoice", id, "invoice.issued", { number, payable: totals.payable, entry: entryNumber }, actor);
     if (doc.kind === "credit" && inv.creditsInvoiceId) await markCredited(inv.creditsInvoiceId, id, actor);
+    if (replacing) demoReplace(r, replacing.original.id, replacing.offset, offsetPosting, actor);
     return { number, ocr };
   }
 
   const supabase = await getDb();
-  const { data, error } = await supabase.rpc("issue_invoice", {
-    p_invoice: id,
-    p_document: doc,
-    p_totals: totalsJson,
-    p_posting: posting,
-    p_actor: actor,
-  });
+  const { data, error } = replacing
+    ? await supabase.rpc("issue_replacement_invoice", {
+        p_invoice: id,
+        p_document: doc,
+        p_totals: totalsJson,
+        p_posting: posting,
+        // Only used when the original has payments; the function checks it against them.
+        p_offset_posting: offsetPosting ?? { text: "", lines: [] },
+        p_actor: actor,
+      })
+    : await supabase.rpc("issue_invoice", {
+        p_invoice: id,
+        p_document: doc,
+        p_totals: totalsJson,
+        p_posting: posting,
+        p_actor: actor,
+      });
   if (error) throw new Error(`Kunde inte utfärda: ${error.message}`);
   const result = data as { number: string; ocr: string };
   if (doc.kind === "credit" && inv.creditsInvoiceId) await markCredited(inv.creditsInvoiceId, id, actor);
-  return result;
+  return { number: result.number, ocr: result.ocr };
+}
+
+/**
+ * The credited original a Rätta belopp draft replaces, and the payment that
+ * moves from it when the draft is issued (null when nothing was paid). The
+ * database checks the same in issue_replacement_invoice.
+ */
+export async function replacementOf(inv: Pick<InvoiceRecord, "replacesInvoiceId" | "offsetFromCreditId">): Promise<{ original: InvoiceRecord; offset: InvoiceOffset | null }> {
+  const original = inv.replacesInvoiceId ? await getInvoice(inv.replacesInvoiceId) : null;
+  if (!original) throw new Error("Fakturan som ersätts finns inte.");
+  if (original.status !== "credited") throw new Error(`Faktura ${original.number} är inte krediterad. Kreditera den innan den ersätts.`);
+  if (original.paidOre === 0) return { original, offset: null };
+  const credit = inv.offsetFromCreditId ? await getInvoice(inv.offsetFromCreditId) : null;
+  if (!credit?.number || credit.creditsInvoiceId !== original.id)
+    throw new Error(`Faktura ${original.number} har betalningar, men kreditfakturan som de kvittas mot saknas.`);
+  return { original, offset: { invoiceNumber: original.number ?? "", creditNumber: credit.number, amountOre: original.paidOre } };
+}
+
+/** Demo mode's issue_replacement_invoice after the issue: plan links, and the offset when the original was paid. */
+function demoReplace(r: Row, originalId: string, offset: InvoiceOffset | null, offsetPosting: Posting | null, actor: Actor): void {
+  const orig = demo().invoices.find((x) => x.id === originalId)!;
+  demoMovePlanInvoice(orig.id, r.id, r.document.lines.flatMap((l) => (l.changeOrderId ? [l.changeOrderId] : [])));
+  if (!offset || !offsetPosting) return;
+  const number = r.number ?? "";
+  const now = new Date().toISOString();
+  const note = `Kvittning: betalning flyttad från faktura ${orig.number} till faktura ${number} (kreditfaktura ${offset.creditNumber})`;
+  // One offset per payment on the original: -X there, +X here, no money.
+  const perPayment = new Map<string, number>();
+  for (const p of demo().payments) if (p.invoiceId === orig.id) perPayment.set(p.id, (perPayment.get(p.id) ?? 0) + p.amountOre);
+  for (const amount of perPayment.values()) {
+    if (amount === 0) continue;
+    const base = { id: crypto.randomUUID(), method: "offset" as const, paidOn: r.issued_on ?? todayIso(), reference: orig.number ?? "", note, createdBy: actor.kind === "user" ? actor.name : null, createdAt: now };
+    demo().payments.push({ ...base, invoiceId: orig.id, amountOre: -amount }, { ...base, invoiceId: r.id, amountOre: amount });
+  }
+  const moved = offset.amountOre;
+  const status: InvoiceStatus = moved >= r.payable_ore ? "paid" : moved > 0 ? "partially_paid" : r.status;
+  Object.assign(orig, { paid_ore: orig.paid_ore - moved, updated_at: now });
+  Object.assign(r, { paid_ore: moved, status, paid_at: status === "paid" ? now : null, updated_at: now });
+  const entry = demoJournal({
+    ...offsetPosting,
+    text: offsetPosting.text.replace("{number}", number),
+    lines: offsetPosting.lines.map((l) => (l.text ? { ...l, text: l.text.replace("{number}", number) } : l)),
+  });
+  demoEvent("invoice", orig.id, "invoice.offset", { number: orig.number, toNumber: number, to: r.id, creditNumber: offset.creditNumber, amount: moved, entry }, actor);
+  demoEvent("invoice", r.id, "invoice.offset", { number, fromNumber: orig.number, from: orig.id, creditNumber: offset.creditNumber, amount: moved, payable: r.payable_ore, entry }, actor);
+  if (status === "paid" || status === "partially_paid")
+    demoEvent("invoice", r.id, `invoice.${status}`, { number, paid: moved, payable: r.payable_ore, amount: moved, method: "offset" }, actor);
 }
 
 /** The document's `se` with the customer's current mailing lists frozen in (lib/core/invoices/recipients.ts). */
@@ -548,7 +682,7 @@ export async function registerPayment(
     amount: input.amountOre,
     method: input.method,
     date: input.paidOn,
-    text: `Inbetalning ${invoiceLabel(inv).toLowerCase()} ${inv.document.buyer.name}`,
+    text: `${input.amountOre < 0 ? "Återbetalning" : "Inbetalning"} ${invoiceLabel(inv).toLowerCase()} ${inv.document.buyer.name}`,
     dimensions: { projectId: inv.projectId, customerId: inv.customerId },
   }, isDemo() ? undefined : await currentChart());
 

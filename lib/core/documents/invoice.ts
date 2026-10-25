@@ -189,6 +189,17 @@ export const referencesSchema = z.object({
   ourReference: text(80, "Vår referens").default(""),
 });
 
+/** A payment on a credited invoice moved to the invoice that replaces it. */
+export const offsetSchema = z.object({
+  /** The original invoice the payment was made on. */
+  invoiceNumber: z.string().min(1),
+  /** The credit note that credited the original. */
+  creditNumber: z.string().min(1),
+  /** Paid on the original, net of refunds, öre. */
+  amountOre: oreInt,
+});
+export type InvoiceOffset = z.infer<typeof offsetSchema>;
+
 /** BG-16 payment instructions. The seller's accounts live here, not on the party, so a template can swap them. */
 export const paymentMeansSchema = z.object({
   bankgiro: text(12, "Bankgiro").default(""),
@@ -258,6 +269,13 @@ export const invoiceDocumentSchema = z.object({
        * list existed: then buyer.email alone.
        */
       recipients: recipientsSchema.optional(),
+      /**
+       * On an invoice that replaces a paid one (Rätta belopp): what the
+       * customer paid on the original, offset against this invoice when it
+       * is issued (EN 16931 BT-113, prepaid amount). Frozen at issue from the
+       * original's paid amount; printed as "Kvittat mot faktura N".
+       */
+      offset: offsetSchema.optional(),
     })
     .default({}),
 });

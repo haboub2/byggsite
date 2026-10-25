@@ -182,9 +182,10 @@ finns redan (`Fakturor › Bank`).
 Allt här är känt, dokumenterat i `docs/fakturering.md` och går att beställa
 som en session var.
 
-- [ ] **Kvittning vid "Rätta belopp" på betalda fakturor**: flytta
-  betalningen från originalet till den nya fakturan i en transaktion. I dag
-  stoppas betalda fakturor med ett meddelande.
+- [x] **Kvittning vid "Rätta belopp" på betalda fakturor** (kodat
+  2026-10-25, migration 0028, inte körd i Supabase än): betalningen flyttas
+  från originalet till den nya fakturan när den utfärdas, i en transaktion.
+  Se *Läge 2026-10-25: kvittning* i `docs/fakturering.md`.
 - [ ] **Ratt- och anropsgränser per API-nyckel**, loggning av varje
   API-anrop och fler resurser i API:t (betalplaner, ROT, händelser).
 - [ ] **PDF-arkivet som bakgrundsjobb** när en organisation har tusentals

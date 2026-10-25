@@ -117,6 +117,8 @@ export function buildJsonExport(data: ExportData, exportedAt: string = new Date(
         creditsInvoiceId: i.creditsInvoiceId,
         correctsInvoiceId: i.correctsInvoiceId,
         correctedBy: i.correctedBy,
+        replacesInvoiceId: i.replacesInvoiceId,
+        offsetFromCreditId: i.offsetFromCreditId,
         voidedAt: i.voidedAt,
         voidedBy: i.voidedBy,
         voidReason: i.voidReason,

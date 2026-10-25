@@ -173,6 +173,8 @@ export type InvoicePdfProps = {
 
 export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer, customerNumber, swishQr = null, logo = null, stamp = null }: InvoicePdfProps) {
   const sum = customerSummary(doc, totals);
+  // Rätta belopp on a paid invoice: what was paid on the replaced invoice, already settled.
+  const offset = doc.se.offset && doc.se.offset.amountOre !== 0 ? doc.se.offset : null;
   const rules = rulesAt(doc.issueDate);
   const isCredit = doc.kind === "credit";
   const isCorrection = doc.kind === "correction";
@@ -330,6 +332,16 @@ export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer,
                 ) : null}
               </View>
             ) : null}
+            {offset ? (
+              <View style={s.box}>
+                <Text style={s.label}>Kvittning</Text>
+                <Text style={s.boxText}>
+                  {clean(
+                    `Fakturan ersätter faktura ${offset.invoiceNumber}, som är krediterad med kreditfaktura ${offset.creditNumber}. Det ni betalade på faktura ${offset.invoiceNumber}, ${kr(offset.amountOre)}, är kvittat mot den här fakturan.${sum.refund > 0 ? ` Ni har betalat ${kr(sum.refund)} mer än fakturans belopp, och vi betalar tillbaka det.` : ""}`
+                  )}
+                </Text>
+              </View>
+            ) : null}
             {!isCredit && doc.se.lateInterestText ? <Text style={s.boxText}>{clean(doc.se.lateInterestText)}</Text> : null}
           </View>
 
@@ -364,9 +376,21 @@ export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer,
                 <Text style={s.sumSmall}>{money(sum.rounding)}</Text>
               </View>
             ) : null}
+            {offset ? (
+              <>
+                <View style={[s.sumRow, s.sumRule]}>
+                  <Text style={s.sumK}>Fakturans belopp</Text>
+                  <Text style={s.sumV}>{money(sum.payable)}</Text>
+                </View>
+                <View style={s.sumRow}>
+                  <Text style={s.sumK}>{`Kvittat mot faktura ${offset.invoiceNumber}`}</Text>
+                  <Text style={s.sumV}>{money(-sum.offset)}</Text>
+                </View>
+              </>
+            ) : null}
             <View style={s.sumTotal}>
-              <Text style={s.sumTotalK}>{isCredit ? "Att återfå" : "Att betala"}</Text>
-              <Text style={s.sumTotalV}>{kr(Math.abs(sum.payable))}</Text>
+              <Text style={s.sumTotalK}>{isCredit ? "Att återfå" : sum.refund > 0 ? "Att återbetala till er" : "Att betala"}</Text>
+              <Text style={s.sumTotalV}>{kr(offset ? sum.due || sum.refund : Math.abs(sum.payable))}</Text>
             </View>
           </View>
         </View>
@@ -402,7 +426,7 @@ export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer,
               </View>
               <View style={[s.payCol, { flex: 1.25 }]}>
                 <Text style={s.label}>Att betala</Text>
-                <Text style={s.payV}>{kr(sum.payable)}</Text>
+                <Text style={s.payV}>{kr(sum.due)}</Text>
               </View>
               {swishQr ? (
                 // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf images take no alt

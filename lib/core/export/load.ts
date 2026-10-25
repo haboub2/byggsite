@@ -6,7 +6,7 @@ import { makeEvent, type Actor, type CoreEvent, type EventType } from "../events
 import { invoiceFromRow, type InvoiceRecord, type PaymentRecord } from "../invoices/store";
 import { listRecurring } from "../invoices/recurring";
 import { listAccounts, listJournalEntries, listPeriodLocks } from "../ledger/store";
-import type { PaymentMethod } from "../ledger/posting";
+import type { PaymentSource } from "../ledger/posting";
 import { DEMO_ORG_ID, listMyMemberships } from "../org/current";
 import { getOrgSettings, listNumberSeries } from "../org/settings-store";
 import { listBankTransactions } from "../payments/store";
@@ -129,7 +129,7 @@ export async function loadPayments(orgId: string): Promise<ExportPayment[]> {
     id: str(p.id),
     amountOre: num(p.amount_ore),
     currency: str(p.currency) || "SEK",
-    method: p.method as PaymentMethod,
+    method: p.method as PaymentSource,
     paidOn: str(p.paid_on),
     reference: str(p.reference),
     note: str(p.note),

@@ -82,7 +82,8 @@ export type PostingSource =
   | { type: "credit"; id: string }
   | { type: "payment"; id: string }
   | { type: "reminder"; id: string }
-  | { type: "reversal"; id: string; reverses: string };
+  | { type: "reversal"; id: string; reverses: string }
+  | { type: "offset"; id: string };
 
 export type Posting = {
   /** Accounting date. */
@@ -163,6 +164,8 @@ export function postInvoice(doc: InvoiceDocument, totals: InvoiceTotals, invoice
 }
 
 export type PaymentMethod = "bankgiro" | "swish" | "card" | "manual" | "rot";
+/** How a payment row came about: money in or out by a method, or an offset that moved a payment between invoices (0028). */
+export type PaymentSource = PaymentMethod | "offset";
 
 /**
  * Money in. A customer payment settles the receivable; a payout from
@@ -179,6 +182,29 @@ export function postPayment(
     text: input.text ?? (input.method === "rot" ? "Utbetalning ROT från Skatteverket" : "Inbetalning"),
     source: { type: "payment", id: input.paymentId },
     lines: compact([entry(chart.bank, input.amount, input.dimensions), entry(settles, -input.amount, input.dimensions)]),
+  };
+}
+
+/**
+ * Offset (kvittning, 0028): what the customer paid on a credited invoice
+ * moves to the invoice that replaces it. No money moves, so no bank line:
+ * the credit note already credited the receivable with the whole original
+ * and issuing the new invoice debits it, so the offset is the receivable
+ * against itself, with each line naming its invoice. `toNumber` may be the
+ * placeholder "{number}", which the database fills at issue.
+ */
+export function postOffset(
+  input: { invoiceId: string; amount: Ore; date: string; fromNumber: string; toNumber: string; creditNumber: string; dimensions?: Dimensions },
+  chart: ChartOfAccounts = DEFAULT_CHART
+): Posting {
+  return {
+    date: input.date,
+    text: `Kvittning faktura ${input.fromNumber} mot faktura ${input.toNumber} (kreditfaktura ${input.creditNumber})`,
+    source: { type: "offset", id: input.invoiceId },
+    lines: compact([
+      entry(chart.receivables, input.amount, input.dimensions, `Faktura ${input.fromNumber}, betalning flyttad`),
+      entry(chart.receivables, -input.amount, input.dimensions, `Faktura ${input.toNumber}, kvittad betalning`),
+    ]),
   };
 }
 

@@ -12,6 +12,7 @@ import {
   isOverdue,
   listInvoices,
   parseInvoiceFilters,
+  refundDue,
   type InvoiceFilters,
   type InvoiceListTab,
 } from "@/lib/core/invoices/store";
@@ -71,11 +72,21 @@ export default async function InvoicesList({ searchParams }: { searchParams: Pro
             <strong>{counts.draft}</strong>
             <small>väntar på att utfärdas</small>
           </div>
-          <div className="kpi">
-            <span>Betalda</span>
-            <strong>{counts.paid}</strong>
-            <small>totalt</small>
-          </div>
+          {counts.refundCount > 0 ? (
+            <div className="kpi kpi--alert">
+              <span>Att återbetala</span>
+              <strong>{kr(counts.refundOre)}</strong>
+              <small>
+                {counts.refundCount} {counts.refundCount === 1 ? "faktura" : "fakturor"}
+              </small>
+            </div>
+          ) : (
+            <div className="kpi">
+              <span>Betalda</span>
+              <strong>{counts.paid}</strong>
+              <small>totalt</small>
+            </div>
+          )}
         </div>
 
         <nav className="inbox-tabs" aria-label="Flik">
@@ -115,6 +126,7 @@ export default async function InvoicesList({ searchParams }: { searchParams: Pro
             {invoices.map((inv) => {
               const overdue = isOverdue(inv, today);
               const remaining = inv.payableOre - inv.paidOre;
+              const refund = refundDue(inv);
               return (
                 <li key={inv.id}>
                   <Link href={`/admin/fakturor/${inv.id}`} className="inbox-row quote-row" data-status={overdue ? "overdue" : inv.status}>
@@ -132,6 +144,7 @@ export default async function InvoicesList({ searchParams }: { searchParams: Pro
                             ? `Ändringsfaktura till ${inv.document.references.precedingInvoiceNumber ?? ""}`
                             : CUSTOMER_TYPE_LABEL[inv.document.buyer.type].replace(" (omvänd betalningsskyldighet)", "")}
                         {inv.correctedBy ? " · rättad med ändringsfaktura" : ""}
+                        {inv.document.se.offset ? ` · ersätter ${inv.document.se.offset.invoiceNumber}, ${kr(inv.document.se.offset.amountOre)} kvittat` : ""}
                         {inv.document.se.reverseCharge ? " · omvänd moms" : ""}
                         {inv.rotOre ? ` · ROT ${kr(Math.abs(inv.rotOre))}` : ""}
                         {inv.document.title ? ` · ${inv.document.title}` : ""}
@@ -140,7 +153,13 @@ export default async function InvoicesList({ searchParams }: { searchParams: Pro
                     </span>
                     <span className="inbox-side">
                       {inv.kind === "correction" ? <span title="Beloppet räknas på originalfakturan">ingår i {inv.document.references.precedingInvoiceNumber}</span> : <strong>{kr(inv.payableOre)}</strong>}
-                      {inv.status === "partially_paid" ? <span>{kr(remaining)} kvar</span> : <time dateTime={inv.updatedAt}>{formatWhen(inv.updatedAt)}</time>}
+                      {refund > 0 ? (
+                        <span style={{ color: "var(--danger)", fontWeight: 600 }}>{kr(refund)} att återbetala</span>
+                      ) : inv.status === "partially_paid" ? (
+                        <span>{kr(remaining)} kvar</span>
+                      ) : (
+                        <time dateTime={inv.updatedAt}>{formatWhen(inv.updatedAt)}</time>
+                      )}
                     </span>
                   </Link>
                 </li>

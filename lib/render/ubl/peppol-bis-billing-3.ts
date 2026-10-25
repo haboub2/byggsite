@@ -350,8 +350,12 @@ export function renderPeppolInvoice(doc: InvoiceDocument, opts: PeppolOptions = 
   amount("cbc:LineExtensionAmount", totals.net);
   amount("cbc:TaxExclusiveAmount", totals.net);
   amount("cbc:TaxInclusiveAmount", gross);
+  // BT-113: what was paid on the invoice this one replaces (Rätta belopp, 0028) and is offset here.
+  const prepaid = !credit && doc.se.offset ? doc.se.offset.amountOre : 0;
+  if (prepaid !== 0) amount("cbc:PrepaidAmount", prepaid);
   if (rounding !== 0) el("cbc:PayableRoundingAmount", ublAmount(rounding), ` currencyID="${cur}"`);
-  amount("cbc:PayableAmount", gross + rounding);
+  // Negative when more was paid than this invoice asks for: the seller owes the difference.
+  el("cbc:PayableAmount", ublAmount(gross - prepaid + rounding), ` currencyID="${cur}"`);
   close("cac:LegalMonetaryTotal");
 
   // BG-25 lines

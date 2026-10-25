@@ -5,7 +5,7 @@ import { formatOre, lineAmount } from "@/lib/core/money";
 import { CostsTableMissingError, listProjectCosts, type ProjectCost } from "@/lib/core/projects/costs";
 import { COST_KINDS, COST_KIND_LABEL, projectMargin } from "@/lib/core/projects/economy";
 import { quoteInvoiceLines } from "@/lib/core/invoices/from-plan";
-import { INVOICE_STATUS_LABEL, invoiceLabel, isOverdue, listInvoices } from "@/lib/core/invoices/store";
+import { INVOICE_STATUS_LABEL, countsAsInvoiced, invoiceLabel, isOverdue, listInvoices } from "@/lib/core/invoices/store";
 import { projectEconomy, stepGross, stepIsBillable } from "@/lib/core/plans/billing";
 import { DUE_RULES, DUE_RULE_LABEL, PLAN_TEMPLATES } from "@/lib/core/plans/schema";
 import { changeOrderInvoiceIds, getPlanForProject } from "@/lib/core/plans/store";
@@ -48,7 +48,8 @@ export default async function ProjectEconomy({ bundle, notice }: { bundle: Proje
     costs,
   });
   const hidden = <input type="hidden" name="project" value={project.id} />;
-  const issuedGross = invoices.filter((i) => i.status !== "draft" && i.status !== "void" && i.kind === "invoice" && !i.document.lines.some((l) => l.changeOrderId)).reduce((s, i) => s + i.totalOre, 0);
+  // A credited invoice is left out: after Rätta belopp its replacement carries the amount.
+  const issuedGross = invoices.filter((i) => countsAsInvoiced(i) && !i.document.lines.some((l) => l.changeOrderId)).reduce((s, i) => s + i.totalOre, 0);
   const approvedNotInvoicedKr = changeOrders.filter((c) => c.status === "approved" && !invoicedOn[c.id]).reduce((s, c) => s + c.amount, 0);
 
   return (

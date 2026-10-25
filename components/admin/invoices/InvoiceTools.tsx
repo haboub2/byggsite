@@ -10,6 +10,7 @@ import {
   issueInvoiceAction,
   markInvoiceSent,
   registerPaymentAction,
+  registerRefundAction,
   sendInvoice,
   type InvoiceToolState,
 } from "@/app/admin/invoice-actions";
@@ -25,6 +26,8 @@ export type IssueSummary = {
   rot: string | null;
   reverseCharge: boolean;
   lines: number;
+  /** Rätta belopp on a paid invoice: what moves here from the original, and what is left after it. */
+  offset?: { text: string; afterLabel: string; after: string } | null;
 };
 
 function Feedback({ state }: { state: InvoiceToolState }) {
@@ -87,6 +90,20 @@ export function IssueInvoiceForm({ id, problems, isCredit, summary }: { id: stri
                   <strong>{summary.payable}</strong>
                 </dd>
               </div>
+              {summary.offset && (
+                <>
+                  <div>
+                    <dt>Kvittas</dt>
+                    <dd>{summary.offset.text}</dd>
+                  </div>
+                  <div>
+                    <dt>{summary.offset.afterLabel}</dt>
+                    <dd>
+                      <strong>{summary.offset.after}</strong>
+                    </dd>
+                  </div>
+                </>
+              )}
               {summary.dueDate && (
                 <div>
                   <dt>Förfallodag</dt>
@@ -171,7 +188,7 @@ export function VoidInvoiceForm({ id, number }: { id: string; number: string }) 
 }
 
 /** Rätta belopp: credit in full, issued at once, and a new draft with the same content. */
-export function CorrectAmountsForm({ id, number, amount, blocked }: { id: string; number: string; amount: string; blocked: string | null }) {
+export function CorrectAmountsForm({ id, number, amount, paid, blocked }: { id: string; number: string; amount: string; paid: string | null; blocked: string | null }) {
   const [state, action, pending] = useActionState<InvoiceToolState, FormData>(correctAmountsAction, {});
   const dialog = useRef<HTMLDialogElement>(null);
   return (
@@ -195,6 +212,12 @@ export function CorrectAmountsForm({ id, number, amount, blocked }: { id: string
               Ett <strong>nytt utkast</strong> skapas med samma kund, rader, referenser och villkor, och texten &quot;Ersätter faktura {number}, krediterad med …&quot;.
             </li>
             <li>Utkastet öppnas i redigeraren. Rätta beloppen där och utfärda det; det får då ett eget nummer.</li>
+            {paid && (
+              <li>
+                Kunden har betalat <strong>{paid}</strong> på faktura {number}. Betalningen <strong>kvittas</strong> mot den nya fakturan när du utfärdar den: blir den högre är resten kvar att betala, blir den lägre visas
+                överskottet som att återbetala.
+              </li>
+            )}
           </ol>
           <p className="efield-hint">Skicka både kreditfakturan och den nya fakturan till kunden.</p>
           {state.problems && state.problems.length > 0 && (
@@ -347,6 +370,49 @@ export function RegisterPaymentForm({ id, remainingKronor, today }: { id: string
   );
 }
 
+/** Registrera återbetalning: the excess goes back to the customer as a negative payment. */
+export function RegisterRefundForm({ id, refund, today }: { id: string; refund: string; today: string }) {
+  const [state, action, pending] = useActionState<InvoiceToolState, FormData>(registerRefundAction, {});
+  return (
+    <form
+      action={action}
+      className="lead-note"
+      onSubmit={(e) => {
+        if (!window.confirm(`Registrera att ${refund} har betalats tillbaka till kunden? Det bokförs mot företagskontot.`)) e.preventDefault();
+      }}
+    >
+      <input type="hidden" name="id" value={id} />
+      <p className="efield-hint">Kunden har betalat {refund} mer än fakturan. Betala tillbaka beloppet och registrera det här.</p>
+      <div className="egrid">
+        <div className="efield">
+          <label htmlFor={`rdate-${id}`}>Datum</label>
+          <input id={`rdate-${id}`} name="paidOn" type="date" defaultValue={today} required />
+        </div>
+        <div className="efield">
+          <label htmlFor={`rmethod-${id}`}>Sätt</label>
+          <select id={`rmethod-${id}`} name="method" defaultValue="bankgiro">
+            {Object.entries(METHOD_LABEL).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="efield">
+          <label htmlFor={`rref-${id}`}>Referens (valfritt)</label>
+          <input id={`rref-${id}`} name="reference" maxLength={80} />
+        </div>
+      </div>
+      <div className="lead-note-foot">
+        <button type="submit" className="btn btn-primary" disabled={pending}>
+          {pending ? "Registrerar…" : `Registrera återbetalning, ${refund}`}
+        </button>
+      </div>
+      <Feedback state={state} />
+    </form>
+  );
+}
+
 /** Påminn: mails the reminder with the PDF, or just records one sent some other way. */
 export function SendReminderForm({ id, recipients, ready, summary }: { id: string; recipients: Recipients; ready: boolean; summary: string }) {
   const [state, action, pending] = useActionState<InvoiceToolState, FormData>(sendReminderAction, {});
@@ -402,7 +468,8 @@ export function CreditInvoiceButton({ id, number }: { id: string; number: string
   );
 }
 
-export function DeleteDraft({ id }: { id: string }) {
+export function DeleteDraft({ id, blocked = null }: { id: string; blocked?: string | null }) {
+  if (blocked) return <span className="efield-hint">{blocked}</span>;
   return (
     <form
       action={deleteInvoiceDraft}

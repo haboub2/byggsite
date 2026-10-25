@@ -42,6 +42,27 @@ export function isOpen(inv: Listed): boolean {
   return inv.kind === "invoice" && (inv.status === "issued" || inv.status === "sent" || inv.status === "partially_paid");
 }
 
+/**
+ * Paid more than it asks for: after Rätta belopp moved a payment to a lower
+ * invoice, or after an overpayment. The excess goes back to the customer
+ * with Registrera återbetalning (a negative payment). A credited original
+ * waiting for its replacement is not counted: its payment moves on issue.
+ */
+export function refundDue(inv: Listed & { payableOre: number; paidOre: number }): number {
+  if (inv.kind !== "invoice" || inv.status === "draft" || inv.status === "void" || inv.status === "credited") return 0;
+  return Math.max(0, inv.paidOre - inv.payableOre);
+}
+
+/**
+ * An invoice that counts as invoiced on a project or payment plan: issued,
+ * an invoice (not a credit note or change invoice), and not voided or
+ * credited. After Rätta belopp only the replacing invoice counts, so the
+ * plan never counts the original and its replacement both.
+ */
+export function countsAsInvoiced(inv: Listed): boolean {
+  return inv.kind === "invoice" && inv.status !== "draft" && inv.status !== "void" && inv.status !== "credited";
+}
+
 export function isOverdue(inv: Listed & { dueOn: string | null }, today: string): boolean {
   return isOpen(inv) && !!inv.dueOn && inv.dueOn < today;
 }
@@ -63,15 +84,20 @@ export function inTab(inv: Listed & { dueOn: string | null }, tab: InvoiceListTa
   }
 }
 
-export type InvoiceCounts = Record<InvoiceListTab | "all", number> & { openOre: number; overdueOre: number };
+export type InvoiceCounts = Record<InvoiceListTab | "all", number> & { openOre: number; overdueOre: number; refundCount: number; refundOre: number };
 
-/** The tab counts and the open and overdue sums above the list. */
+/** The tab counts and the open, overdue and to-refund sums above the list. */
 export function countInvoiceList(all: (Listed & { dueOn: string | null; payableOre: number; paidOre: number })[], today: string): InvoiceCounts {
-  const counts: InvoiceCounts = { all: all.length, draft: 0, open: 0, overdue: 0, paid: 0, credited: 0, openOre: 0, overdueOre: 0 };
+  const counts: InvoiceCounts = { all: all.length, draft: 0, open: 0, overdue: 0, paid: 0, credited: 0, openOre: 0, overdueOre: 0, refundCount: 0, refundOre: 0 };
   for (const inv of all) {
     for (const tab of INVOICE_LIST_TABS) if (inTab(inv, tab, today)) counts[tab]++;
     if (isOpen(inv)) counts.openOre += inv.payableOre - inv.paidOre;
     if (isOverdue(inv, today)) counts.overdueOre += inv.payableOre - inv.paidOre;
+    const refund = refundDue(inv);
+    if (refund > 0) {
+      counts.refundCount++;
+      counts.refundOre += refund;
+    }
   }
   return counts;
 }

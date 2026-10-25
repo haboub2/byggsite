@@ -1,7 +1,7 @@
 import type { Customer } from "../customers/schema";
 import type { InvoiceRecord } from "../invoices/store";
 import type { LedgerEntry, PeriodLock } from "../ledger/period";
-import type { PaymentMethod } from "../ledger/posting";
+import type { PaymentSource } from "../ledger/posting";
 import type { OrgSettings } from "../org/settings";
 import type { NumberSeries } from "../org/settings-store";
 import type { RecurringRecord } from "../invoices/recurring";
@@ -26,7 +26,7 @@ export type ExportPayment = {
   /** Negative for a refund. */
   amountOre: number;
   currency: string;
-  method: PaymentMethod;
+  method: PaymentSource;
   paidOn: string;
   reference: string;
   note: string;
@@ -122,10 +122,11 @@ export function inRange(date: string | null, range: DateRange = {}): boolean {
   return (!range.from || d >= range.from) && (!range.to || d <= range.to);
 }
 
-export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+export const PAYMENT_METHOD_LABEL: Record<PaymentSource, string> = {
   bankgiro: "Bankgiro",
   swish: "Swish",
   card: "Kort",
   manual: "Manuell",
   rot: "ROT (Skatteverket)",
+  offset: "Kvittning",
 };

@@ -5,7 +5,8 @@ import { asSystem } from "../core/db";
 import { getOrgSettings } from "../core/org/settings-store";
 import { invoiceTotals } from "../core/invoices/totals";
 import { paymentReference } from "../core/documents/invoice";
-import { getInvoice, isOpen, type InvoiceRecord } from "../core/invoices/store";
+import { getInvoice, isOpen, replacementOf, type InvoiceRecord } from "../core/invoices/store";
+import type { InvoiceDocument } from "../core/documents/invoice";
 import { fetchSwishQrPng } from "../core/payments/swish";
 import { getQuoteProfile } from "../quotes/profile-store";
 
@@ -23,7 +24,15 @@ export async function renderInvoicePdf(inv: InvoiceRecord, options: { swishQr?: 
   const signer = settings?.company.signer || inv.document.seller.name;
   const swish = inv.document.paymentMeans.swish;
   const qr = swish && isOpen(inv) && options.swishQr !== false ? await fetchSwishQrPng({ payee: swish, amountOre: inv.payableOre - inv.paidOre, message: paymentReference(inv.document).value || (inv.number ?? "") }) : null;
-  return renderToBuffer(<InvoicePdf document={inv.document} totals={invoiceTotals(inv.document)} signer={signer} swishQr={qr} logo={profile?.logo ?? null} stamp={await stampFor(inv)} />);
+  const document = await withPendingOffset(inv);
+  return renderToBuffer(<InvoicePdf document={document} totals={invoiceTotals(document)} signer={signer} swishQr={qr} logo={profile?.logo ?? null} stamp={await stampFor(inv)} />);
+}
+
+/** A Rätta belopp draft previews the offset it gets at issue; an issued invoice has it frozen. */
+async function withPendingOffset(inv: InvoiceRecord): Promise<InvoiceDocument> {
+  if (inv.status !== "draft" || !inv.replacesInvoiceId) return inv.document;
+  const offset = (await replacementOf(inv).catch(() => null))?.offset;
+  return offset ? { ...inv.document, se: { ...inv.document.se, offset } } : inv.document;
 }
 
 /** "Makulerad" or "Rättad genom faktura N" on the copy; the frozen document itself never changes. */
