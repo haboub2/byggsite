@@ -18,6 +18,7 @@ test("a zip reads back with its UTF-8 names, contents and checksums", () => {
   assert.ok(entries.every((e) => e.crcOk));
   assert.equal(entries[0].data.toString(), "%PDF-1.7 test");
   assert.ok(entries[1].data.equals(photo));
+  assert.equal(entries[1].date.getTime(), new Date(2026, 9, 20, 15, 30).getTime());
   // UTF-8 flag set on the entry with å/ö.
   assert.equal(zip.readUInt16LE(6) & 0x0800, 0x0800);
 });

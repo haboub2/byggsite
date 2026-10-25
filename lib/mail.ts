@@ -276,3 +276,40 @@ export async function changeOrderAnsweredMail(input: {
     console.error("[mail] changeOrderAnsweredMail failed", err);
   }
 }
+
+/* ---------- Exporten ---------- */
+
+/**
+ * The background PDF archive is ready (lib/core/export/job-store.ts): links
+ * to the file (or its volumes), signed for seven days, to the member who
+ * asked. Never throws; the export page links the file as well.
+ */
+export async function exportReadyMail(input: { to: string; orgName: string; invoices: number; links: { name: string; url: string; bytes: number }[]; expiresOn: string }) {
+  const resend = client();
+  if (!resend) {
+    console.warn(`[mail] RESEND_API_KEY not set — export link skipped for ${input.to}.`);
+    return;
+  }
+  const mb = (bytes: number) => `${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 }).format(bytes / (1024 * 1024))} MB`;
+  const links = input.links
+    .map((l) => `<p style="margin:8px 0"><a href="${esc(l.url)}" style="display:inline-block;padding:10px 18px;background:#f7802e;color:#18232c;text-decoration:none;border-radius:4px;font-weight:600">Ladda ner ${esc(l.name)}</a> <span style="color:#6b7280">${mb(l.bytes)}</span></p>`)
+    .join("");
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: input.to,
+      subject: `PDF-arkivet för ${input.orgName.slice(0, 80)} är klart`,
+      html: `
+        <div style="font-family:sans-serif;font-size:14px;color:#14161a">
+          <p>Hej,</p>
+          <p>PDF-arkivet du beställde för <strong>${esc(input.orgName)}</strong> är klart: ${input.invoices} fakturor och kreditfakturor som PDF, med index.csv.${input.links.length > 1 ? ` Det är stort och delat i ${input.links.length} zip-filer.` : ""}</p>
+          ${links}
+          <p style="color:#6b7280">Länken gäller till och med ${esc(input.expiresOn)}; därefter tas filen bort. Arkivet finns också under Full export på sidan Bokföringen så länge länken gäller.</p>
+        </div>
+      `,
+    });
+    if (error) console.error("[mail] exportReadyMail failed", error.message);
+  } catch (err) {
+    console.error("[mail] exportReadyMail failed", err);
+  }
+}

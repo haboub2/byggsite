@@ -95,15 +95,26 @@ export function createZip(entries: ZipEntry[]): Buffer {
   return Buffer.concat([...locals, ...centrals, end]);
 }
 
-/** Read a zip written by createZip back (stored entries only): for the tests. */
-export function readStoredZip(zip: Buffer): { name: string; data: Buffer; crcOk: boolean }[] {
+/** The inverse of dosDateTime (local time, two-second resolution). */
+function fromDosDateTime(time: number, date: number): Date {
+  return new Date(1980 + (date >> 9), ((date >> 5) & 0x0f) - 1, date & 0x1f, time >> 11, (time >> 5) & 0x3f, (time & 0x1f) * 2);
+}
+
+/**
+ * Read a zip written by createZip back (stored entries only): for the tests,
+ * and for the background PDF archive, which renders its invoices into part
+ * zips and joins them into one at the end (lib/core/export/job-store.ts).
+ */
+export function readStoredZip(zip: Buffer): { name: string; data: Buffer; date: Date; crcOk: boolean }[] {
   const endAt = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
   if (endAt < 0) throw new Error("Ingen zip.");
   const count = zip.readUInt16LE(endAt + 10);
   let at = zip.readUInt32LE(endAt + 16);
-  const out: { name: string; data: Buffer; crcOk: boolean }[] = [];
+  const out: { name: string; data: Buffer; date: Date; crcOk: boolean }[] = [];
   for (let i = 0; i < count; i++) {
     if (zip.readUInt32LE(at) !== 0x02014b50) throw new Error("Trasig central katalog.");
+    if (zip.readUInt16LE(at + 10) !== 0) throw new Error("Bara okomprimerade zip-filer kan läsas.");
+    const date = fromDosDateTime(zip.readUInt16LE(at + 12), zip.readUInt16LE(at + 14));
     const crc = zip.readUInt32LE(at + 16);
     const size = zip.readUInt32LE(at + 20);
     const nameLen = zip.readUInt16LE(at + 28);
@@ -115,7 +126,7 @@ export function readStoredZip(zip: Buffer): { name: string; data: Buffer; crcOk:
     const localExtraLen = zip.readUInt16LE(localAt + 28);
     const start = localAt + 30 + localNameLen + localExtraLen;
     const data = zip.subarray(start, start + size);
-    out.push({ name, data, crcOk: crc32(data) === crc });
+    out.push({ name, data, date, crcOk: crc32(data) === crc });
     at += 46 + nameLen + extraLen + commentLen;
   }
   return out;

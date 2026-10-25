@@ -18,3 +18,13 @@ export function downloadHeaders(contentType: string, fileName: string): HeadersI
     "Cache-Control": "no-store",
   };
 }
+
+/** This deployment's origin from the request headers, for calling its own cron route. Null outside a request. */
+export async function requestOrigin(): Promise<string | null> {
+  const { headers } = await import("next/headers");
+  const h = await headers().catch(() => null);
+  const host = h?.get("x-forwarded-host") ?? h?.get("host");
+  if (!host) return null;
+  const proto = h?.get("x-forwarded-proto") ?? (/^(localhost|127\.0\.0\.1)(:|$)/.test(host) ? "http" : "https");
+  return `${proto}://${host}`;
+}

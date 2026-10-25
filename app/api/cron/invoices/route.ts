@@ -3,6 +3,7 @@ import { asSystem } from "@/lib/core/db";
 import { runDueRecurring } from "@/lib/core/invoices/recurring";
 import { listDueReminders, reminderSettings, sendReminder } from "@/lib/core/reminders/store";
 import { deliverDueWebhooks } from "@/lib/api/webhook-delivery";
+import { expireExportJobs, kickExportJobs } from "@/lib/core/export/job-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isDemo } from "@/lib/leads";
 import { todayIso } from "@/lib/quotes/schema";
@@ -13,7 +14,9 @@ import { todayIso } from "@/lib/quotes/schema";
  * issued invoices when auto-issue is set), then finds the reminders that are
  * due and, when the organisation's settings say so, sends them; otherwise it
  * only reports, and the dashboard shows them under Att göra. Last, it
- * delivers the queued webhooks of all organisations.
+ * delivers the queued webhooks of all organisations, removes background
+ * exports whose link has expired and starts the export queue
+ * (/api/cron/exports) in case a job is waiting.
  * Protected by CRON_SECRET, which Vercel sends as a bearer token.
  */
 export async function GET(request: NextRequest) {
@@ -60,7 +63,13 @@ export async function GET(request: NextRequest) {
   }
 
   const webhooks = await deliverDueWebhooks().catch((err) => ({ error: err instanceof Error ? err.message : String(err) }));
-  return Response.json({ ok: true, today, organizations: perOrg, webhooks });
+  const exports = await expireExportJobs()
+    .then(async (expired) => {
+      await kickExportJobs(request.nextUrl.origin);
+      return { expired };
+    })
+    .catch((err) => ({ error: err instanceof Error ? err.message : String(err) }));
+  return Response.json({ ok: true, today, organizations: perOrg, webhooks, exports });
 }
 
 async function listOrganizations(): Promise<{ id: string; name: string }[]> {

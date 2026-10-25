@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { lockPeriodAction } from "@/app/admin/export-actions";
+import { lockPeriodAction, requestPdfArchiveAction } from "@/app/admin/export-actions";
+import { ExportJobRefresh } from "@/components/admin/invoices/ExportJobRefresh";
+import { countArchiveInvoices, listExportJobs } from "@/lib/core/export/job-store";
+import { isDownloadable, jobStatusText, LINK_DAYS, QUEUE_THRESHOLD, shouldQueue } from "@/lib/core/export/jobs";
 import { formatDateTime } from "@/lib/admin-format";
 import { formatOre } from "@/lib/core/money";
 import { accountTotals, isPeriod, isPeriodLocked, lockProblem, monthRange, previousMonth, recentPeriods, sieFileName, vatSummary, VAT_BOX_LABEL, type VatBoxes } from "@/lib/core/ledger/period";
@@ -25,7 +28,16 @@ export default async function ExportPage({ searchParams }: { searchParams: Promi
   const current = today.slice(0, 7);
   const period = isPeriod(q.period) ? q.period : previousMonth(current);
   const { from, to } = monthRange(period);
-  const [entries, accounts, locks, { company }] = await Promise.all([listJournalEntries({ from, to }), listAccounts(), listPeriodLocks(), getOrgSettings()]);
+  const [entries, accounts, locks, { company }, archiveCount, jobs] = await Promise.all([
+    listJournalEntries({ from, to }),
+    listAccounts(),
+    listPeriodLocks(),
+    getOrgSettings(),
+    countArchiveInvoices(),
+    listExportJobs(5),
+  ]);
+  const queueOnly = shouldQueue(archiveCount);
+  const jobOpen = jobs.some((j) => j.status === "queued" || j.status === "running");
   const names = new Map(accounts.map((a) => [a.number, a.name]));
   const totals = accountTotals(entries);
   const vat = vatSummary(entries);
@@ -65,6 +77,8 @@ export default async function ExportPage({ searchParams }: { searchParams: Promi
           </p>
         )}
         {q.ok === "last" && <p className="admin-flash">{monthLabel(period)} är låst. Nya verifikationer daterade i månaden stoppas av databasen.</p>}
+        {q.ok === "arkiv" && <p className="admin-flash">PDF-arkivet byggs i bakgrunden. Du får en länk per mejl när det är klart, och den syns också under Full export.</p>}
+        {jobOpen && <ExportJobRefresh />}
 
         <nav className="inbox-tabs" aria-label="Period">
           {periods.map((p) => (
@@ -212,9 +226,17 @@ export default async function ExportPage({ searchParams }: { searchParams: Promi
               <h3 className="admin-h2">Arkiv</h3>
             </div>
             <div className="lead-quick" style={{ flexWrap: "wrap" }}>
-              <a href="/admin/ekonomi/export/pdf-arkiv" className="btn btn-dark" download>
-                PDF-arkiv (zip)
-              </a>
+              {queueOnly ? (
+                <form action={requestPdfArchiveAction}>
+                  <button type="submit" className="btn btn-dark" disabled={jobOpen}>
+                    Bygg PDF-arkivet
+                  </button>
+                </form>
+              ) : (
+                <a href="/admin/ekonomi/export/pdf-arkiv" className="btn btn-dark" download>
+                  PDF-arkiv (zip)
+                </a>
+              )}
               <a href="/admin/ekonomi/export/json" className="btn btn-ghost" download>
                 Allt som JSON
               </a>
@@ -222,6 +244,42 @@ export default async function ExportPage({ searchParams }: { searchParams: Promi
             <p className="efield-hint" style={{ marginTop: 10 }}>
               Zip-filen har varje utfärdad faktura och kreditfaktura som PDF och en index.csv. JSON-filen har inställningar, kunder, fakturor med hela fakturadokumentet, betalningar, verifikationer, ROT, betalplaner och händelseloggen, med belopp i öre.
             </p>
+            {queueOnly ? (
+              <p className="efield-hint">
+                {archiveCount} fakturor är fler än {QUEUE_THRESHOLD}, så arkivet byggs i bakgrunden, 50 fakturor åt gången. Du får en länk per mejl som gäller i {LINK_DAYS} dagar.
+              </p>
+            ) : (
+              <form action={requestPdfArchiveAction} className="efield-hint">
+                {archiveCount} {archiveCount === 1 ? "faktura" : "fakturor"}.{" "}
+                <button type="submit" className="link-quiet" disabled={jobOpen} style={{ background: "none", border: 0, padding: 0, font: "inherit", textDecoration: "underline", cursor: "pointer" }}>
+                  Bygg i bakgrunden och mejla länken
+                </button>
+              </form>
+            )}
+            {jobs.length > 0 && (
+              <ul className="inv-list" style={{ marginTop: 12 }}>
+                {jobs.map((j) => (
+                  <li key={j.id} style={{ alignItems: "flex-start" }}>
+                    <span>
+                      PDF-arkiv beställt {formatDateTime(j.createdAt)}
+                      {j.requestedEmail ? <span className="inv-muted"> av {j.requestedEmail}</span> : null}
+                      <span className="inbox-meta" style={{ display: "block" }}>
+                        {jobStatusText(j)}
+                      </span>
+                    </span>
+                    {isDownloadable(j) ? (
+                      <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                        {j.outputs.map((o, k) => (
+                          <a key={o.path} href={`/admin/ekonomi/export/jobb/${j.id}?del=${k}`} className="link-quiet">
+                            {j.outputs.length > 1 ? `Del ${k + 1}` : "Ladda ner"} ({Math.max(0.1, Math.round(o.bytes / 104857.6) / 10).toLocaleString("sv-SE")} MB)
+                          </a>
+                        ))}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         </div>
 
