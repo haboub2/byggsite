@@ -1,8 +1,8 @@
 import "server-only";
-import { createClient } from "./supabase/server";
+import { cache } from "react";
 import { isDemo } from "./leads";
 import { currentMembership } from "./core/org/current";
-import { isSiteOrg } from "./core/org/site";
+import { getRequestSession } from "./core/org/session";
 import { hasAccess, type Access, type Role } from "./core/org/roles";
 
 export type AdminCheck =
@@ -35,21 +35,30 @@ export type AdminCheck =
  * role is too low for this.
  */
 export async function requireRole(access: Access): Promise<AdminCheck> {
+  const base = await whoIsAsking();
+  if (!base.ok) return base;
+  if (!hasAccess(base.role, access, base.site)) return { ok: false, reason: "forbidden", email: base.email, role: base.role };
+  return base;
+}
+
+/**
+ * The part of requireRole that does not depend on the access asked for, once
+ * per request: the layout, the page and every action in it share it. The
+ * user and memberships come from the proxy's check (lib/core/org/session.ts),
+ * so this normally makes no round trip at all.
+ */
+const whoIsAsking = cache(async (): Promise<AdminCheck> => {
   if (isDemo()) return { ok: true, email: "demo@localhost", demo: true, userId: null, role: "owner", orgId: "demo", orgName: "Demo AB", site: true };
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, reason: "signed-out" };
+  const session = await getRequestSession();
+  if (!session) return { ok: false, reason: "signed-out" };
 
   const membership = await currentMembership();
-  if (!membership) return { ok: false, reason: "not-admin", email: user.email };
-  const site = await isSiteOrg(membership.orgId);
-  if (!hasAccess(membership.role, access, site)) return { ok: false, reason: "forbidden", email: user.email, role: membership.role };
+  if (!membership) return { ok: false, reason: "not-admin", email: session.email };
+  const site = membership.orgId === session.siteOrgId;
 
-  return { ok: true, email: user.email ?? null, demo: false, userId: user.id, role: membership.role, orgId: membership.orgId, orgName: membership.name, site };
-}
+  return { ok: true, email: session.email, demo: false, userId: session.userId, role: membership.role, orgId: membership.orgId, orgName: membership.name, site };
+});
 
 /** The check every writing server action makes: staff or higher in the current organisation. */
 export async function checkAdmin(): Promise<AdminCheck> {

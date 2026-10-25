@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
-import { getDb } from "../db";
+import { unstable_cache } from "next/cache";
+import { createPublicClient } from "../../supabase/public";
 import { isDemo } from "../../leads";
 import { DEMO_ORG_ID } from "./current";
 
@@ -13,14 +14,31 @@ import { DEMO_ORG_ID } from "./current";
  */
 export const siteOrgId = cache(async (): Promise<string | null> => {
   if (isDemo()) return DEMO_ORG_ID;
-  // default_org() is security definer: the oldest organisation of all, not of those the caller can see.
-  const { data, error } = await (await getDb()).rpc("default_org");
-  if (error) {
-    console.error("[org] default_org failed:", error.message);
+  return readSiteOrgId();
+});
+
+// It never changes in practice, so it is kept across requests for a while.
+// Read with the cookie-less anon client: default_org() is security definer
+// and granted to anon (0014), and a cached function may not read cookies.
+// A failed read throws, so it is not cached; the caller gets null.
+const cachedSiteOrgId = unstable_cache(
+  async (): Promise<string | null> => {
+    const { data, error } = await createPublicClient().rpc("default_org");
+    if (error) throw new Error(error.message);
+    return (data as string | null) ?? null;
+  },
+  ["default-org"],
+  { revalidate: 600 }
+);
+
+async function readSiteOrgId(): Promise<string | null> {
+  try {
+    return await cachedSiteOrgId();
+  } catch (err) {
+    console.error("[org] default_org failed:", err instanceof Error ? err.message : err);
     return null;
   }
-  return (data as string | null) ?? null;
-});
+}
 
 export async function isSiteOrg(orgId: string | null | undefined): Promise<boolean> {
   if (!orgId) return false;

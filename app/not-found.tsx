@@ -2,12 +2,13 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Icon } from "@/components/Icons";
-import { projectsReady } from "@/lib/projects";
+import { siteChrome } from "@/lib/content/chrome";
 
 export default async function NotFound() {
+  const { company, showProjects } = await siteChrome();
   return (
     <>
-      <Header showProjects={await projectsReady()} />
+      <Header showProjects={showProjects} />
       <main id="main">
         <section className="phero phero--text" style={{ minHeight: "60vh", display: "flex", alignItems: "center" }}>
           <div className="container">
@@ -29,7 +30,7 @@ export default async function NotFound() {
           </div>
         </section>
       </main>
-      <Footer />
+      <Footer company={company} showProjects={showProjects} />
     </>
   );
 }

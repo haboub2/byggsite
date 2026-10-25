@@ -47,24 +47,29 @@ export default async function EkonomiPage() {
   const periodRows = periodTodos({ entries: entryCounts, exported, locks, today });
   // Planned inflows: unbilled plan steps, placed on the project's end date (or in four weeks).
   // Step amounts are worked out as in ProjectEconomy: percent of the quote, or what the completion step has left.
-  const planned: PlannedInflow[] = [];
-  for (const p of projects) {
-    const plan = await getPlanForProject(p.id).catch(() => null);
-    if (!plan || plan.steps.every((s) => s.invoiceId)) continue;
-    const [quote, bundle, invoicedOn] = await Promise.all([p.quote_id ? getQuote(p.quote_id) : null, getProjectBundle(p.id), changeOrderInvoiceIds(p.id)]);
-    const quoteLines = quote ? quoteInvoiceLines(quote) : [];
-    const issuedGross = invoices
-      .filter((i) => i.projectId === p.id && countsAsInvoiced(i) && !i.document.lines.some((l) => l.changeOrderId))
-      .reduce((s, i) => s + i.totalOre, 0);
-    const approvedNotInvoicedKr = (bundle?.changeOrders ?? []).filter((c) => c.status === "approved" && !invoicedOn[c.id]).reduce((s, c) => s + c.amount, 0);
-    for (const step of plan.steps) {
-      if (step.invoiceId) continue;
-      const amountOre = stepGross(step, quoteLines, issuedGross, step.dueRule === "on_completion" ? approvedNotInvoicedKr : 0);
-      if (amountOre <= 0) continue;
-      const expectedOn = step.dueRule === "on_date" && step.dueOn ? step.dueOn : p.ends_on || addDays(today, 28);
-      planned.push({ expectedOn: addDays(expectedOn, 14), amountOre, label: `${p.title}: ${step.label}` });
-    }
-  }
+  // Projects are read side by side; the order of the list stays the projects' order.
+  const perProject = await Promise.all(
+    projects.map(async (p): Promise<PlannedInflow[]> => {
+      const plan = await getPlanForProject(p.id).catch(() => null);
+      if (!plan || plan.steps.every((s) => s.invoiceId)) return [];
+      const [quote, bundle, invoicedOn] = await Promise.all([p.quote_id ? getQuote(p.quote_id) : null, getProjectBundle(p.id), changeOrderInvoiceIds(p.id)]);
+      const quoteLines = quote ? quoteInvoiceLines(quote) : [];
+      const issuedGross = invoices
+        .filter((i) => i.projectId === p.id && countsAsInvoiced(i) && !i.document.lines.some((l) => l.changeOrderId))
+        .reduce((s, i) => s + i.totalOre, 0);
+      const approvedNotInvoicedKr = (bundle?.changeOrders ?? []).filter((c) => c.status === "approved" && !invoicedOn[c.id]).reduce((s, c) => s + c.amount, 0);
+      const out: PlannedInflow[] = [];
+      for (const step of plan.steps) {
+        if (step.invoiceId) continue;
+        const amountOre = stepGross(step, quoteLines, issuedGross, step.dueRule === "on_completion" ? approvedNotInvoicedKr : 0);
+        if (amountOre <= 0) continue;
+        const expectedOn = step.dueRule === "on_date" && step.dueOn ? step.dueOn : p.ends_on || addDays(today, 28);
+        out.push({ expectedOn: addDays(expectedOn, 14), amountOre, label: `${p.title}: ${step.label}` });
+      }
+      return out;
+    })
+  );
+  const planned = perProject.flat();
   const dash = computeDashboard(
     invoices.map<DashInvoice>((i) => ({
       id: i.id,

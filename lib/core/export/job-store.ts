@@ -5,7 +5,6 @@ import { asSystem, getDb } from "../db";
 import { isDemo } from "../../leads";
 import { createAdminClient } from "../../supabase/admin";
 import { exportReadyMail } from "../../mail";
-import { renderInvoicePdf } from "../../pdf/render-invoice";
 import { todayIso } from "../../quotes/schema";
 import { readOrgId } from "../org/current";
 import { invoiceFromRow, type InvoiceRecord } from "../invoices/store";
@@ -29,6 +28,9 @@ import {
   type ExportJobKind,
   type ExportJobOutput,
 } from "./jobs";
+
+// The PDF renderer loads on first use, not with every page that imports this module.
+const renderInvoicePdf: typeof import("../../pdf/render-invoice").renderInvoicePdf = async (...args) => (await import("../../pdf/render-invoice")).renderInvoicePdf(...args);
 
 /**
  * Background exports as they are stored (export_jobs and the private bucket

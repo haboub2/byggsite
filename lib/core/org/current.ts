@@ -1,10 +1,10 @@
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { createClient } from "../../supabase/server";
 import { isDemo } from "../../leads";
 import { isSystem, systemOrgId } from "../db";
-import { isRole, type Role } from "./roles";
+import { pickMembership, type SessionMembership } from "./request-session";
+import { getRequestSession } from "./session";
 
 /**
  * Which organisation the signed-in user is working in. A user can belong to
@@ -20,42 +20,17 @@ import { isRole, type Role } from "./roles";
 export const ORG_COOKIE = "org";
 export const DEMO_ORG_ID = "00000000-0000-4000-8000-000000000001";
 
-export type MyMembership = { orgId: string; role: Role; name: string; slug: string; orgNr: string; joinedAt: string };
+export type MyMembership = SessionMembership;
 
+/** The signed-in user's memberships, in join order; from the proxy's check when it made one (lib/core/org/session.ts). */
 export const listMyMemberships = cache(async (): Promise<MyMembership[]> => {
   if (isDemo()) return [{ orgId: DEMO_ORG_ID, role: "owner", name: "Demo AB", slug: "demo", orgNr: "", joinedAt: "2026-01-01T00:00:00Z" }];
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
-  const { data, error } = await supabase
-    .from("memberships")
-    .select("org_id, role, created_at, organizations(name, slug, org_nr)")
-    .eq("user_id", user.id)
-    .order("created_at");
-  if (error) {
-    console.error("[org] memberships lookup failed:", error.message);
-    return [];
-  }
-  type Joined = { org_id: string; role: string; created_at: string; organizations: { name: string; slug: string; org_nr: string } | null };
-  return ((data ?? []) as unknown as Joined[])
-    .filter((r) => isRole(r.role))
-    .map((r) => ({
-      orgId: r.org_id,
-      role: r.role as Role,
-      name: r.organizations?.name ?? "Organisation",
-      slug: r.organizations?.slug ?? "",
-      orgNr: r.organizations?.org_nr ?? "",
-      joinedAt: r.created_at,
-    }));
+  return (await getRequestSession())?.memberships ?? [];
 });
 
 /** The membership the session is working in, or null for a user without any. */
 export const currentMembership = cache(async (): Promise<MyMembership | null> => {
-  const all = await listMyMemberships();
-  const wanted = (await cookies()).get(ORG_COOKIE)?.value;
-  return all.find((m) => m.orgId === wanted) ?? all[0] ?? null;
+  return pickMembership(await listMyMemberships(), (await cookies()).get(ORG_COOKIE)?.value);
 });
 
 /**

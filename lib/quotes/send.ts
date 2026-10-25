@@ -1,7 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
 import { getQuoteProfile } from "./profile-store";
-import { renderQuotePdf, quoteFileName } from "../pdf/render";
 import { quoteTotals, kr, validUntil, formatDate, deductionLabel } from "./math";
 import type { Quote } from "./schema";
 
@@ -25,6 +24,8 @@ export async function sendQuoteMail(quote: Quote, message: string): Promise<void
   const { company, settings, brand } = profile;
   const t = quoteTotals(quote.data);
   const d = quote.data;
+  // The PDF renderer loads here, not with every page whose actions can send a quote.
+  const { renderQuotePdf, quoteFileName } = await import("../pdf/render");
   const pdf = await renderQuotePdf(quote, profile);
   const firstName = d.customer.name.split(" ")[0];
   const signer = settings.signerName || company.legalName;

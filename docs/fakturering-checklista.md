@@ -43,6 +43,12 @@ Lagtexten bakom besluten står i `docs/fakturering.md` under respektive läge.
 - [ ] **Supabase och Vercel i EU** (du, beslut). Planen rekommenderar att
   flytta till EU-region innan första externa kundens data läggs in. För
   Binaafys egna fakturor spelar det ingen roll nu.
+- [ ] **Vercel-regionen samma som Supabase** (du, 5 min). Funktionerna
+  kör i `iad1` (USA) och varje anrop till databasen korsar Atlanten; en
+  sidvisning i admin gör flera. Kolla Supabase-projektets region (Project
+  Settings → General) och sätt samma region i Vercel (Project → Settings →
+  Functions → Function Region, t.ex. `arn1` Stockholm eller `fra1`
+  Frankfurt). Redeploya. Se docs/fakturering.md, "Läge: prestanda i admin".
 - [ ] **Provfakturera dig själv** (vi, 20 min). En riktig faktura på
   1 kr till en privat testkund med din egen e-post, betala via Swish,
   registrera betalningen, kontrollera verifikatet under Ekonomi, kreditera.
