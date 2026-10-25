@@ -18,7 +18,7 @@ Lagtexten bakom besluten står i `docs/fakturering.md` under respektive läge.
   Resend), `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`. Påminnelsernas
   inställningar ligger i appen (punkt 3), inte i miljövariabler. Redeploya
   efteråt.
-- [ ] **Kontrollera att Vercel-bygget av main är grönt** (du, 2 min). Vercel →
+- [x] **Kontrollera att Vercel-bygget av main är grönt** (gjort 2026-10-25: /fakturering svarar live). Vercel →
   Deployments. Ingen av oss har tittat efter merge:arna.
 - [x] **Rensa testdata** (gjort 2026-10-23). Kör `supabase/reset-invoicing.sql` i
   SQL-editorn: tar bort testfakturor, betalningar, verifikat och nollställer
@@ -26,7 +26,7 @@ Lagtexten bakom besluten står i `docs/fakturering.md` under respektive läge.
   medlemskapet, API-nyckeln och webhooken), skriptet rör inte
   organisationer. Gör det innan första riktiga fakturan, annars får den fel
   nummer.
-- [ ] **Bestäm startnummer** (du, 1 min). Serien börjar på 1 efter reset.
+- [x] **Bestäm startnummer** (gjort: serien går från 10001). Serien börjar på 1 efter reset.
   Vill du börja på 10001 (som planen säger) så sätt det i
   `number_counters` i samma SQL-körning; be mig om raden.
 - [ ] **Inställningar › Företaget på fakturan** (du, 10 min). Kontrollera namn, adress,
@@ -96,8 +96,7 @@ finns redan (`Fakturor › Bank`).
 - [ ] **Fakturamejlet skarpt** (du, 5 min). Skicka en faktura till dig
   själv från produktionen och kontrollera avsändare, PDF och länk till den
   publika fakturasidan. Testat lokalt via Resend, inte från Vercel.
-- [~] **Flera mottagare per kund** (Opus, pågår i sessionen "Flera
-  e-postmottagare"). Fakturor till ekonomi@ och projektledare, kopia till
+- [x] **Flera mottagare per kund** (gjort 2026-10-22, commit 6d75690). Fakturor till ekonomi@ och projektledare, kopia till
   er själva. Kräver migration 0026, som sessionen ber dig köra.
 - [ ] **Påminnelser** (du, beslut, `Inställningar › Påminnelser`).
   Regelverket är klart: dröjsmålsränta referensränta + 8 procentenheter,
