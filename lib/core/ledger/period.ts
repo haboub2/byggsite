@@ -1,5 +1,6 @@
 import type { Ore } from "../money";
 import { DEFAULT_CHART, type AccountNumber, type ChartOfAccounts } from "./posting";
+import { fiscalYearLabel } from "../org/settings";
 
 /**
  * Periods of the ledger: what a month contains, the VAT return's figures
@@ -72,6 +73,19 @@ export function recentPeriods(last: Period, count: number): Period[] {
   return out;
 }
 
+/** The months from `from` to `to` inclusive (dates or periods), oldest first: a fiscal year's months for the lock overview. */
+export function periodsBetween(from: string, to: string): Period[] {
+  const out: Period[] = [];
+  const last = to.slice(0, 7);
+  let p = from.slice(0, 7);
+  while (p <= last) {
+    out.push(p);
+    const { year, month } = parts(p);
+    p = month === 12 ? `${year + 1}-01` : `${year}-${pad(month + 1)}`;
+  }
+  return out;
+}
+
 /** True when a lock covers the date. */
 export function isLocked(locks: Pick<PeriodLock, "periodStart" | "periodEnd">[], date: string): boolean {
   return locks.some((l) => l.periodStart <= date && date <= l.periodEnd);
@@ -119,6 +133,28 @@ export function periodTodos(input: { entries: { period: Period; count: number }[
     else if (lockDue) out.push({ kind: "lock", period, entries: count });
   }
   return out;
+}
+
+/**
+ * Why the fiscal year cannot be moved to start on `newStart` now, or null.
+ * Entries keep the fiscal year and number they got (0030 numbers V per
+ * fiscal year when the entry is made). An entry in an open month that the
+ * new setting would put in another fiscal year would share its number with
+ * one in the new year's series, in the same SIE year, so the change waits
+ * until those months are locked (handed to the bookkeeping) or is made at a
+ * fiscal year end before anything is posted in the new year.
+ */
+export function fiscalYearChangeProblem(
+  entries: Pick<LedgerEntry, "series" | "fiscalYear" | "number" | "date">[],
+  locks: Pick<PeriodLock, "periodStart" | "periodEnd">[],
+  newStart: string
+): string | null {
+  const moved = entries
+    .filter((e) => e.series === "V" && !isLocked(locks, e.date) && fiscalYearLabel(e.date, newStart) !== e.fiscalYear)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.number - b.number);
+  if (!moved.length) return null;
+  const first = moved[0];
+  return `Räkenskapsåret kan inte läggas om nu: ${moved.length} ${moved.length === 1 ? "verifikation" : "verifikationer"} i olåsta månader (först V${first.number} den ${first.date}) hör till ett annat räkenskapsår med den nya inställningen. Lås de månaderna när de är inlästa i bokföringen, eller lägg om räkenskapsåret vid ett årsskifte innan något bokförts i det nya året.`;
 }
 
 export function entriesIn(entries: LedgerEntry[], from: string, to: string): LedgerEntry[] {
@@ -215,12 +251,6 @@ export function vatSummary(entries: LedgerEntry[], chart: ChartOfAccounts = DEFA
       "42": sales[0],
     },
   };
-}
-
-/** The fiscal year an entry date belongs to. Calendar year until org_settings has a fiscal year (fas 5). */
-export function fiscalYearOf(date: string): { start: string; end: string } {
-  const y = date.slice(0, 4);
-  return { start: `${y}-01-01`, end: `${y}-12-31` };
 }
 
 /** File name for a period's SIE file: "binaafy-ab-2026-10.se". */

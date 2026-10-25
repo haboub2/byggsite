@@ -5,7 +5,8 @@ import { countArchiveInvoices, listExportJobs } from "@/lib/core/export/job-stor
 import { isDownloadable, jobStatusText, LINK_DAYS, QUEUE_THRESHOLD, shouldQueue } from "@/lib/core/export/jobs";
 import { formatDateTime } from "@/lib/admin-format";
 import { formatOre } from "@/lib/core/money";
-import { accountTotals, isPeriod, isPeriodLocked, lockProblem, monthRange, previousMonth, recentPeriods, sieFileName, vatSummary, VAT_BOX_LABEL, type VatBoxes } from "@/lib/core/ledger/period";
+import { accountTotals, isPeriod, isPeriodLocked, lockProblem, monthRange, periodsBetween, previousMonth, recentPeriods, sieFileName, vatSummary, VAT_BOX_LABEL, type VatBoxes } from "@/lib/core/ledger/period";
+import { fiscalYearFor, fiscalYearLabel } from "@/lib/core/org/settings";
 import { listAccounts, listJournalEntries, listPeriodLocks } from "@/lib/core/ledger/store";
 import { getOrgSettings } from "@/lib/core/org/settings-store";
 import { todayIso } from "@/lib/quotes/schema";
@@ -28,7 +29,7 @@ export default async function ExportPage({ searchParams }: { searchParams: Promi
   const current = today.slice(0, 7);
   const period = isPeriod(q.period) ? q.period : previousMonth(current);
   const { from, to } = monthRange(period);
-  const [entries, accounts, locks, { company }, archiveCount, jobs] = await Promise.all([
+  const [entries, accounts, locks, { company, fiscalYearStart }, archiveCount, jobs] = await Promise.all([
     listJournalEntries({ from, to }),
     listAccounts(),
     listPeriodLocks(),
@@ -37,6 +38,10 @@ export default async function ExportPage({ searchParams }: { searchParams: Promi
     listExportJobs(5),
   ]);
   const queueOnly = shouldQueue(archiveCount);
+  // The fiscal year the month is in: the voucher series restarts with it, and #RAR in the SIE file is it.
+  const fiscalYear = fiscalYearFor(from, fiscalYearStart);
+  const fiscalMonths = periodsBetween(fiscalYear.start, fiscalYear.end);
+  const fiscalLocked = fiscalMonths.filter((p) => isPeriodLocked(locks, p)).length;
   const jobOpen = jobs.some((j) => j.status === "queued" || j.status === "running");
   const names = new Map(accounts.map((a) => [a.number, a.name]));
   const totals = accountTotals(entries);
@@ -165,6 +170,9 @@ export default async function ExportPage({ searchParams }: { searchParams: Promi
                 )}
               </form>
             )}
+            <p className="efield-hint" style={{ marginTop: 12 }}>
+              Räkenskapsåret {fiscalYear.start} – {fiscalYear.end}, verifikationsserie V {fiscalYearLabel(from, fiscalYearStart)}: {fiscalLocked} av {fiscalMonths.length} månader låsta.
+            </p>
             <dl className="dash-facts" style={{ marginTop: 16 }}>
               <div>
                 <dt>Kundfordringar (1510), förändring</dt>

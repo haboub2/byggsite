@@ -3,12 +3,14 @@ import assert from "node:assert/strict";
 import {
   accountTotals,
   entriesIn,
+  fiscalYearChangeProblem,
   isLocked,
   isPeriod,
   isPeriodLocked,
   lockProblem,
   monthRange,
   periodTodos,
+  periodsBetween,
   previousMonth,
   recentPeriods,
   sieFileName,
@@ -149,4 +151,25 @@ test("period todos: unexported ended months, and the lock reminder after the 10t
   assert.deepEqual(periodTodos({ entries, exported: ["2026-07"], locks: [...locks, { periodStart: "2026-09-01", periodEnd: "2026-09-30" }], today: "2026-10-25" }), []);
   // January looks back at December of the year before.
   assert.deepEqual(periodTodos({ entries: [{ period: "2026-12", count: 1 }], exported: ["2026-12"], locks: [], today: "2027-01-15" }), [{ kind: "lock", period: "2026-12", entries: 1 }]);
+});
+
+test("the months of a fiscal year, across new year", () => {
+  assert.deepEqual(periodsBetween("2026-07-01", "2027-06-30"), ["2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12", "2027-01", "2027-02", "2027-03", "2027-04", "2027-05", "2027-06"]);
+  assert.deepEqual(periodsBetween("2026-01-01", "2026-12-31").length, 12);
+  assert.deepEqual(periodsBetween("2026-10", "2026-10"), ["2026-10"]);
+});
+
+test("moving the fiscal year waits for open months numbered in another year", () => {
+  const v = (date: string, fiscalYear: number, number: number) => ({ series: "V", date, fiscalYear, number });
+  // Calendar year so far: September and October 2026 are V 2026-5 and 2026-6.
+  const entries = [v("2026-05-10", 2026, 1), v("2026-09-15", 2026, 5), v("2026-10-02", 2026, 6)];
+  const problem = fiscalYearChangeProblem(entries, [], "07-01");
+  assert.match(problem ?? "", /2 verifikationer i olåsta månader \(först V5 den 2026-09-15\)/);
+  // With July–December locked, May stays in the year ending 2026 either way: nothing is in the way.
+  const locks = [{ periodStart: "2026-07-01", periodEnd: "2026-12-31" }];
+  assert.equal(fiscalYearChangeProblem(entries, locks, "07-01"), null);
+  // Back to the calendar year, and entries already numbered per fiscal year.
+  assert.equal(fiscalYearChangeProblem(entries, [], "01-01"), null);
+  assert.equal(fiscalYearChangeProblem([v("2026-09-15", 2027, 1)], [], "07-01"), null);
+  assert.match(fiscalYearChangeProblem([v("2026-09-15", 2027, 1)], [], "01-01") ?? "", /1 verifikation i olåsta/);
 });

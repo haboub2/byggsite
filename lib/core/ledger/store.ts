@@ -5,6 +5,8 @@ import { isDemo } from "../../leads";
 import { makeEvent, type Actor, type CoreEvent } from "../events";
 import { demoJournalEntries } from "../invoices/store";
 import { DEFAULT_ACCOUNT_NAMES } from "./posting";
+import { getOrgSettings } from "../org/settings-store";
+import { fiscalYearLabel } from "../org/settings";
 import { entriesIn, isPeriod, isPeriodLocked, monthRange, type LedgerEntry, type Period, type PeriodLock } from "./period";
 
 /**
@@ -108,6 +110,28 @@ export async function exportedPeriods(): Promise<Period[]> {
   return [...new Set((data ?? []).map((r) => periodOfEvent(r.data)).filter((p): p is Period => p !== null))];
 }
 
+/** Every voucher's series, fiscal year, number and date, without lines: for checking a change of fiscal year. */
+export async function listVoucherNumbers(): Promise<Pick<LedgerEntry, "series" | "fiscalYear" | "number" | "date">[]> {
+  if (isDemo()) {
+    return demoJournalEntries().map((p) => {
+      const [year, n] = p.number.split("-").map(Number);
+      return { series: "V", fiscalYear: year, number: n, date: p.date };
+    });
+  }
+  const supabase = await getDb();
+  const org = await readOrgId();
+  const out: Pick<LedgerEntry, "series" | "fiscalYear" | "number" | "date">[] = [];
+  for (let from = 0; ; from += 1000) {
+    let q = supabase.from("journal_entries").select("series, fiscal_year, number, entry_date");
+    if (org) q = q.eq("org_id", org);
+    const { data, error } = await q.order("entry_date").order("number").range(from, from + 999);
+    if (error) throw new Error(`Kunde inte hämta verifikationerna: ${error.message}`);
+    const rows = (data ?? []) as { series: string; fiscal_year: number; number: number; entry_date: string }[];
+    out.push(...rows.map((r) => ({ series: r.series, fiscalYear: r.fiscal_year, number: r.number, date: r.entry_date })));
+    if (rows.length < 1000) return out;
+  }
+}
+
 /** The chart of accounts, number → name. Falls back to the BAS names the core posts to. */
 export async function listAccounts(): Promise<{ number: string; name: string }[]> {
   const fallback = Object.entries(DEFAULT_ACCOUNT_NAMES).map(([number, name]) => ({ number, name }));
@@ -153,13 +177,15 @@ export class PeriodAlreadyLockedError extends Error {
 export async function lockPeriod(period: Period, actor: Actor): Promise<void> {
   const { from, to } = monthRange(period);
   const lockedBy = actor.name;
-  const entries = (await listJournalEntries({ from, to })).length;
+  const [entries, settings] = await Promise.all([listJournalEntries({ from, to }).then((e) => e.length), getOrgSettings()]);
+  // The fiscal year the month belongs to, as the voucher series and the SIE file's #RAR count it.
+  const fiscalYear = fiscalYearLabel(from, settings.fiscalYearStart);
   if (isDemo()) {
     if (isPeriodLocked(demoLocks(), period)) throw new PeriodAlreadyLockedError(period);
     demoLocks().push({ periodStart: from, periodEnd: to, lockedBy, lockedAt: new Date().toISOString() });
     g.__binaafyInvoices?.events.push({
       id: crypto.randomUUID(),
-      ...makeEvent({ orgId: "demo", aggregateType: "export", aggregateId: crypto.randomUUID(), type: "export.sie", data: { period, from, to, entries, locked: true }, actor }),
+      ...makeEvent({ orgId: "demo", aggregateType: "export", aggregateId: crypto.randomUUID(), type: "export.sie", data: { period, from, to, entries, locked: true, fiscalYear }, actor }),
     });
     return;
   }
@@ -175,7 +201,7 @@ export async function lockPeriod(period: Period, actor: Actor): Promise<void> {
     aggregate_type: "export",
     aggregate_id: crypto.randomUUID(),
     type: "export.sie",
-    data: { period, from, to, entries, locked: true },
+    data: { period, from, to, entries, locked: true, fiscalYear },
     actor,
   });
   if (eventError) console.error("[ledger] lock event failed:", eventError.message);

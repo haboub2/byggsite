@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   chartFromSettings,
   fiscalYearFor,
+  fiscalYearLabel,
   orgSettingsSchema,
   overrideAccounts,
   reminderSettingsFrom,
@@ -110,4 +111,10 @@ test("fiscal year: calendar year and a broken year", () => {
   assert.deepEqual(fiscalYearFor("2026-10-20", "05-01"), { start: "2026-05-01", end: "2027-04-30" });
   assert.deepEqual(fiscalYearFor("2026-03-31", "05-01"), { start: "2025-05-01", end: "2026-04-30" });
   assert.deepEqual(fiscalYearFor("2028-02-10", "03-01"), { start: "2027-03-01", end: "2028-02-29" });
+  // The voucher series' label is the year the fiscal year ends (fiscal_year_of in 0030).
+  assert.equal(fiscalYearLabel("2026-10-20"), 2026);
+  assert.equal(fiscalYearLabel("2026-06-30", "07-01"), 2026);
+  assert.equal(fiscalYearLabel("2026-07-01", "07-01"), 2027);
+  assert.equal(fiscalYearLabel("2027-06-30", "07-01"), 2027);
+  assert.equal(fiscalYearLabel("2026-12-31", "01-01"), 2026);
 });
