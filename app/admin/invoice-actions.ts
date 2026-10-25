@@ -12,12 +12,14 @@ import { applySellerDefaults, getSellerDefaults } from "@/lib/core/invoices/sell
 import {
   createCreditNote,
   createInvoice,
+  deleteBlocker,
   deleteDraft,
   getInvoice,
   issueCorrection,
   issueInvoice,
   IssueError,
   markSent,
+  refundDue,
   registerPayment,
   updateInvoiceDraft,
   voidInvoice,
@@ -26,7 +28,7 @@ import { creditAndRedraft } from "@/lib/core/invoices/amend";
 import { correctionEditsSchema } from "@/lib/core/invoices/correction";
 import { sendInvoiceMail } from "@/lib/core/invoices/send";
 import { invalidEmails, MAX_RECIPIENTS, parseEmailList, recipientsText } from "@/lib/core/invoices/recipients";
-import { parseKronor } from "@/lib/core/money";
+import { formatOre, parseKronor } from "@/lib/core/money";
 import type { Actor } from "@/lib/core/events";
 import type { PaymentMethod } from "@/lib/core/ledger/posting";
 import { getQuote } from "@/lib/quotes/store";
@@ -187,6 +189,33 @@ export async function registerPaymentAction(_prev: InvoiceToolState, formData: F
   }
 }
 
+/**
+ * Registrera återbetalning: pay back what the customer paid over the
+ * invoice (after Rätta belopp moved a payment to a lower invoice). The
+ * amount is the excess, worked out here; booked as a negative payment,
+ * 1510 against the bank.
+ */
+export async function registerRefundAction(_prev: InvoiceToolState, formData: FormData): Promise<InvoiceToolState> {
+  const check = await checkAdmin();
+  if (!check.ok) return { error: "Du saknar behörighet." };
+  const id = String(formData.get("id") ?? "");
+  const method = String(formData.get("method") ?? "bankgiro") as PaymentMethod;
+  if (!METHODS.includes(method)) return { error: "Okänt betalsätt." };
+  const paidOn = String(formData.get("paidOn") ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(paidOn)) return { error: "Ange datum som ÅÅÅÅ-MM-DD." };
+  const inv = await getInvoice(id);
+  if (!inv) return { error: "Fakturan finns inte." };
+  const excess = refundDue(inv);
+  if (excess === 0) return { error: "Det finns inget att återbetala på fakturan." };
+  try {
+    await registerPayment(id, { amountOre: -excess, method, paidOn, reference: String(formData.get("reference") ?? "").slice(0, 80), note: "Återbetalning" }, actorOf(check.email));
+    revalidatePath(LIST, "layout");
+    return { ok: true, message: `Återbetalningen på ${formatOre(excess, { decimals: 0, currency: true })} är registrerad.` };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Kunde inte registrera återbetalningen." };
+  }
+}
+
 /** A credit note draft for an issued invoice; opens in the editor. */
 export async function creditInvoiceAction(formData: FormData): Promise<void> {
   const check = await checkAdmin();
@@ -259,6 +288,8 @@ export async function deleteInvoiceDraft(formData: FormData): Promise<void> {
   const check = await checkAdmin();
   if (!check.ok) return;
   const id = String(formData.get("id") ?? "");
+  // A draft that carries a moved payment is not deleted (deleteBlocker); the page explains why instead of offering it.
+  if (id && (await deleteBlocker(id))) redirect(`${LIST}/${id}`);
   if (id) await deleteDraft(id);
   revalidatePath(LIST, "layout");
   redirect(LIST);

@@ -9,6 +9,133 @@ delfakturor → ÄTA → slutfaktura → ROT) är produktens första säljargume
 Prototypen av gränssnittet finns som design-canvas (sju skärmar: fakturalista,
 faktura, projektekonomi, kundportal i mobil, PDF, ROT-begäran, dashboard).
 
+## Läge 2026-10-25: kvittning vid Rätta belopp på betalda fakturor (0028)
+
+Rätta belopp fungerar nu även när kunden har betalat hela eller en del av
+originalet. Första steget är detsamma som förut: en kreditfaktura för hela
+originalet utfärdas direkt och ett nytt utkast öppnas. Utkastet märks med
+`replaces_invoice_id` (originalet) och `offset_from_credit_id`
+(kreditfakturan), så personalen kan rätta raderna i lugn och ro. När
+utkastet utfärdas gör `issue_replacement_invoice` i **en transaktion**:
+
+- utfärdar fakturan med `issue_invoice` (nästa nummer, eget OCR-nummer,
+  verifikation),
+- flyttar det som är betalt på originalet: en kvittning per betalning
+  (`payments.method = 'offset'`, 0 kr, `offsets_payment_id` pekar på
+  originalets betalning och `offset_credit_id` på kreditfakturan), fördelad
+  −X på originalet och +X på den nya fakturan. Originalets `paid_ore` blir 0
+  och den nya fakturans X,
+- bokför kvittningen (nedan) och loggar `invoice.offset` på båda fakturorna,
+  plus `invoice.paid` eller `invoice.partially_paid` på den nya,
+- flyttar betalplanens steg, och de ÄTA som finns kvar på raderna, från
+  originalet till den nya fakturan.
+
+Beloppet fryses i dokumentet som `se.offset { invoiceNumber, creditNumber,
+amountOre }`, och funktionen kontrollerar att det är exakt det som är betalt
+på originalet. PDF:en visar Fakturans belopp, raden **"Kvittat mot faktura
+N: −X"** och Att betala (resten), plus en ruta Kvittning som förklarar
+kopplingen. Granskningsdialogen och utkastets PDF visar kvittningen innan
+fakturan utfärdas. Peppol: `PrepaidAmount` (BT-113) = X och `PayableAmount`
+= resten, negativt när kunden ska ha pengar tillbaka.
+
+- **Lägre än det betalda**: fakturan blir Betald och överskottet syns som
+  *att återbetala* på fakturan, i listan (raden och en egen ruta ovanför
+  listan) och på PDF:en ("Att återbetala till er"). **Registrera
+  återbetalning** registrerar överskottet som en negativ betalning, 1510
+  debet mot 1930 kredit.
+- **Högre**: fakturan är Delbetald med resten kvar att betala, med eget
+  OCR-nummer, bankfilsmatchning, påminnelser och Swish-QR på resten som för
+  vilken faktura som helst.
+- **Obetalt original**: ingen kvittning, men kopplingen och betalplanens
+  steg följer med på samma sätt.
+
+**Så bokförs kvittningen.** Kreditfakturan krediterar 1510 med hela
+originalet och utfärdandet debiterar 1510 med den nya fakturan, så det enda
+som återstår är att flytta det betalda mellan fakturorna i kundreskontran.
+Det blir en egen verifikation, "Kvittning faktura N mot faktura M
+(kreditfaktura K)", daterad som den nya fakturan och med källan Kvittning:
+1510 debet X med radtexten "Faktura N, betalning flyttad" och 1510 kredit X
+med "Faktura M, kvittad betalning", båda med kundens och projektets
+dimension. Ingen bankrad, eftersom inga pengar rör sig. Vi valde 1510 mot
+1510 framför ett avräkningskonto: kvittningen är en omföring inom
+kundfordringarna, saldot på 1510 stämmer i varje ögonblick (mellan krediten
+och utfärdandet syns kundens tillgodohavande som kreditsaldo på 1510), och
+ett avräkningskonto skulle få ett saldo som inte motsvarar någon verklig
+fordran eller skuld och som revisorn måste stämma av. Verifikationen gör
+ändå flytten spårbar i huvudboken: när den skedde, mellan vilka fakturor och
+mot vilken kreditfaktura. Fakturorna står i radtexten eftersom
+`journal_lines` saknar fakturadimension.
+
+Skydd och kantfall:
+
+- Ett ersättande utkast kan inte utfärdas med `issue_invoice` (triggern
+  `invoices_guard_replacement`), och kopplingen låses vid utfärdandet. Ett
+  original ersätts en gång och en kreditfaktura kvittas en gång (unika
+  index).
+- En kvittning skapas bara av funktionen och dess källa kan inte ändras
+  (triggern `payments_guard_offset`, villkoret `payments_offset_link`).
+- Utkastet kan inte tas bort så länge originalet har betalningar, eftersom
+  pengarna då skulle bli kvar på en krediterad faktura; knappen Ta bort
+  ersätts av en förklaring.
+- ROT som i dag: en faktura i en ROT-begäran som skickats till Skatteverket
+  stoppas, ligger den i ett utkast till begäran stoppas den tills den tagits
+  bort ur begäran.
+- **Innan 0028 är körd** märker appen att kolumnerna saknas
+  (`supportsOffset`) och gör som förut: obetalda fakturor rättas utan
+  koppling och betalda stoppas med att migrationen inte är körd.
+
+Dubbelräkning: listan, dashboarden, bankmatchningen och påminnelserna läser
+`payable_ore − paid_ore`, och eftersom betalningen flyttas (originalet 0,
+den nya X) räknas pengarna en gång. Betalplanernas "fakturerat hittills"
+(projektsidan, prognosen på Ekonomi och slutstegets rest) räknar bara
+fakturor som inte är krediterade (`countsAsInvoiced`), så originalet och den
+nya fakturan räknas inte båda. Betalnings-CSV:n får två rader per kvittning
+(−X och +X, källa Kvittning) som tar ut varandra; JSON-exporten har
+`replacesInvoiceId` och `offsetFromCreditId` på fakturorna.
+
+| Del | Fil |
+|---|---|
+| Migration 0028 | `supabase/migrations/0028_payment_offset.sql`: kolumnerna `replaces_invoice_id` och `offset_from_credit_id` på fakturor, `offsets_payment_id` och `offset_credit_id` på betalningar, betalsättet `offset`; vakterna; `issue_replacement_invoice` |
+| Prov | `supabase/tests/0028_offset.sql` (PGlite, i en transaktion som rullas tillbaka): betald faktura rättas till lägre (250 kr att återbetala, återbetalningen nollar 1510) och delbetald till högre (rest på eget OCR, betalplanens steg flyttat), obetald utan kvittning; huvudbok = reskontra efter varje steg, 1930 och 3001 stämmer, kvittningen är 1510 mot 1510 med fakturorna i radtexten, `invoice.offset` på båda; issue_invoice förbi kvittningen, fel belopp, annan organisation, kvittning direkt i tabellen, ändrad koppling och dubbel ersättning stoppas; fakturaserien 1–9 och verifikationsserien obrutna |
+| Kontering | `lib/core/ledger/posting.ts`: `postOffset` |
+| Lagret | `lib/core/invoices/store.ts`: `issueInvoice` går via `issue_replacement_invoice` för ersättande utkast, `replacementOf`, `deleteBlocker`, `supportsOffset`, demoläget i minnet (`demoReplace`); `lib/core/invoices/amend.ts` märker utkastet; `lib/core/plans/store.ts` flyttar stegen i demoläget |
+| Belopp och listor | `lib/core/invoices/totals.ts`: `amountDue`, `customerSummary` med `offset`, `due`, `refund`; `lib/core/invoices/store-types.ts`: `refundDue`, `countsAsInvoiced`, `refundCount`/`refundOre` i listans räkning; testade i `lib/core/invoices/offset.test.ts` |
+| Gränssnittet | fakturasidan (banderoller Ersätter/Ersatt av, kvittningsraden, Att återbetala med Registrera återbetalning, betalningarnas källa, tidslinjen), listan, granskningsdialogen och Rätta belopp-dialogen i `components/admin/invoices/InvoiceTools.tsx` |
+| PDF och Peppol | `lib/pdf/InvoicePdf.tsx`, `lib/pdf/render-invoice.tsx` (utkastets förhandsvisning), `lib/render/ubl/peppol-bis-billing-3.ts` |
+
+Provat 2026-10-25 i demoläget: faktura 10001 på 1 250 kr betalades och
+rättades med Rätta belopp (dialogen förklarade kvittningen). Kreditfaktura
+10002 utfärdades och utkastet visade "Ersätter faktura 10001", att 1 250 kr
+kvittas, och att det inte går att ta bort. Antalet ändrades från 10 till 8
+tim, och granskningen visade 1 250 kr kvittat och 250 kr att återbetala.
+Utfärdad som 10003 blev den Betald; PDF:en hade "Kvittat mot faktura 10001
+−1 250,00" och "Att återbetala till er 250,00 kr", listan rutan Att
+återbetala 250 kr, och 10001 fick "Ersatt av faktura 10003" med betalningen
+flyttad. Registrera återbetalning gav 1930 −250 / 1510 +250, och oktober
+slutade på 1510 0 kr, 1930 1 000 kr, 3001 −800 kr och 2611 −200 kr, med
+kvittningen som V5 (1510 mot 1510). Ekonomi visade Fakturerat i okt 1 000
+kr. Högre belopp och obetalt original är provade i PGlite och Node-testerna,
+inte i webbläsaren.
+
+Kontroll: 13 nya tester, 325 gröna totalt (`npm test`), typkontroll och lint
+utan fel, PGlite-proven 0021–0024 och 0028 gröna. 0025-provet faller sedan
+0026 oberoende av 0028: `mark_invoice_sent` på en makulerad faktura ger inte
+längre felkoden provet väntar sig.
+
+Kvar:
+
+- **Migrationen är inte körd i Supabase**, och flödet är provat i PGlite och
+  i demoläget, inte mot den riktiga databasen.
+- **Ett jobb som ställs in helt** efter Rätta belopp på en betald faktura har
+  ingen väg än: utkastet kan inte tas bort och `register_payment` tar inte
+  emot en återbetalning på det krediterade originalet. Utfärda utkastet med
+  det som ska debiteras, eller lägg till återbetalning på krediterade
+  fakturor i en senare migration.
+- **`invoice.offset` är ingen webhook-händelse**, av samma skäl som
+  `invoice.corrected` (den loggas på båda fakturorna).
+- **Dashboardens betaltid** räknar den nya fakturan som betald samma dag den
+  utfärdas.
+
 ## Läge 2026-10-22: flera e-postmottagare (0026)
 
 En kund kan ha flera fakturamottagare och kopiemottagare. Kundformuläret har
@@ -114,9 +241,9 @@ Beslut:
 - **Rätta belopp** krediterar hela fakturan med en kreditfaktura som
   utfärdas direkt och skapar ett nytt utkast med originalets (eller den
   senaste ändringsfakturans) kund, rader, referenser och villkor och raden
-  "Ersätter faktura N, krediterad med K." först i texten. Fakturor med
-  betalningar stoppas: `register_payment` kan inte kvitta en betalning mot en
-  ny faktura utan ny migration. En faktura i en ROT-begäran som skickats till
+  "Ersätter faktura N, krediterad med K." först i texten. Betalda fakturor
+  kvittas sedan 0028 när det nya utkastet utfärdas, se *Läge 2026-10-25:
+  kvittning*. En faktura i en ROT-begäran som skickats till
   Skatteverket stoppas med att begäran måste återkallas först; ligger den i
   ett utkast till begäran stoppas den tills den tagits bort ur begäran.
 - **Granska innan Utfärda**: knappen Utfärda öppnar en dialog med PDF:en
@@ -129,10 +256,6 @@ Beslut:
 
 Kvar:
 
-- **Kvittning vid Rätta belopp på betalda fakturor**: kräver en
-  databasfunktion som flyttar betalningen från originalet till den nya
-  fakturan (eller registrerar kreditfakturans saldo som betalning) i samma
-  transaktion.
 - **`invoice.corrected` är ingen webhook-händelse**, eftersom den loggas på
   både originalet och ändringsfakturan; lägg till den i `is_webhook_event`
   med en av raderna om en integratör behöver den.

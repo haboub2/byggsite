@@ -3,7 +3,7 @@ import { formatDateTime } from "@/lib/admin-format";
 import { computeDashboard, type DashInvoice, type PlannedInflow } from "@/lib/core/dashboard";
 import { EVENT_LABEL, type CoreEvent } from "@/lib/core/events";
 import { formatOre } from "@/lib/core/money";
-import { listInvoices } from "@/lib/core/invoices/store";
+import { countsAsInvoiced, listInvoices } from "@/lib/core/invoices/store";
 import { listDueReminders } from "@/lib/core/reminders/store";
 import { rotSummary } from "@/lib/core/rot/store";
 import { listBankTransactions } from "@/lib/core/payments/store";
@@ -44,7 +44,7 @@ export default async function EkonomiPage() {
     const [quote, bundle, invoicedOn] = await Promise.all([p.quote_id ? getQuote(p.quote_id) : null, getProjectBundle(p.id), changeOrderInvoiceIds(p.id)]);
     const quoteLines = quote ? quoteInvoiceLines(quote) : [];
     const issuedGross = invoices
-      .filter((i) => i.projectId === p.id && i.status !== "draft" && i.status !== "void" && i.kind === "invoice" && !i.document.lines.some((l) => l.changeOrderId))
+      .filter((i) => i.projectId === p.id && countsAsInvoiced(i) && !i.document.lines.some((l) => l.changeOrderId))
       .reduce((s, i) => s + i.totalOre, 0);
     const approvedNotInvoicedKr = (bundle?.changeOrders ?? []).filter((c) => c.status === "approved" && !invoicedOn[c.id]).reduce((s, c) => s + c.amount, 0);
     for (const step of plan.steps) {

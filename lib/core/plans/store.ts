@@ -146,6 +146,22 @@ export async function removePlan(planId: string): Promise<void> {
   if (error) throw new Error(`Kunde inte ta bort betalplanen: ${error.message}`);
 }
 
+/**
+ * Demo mode's half of issue_replacement_invoice (0028): the steps and ÄTA
+ * invoiced on a credited invoice follow the invoice that replaces it; ÄTA
+ * no longer on any of its lines are uninvoiced again. The database does
+ * this itself in the same transaction as the issue.
+ */
+export function demoMovePlanInvoice(fromId: string, toId: string, changeOrderIds: string[]): void {
+  if (!isDemo()) return;
+  for (const s of demo().steps) if (s.invoice_id === fromId) s.invoice_id = toId;
+  for (const [co, inv] of Object.entries(demo().changeOrderInvoices)) {
+    if (inv !== fromId) continue;
+    if (changeOrderIds.includes(co)) demo().changeOrderInvoices[co] = toId;
+    else delete demo().changeOrderInvoices[co];
+  }
+}
+
 /** Link a step to the invoice created for it, and the ÄTA that went on that invoice. */
 export async function markStepInvoiced(stepId: string, invoiceId: string, changeOrderIds: string[]): Promise<void> {
   if (isDemo()) {

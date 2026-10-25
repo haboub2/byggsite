@@ -3,17 +3,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createHash } from "node:crypto";
 import InvoiceEditor from "@/components/admin/invoices/InvoiceEditor";
-import { CorrectAmountsForm, CreditInvoiceButton, DeleteDraft, IssueInvoiceForm, MarkSentForm, RegisterPaymentForm, SendInvoiceForm, SendReminderForm, VoidInvoiceForm } from "@/components/admin/invoices/InvoiceTools";
+import { CorrectAmountsForm, CreditInvoiceButton, DeleteDraft, IssueInvoiceForm, MarkSentForm, RegisterPaymentForm, RegisterRefundForm, SendInvoiceForm, SendReminderForm, VoidInvoiceForm } from "@/components/admin/invoices/InvoiceTools";
 import { reminderDue, reminderText } from "@/lib/core/reminders/reminders";
 import { reminderSettings } from "@/lib/core/reminders/store";
 import { publicInvoiceUrl } from "@/lib/core/invoices/public";
 import { formatDateTime } from "@/lib/admin-format";
 import { formatOre } from "@/lib/core/money";
 import { CUSTOMER_TYPE_LABEL, LINE_KIND_LABEL, paymentReference, validateForIssue } from "@/lib/core/documents/invoice";
-import { customerSummary, invoiceTotals } from "@/lib/core/invoices/totals";
+import { amountDue, customerSummary, invoiceTotals } from "@/lib/core/invoices/totals";
 import { EVENT_LABEL } from "@/lib/core/events";
 import { documentRecipients, eventRecipientsText } from "@/lib/core/invoices/recipients";
-import { INVOICE_STATUS_LABEL, correctionBlocker, getInvoice, invoiceLabel, isOpen, isOverdue, listInvoiceEvents, listInvoicePayments } from "@/lib/core/invoices/store";
+import { INVOICE_STATUS_LABEL, correctionBlocker, deleteBlocker, getInvoice, invoiceLabel, isOpen, isOverdue, listInvoiceEvents, listInvoicePayments, listInvoices, refundDue, replacementOf } from "@/lib/core/invoices/store";
+import { PAYMENT_METHOD_LABEL } from "@/lib/core/export/model";
 import { amountCorrectionBlocker } from "@/lib/core/invoices/amend";
 import { applySellerDefaults, getSellerDefaults } from "@/lib/core/invoices/seller";
 import { todayIso } from "@/lib/quotes/schema";
@@ -42,6 +43,10 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
     // The gate checks the document as it will be frozen: with today's seller settings applied.
     const problems = validateForIssue({ ...applySellerDefaults(d, await getSellerDefaults()), number: null });
     const draftTotals = invoiceTotals(d);
+    // Rätta belopp: the original this draft replaces, and the payment that moves here when it is issued.
+    const replacing = inv.replacesInvoiceId ? await replacementOf(inv).catch(() => null) : null;
+    const offset = replacing?.offset ? amountDue(draftTotals.payable, replacing.offset.amountOre) : null;
+    const afterOffset = offset ? (offset.refund > 0 ? { label: "Att återbetala", value: kr(offset.refund) } : { label: "Kvar att betala", value: kr(offset.due) }) : null;
     return (
       <section className="sec sec--tight">
         <div className="container">
@@ -73,6 +78,16 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
               Originalet är krediterat i sin helhet och kreditfakturan är utfärdad. Det här är den nya fakturan som ersätter det, med samma kund, rader och villkor: rätta beloppen, spara och utfärda.
             </p>
           )}
+          {replacing && (
+            <p className="inv-banner" data-kind="correction">
+              <strong>
+                Ersätter <Link href={`/admin/fakturor/${replacing.original.id}`}>faktura {replacing.original.number}</Link>
+              </strong>
+              {replacing.offset
+                ? `Kunden har betalat ${kr(replacing.offset.amountOre)} på faktura ${replacing.original.number}, som är krediterad med ${replacing.offset.creditNumber}. Betalningen kvittas mot den här fakturan när du utfärdar den och står på PDF:en som "Kvittat mot faktura ${replacing.original.number}".`
+                : `Faktura ${replacing.original.number} är krediterad och obetald; den här fakturan ersätter den.`}
+            </p>
+          )}
 
           <div className="quote-layout">
             <InvoiceEditor key={version} id={inv.id} initial={d} />
@@ -91,6 +106,10 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                     rot: draftTotals.rot && draftTotals.rot.deduction !== 0 ? `${kr(Math.abs(draftTotals.rot.deduction))} begärs från Skatteverket` : null,
                     reverseCharge: d.se.reverseCharge,
                     lines: d.lines.length,
+                    offset:
+                      offset && afterOffset && replacing?.offset
+                        ? { text: `${kr(offset.offset)} betalt på faktura ${replacing.offset.invoiceNumber}`, afterLabel: afterOffset.label, after: afterOffset.value }
+                        : null,
                   }}
                 />
               </div>
@@ -98,8 +117,13 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                 <h2 className="lead-h2">Att betala</h2>
                 <p style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>{kr(Math.abs(inv.payableOre))}</p>
                 <p className="efield-hint">{inv.rotOre ? `varav ROT-avdrag ${kr(Math.abs(inv.rotOre))} som begärs från Skatteverket.` : "Enligt det sparade utkastet."}</p>
+                {offset && afterOffset && (
+                  <p className="efield-hint">
+                    {kr(offset.offset)} kvittas från faktura {replacing?.offset?.invoiceNumber}. {afterOffset.label}: <strong>{afterOffset.value}</strong>.
+                  </p>
+                )}
               </div>
-              <DeleteDraft id={inv.id} />
+              <DeleteDraft id={inv.id} blocked={await deleteBlocker(inv.id)} />
             </aside>
           </div>
         </div>
@@ -113,6 +137,11 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
     inv.correctedBy ? getInvoice(inv.correctedBy) : null,
     inv.correctsInvoiceId ? getInvoice(inv.correctsInvoiceId) : null,
   ]);
+  // Rätta belopp: the original this invoice replaces, or the invoice (or draft) that replaces this one.
+  const [replaced, replacedBy] = await Promise.all([
+    inv.replacesInvoiceId ? getInvoice(inv.replacesInvoiceId) : null,
+    inv.status === "credited" ? listInvoices({ customerId: inv.customerId ?? undefined }).then((all) => all.find((x) => x.replacesInvoiceId === inv.id) ?? null) : null,
+  ]);
   const isVoid = inv.status === "void";
   const canFix = inv.kind === "invoice" && !isVoid && inv.status !== "credited";
   const detailsBlocked = canFix ? correctionBlocker(inv) : null;
@@ -122,6 +151,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const sum = customerSummary(d, totals);
   const overdue = isOverdue(inv, today);
   const remaining = inv.payableOre - inv.paidOre;
+  const refund = refundDue(inv);
   const plan = overdue
     ? reminderDue({ payableOre: inv.payableOre, paidOre: inv.paidOre, dueOn: inv.dueOn, issueDate: d.issueDate, reminders: inv.reminders, remindedAt: inv.remindedAt, customerType: d.buyer.type, status: inv.status, kind: inv.kind }, today, { ...(await reminderSettings()), graceDays: 0, daysBetween: 1 })
     : null;
@@ -193,6 +223,26 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                   Rättad genom <Link href={`/admin/fakturor/${correction.id}`}>faktura {correction.number}</Link>
                 </strong>
                 Ändringsfakturan ersätter uppgifterna här. Beloppet är detsamma; betalningar och påminnelser hör till den här fakturan.
+              </p>
+            )}
+            {replaced && (
+              <p className="inv-banner" data-kind="correction">
+                <strong>
+                  Ersätter <Link href={`/admin/fakturor/${replaced.id}`}>faktura {replaced.number}</Link>
+                </strong>
+                {d.se.offset
+                  ? `Faktura ${replaced.number} krediterades med ${d.se.offset.creditNumber}, och de ${kr(d.se.offset.amountOre)} kunden betalade på den är kvittade mot den här fakturan.`
+                  : `Faktura ${replaced.number} är krediterad; den här fakturan ersätter den.`}
+              </p>
+            )}
+            {replacedBy && (
+              <p className="inv-banner" data-kind="corrected">
+                <strong>
+                  Ersatt av <Link href={`/admin/fakturor/${replacedBy.id}`}>{replacedBy.number ? `faktura ${replacedBy.number}` : "ett utkast"}</Link>
+                </strong>
+                {replacedBy.number
+                  ? "Fakturan är krediterad i sin helhet och ersatt; det kunden betalade här är flyttat till den nya fakturan."
+                  : `Fakturan är krediterad i sin helhet. ${inv.paidOre ? `Det kunden har betalat, ${kr(inv.paidOre)}, flyttas till den nya fakturan när utkastet utfärdas.` : "Utfärda utkastet som ersätter den."}`}
               </p>
             )}
             {inv.kind === "correction" && (
@@ -344,9 +394,21 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                   <dd>{sek(sum.rounding)}</dd>
                 </div>
               )}
+              {sum.offset !== 0 && (
+                <>
+                  <div>
+                    <dt>Summa att betala</dt>
+                    <dd>{sek(sum.payable)}</dd>
+                  </div>
+                  <div>
+                    <dt>Kvittat mot faktura {d.se.offset?.invoiceNumber}</dt>
+                    <dd>{sek(-sum.offset)}</dd>
+                  </div>
+                </>
+              )}
               <div className="qsum-pay">
-                <dt>{inv.kind === "credit" ? "Att återfå" : "Att betala"}</dt>
-                <dd>{sek(Math.abs(sum.payable))} kr</dd>
+                <dt>{inv.kind === "credit" ? "Att återfå" : sum.refund > 0 ? "Att återbetala" : "Att betala"}</dt>
+                <dd>{sek(sum.offset !== 0 ? sum.due || sum.refund : Math.abs(sum.payable))} kr</dd>
               </div>
             </dl>
 
@@ -382,8 +444,15 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                     {payments.map((p) => (
                       <li key={p.id}>
                         <span>
-                          {p.paidOn} · {p.method}
-                          {p.reference ? ` · ${p.reference}` : ""}
+                          {p.paidOn} · {PAYMENT_METHOD_LABEL[p.method] ?? p.method}
+                          {p.method === "offset"
+                            ? p.amountOre > 0
+                              ? ` från faktura ${p.reference}`
+                              : ` till faktura ${replacedBy?.number ?? "som ersätter den"}`
+                            : p.reference
+                              ? ` · ${p.reference}`
+                              : ""}
+                          {p.method !== "offset" && p.amountOre < 0 ? " · återbetalning" : ""}
                         </span>
                         <strong>{kr(p.amountOre)}</strong>
                       </li>
@@ -396,6 +465,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                 <p className="inv-remaining">
                   Betalt {kr(inv.paidOre)} av {kr(inv.payableOre)}
                   {remaining > 0 && isOpen(inv) ? ` · ${kr(remaining)} kvar` : ""}
+                  {refund > 0 ? ` · ${kr(refund)} att återbetala` : ""}
                 </p>
                 )}
               </div>
@@ -405,12 +475,19 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                   {events.map((e, i) => (
                     <li key={`${e.at}-${i}`}>
                       <span>
-                        {e.type === "invoice.corrected" && e.data.corrects ? `Utfärdad som ändringsfaktura ${e.data.number}` : (EVENT_LABEL[e.type]?.text ?? e.type)}
+                        {e.type === "invoice.corrected" && e.data.corrects
+                          ? `Utfärdad som ändringsfaktura ${e.data.number}`
+                          : e.type === "payment.received" && typeof e.data.amount === "number" && e.data.amount < 0
+                            ? "Återbetalning"
+                            : (EVENT_LABEL[e.type]?.text ?? e.type)}
                         {e.type === "invoice.issued" && e.data.number ? ` som ${e.data.number}` : ""}
                         {(e.type === "invoice.sent" || e.type === "invoice.reminded") && eventRecipientsText(e.data) && eventRecipientsText(e.data) !== "manuellt" ? ` till ${eventRecipientsText(e.data)}` : ""}
                         {e.type === "invoice.voided" && e.data.reason ? `: ${e.data.reason}` : ""}
                         {e.type === "invoice.corrected" && e.data.correctionNumber ? ` genom faktura ${e.data.correctionNumber}` : ""}
                         {e.type === "invoice.corrected" && e.data.corrects ? `, ersätter faktura ${e.data.corrects}` : ""}
+                        {e.type === "invoice.offset" && typeof e.data.amount === "number" ? ` ${kr(e.data.amount)}` : ""}
+                        {e.type === "invoice.offset" && e.data.fromNumber ? ` från faktura ${e.data.fromNumber}` : ""}
+                        {e.type === "invoice.offset" && e.data.toNumber ? `, flyttad till faktura ${e.data.toNumber}` : ""}
                         {e.type === "payment.received" && typeof e.data.amount === "number" ? ` ${kr(e.data.amount)}` : ""}
                         {e.type === "invoice.reminded" && typeof e.data.level === "number" ? ` (${e.data.level})` : ""}
                         {e.type === "invoice.reminded" && typeof e.data.fee === "number" && e.data.fee > 0 ? ` · avgift ${kr(e.data.fee)}` : ""}
@@ -432,6 +509,12 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
               <div>
                 <h2 className="lead-h2">Påminnelse {plan.level}</h2>
                 <SendReminderForm id={inv.id} recipients={documentRecipients(d)} ready={mailReady} summary={`${reminderText(plan, inv.number ?? "", inv.dueOn ?? "")}${inv.reminders ? ` Tidigare påminnelser: ${inv.reminders}.` : ""}`} />
+              </div>
+            )}
+            {refund > 0 && (
+              <div>
+                <h2 className="lead-h2">Att återbetala</h2>
+                <RegisterRefundForm id={inv.id} refund={kr(refund)} today={today} />
               </div>
             )}
             {isOpen(inv) && (
@@ -468,7 +551,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                   </Link>
                 )}
                 <span className="efield-hint">Namn, adress, referenser, rubrik, text eller radernas benämning: en ändringsfaktura med samma belopp.</span>
-                <CorrectAmountsForm id={inv.id} number={inv.number ?? ""} amount={kr(Math.abs(inv.payableOre))} blocked={amountsBlocked} />
+                <CorrectAmountsForm id={inv.id} number={inv.number ?? ""} amount={kr(Math.abs(inv.payableOre))} paid={inv.paidOre ? kr(inv.paidOre) : null} blocked={amountsBlocked} />
                 <span className="efield-hint">Fel antal, pris, moms eller ROT: kreditfaktura för hela beloppet och ett nytt utkast.</span>
                 {canVoid && (
                   <>

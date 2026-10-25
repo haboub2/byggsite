@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { formatOre } from "@/lib/core/money";
 import { LINE_KIND_LABEL, paymentReference } from "@/lib/core/documents/invoice";
 import { getInvoiceByToken } from "@/lib/core/invoices/public";
-import { INVOICE_STATUS_LABEL, invoiceLabel, isOpen, isOverdue } from "@/lib/core/invoices/store";
+import { INVOICE_STATUS_LABEL, invoiceLabel, isOpen, isOverdue, refundDue } from "@/lib/core/invoices/store";
 import { customerSummary, invoiceTotals } from "@/lib/core/invoices/totals";
 import { isSwishNumber } from "@/lib/core/payments/swish";
 import { todayIso } from "@/lib/quotes/schema";
@@ -92,7 +92,9 @@ export default async function PublicInvoice({ params }: { params: Promise<{ toke
                 ? `Ändringsfaktura. Den rättar uppgifter på faktura ${d.references.precedingInvoiceNumber ?? ""}; beloppet är detsamma och betalas enligt den fakturan, med ${ref.label.toLowerCase()} ${ref.value}.`
                 : inv.status === "void"
                   ? "Makulerad. Fakturan gäller inte och ska inte betalas."
-                  : `Betald${inv.paidAt ? ` ${inv.paidAt.slice(0, 10)}` : ""}. Tack!`}
+                  : inv.status === "credited"
+                    ? "Krediterad. Fakturan ska inte betalas."
+                    : `Betald${inv.paidAt ? ` ${inv.paidAt.slice(0, 10)}` : ""}. Tack!${refundDue(inv) > 0 ? ` Ni har betalat ${kr(refundDue(inv))} mer än fakturan, och vi betalar tillbaka det.` : ""}`}
           </p>
         )}
 

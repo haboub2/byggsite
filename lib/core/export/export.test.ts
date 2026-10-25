@@ -75,6 +75,8 @@ function invoice(buyer: Omit<typeof anna, "type"> & { type: "privat" | "foretag"
     voidReason: null,
     correctedBy: null,
     correctsInvoiceId: null,
+    replacesInvoiceId: null,
+    offsetFromCreditId: null,
     createdBy: "ibrahim@example.se",
     createdAt: `${issueDate}T08:00:00.000Z`,
     updatedAt: `${issueDate}T08:00:00.000Z`,

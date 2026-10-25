@@ -172,5 +172,18 @@ export function customerSummary(doc: InvoiceDocument, totals: InvoiceTotals = in
     rounding: totals.rounding,
     payable: totals.payable,
     reverseCharge: totals.reverseCharge,
+    ...amountDue(totals.payable, doc.se.offset?.amountOre ?? 0),
   };
+}
+
+/**
+ * What is left once a payment on a replaced invoice is offset (Rätta belopp
+ * on a paid invoice): the customer pays `due`, or gets `refund` back when
+ * they had paid more than the new invoice. Both are zero or positive.
+ */
+export function amountDue(payable: Ore, offset: Ore): { offset: Ore; due: Ore; refund: Ore } {
+  ore(payable);
+  ore(offset);
+  const left = payable - offset;
+  return { offset, due: Math.max(0, left), refund: Math.max(0, -left) };
 }

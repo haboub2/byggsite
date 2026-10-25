@@ -1,11 +1,11 @@
 import "server-only";
 import type { InvoiceDocument } from "../documents/invoice";
 import type { Actor } from "../events";
-import { formatOre } from "../money";
 import { addDays } from "../rules";
 import { listClaims } from "../rot/store";
 import { todayIso } from "../../quotes/schema";
-import { createCreditNote, createInvoice, deleteDraft, effectiveDocument, getInvoice, invoiceLabel, issueInvoice, listInvoices } from "./store";
+import { formatOre } from "../money";
+import { createCreditNote, createInvoice, deleteDraft, effectiveDocument, getInvoice, invoiceLabel, issueInvoice, listInvoices, supportsOffset } from "./store";
 
 /**
  * Rätta belopp (docs/fakturering.md, läge 2026-10-22): an issued invoice
@@ -14,11 +14,12 @@ import { createCreditNote, createInvoice, deleteDraft, effectiveDocument, getInv
  * and terms opens in the editor. The original and the credit note stay as
  * they are; the new invoice gets its own number when it is issued.
  *
- * Only for invoices without payments: register_payment cannot offset a
- * payment on the original against the new invoice without a new migration,
- * so a paid invoice is stopped with a message (credit it by hand and
- * register the difference). An invoice in a ROT claim that has gone to
- * Skatteverket is stopped until the claim is withdrawn.
+ * A paid or part-paid invoice works the same way (0028): the draft is
+ * marked with the original and the credit note, and when it is issued the
+ * payment moves to it in the same transaction (issueInvoice, offset). The
+ * new invoice then shows what is left to pay, or what to refund when it
+ * came out lower than what was paid. An invoice in a ROT claim that has
+ * gone to Skatteverket is stopped until the claim is withdrawn.
  */
 
 /** Why `id` cannot be corrected this way, or null when it can. */
@@ -37,8 +38,8 @@ export async function amountCorrectionBlocker(id: string): Promise<string | null
       return `${label} finns i en ROT-begäran som redan skickats till Skatteverket. Begäran måste återkallas hos Skatteverket först.`;
     if (claim) return `${label} finns i ROT-begäran "${claim.name}". Ta bort fakturan ur begäran först.`;
   }
-  if (inv.paidOre !== 0)
-    return `${label} har betalningar (${formatOre(inv.paidOre, { decimals: 0, currency: true })}). Rätta belopp fungerar bara på obetalda fakturor: kreditera den med Kreditera… och fakturera på nytt, och reglera det som redan betalats för sig.`;
+  if (inv.paidOre !== 0 && !(await supportsOffset()))
+    return `${label} har betalningar (${formatOre(inv.paidOre, { decimals: 0, currency: true })}). Kvittningen kräver migration 0028, som inte är körd i databasen än.`;
   const credit = (await listInvoices({ customerId: inv.customerId ?? undefined })).find((x) => x.creditsInvoiceId === id);
   if (credit) return `${label} har redan en kreditfaktura (${credit.number ?? "utkast"}).`;
   return null;
@@ -88,6 +89,8 @@ export async function creditAndRedraft(
     references: { ...base.references, precedingInvoiceNumber: null },
     paymentMeans: { ...base.paymentMeans, ocr: null },
   };
-  const draftId = await createInvoice({ document, quoteId: inv.quoteId, projectId: inv.projectId }, createdBy);
+  // Before 0028 the draft is a plain invoice, as it was; the blocker has stopped paid originals then.
+  const link = (await supportsOffset()) ? { replacesInvoiceId: inv.id, offsetFromCreditId: creditId } : {};
+  const draftId = await createInvoice({ document, quoteId: inv.quoteId, projectId: inv.projectId, ...link }, createdBy);
   return { creditNumber, draftId };
 }
