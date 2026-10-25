@@ -216,6 +216,134 @@ Kontroll: 320 tester gröna (`npm test`), typkontroll ren, `npm run lint`
 utan fel (fem gamla img-varningar), PGlite-proven 0021–0025 och 0030
 gröna. Provet 0025 rättades: sedan 0026 stoppar `mark_invoice_sent` själv
 en makulerad faktura med ett annat felmeddelande.
+## Läge 2026-10-25: inkasso (0031)
+
+Efter påminnelsekedjan finns två steg, båda utan avtal med något
+inkassobolag: borgenärens **eget inkassokrav** och **Lämna till inkasso**,
+som skapar ett ärende och ett underlag att lämna till det bolag man anlitar
+(Intrum, Svea, Visma Amili, Sergel och andra tar emot ärenden via
+webbformulär, fil eller API). Exporten är leverantörsoberoende: PDF:er och
+en CSV-rad med svenska kolumnnamn som går att mappa vid uppladdning.
+
+**Lagstödet**, kontrollerat 2026-10-25 mot riksdagens SFS-databas och
+Finansinspektionens författningssamling. Inkassolagen (1974:182) gäller
+indrivning av både egen och annans fordran (1 §); tillstånd krävs bara för
+annans räkning (2 §), men god inkassosed (4 §) och kraven på själva kravet
+(5–6 §§) gäller även ett företag som driver in sina egna fakturor. Det har
+inte kommit några ändringar i inkassolagen eller i lagen (1981:739) om
+ersättning för inkassokostnader m.m. under 2021: inkassolagen är ändrad
+t.o.m. SFS 2024:801, och den ändring som påverkar oss är lag (2023:716),
+som från 1 januari 2024 flyttade tillsynen från IMY till
+Finansinspektionen. IMY:s (Datainspektionens) allmänna råd om god
+inkassosed gäller därför inte längre; de ersattes från 1 juli 2025 av
+**FFFS 2025:2**, Finansinspektionens föreskrifter och allmänna råd om
+inkasso, som enligt 1 kap. 1 § gäller alla som tillämpar inkassolagen.
+Lagen (1981:739) är ändrad t.o.m. SFS 2013:56 och har sedan dess beloppen i
+själva lagen (förordningen 1981:1057 med 50/160/150 kr upphävdes
+2013-03-16).
+
+| Regel | Värde i `rulesAt(…).collection` | Källa |
+|---|---|---|
+| Inkassoavgift för ett krav enligt 5 § inkassolagen | 180 kr, även mot privatperson, inget förhandsavtal krävs (till skillnad från påminnelseavgiften) | Lag (1981:739) 3 § 1 och 4 § |
+| Påminnelseavgift | 60 kr, bara om avtalat senast när skulden uppkom (oförändrad, `reminderFee`) | Lag (1981:739) 2 och 4 §§ |
+| Förseningsersättning mellan näringsidkare | 450 kr; tas den ut ersätts påminnelse och krav bara till den del de överstiger 450 kr. **Debiteras inte av produkten**; inkassobolaget kan lägga på den. | Lag (1981:739) 4 a och 5 §§ |
+| Betalningsfrist i kravet | Minst 8 dagar från att kravet skickas med post (6 vid digital post; vi kräver 8 även vid mejl), och alltid minst 4 bankdagar från att gäldenären kan antas ha fått kravet; förlängs kring storhelg | Inkassolagen 5 § tredje st. ("skälig tid"), FFFS 2025:2 4 kap. 7 § (allmänt råd) |
+| Kravets innehåll | Rubriken "Inkassokrav" bara för ett 5 §-krav; borgenärens namn, adress, telefon och e-post; utskriftsdatum; vad fordran gäller i klartext; kapital, ränta och kostnader var för sig; räntans belopp, sats, period och kapital; att räntan räknas på referensräntan per period enligt räntelagen och dagens sats; till vem betalning och invändning görs; vilka åtgärder som kan följa | Inkassolagen 5 §, FFFS 2025:2 4 kap. 1–4 §§ |
+| Ingen inkassoåtgärd före en påminnelses frist | Sista påminnelsen säger "inom tio dagar"; inkassokrav och inkasso väntar tills de har gått | FFFS 2025:2 3 kap. 5 § |
+| Ingen rättslig åtgärd före kravets frist | Lämna till inkasso spärras till dagen efter sista betalningsdag | Inkassolagen 6 §, FFFS 2025:2 5 kap. |
+| Dröjsmålsränta | Referensränta för varje kalenderhalvår + 8 procentenheter, faktiska dagar/365, från förfallodagen | Räntelagen (1975:635) 6 och 9 §§ |
+
+Källor: [inkassolagen](https://www.riksdagen.se/sv/dokument-och-lagar/dokument/svensk-forfattningssamling/inkassolag-1974182_sfs-1974-182/),
+[lag (1981:739)](https://data.riksdagen.se/dokument/sfs-1981-739.text),
+[förordning (1981:1057), upphävd](https://lagen.nu/1981:1057),
+[FFFS 2025:2](https://www.fi.se/contentassets/8d66aa5674644cb2a9b58676718d2f98/fs2502.pdf)
+och [FI:s beslutspromemoria](https://www.fi.se/contentassets/8d66aa5674644cb2a9b58676718d2f98/beslutspromemoria-inkasso-kreditforvaltning.pdf).
+
+**Flödet.**
+
+- **Inkassokrav** (fakturasidan, under *Inkasso*): på en förfallen, obetald
+  faktura som inte är hos inkasso, en gång per faktura. Dialogen visar
+  kapital, tidigare påminnelseavgifter och ränta, ny dröjsmålsränta från
+  förfallodagen eller senaste påminnelsen till i dag (per halvår),
+  inkassoavgift 180 kr och summan, och föreslår sista betalningsdag om tio
+  dagar (tidigast åtta dagar och fyra bankdagar, `minimumPayBy`). Brevet går
+  att förhandsgranska som PDF (`/admin/fakturor/[id]/inkassokrav`) och
+  mejlas med fakturan bifogad eller registreras bara. Avgift och ränta
+  bokförs som en påminnelse (kundfordran mot 3591 och 8313) och kravet
+  ligger i `reminders` med `kind = 'demand'` och `pay_by`. Efter kravet får
+  fakturan inga vanliga påminnelser.
+- **Lämna till inkasso…**: på en förfallen faktura med minst en påminnelse
+  eller ett inkassokrav, när kravets frist (och sista påminnelsens tio
+  dagar) har gått. Ärendet får nummer `<fakturanummer>-<löpnummer>`, status
+  *Underlag klart* (`prepared`) och sparar fordran den dagen; fakturan
+  pekar på det med `collection_case_id` och visas som **Hos inkasso** i
+  listan, på fakturasidan och i fliken Inkasso. Påminnelser stoppas både i
+  den dagliga körningen och på knappen (`reminderDue` och en trigger på
+  `reminders`). Händelsen `invoice.collection` loggas med `action`
+  (`demand`, `prepared`, `sent`, `paid`, `closed`).
+- **Underlaget** (zip, `/admin/fakturor/inkasso/[ärende]/underlag`):
+  fakturans PDF, en kopia av varje påminnelse och av inkassokravet,
+  återskapade ur påminnelseregistret, en sammanställning (PDF) med borgenär,
+  gäldenär, fordran per dagens datum, räntan period för period, avgifter,
+  påminnelser och inbetalningar, och en CSV-rad. Privatpersonens
+  personnummer (ROT-köparens) är maskerat i alla PDF:er och står i klartext
+  i CSV:n bara för ägare och administratör. Underlaget räknas om med ränta
+  till den dag det laddas ner.
+- **CSV-formatet**: semikolon, UTF-8 med BOM, belopp i kronor med
+  decimalkomma, datum ÅÅÅÅ-MM-DD. De fjorton första kolumnerna är den
+  generiska uppsättningen: Ärendenr, Gäldenär, Orgnr/personnr, Adress,
+  E-post, Telefon, Fakturanr, Fakturadatum, Förfallodatum, Kapital, Ränta,
+  Påminnelseavgift, OCR, Bankgiro. Därefter Postnummer, Ort, Land,
+  Gäldenärstyp, Inkassoavgift, Ränta från, Ränta till, Räntesats idag,
+  Valuta och Fordran avser. Telefon med + skrivs 00… så att cellen inte
+  skyddas som formel. Kolumnen OCR är betalningsreferensen på fakturan.
+- **Skickat till inkassobolaget**: bolagets namn och deras ärendenummer
+  (`sent`). **Avsluta ärendet utan betalning** kräver en orsak (återkallat,
+  avskrivet) och tar fakturan ur inkasso; den kan då påminnas igen om den
+  inte har fått inkassokrav. **Betalning registreras som vanligt**: när
+  fakturan blir betald stänger triggern `invoices_collection` ärendet
+  (`paid`) i samma transaktion som `register_payment`, och en kreditering
+  stänger det (`closed`). `register_payment`, `register_reminder` och
+  `mark_invoice_credited` är oförändrade.
+- **Fliken Inkasso** under Fakturor: öppna ärenden med kapital, fordran i
+  dag, dagar sedan förfallodagen och dagar hos inkasso, fakturor som är
+  redo att lämnas, de som väntar på kravets frist och avslutade ärenden.
+
+| Del | Fil |
+|---|---|
+| Migration 0031 | `supabase/migrations/0031_collections.sql`: `collection_cases` (bara läsning för medlemmar, inga skrivpolicies), `invoices.collection_case_id`, `collection_demanded_on`, `collection_demand_pay_by`, `reminders.kind` och `pay_by`; vakterna `reminders_collection_guard` och `invoices_collection`; `register_collection_demand`, `open_collection_case`, `update_collection_case` |
+| Prov | `supabase/tests/0031_collections.sql` (PGlite och Supabase, i en transaktion som rullas tillbaka): inkasso utan påminnelse, före förfallodagen och med fel kapital stoppas; påminnelse, inkassokrav och ett andra ärende hos inkasso stoppas; kolumner och tabell går inte att ändra direkt; skickat kräver bolag; delbetalning lämnar ärendet öppet, full betalning stänger det; annan organisation ser och rör inget; inkassokrav före förfallodagen, med fem dagars frist eller 200 kr avgift stoppas, bokförs på 1510/3591/8313, stoppar påminnelser, ett andra krav och inkasso före fristen; återkallat ärende släpper fakturan, nytt ärende får löpnummer 2, kreditering stänger |
+| Regler och beräkningar | `lib/core/rules/index.ts` (`collection`), `lib/core/collections/collections.ts` (spärrar, `minimumPayBy`, `demandPlan`, `interestToDate`, `collectionClaim`, `collectionCsv`), tester i `collections.test.ts`; `reminderInput` och stoppet i `lib/core/reminders/reminders.ts` |
+| Lagret | `lib/core/collections/store.ts` (krav, ärenden, mejl, zip), `lib/core/collections/demo.ts` (demoläget, som stänger ärendet vid betalning och kreditering i `lib/core/invoices/store.ts`) |
+| PDF | `lib/pdf/CollectionPdf.tsx` (inkassokrav, påminnelsekopia, sammanställning), `lib/pdf/render-collection.tsx` |
+| Gränssnittet | `components/admin/invoices/CollectionTools.tsx`, `app/admin/collection-actions.ts`, fakturasidan och listan, `app/admin/(dashboard)/fakturor/inkasso/` (fliken och underlaget), `app/admin/(dashboard)/fakturor/[id]/inkassokrav/route.ts` |
+
+Provat 2026-10-25 i demoläget i webbläsaren: faktura 10001 (50 000 kr,
+förföll 2026-10-01) spärrades för inkasso tills påminnelse 1 registrerats,
+lämnades sedan till inkasso (ärende 10001-1, ränta 320,55 kr, avgift 60 kr),
+syntes som Hos inkasso i listan och i fliken, underlaget laddades ner
+(faktura, påminnelsekopia, sammanställning, CSV med rätt kolumner och
+belopp), ärendet markerades skickat till ett provbolag och stängdes av sig
+självt när betalningen registrerades. Faktura 10002 (10 000 kr) fick ett
+inkassokrav med 40,07 kr ränta, 180 kr avgift och sista dag 2026-11-04;
+påminnelseknappen försvann och Lämna till inkasso spärrades till fristen.
+PDF:ernas text är kontrollerad; mejlet är inte provat (Resend saknas i
+demoläget). 13 nya tester, 325 gröna, typkontroll och lint rena, PGlite mot
+0001–0027 och 0031 med proven 0021–0024 och 0031 gröna. Provet 0025 faller
+redan på main sedan 0026 (`mark_invoice_sent` på en makulerad faktura ger
+numera ett vanligt fel, inte `feature_not_supported` som provet väntar sig).
+
+Kvar:
+
+- **Migration 0031 körs** samlat med de andra (inte gjort här).
+- **Full export** (JSON) tar inte med `collection_cases` eller
+  påminnelsernas `kind` och `pay_by`; händelserna `invoice.collection`
+  följer med i händelseloggen.
+- **`invoice.collection` är ingen webhook-händelse**; lägg till den i
+  `WEBHOOK_EVENT_TYPES` och `is_webhook_event` om en integratör behöver den.
+- **Förseningsersättning 450 kr** mellan företag tas inte ut.
+- **API mot inkassobolag**: först när det finns ett avtal; CSV-raden och
+  PDF:erna täcker uppladdning i deras webbtjänster.
 
 ## Läge 2026-10-22: flera e-postmottagare (0026)
 
@@ -857,7 +985,9 @@ Inte gjort i fas 0–3, och varför:
   markeringen av transaktionen är två anrop, inte en transaktion;
   `payments.bank_transaction_id` sätts inte än.
 - **Swish Handel** (callback som kvitterar betalningen direkt) i fas 5.
-- **Inkasso** som export till inkassobolag är inte byggt.
+- ~~**Inkasso** som export till inkassobolag är inte byggt.~~ Gjort
+  2026-10-25 (0031): eget inkassokrav och underlag till inkassobolag, se
+  läget ovan.
 - **ROT-XML:en** är skriven mot schemat men inte provad i Skatteverkets
   e-tjänst; första riktiga filen laddas upp och kontrolleras där. Timmar
   tas från arbetsrader i enheten *tim*, materialkostnad från materialrader;
@@ -1001,6 +1131,7 @@ versionerade regler med `validFrom`/`validTo`, och anropas med fakturadatumet:
 | Fakturans innehåll | Momslagens tio punkter (datum, löpnummer, VAT-nr, namn/adress, omfattning, leveransdatum, underlag per sats, sats, momsbelopp eller omvänd-text) | Skatteverket, momslagens regler om fakturering |
 | Dröjsmålsränta | Referensräntan + 8 procentenheter när inget avtalats; referensräntan uppdateras 1 jan och 1 jul | Räntelagen, Riksbanken |
 | Påminnelseavgift | 60 kr mot näringsidkare; mot konsument bara om avtalat | Lag om ersättning för inkassokostnader |
+| Inkassoavgift | 180 kr för ett eget inkassokrav enligt 5 § inkassolagen, alla gäldenärer; frist minst 8 dagar och 4 bankdagar | Lag (1981:739) 3–4 §§, FFFS 2025:2 (kontrollerat 2026-10-25) |
 | Arkivering | 7 år efter räkenskapsårets slut | Bokföringslagen |
 | ROT-begäran | XML, schema version 6, max 100 köpare, ROT och RUT i skilda filer, senast 31 jan året efter betalning | Skatteverket, Rot och rut – företag |
 | E-faktura | Krävs mot offentlig sektor (Peppol BIS Billing 3). Utredning om krav mellan företag, Dir. 2026:9, svar senast 2027-11-30. ViDA: gränsöverskridande obligatoriskt 2030-07-01 | Regeringen, Skatteverket, DIGG |

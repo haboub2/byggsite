@@ -1707,6 +1707,13 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .inv-banner[data-kind="void"] { border-color: #e7b9b3; background: #fbefed; color: #6b1a12; }
 .inv-banner[data-kind="corrected"], .inv-banner[data-kind="correction"] { border-color: #f3c49c; background: #fdf3ea; color: #5a3209; }
 .inv-banner a { color: inherit; text-decoration: underline; }
+/* Inkasso (0031) */
+.inv-status[data-status="collection"] { background: #e9dff3; color: #4a2470; }
+.inbox-row[data-status="collection"] .inbox-status { color: #4a2470; }
+.inv-banner[data-kind="collection"] { border-color: #d4c2e6; background: #f6f1fa; color: #3b1f55; }
+.coll-scroll { overflow-x: auto; }
+.coll-scroll .inv-table { min-width: 720px; }
+.coll-scroll .inv-table td.num, .coll-scroll .inv-table th.num { text-align: right; white-space: nowrap; }
 .btn-danger { background: var(--danger); color: #fff; }
 .btn-danger:hover { filter: brightness(.92); }
 .inv-dialog { margin: auto; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 22px 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); color: var(--ink); box-shadow: 0 24px 60px rgba(20, 22, 26, .25); }

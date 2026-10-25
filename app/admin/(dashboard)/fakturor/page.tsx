@@ -17,6 +17,7 @@ import {
   type InvoiceListTab,
 } from "@/lib/core/invoices/store";
 import { daysBetween } from "@/lib/core/rules";
+import { listCases } from "@/lib/core/collections/store";
 import { todayIso } from "@/lib/quotes/schema";
 
 const kr = (ore: number) => formatOre(ore, { decimals: 0, currency: true });
@@ -24,7 +25,7 @@ const kr = (ore: number) => formatOre(ore, { decimals: 0, currency: true });
 export default async function InvoicesList({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const filters = parseInvoiceFilters(await searchParams);
   const { tab, ...rest } = filters;
-  const [invoices, counts] = await Promise.all([listInvoices(filters), countInvoices(rest)]);
+  const [invoices, counts, openCases] = await Promise.all([listInvoices(filters), countInvoices(rest), listCases({ open: true })]);
   const link = (t?: InvoiceListTab): InvoiceFilters => ({ ...rest, tab: t });
   const today = todayIso();
 
@@ -98,6 +99,9 @@ export default async function InvoicesList({ searchParams }: { searchParams: Pro
               {INVOICE_TAB_LABEL[t]} <span>{counts[t]}</span>
             </Link>
           ))}
+          <Link href="/admin/fakturor/inkasso" data-status="collection">
+            Inkasso <span>{openCases.length}</span>
+          </Link>
         </nav>
 
         <form className="inbox-filters" action="/admin/fakturor" method="get">
@@ -127,11 +131,12 @@ export default async function InvoicesList({ searchParams }: { searchParams: Pro
               const overdue = isOverdue(inv, today);
               const remaining = inv.payableOre - inv.paidOre;
               const refund = refundDue(inv);
+              const shown = inv.collectionCaseId ? "collection" : overdue ? "overdue" : inv.status;
               return (
                 <li key={inv.id}>
-                  <Link href={`/admin/fakturor/${inv.id}`} className="inbox-row quote-row" data-status={overdue ? "overdue" : inv.status}>
-                    <span className="inbox-status inv-status" data-status={overdue ? "overdue" : inv.status}>
-                      {overdue ? `Förfallen ${daysBetween(inv.dueOn!, today)} d` : INVOICE_STATUS_LABEL[inv.status]}
+                  <Link href={`/admin/fakturor/${inv.id}`} className="inbox-row quote-row" data-status={shown}>
+                    <span className="inbox-status inv-status" data-status={shown}>
+                      {inv.collectionCaseId ? "Hos inkasso" : overdue ? `Förfallen ${daysBetween(inv.dueOn!, today)} d` : INVOICE_STATUS_LABEL[inv.status]}
                     </span>
                     <span className="inbox-main">
                       <strong>
@@ -145,6 +150,7 @@ export default async function InvoicesList({ searchParams }: { searchParams: Pro
                             : CUSTOMER_TYPE_LABEL[inv.document.buyer.type].replace(" (omvänd betalningsskyldighet)", "")}
                         {inv.correctedBy ? " · rättad med ändringsfaktura" : ""}
                         {inv.document.se.offset ? ` · ersätter ${inv.document.se.offset.invoiceNumber}, ${kr(inv.document.se.offset.amountOre)} kvittat` : ""}
+                        {!inv.collectionCaseId && inv.collectionDemandedOn && isOpen(inv) ? ` · inkassokrav ${inv.collectionDemandedOn}` : ""}
                         {inv.document.se.reverseCharge ? " · omvänd moms" : ""}
                         {inv.rotOre ? ` · ROT ${kr(Math.abs(inv.rotOre))}` : ""}
                         {inv.document.title ? ` · ${inv.document.title}` : ""}

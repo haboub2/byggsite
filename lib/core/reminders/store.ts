@@ -13,7 +13,7 @@ import { makeEvent, type Actor } from "../events";
 import { demoJournalEntries, getInvoice, invoiceLabel, listInvoices, type InvoiceRecord } from "../invoices/store";
 import { todayIso } from "../../quotes/schema";
 import { documentRecipients, recipientsText, type Recipients } from "../invoices/recipients";
-import { reminderDue, reminderText, type ReminderPlan, type ReminderSettings } from "./reminders";
+import { reminderDue, reminderInput, reminderText, type ReminderPlan, type ReminderSettings } from "./reminders";
 
 /**
  * Sending and recording reminders. `listDueReminders` is what the cron and
@@ -35,11 +35,7 @@ export async function listDueReminders(today = todayIso()): Promise<DueReminder[
   const settings = await reminderSettings();
   const out: DueReminder[] = [];
   for (const invoice of await listInvoices({ tab: "overdue" })) {
-    const plan = reminderDue(
-      { payableOre: invoice.payableOre, paidOre: invoice.paidOre, dueOn: invoice.dueOn, issueDate: invoice.document.issueDate, reminders: invoice.reminders, remindedAt: invoice.remindedAt, customerType: invoice.document.buyer.type, status: invoice.status, kind: invoice.kind },
-      today,
-      settings
-    );
+    const plan = reminderDue(reminderInput(invoice), today, settings);
     if (plan) out.push({ invoice, plan });
   }
   return out.sort((a, b) => b.plan.daysOverdue - a.plan.daysOverdue);
@@ -92,11 +88,9 @@ export async function sendReminder(invoiceId: string, actor: Actor, options: { m
   const today = options.today ?? todayIso();
   const inv = await getInvoice(invoiceId);
   if (!inv) throw new Error("Fakturan finns inte.");
-  const plan = reminderDue(
-    { payableOre: inv.payableOre, paidOre: inv.paidOre, dueOn: inv.dueOn, issueDate: inv.document.issueDate, reminders: inv.reminders, remindedAt: inv.remindedAt, customerType: inv.document.buyer.type, status: inv.status, kind: inv.kind },
-    today,
-    { ...(await reminderSettings()), graceDays: 0, daysBetween: 1 }
-  );
+  if (inv.collectionCaseId) throw new Error(`${invoiceLabel(inv)} är hos inkasso och får inga fler påminnelser.`);
+  if (inv.collectionDemandedOn) throw new Error(`${invoiceLabel(inv)} har fått inkassokrav. Nästa steg är att lämna den till inkasso.`);
+  const plan = reminderDue(reminderInput(inv), today, { ...(await reminderSettings()), graceDays: 0, daysBetween: 1 });
   if (!plan) throw new Error(`${invoiceLabel(inv)} är inte förfallen eller påmindes nyss.`);
   const recipients = options.mail ? await mailReminder(inv, plan) : null;
   const sentTo = recipients ? recipientsText(recipients) : "manuellt";
