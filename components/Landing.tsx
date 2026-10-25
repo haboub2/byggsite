@@ -14,12 +14,11 @@ import ProcessStory from "./scroll/ProcessStory";
 import LightText from "./scroll/LightText";
 import WorkStrip from "./scroll/WorkStrip";
 import StackCards from "./scroll/StackCards";
-import ScrollWipe from "./scroll/ScrollWipe";
 import Marquee from "./scroll/Marquee";
-import ReferenceCarousel from "./scroll/ReferenceCarousel";
+import ProjectCards from "./ProjectCards";
 import { PricingSection } from "./Pricing";
 import { hasImage, resolveImage } from "@/lib/images";
-import { listPublishedProjects, resolve } from "@/lib/projects";
+import { listPublishedProjects, projectCard } from "@/lib/projects";
 import { SIDES, type Side } from "@/lib/sides";
 import { services, processSteps, responsibility, faq as byggFaq } from "@/lib/placeholder";
 import { getContent } from "@/lib/content/store";
@@ -82,18 +81,16 @@ export default async function Landing({ side }: { side: Side }) {
 
   // Projects come from /admin and only appear with a real cover photo; cases
   // need a real screenshot. Stock images never stand in for our own work.
-  const shownWork = isBygg
+  // Bygg shows its featured projects as before/after cards high up the page.
+  const projectCards = isBygg
     ? projects
         .filter((p) => p.featured)
-        .slice(0, 8)
-        .map((p) => ({
-          href: `/bygg/projekt/${p.slug}`,
-          src: resolve(p.cover)?.url,
-          alt: p.cover?.alt,
-          tag: services.find((s) => s.slug === p.service)?.title ?? "Projekt",
-          title: p.title,
-          desc: p.summary,
-        }))
+        .map(projectCard)
+        .filter((c) => c !== null)
+        .slice(0, 6)
+    : [];
+  const shownWork = isBygg
+    ? []
     : cases
         .filter((c) => c.featured && (c.cover || (c.image && hasImage(c.image))))
         .slice(0, 8)
@@ -107,14 +104,6 @@ export default async function Landing({ side }: { side: Side }) {
           desc: c.summary,
         }));
 
-  // Before/after wipe: the first featured project that has both photos.
-  const wipeProject = isBygg ? projects.find((p) => p.featured && p.before && p.after) : undefined;
-  const wipe = wipeProject && {
-    before: resolve(wipeProject.before),
-    after: resolve(wipeProject.after),
-    title: wipeProject.title,
-    href: `/bygg/projekt/${wipeProject.slug}`,
-  };
   // Four or more pieces of work slide sideways; fewer stay a grid of three.
   const useStrip = shownWork.length >= 4;
   const gridWork = shownWork.slice(0, 3);
@@ -189,7 +178,23 @@ export default async function Landing({ side }: { side: Side }) {
 
       {isBygg && <Marquee words={services.map((s) => s.title)} />}
 
-      {isBygg && <ReferenceCarousel cta={cfg.cta} />}
+      {projectCards.length > 0 && (
+        <section className="sec">
+          <div className="container">
+            <SectionHead
+              eyebrow={cfg.work.eyebrow}
+              title={cfg.work.title}
+              aside={
+                <Link href={cfg.work.all.href} className="link-arrow">
+                  {cfg.work.all.label}
+                  <Icon name="arrow" strokeWidth={2} />
+                </Link>
+              }
+            />
+            <ProjectCards items={projectCards} />
+          </div>
+        </section>
+      )}
 
       <Craft {...cfg.craft} />
 
@@ -218,8 +223,6 @@ export default async function Landing({ side }: { side: Side }) {
 
       {isBygg && <PricingSection />}
 
-      {wipe?.before && wipe.after && <ScrollWipe before={wipe.before} after={wipe.after} title={wipe.title} href={wipe.href} />}
-
       {useStrip ? (
         <WorkStrip
           title={<SectionHead eyebrow={cfg.work.eyebrow} title={cfg.work.title} />}
@@ -231,7 +234,7 @@ export default async function Landing({ side }: { side: Side }) {
           }
           items={shownWork}
         />
-      ) : (shownWork.length > 0 || !isBygg) && (
+      ) : !isBygg && (
         <section className="sec">
           <div className="container">
             <SectionHead
@@ -250,16 +253,14 @@ export default async function Landing({ side }: { side: Side }) {
                   <WorkCard {...w} />
                 </Reveal>
               ))}
-              {!isBygg && (
-                <Reveal className="work-empty">
-                  <span className="eyebrow">Nästa case</span>
-                  <p>Vi tar in ett fåtal nya uppdrag i taget. Berätta vad som kostar er tid idag.</p>
-                  <Link href="/mjukvara/brief" className="link-arrow">
-                    Skicka en brief
-                    <Icon name="arrow" strokeWidth={2} />
-                  </Link>
-                </Reveal>
-              )}
+              <Reveal className="work-empty">
+                <span className="eyebrow">Nästa case</span>
+                <p>Vi tar in ett fåtal nya uppdrag i taget. Berätta vad som kostar er tid idag.</p>
+                <Link href="/mjukvara/brief" className="link-arrow">
+                  Skicka en brief
+                  <Icon name="arrow" strokeWidth={2} />
+                </Link>
+              </Reveal>
             </div>
           </div>
         </section>

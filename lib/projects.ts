@@ -6,6 +6,9 @@ import { isSupabaseConfigured } from "./supabase/config";
 import { isDemo } from "./leads";
 import { publicUrl } from "./storage";
 import type { Project, ProjectImage } from "./project-schema";
+import { splitStage, staged, type StagedPhoto } from "./project-photos";
+import { services } from "./placeholder";
+import type { ProjectCard } from "@/components/ProjectCards";
 
 /**
  * Projects: the `projects` table, edited from /admin. Public pages read with
@@ -167,4 +170,43 @@ export async function removeProject(slug: string): Promise<string | null> {
   const supabase = await createSessionClient();
   const { error } = await supabase.from("projects").delete().eq("slug", slug);
   return error ? `Kunde inte ta bort: ${error.message}` : null;
+}
+
+/* ---------- presentation ---------- */
+
+/** A project's photos in gallery order with their stage ("Före: …" captions),
+ *  plus where the shared before and after photos sit in that list. A cover or
+ *  before/after photo that isn't in the gallery is added to it. */
+export function projectPhotos(p: Project) {
+  const photos: StagedPhoto[] = p.gallery.map(resolve).filter((g) => g !== null).map(staged);
+  const has = (img: ResolvedImage | null) => Boolean(img && photos.some((x) => x.url === img.url));
+  const cover = resolve(p.cover);
+  const before = resolve(p.before);
+  const after = resolve(p.after) ?? cover;
+  if (before && !has(before)) photos.unshift({ ...staged(before), stage: "Före" });
+  if (after && !has(after)) photos.push({ ...staged(after), stage: after === cover ? staged(after).stage : "Efter" });
+  const at = (img: ResolvedImage | null) => (img ? photos.findIndex((x) => x.url === img.url) : -1);
+
+  const b = before ? at(before) : photos.findIndex((x) => x.stage === "Före");
+  const a = at(after);
+  const beforeIndex = b >= 0 ? b : null;
+  const afterIndex = a >= 0 ? a : null;
+  return { photos, beforeIndex, afterIndex, start: afterIndex ?? 0 };
+}
+
+/** The homepage card: the cover as "after", and the before photo (or the
+ *  first "Före" photo in the gallery) to wipe in. */
+export function projectCard(p: Project): ProjectCard | null {
+  const cover = resolve(p.cover);
+  if (!cover) return null;
+  const firstBefore = p.gallery.map(resolve).find((g) => g && splitStage(g.alt).stage === "Före") ?? null;
+  return {
+    href: `/bygg/projekt/${p.slug}`,
+    title: p.title,
+    category: services.find((s) => s.slug === p.service)?.title ?? null,
+    summary: p.summary,
+    photos: Math.max(1, p.gallery.length),
+    after: cover,
+    before: resolve(p.before) ?? firstBefore,
+  };
 }
