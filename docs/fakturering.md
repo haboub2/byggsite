@@ -9,6 +9,119 @@ delfakturor → ÄTA → slutfaktura → ROT) är produktens första säljargume
 Prototypen av gränssnittet finns som design-canvas (sju skärmar: fakturalista,
 faktura, projektekonomi, kundportal i mobil, PDF, ROT-begäran, dashboard).
 
+## Läge 2026-10-25: Swish Handel (0032)
+
+Kunden trycker *Betala med Swish* på den publika fakturasidan
+(`/faktura/<token>`) eller i portalen, godkänner i Swish-appen, och fakturan
+är betald i samma sekund: Swishs callback registrerar betalningen via
+`register_payment` som system, fakturan blir *Betald*, `invoice.paid` och
+`payment.received` loggas och webhooks köas som för alla betalningar.
+Swish-QR:n (Swish Företag) finns kvar bredvid för den som hellre skannar.
+
+**Swishs API, kontrollerat på developer.swish.nu 2026-10-25** (Swish Commerce
+API, "Payment request v2 (latest)"):
+
+| Vad | Anrop |
+|---|---|
+| Skapa betalningsbegäran | `PUT /swish-cpcapi/api/v2/paymentrequests/{instructionUUID}` (32 hex, versaler, vårt id); svar 201 med `Location` och, för m-commerce, `PaymentRequestToken`. v1 (`POST /api/v1/paymentrequests`) är märkt deprecated och används inte. |
+| Status | `GET /swish-cpcapi/api/v1/paymentrequests/{id}`: `CREATED`, `PAID`, `DECLINED`, `ERROR`, `CANCELLED` |
+| Avbryt | `PATCH /swish-cpcapi/api/v1/paymentrequests/{id}`, `application/json-patch+json`, `[{"op":"replace","path":"/status","value":"cancelled"}]`; RP07 om det är för sent |
+| Callback | HTTPS POST till vår `callbackUrl` (port 443, vanlig CA) med betalningsobjektet; vårt `callbackIdentifier` (32–36 tecken) kommer tillbaka som header |
+| Miljöer | Produktion `https://cpc.getswish.net` (callbacks från `egress.api.getswish.se`); Merchant Swish Simulator `https://mss.cpc.getswish.net` med Swishs publika testcertifikat (`MSS_test_3.0.zip`, lösenord `swish`, Swish-nummer 1234679304), callbacks från 89.46.83.171 |
+| Transport | mTLS med klientcertifikatet per Swish-nummer, TLS 1.2 eller senare |
+| Fält | `payeeAlias` (vårt 123-nummer), `amount` i kronor med två decimaler som sträng, `currency` SEK, `message` högst 50 tecken (a–ö, 0–9, `!?(),.-:;`), `payeePaymentReference` 1–35 av a–z 0–9 `-`, `payerAlias` (46…) bara för e-commerce |
+
+**Så är det byggt:**
+
+- `lib/core/payments/swish-commerce.ts`: `SwishProvider` (bakom gränssnittet
+  `InstantPaymentProvider`, så att kort eller PSD2 kan läggas bredvid) med
+  `createPaymentRequest(invoice, belopp, meddelande, …)`, `getStatus`,
+  `cancel` och `handleCallback`. mTLS via Nodes `https.Agent` med
+  certifikatet ur `SWISH_CERT_PEM`, `SWISH_KEY_PEM`, `SWISH_CA_PEM` (PEM eller
+  base64), `SWISH_ENV` test|prod. Transporten går att byta, så testerna kör
+  mot inspelade svar från simulatorn. Rena regler: belopp (öre ↔ "123.45"
+  utan flyttalsfel), meddelande, nummer (070… → 4670…), maskering
+  (`4670*****67`), callback-verifiering och kvitteringsregeln
+  `nextSettlementStep`.
+- **Meddelandet är fakturans referens** (`paymentReference`: OCR-numret med
+  OCR-avtal, annars fakturanumret) och beloppet exakt det som återstår.
+- **m-commerce och e-commerce:** på en mobil skapas begäran utan nummer och
+  `swish://paymentrequest?token=…&callbackurl=…` öppnar appen; Swish skickar
+  tillbaka kunden till sidan med `?swish=<id>`, och väntläget tas upp igen.
+  På en dator anger kunden sitt nummer och godkänner i appen.
+- **Väntläget** pollar vår egen route `/api/swish/betalningar/<id>` varannan
+  sekund (id:t är 128 slumpbitar, svaret saknar personuppgifter). Har
+  callbacken inte kommit efter fyra sekunder frågar routen Swish själv och
+  kvitterar på samma sätt, så betalningen går igenom även om callbacken
+  försenas.
+- **Callbacken** `/api/swish/callback?id=<instructionUUID>&sig=<HMAC>`:
+  signaturen (HMAC-SHA256 med `SWISH_CALLBACK_SECRET`) prövas först,
+  sedan att `callbackIdentifier`-headern stämmer med den vi skickade (vi
+  sparar bara dess sha256) och att kroppen gäller samma begäran. En PAID
+  bekräftas dessutom med ett statusanrop till Swish över mTLS innan något
+  bokförs; går Swish inte att nå gäller den verifierade callbacken.
+- **0032** (`supabase/migrations/0032_swish_payments.sql`): tabellen
+  `swish_payment_requests` (org, faktura, `swish_id`, miljö, flöde, belopp i
+  öre, status, maskerat betalarnummer, betalningsreferens, betalning, fel,
+  tider; medlemmar läser, bara service role skriver),
+  `payments.source` (`'swish'` för Swish Handel, null för allt före) med
+  unikt index på (org, referens) för Swish, och `settle_swish_payment()`
+  som låser raden och kvitterar i en transaktion: en avgjord begäran ändras
+  aldrig igen, samma Swish-referens blir aldrig två betalningar, och om
+  fakturan inte längre tar emot betalningar (makulerad, krediterad) sparas
+  felet på begäran ("Betald hos Swish men inte bokförd") i stället för att
+  callbacken misslyckas. `swish_secret()` läser certifikatet ur Vault för
+  organisationer som har sitt där (bara service role, bara `swish_`-namn).
+- **Per organisation:** Swish-numret är det under Inställningar › Betalning.
+  Certifikatet är organisationens; `org_settings.payment.swishCommerce
+  .credentials` anger var det finns, `env:<PREFIX>` eller
+  `vault:swish_<namn>` (ingen migration, jsonb). Webbplatsens organisation
+  (Binaafy) faller tillbaka på `env:SWISH`.
+- **Admin:** fakturasidan visar Swish-begärandena med status, maskerat
+  nummer, miljö, referens och fel. Inställningarna har rutan *Swish Handel*:
+  på/av, var certifikatet finns, Swish-numret det är utfärdat för och hur
+  länge det gäller, miljö, callback-adress och om den signeras. Inga
+  hemligheter visas.
+- **Missbruk:** högst fem begäranden per faktura och tio minuter, så knappen
+  inte kan användas för att skicka Swish-förfrågningar till någons telefon
+  om och om igen.
+
+**Provat mot Merchant Swish Simulator 2026-10-25** med Swishs publika
+testcertifikat (Swish_Merchant_TestCertificate_1234679304, i scratchpad,
+aldrig i repot), lokalt i demoläge: två demofakturor (101 kr och 250 kr)
+betalades från den publika sidan, en med nummer (e-commerce, dator) och en
+utan (m-commerce, mobilvy; token kom tillbaka och väntläget visades).
+Simulatorn svarade 201, `CREATED` och fyra sekunder senare `PAID`;
+status-pollingen kvitterade, fakturorna blev *Betald* och admin visade
+begäran, betalningen (`swish`, Swish-referensen) och händelserna. Felfallen
+RF07 (ERROR) och BE18 (422) är inspelade direkt från simulatorn och ligger i
+testerna. **Callbacken från Swish till en lokal route är inte provad**: det
+kräver en publik https-adress (tunnel), och tunneln var inte tillåten i
+sessionen. Callback-routen är provad lokalt för avvisningarna (fel token
+403, okänd begäran 404, saknad signatur 403, trasig JSON 400) och i
+enhetstest för PAID, DECLINED, ERROR och dubbletter; kvitteringen den gör är
+samma funktion som pollingen använde. Första riktiga callbacken syns när
+koden ligger på binaafy.se med testcertifikaten (eller i produktion).
+Simulatorn ändrar `paymentReference` mellan `CREATED` och `PAID`; vi
+sparar den först vid `PAID`.
+
+**Prov:** `lib/core/payments/swish-commerce.test.ts` (19 tester: payload,
+belopp och avrundning, maskering, mTLS-anropen mot inspelade
+simulatorsvar, callback PAID/DECLINED/ERROR/dubblett/avvisad, certifikat
+och referenser) och `supabase/tests/0032_swish.sql` (PGlite: inloggade kan
+inte skriva eller kvittera, B ser inte A:s begäranden, ogiltiga rader
+stoppas, DECLINED och ERROR stänger utan betalning, PAID ger betalning med
+`source = 'swish'`, betald faktura, händelser som system, verifikation och
+två webhook-leveranser, samma callback och samma referens på en annan
+begäran ger ingen ny betalning, unika indexet håller även utan funktionen,
+obokförd betalning lämnar ingen halv betalning, annat belopp antecknas,
+Vault-läsningen).
+
+Kvar: avtal och certifikat (`docs/fakturering-checklista.md`, avsnitt 2),
+callback provad mot en publik adress, återbetalning via Swish (refunds v2)
+och Swish-QR för m-commerce på datorn (`/qrg-swish/api/v1/commerce`, så att
+kunden skannar i stället för att skriva sitt nummer).
+
 ## Läge 2026-10-22: flera e-postmottagare (0026)
 
 En kund kan ha flera fakturamottagare och kopiemottagare. Kundformuläret har
@@ -294,8 +407,10 @@ Kvar efter fas 5:
 
 - **Externa avtal:** riktig Peppol-accesspunkt (Pagero, Qvalia,
   Unifiedpost) bakom `PeppolProvider`, öppen bankdata (Enable Banking,
-  Tink), BankID-inloggning och signering (Criipto, Signicat), Swish Handel
-  med callback.
+  Tink), BankID-inloggning och signering (Criipto, Signicat).
+  ~~**Swish Handel med callback**~~ byggt med 0032 och provat mot Swishs
+  simulator; kvar är avtalet med banken och certifikatet
+  (`docs/fakturering-checklista.md`, avsnitt 2), se läget 2026-10-25.
 - **Affär och juridik:** prissättning, personuppgiftsbiträdesavtal per
   organisation, produktnamnet.
 - ~~**Offerterna och webbplatsen**~~ Gjort med 0022, se nedan.
@@ -650,7 +765,8 @@ Inte gjort i fas 0–3, och varför:
   filtjänst eller öppen bankdata kommer i fas 5. Betalningen och
   markeringen av transaktionen är två anrop, inte en transaktion;
   `payments.bank_transaction_id` sätts inte än.
-- **Swish Handel** (callback som kvitterar betalningen direkt) i fas 5.
+- ~~**Swish Handel**~~ (callback som kvitterar betalningen direkt): byggt
+  2026-10-25 med 0032, se läget överst.
 - **Inkasso** som export till inkassobolag är inte byggt.
 - **ROT-XML:en** är skriven mot schemat men inte provad i Skatteverkets
   e-tjänst; första riktiga filen laddas upp och kontrolleras där. Timmar
@@ -998,7 +1114,7 @@ ett avtal med en bank, och ingen av dem är exklusiv för Fortnox.
 |---|---|---|---|
 | **Kontotransaktioner** | Egen bankkoppling per bank (SEB, Swedbank, Handelsbanken, Nordea, Danske, Länsförsäkringar …) och sedan sommaren 2026 en gratis Open Banking-koppling som hämtar transaktioner upp till fyra gånger per dag, aktiverad med Mobilt BankID | Öppen bankdata via en PSD2-leverantör (Enable Banking, Tink eller motsvarande): kunden godkänner med BankID, vi hämtar transaktioner och saldon via ett API. Egna bankavtal behövs inte. | 5 |
 | **Inbetalningar med OCR** | Bankgiro Inbetalningar, läser filen från banken | Samma tjänst hos kundens bank, filformat ISO 20022 camt.054 (BgMax upphör 27 nov 2026). Filen hämtas från internetbanken eller via bankens filtjänst och laddas upp eller hämtas av cron. Matchning på OCR, belopp, datum. | 3 |
-| **Swish** | Swish-QR på faktura och betalsida | Swish Företag: QR-kod på PDF och i portalen, ingen teknisk integration, avtal med kundens bank. Swish Handel (API, klientcertifikat per Swish-nummer, ca 3 kr per betalning hos Swedbank) när vi vill kvittera betalningen i realtid. | 3, 5 |
+| **Swish** | Swish-QR på faktura och betalsida | Swish Företag: QR-kod på PDF och i portalen, ingen teknisk integration, avtal med kundens bank. **Swish Handel byggt 2026-10-25 (0032):** *Betala med Swish* på fakturasidan och i portalen, payment request v2 med mTLS (klientcertifikat per Swish-nummer, ca 3 kr per betalning hos Swedbank), callback som kvitterar betalningen i realtid, status-polling som reserv; provat mot Merchant Swish Simulator, produktion väntar på avtal och certifikat. | 3, 5 |
 | **Utbetalningar** | Leverantörsbetalningar till internetbanken via bankkopplingen | Inte i produkten (vi fakturerar, betalar inte). Senare via PSD2-betalningsinitiering. | – |
 | **E-faktura till företag och offentlig sektor** | Tredjepart (Qvalia) via Peppol | Peppol BIS Billing 3 ur vårt EN 16931-dokument, skickat via en accesspunkt vi avtalar med (Pagero, Qvalia, Unifiedpost). | 5 |
 | **E-faktura till privatpersoner** | Kivra och internetbankens e-faktura | Kivra API för företag; bankernas e-faktura (via Bankgirot/Finansiell ID-Teknik) kräver avtal och är senare. | 5 |

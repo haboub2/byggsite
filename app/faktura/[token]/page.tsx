@@ -6,6 +6,8 @@ import { getInvoiceByToken } from "@/lib/core/invoices/public";
 import { INVOICE_STATUS_LABEL, invoiceLabel, isOpen, isOverdue } from "@/lib/core/invoices/store";
 import { customerSummary, invoiceTotals } from "@/lib/core/invoices/totals";
 import { isSwishNumber } from "@/lib/core/payments/swish";
+import { swishCommerceReady } from "@/lib/core/payments/swish-store";
+import { SwishPayButton } from "@/components/payments/SwishPayButton";
 import { todayIso } from "@/lib/quotes/schema";
 
 export const metadata: Metadata = { title: "Faktura", robots: { index: false, follow: false } };
@@ -16,7 +18,8 @@ const sek = (ore: number) => formatOre(ore);
 /**
  * The public invoice page, reached from the link in the mail. No login:
  * the token is the key. Shows what to pay and how, with the PDF and a
- * Swish QR when the seller has a Swish number. Never shows personal numbers.
+ * Swish QR when the seller has a Swish number, and "Betala med Swish" when
+ * the seller has Swish Handel. Never shows personal numbers.
  */
 export default async function PublicInvoice({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -31,6 +34,8 @@ export default async function PublicInvoice({ params }: { params: Promise<{ toke
   const remaining = inv.payableOre - inv.paidOre;
   const swish = d.paymentMeans.swish && isSwishNumber(d.paymentMeans.swish);
   const ref = paymentReference(d);
+  // Swish Handel: the payment is confirmed the moment it is made.
+  const swishHandel = openNow && remaining > 0 && (await swishCommerceReady(inv.orgId));
 
   return (
     <main className="pub-wrap">
@@ -78,6 +83,11 @@ export default async function PublicInvoice({ params }: { params: Promise<{ toke
                   <dd>{ref.value}</dd>
                 </div>
               </dl>
+              {swishHandel && (
+                <div style={{ marginTop: 16 }}>
+                  <SwishPayButton target={{ token }} amountLabel={kr(remaining)} resumeKey="faktura" />
+                </div>
+              )}
             </div>
             {swish && (
               // eslint-disable-next-line @next/next/no-img-element

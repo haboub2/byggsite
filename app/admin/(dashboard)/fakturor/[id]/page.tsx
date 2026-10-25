@@ -20,6 +20,8 @@ import { todayIso } from "@/lib/quotes/schema";
 import { requireRole } from "@/lib/admin";
 import { maskPersonalNumber } from "@/lib/core/rot/pnr";
 import { RevealPersonalNumber } from "@/components/admin/invoices/RevealPersonalNumber";
+import { listSwishRequests } from "@/lib/core/payments/swish-store";
+import { SWISH_STATUS_LABEL } from "@/lib/core/payments/swish-commerce";
 
 const kr = (ore: number) => formatOre(ore, { decimals: 0, currency: true });
 const sek = (ore: number) => formatOre(ore);
@@ -107,7 +109,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
     );
   }
 
-  const [events, payments] = await Promise.all([listInvoiceEvents(inv.id), listInvoicePayments(inv.id)]);
+  const [events, payments, swishRequests] = await Promise.all([listInvoiceEvents(inv.id), listInvoicePayments(inv.id), listSwishRequests(inv.id)]);
   // The other end of a correction: the change invoice that replaced this one, or the original this one replaces.
   const [correction, original] = await Promise.all([
     inv.correctedBy ? getInvoice(inv.correctedBy) : null,
@@ -397,6 +399,29 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                   Betalt {kr(inv.paidOre)} av {kr(inv.payableOre)}
                   {remaining > 0 && isOpen(inv) ? ` · ${kr(remaining)} kvar` : ""}
                 </p>
+                )}
+                {swishRequests.length > 0 && (
+                  <div className="swish-requests">
+                    <h3 className="lead-h2" style={{ fontSize: 17 }}>Swish Handel</h3>
+                    <ul className="inv-list">
+                      {swishRequests.map((r) => (
+                        <li key={r.id}>
+                          <span>
+                            {formatDateTime(r.createdAt)} · {SWISH_STATUS_LABEL[r.status]} · {r.flow === "mcommerce" ? "Swish-appen" : `nr ${r.payerAlias}`}
+                            {r.environment === "test" ? " · testmiljö" : ""}
+                            {r.paymentReference ? ` · ref ${r.paymentReference}` : ""}
+                            {r.error && (
+                              <>
+                                <br />
+                                <small>{r.error}</small>
+                              </>
+                            )}
+                          </span>
+                          <strong>{kr(r.amountOre)}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
               </div>
               <div>

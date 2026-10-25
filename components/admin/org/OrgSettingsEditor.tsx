@@ -60,6 +60,14 @@ export default function OrgSettingsEditor({ initial, defaults, lastSaved }: { in
           <input type="checkbox" checked={s.payment.ocrAgreement} onChange={(e) => payment("ocrAgreement")(e.target.checked)} />
           <span>Bankgirot har OCR-avtal</span>
         </label>
+        <TextField
+          label="Swish Handel: certifikat"
+          path="payment.swishCommerce.credentials"
+          value={s.payment.swishCommerce.credentials}
+          onChange={(v) => payment("swishCommerce")({ credentials: v.trim() })}
+          placeholder="env:SWISH"
+          hint="Var certifikatet för Swish-numret finns, aldrig certifikatet självt: env:SWISH (miljövariablerna SWISH_*) eller vault:swish_namn (Supabase Vault). Tomt = av. Status visas under rutan Swish Handel nedan."
+        />
         <p className="efield-hint">
           Med avtal (OCR-referenskontroll, beställs via banken) står OCR-numret på fakturan. Utan avtal står &quot;Referens&quot; med fakturanumret, som kunden skriver som meddelande. Gäller fakturor som utfärdas efter att du sparat.
         </p>

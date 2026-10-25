@@ -20,6 +20,8 @@ const text = (max: number, label: string) => z.string().trim().max(max, `${label
 const days = (label: string) =>
   z.coerce.number({ message: `${label}: ange ett antal dagar.` }).int(`${label}: hela dagar.`).min(0, `${label}: minst 0.`).max(120, `${label}: högst 120.`);
 const account = z.string().trim().regex(/^\d{4}$/, "Konto: fyra siffror.");
+/** Same rule as parseCredentialRef in lib/core/payments/swish-commerce.ts (kept here so this file stays client-safe). */
+export const SWISH_CREDENTIAL_REF = /^(env:[A-Z][A-Z0-9_]{0,40}|vault:swish_[a-z0-9_]{1,60})$/;
 
 export const companySettingsSchema = z.object({
   legalName: text(120, "Företagsnamn").default(""),
@@ -56,6 +58,20 @@ export const paymentSettingsSchema = z.object({
    * message, since without the agreement the bank offers no OCR field.
    */
   ocrAgreement: z.boolean().default(false),
+  /**
+   * Swish Handel (lib/core/payments/swish-commerce.ts): where the client
+   * certificate for the Swish number is, never the certificate itself.
+   * "env:SWISH" = the SWISH_* environment variables, "vault:swish_<name>" =
+   * a Supabase Vault secret. Empty: Swish Handel is off, except for the
+   * website's organisation, which falls back to env:SWISH.
+   */
+  swishCommerce: z
+    .object({
+      credentials: text(80, "Swish Handel-certifikat")
+        .refine((v) => v === "" || SWISH_CREDENTIAL_REF.test(v), "Certifikatet anges som env:SWISH eller vault:swish_namn.")
+        .default(""),
+    })
+    .default({}),
 });
 
 export const termsSettingsSchema = z.object({
@@ -300,6 +316,7 @@ export function settingsFromContent(input: {
       bic: quote.bic,
       swish: (env.SWISH_NUMBER ?? "").replace(/\s/g, ""),
       ocrAgreement: false,
+      swishCommerce: { credentials: "" },
     },
     terms: { privat: quote.paymentDays, foretag: quote.paymentDays, byggforetag: quote.paymentDays },
     lateInterestText: quote.lateInterest || DEFAULT_LATE_INTEREST_TEXT,
