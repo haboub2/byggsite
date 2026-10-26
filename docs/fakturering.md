@@ -80,6 +80,11 @@ bl.a. tolv räkningar av verifikationer (en per månad).
   på fem minuter (`lib/content/chrome.ts`).
 - Ekonomisidan hämtar betalplanerna för alla projekt samtidigt i stället
   för ett i taget.
+- Ekonomisidans tolv räkningar av verifikationer (en HEAD per månad) är en
+  RPC: `journal_entry_counts()` (0034, security invoker, så RLS gäller);
+  appen fyller i 0 för månader utan verifikationer. Uppmätt 32 anrop före;
+  efter 0034 blir det 21. Tills 0034 körts faller appen tillbaka på
+  räkningen per månad (ett anrop mer, 33). Prov: `supabase/tests/0034_journal_entry_counts.sql`.
 - PDF-renderaren (`@react-pdf/renderer`) och sharp laddas lazy där PDF:er
   skapas (mejl, påminnelser, inkasso, export, projektrapport). Före fanns
   react-pdf i 13 vanliga adminsidors serverbundle (fakturor, ekonomi,
@@ -94,8 +99,7 @@ dev-servern efter kodändringar, HMR tappar loggningen.
 
 **Kvar:** Vercel-funktionerna kör i `iad1` (USA) medan Supabase ligger i
 EU; varje anrop korsar Atlanten. Sätt funktionsregionen till samma som
-Supabase (checklistan avsnitt 1). Ekonomisidans tolv räkningar av
-verifikationer kan bli en RPC (0034 är ledig). Startguidens fyra frågor
+Supabase (checklistan avsnitt 1). Startguidens fyra frågor
 körs på varje sida för den som kan skriva, även när guiden är klar.
 
 ## Läge: självregistrering (0033)

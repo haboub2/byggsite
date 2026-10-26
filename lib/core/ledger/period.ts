@@ -73,6 +73,19 @@ export function recentPeriods(last: Period, count: number): Period[] {
   return out;
 }
 
+/** First day of the earliest month and last day of the latest: one date range covering all of them. */
+export function periodsSpan(periods: Period[]): { from: string; to: string } {
+  if (periods.length === 0) throw new RangeError("Inga perioder.");
+  const sorted = [...periods].sort();
+  return { from: monthRange(sorted[0]).from, to: monthRange(sorted[sorted.length - 1]).to };
+}
+
+/** A count for each of `periods`, in their order: 0 for a month `rows` leaves out (journal_entry_counts returns only months with entries). */
+export function countsPerPeriod(periods: Period[], rows: { period: string; count: number | string }[]): { period: Period; count: number }[] {
+  const byPeriod = new Map(rows.map((r) => [r.period, Number(r.count)]));
+  return periods.map((period) => ({ period, count: byPeriod.get(period) ?? 0 }));
+}
+
 /** The months from `from` to `to` inclusive (dates or periods), oldest first: a fiscal year's months for the lock overview. */
 export function periodsBetween(from: string, to: string): Period[] {
   const out: Period[] = [];
