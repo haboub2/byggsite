@@ -82,9 +82,12 @@ bl.a. tolv räkningar av verifikationer (en per månad).
   för ett i taget.
 - Ekonomisidans tolv räkningar av verifikationer (en HEAD per månad) är en
   RPC: `journal_entry_counts()` (0034, security invoker, så RLS gäller);
-  appen fyller i 0 för månader utan verifikationer. Uppmätt 32 anrop före;
-  efter 0034 blir det 21. Tills 0034 körts faller appen tillbaka på
-  räkningen per månad (ett anrop mer, 33). Prov: `supabase/tests/0034_journal_entry_counts.sql`.
+  appen fyller i 0 för månader utan verifikationer. Uppmätt (varma
+  visningar): 32 anrop (proxy 1, sidan 31), 16,9–19,1 s före; 17 (proxy 1,
+  sidan 16), 8,3–11,6 s efter 0034. Före gick dessutom `invoices` (HEAD),
+  `customers`, `org_settings` och `content_blocks` två gånger per visning,
+  efter en. Saknas funktionen faller appen tillbaka på räkningen per månad.
+  Prov: `supabase/tests/0034_journal_entry_counts.sql`.
 - PDF-renderaren (`@react-pdf/renderer`) och sharp laddas lazy där PDF:er
   skapas (mejl, påminnelser, inkasso, export, projektrapport). Före fanns
   react-pdf i 13 vanliga adminsidors serverbundle (fakturor, ekonomi,
