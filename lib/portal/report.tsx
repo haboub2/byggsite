@@ -1,9 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { after } from "next/server";
-import { renderToBuffer } from "@react-pdf/renderer";
-import { APPENDIX_PARTS, firstDayAnchor, firstRowAnchor, ReportPdf, type PageMap, type ReportChapter, type ReportData, type ReportPhoto } from "../pdf/ReportPdf";
-import { compressReportPhoto } from "../pdf/photos";
+import type { PageMap, ReportChapter, ReportData, ReportPhoto } from "../pdf/ReportPdf";
 import { getQuoteProfile } from "../quotes/profile-store";
 import { createZip } from "../zip";
 import { pool } from "../pool";
@@ -64,6 +62,9 @@ async function reportData(bundle: ProjectBundle, opts: { final: boolean; asOf: s
   const planned = plannedPhaseDates(project, phases);
   const inReport = tree.flatMap((c) => c.days.flatMap((d) => d.photos));
   const last = inReport.slice().sort((a, b) => a.day.localeCompare(b.day) || a.created_at.localeCompare(b.created_at) || a.sort - b.sort).pop();
+  // sharp, like the PDF renderer below, loads only when a report is rendered,
+  // not with every page whose actions schedule one.
+  const { compressReportPhoto } = await import("../pdf/photos");
 
   // The sender is the project's organisation, read as the system: the report
   // is also rendered for portal customers and in the background.
@@ -119,7 +120,11 @@ async function reportData(bundle: ProjectBundle, opts: { final: boolean; asOf: s
  * only ever gain a page break, so the loop always settles.
  */
 export async function renderReport(bundle: ProjectBundle, opts: { final: boolean; asOf?: string }): Promise<Buffer> {
-  const data = await reportData(bundle, { final: opts.final, asOf: opts.asOf ?? todayIso() });
+  const [data, { renderToBuffer }, { APPENDIX_PARTS, firstDayAnchor, firstRowAnchor, ReportPdf }] = await Promise.all([
+    reportData(bundle, { final: opts.final, asOf: opts.asOf ?? todayIso() }),
+    import("@react-pdf/renderer"),
+    import("../pdf/ReportPdf"),
+  ]);
   let pages: PageMap = {};
   const breaks = new Set<string>();
   let pdf: Buffer = Buffer.alloc(0);

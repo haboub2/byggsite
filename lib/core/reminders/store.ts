@@ -5,7 +5,7 @@ import { isDemo } from "../../leads";
 import { site } from "../../placeholder";
 import { getOrgSettings } from "../org/settings-store";
 import { chartFromSettings, reminderSettingsFrom } from "../org/settings";
-import { renderInvoicePdf, invoiceFileName } from "../../pdf/render-invoice";
+import { invoiceFileName } from "../../pdf/invoice-file-name";
 import { formatOre } from "../money";
 import { paymentReference } from "../documents/invoice";
 import { postReminder } from "../ledger/posting";
@@ -14,6 +14,9 @@ import { demoJournalEntries, getInvoice, invoiceLabel, listInvoices, type Invoic
 import { todayIso } from "../../quotes/schema";
 import { documentRecipients, recipientsText, type Recipients } from "../invoices/recipients";
 import { reminderDue, reminderInput, reminderText, type ReminderPlan, type ReminderSettings } from "./reminders";
+
+// The PDF renderer loads on first use, not with every page that imports this module.
+const renderInvoicePdf: typeof import("../../pdf/render-invoice").renderInvoicePdf = async (...args) => (await import("../../pdf/render-invoice")).renderInvoicePdf(...args);
 
 /**
  * Sending and recording reminders. `listDueReminders` is what the cron and

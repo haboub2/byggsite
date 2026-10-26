@@ -9,6 +9,102 @@ delfakturor → ÄTA → slutfaktura → ROT) är produktens första säljargume
 Prototypen av gränssnittet finns som design-canvas (sju skärmar: fakturalista,
 faktura, projektekonomi, kundportal i mobil, PDF, ROT-begäran, dashboard).
 
+## Läge: prestanda i admin
+
+Adminpanelen kändes långsam: varje sidvisning gjorde flera anrop till
+Supabase efter varandra, de flesta bara för att ta reda på vem som var
+inloggad. Ingen migration behövdes.
+
+**Uppmätt** i `next dev` mot den riktiga databasen (varma sidvisningar,
+samma dator; härifrån tar ett anrop till Supabase 0,6–2 s, så tiderna är
+långt över produktionens men jämförbara före/efter):
+
+| Sida | Anrop före | Anrop efter | Tid före | Tid efter | varav proxy före → efter |
+|---|---|---|---|---|---|
+| /admin/fakturor | 15 (proxy 2, sidan 13) | 9 (proxy 1, sidan 8) | 9,4–11,4 s | 2,2–5,1 s | 2,6–3,2 s → 0,7–2,0 s |
+| /admin/ekonomi | 34 (proxy 2, sidan 32) | 31 (proxy 1, sidan 30) | 17,9–21,5 s | 12,8–17,5 s | 2,2–3,2 s → 0,7–2,7 s |
+
+Borta per sidvisning: två `auth/v1/user`, ett extra `memberships`,
+`default_org`, `content_blocks` (rotlayouten) och `projects` (404-sidan,
+som Next renderar med varje sida). Ekonomi har kvar sina egna ~25 frågor,
+bl.a. tolv räkningar av verifikationer (en per månad).
+
+**Så fungerar inloggningskontrollen nu**
+
+- `proxy.ts` kontrollerar en gång per request. GET och HEAD verifierar
+  JWT:n lokalt med `supabase.auth.getClaims()`: projektet signerar med en
+  asymmetrisk nyckel (ES256, publik nyckel på
+  `/auth/v1/.well-known/jwks.json`), supabase-js hämtar JWKS en gång och
+  sparar den tio minuter per serverinstans, och signaturen kontrolleras med
+  WebCrypto. Ingen tur till Auth. Skulle projektet gå tillbaka till en
+  symmetrisk nyckel (HS256) gör `getClaims()` själv ett `getUser()`, så det
+  blir långsammare men aldrig fel.
+- Allt annat (server actions, uppladdning: POST) kontrolleras med
+  `getUser()` mot Auth. Det fångar en session som loggats ut någon
+  annanstans eller en borttagen användare innan JWT:n löpt ut (upp till en
+  timme), och flera actions går vidare med service role
+  (`lib/supabase/admin.ts`), som inte har RLS bakom sig. Läsningar har RLS
+  bakom sig med samma JWT, så där räcker signaturen.
+- Proxyn hämtar medlemskapen (med organisationernas namn) och
+  `default_org()` (sparas tio minuter per instans, den ändras aldrig i
+  praktiken) och skickar alltihop vidare i request-headern
+  `x-binaafy-session`: base64url-JSON plus en HMAC-SHA256 med
+  `SUPABASE_SERVICE_ROLE_KEY` som nyckel, giltig två minuter
+  (`lib/core/org/request-session.ts`).
+- På varje väg proxyn släpper igenom tar den först bort det som kom in
+  under samma namn från webbläsaren, och servern godtar bara ett värde med
+  rätt signatur som inte gått ut. En förfalskad, gammal eller saknad header
+  (t.ex. en server action postad till en adress utanför `/admin`, eller
+  `/api`) ger aldrig behörighet, bara den fulla kontrollen igen
+  (`getUser()`, medlemskap, `default_org`) i `lib/core/org/session.ts`.
+  Testerna i `lib/core/org/request-session.test.ts` provar förfalskade,
+  omsignerade, ändrade och utgångna värden och att proxyn rensar headern.
+- `requireRole` (`lib/admin.ts`) läser sessionen via React `cache`, så
+  layouten, sidan och alla actions i samma request delar en kontroll; rollen
+  per behörighetsnivå räknas som förut. `listMyMemberships`,
+  `currentMembership` och portalens `getPortalUser` läser samma session.
+  RLS i databasen är oförändrad.
+
+**Övrigt som ändrades**
+
+- Adminlayouten hämtar medlemskap, räknare och startguiden i ett
+  `Promise.all`; startguiden läser inställningar och räkningar samtidigt och
+  räknar kunderna och hämtar den första i ett anrop.
+- `siteOrgId()` cachas med `unstable_cache` i tio minuter (anon-klienten,
+  `default_org()` är granted till anon).
+- Inställningarna läser webbplatsens innehåll bara för sajtens egen
+  organisation (som faller tillbaka på det), och samtidigt som
+  `org_settings`.
+- Rotlayouten läser inte längre webbplatsens innehåll; JSON-LD ligger i
+  `app/(site)/layout.tsx`. 404-sidan läser sidhuvud och sidfot ur en cache
+  på fem minuter (`lib/content/chrome.ts`).
+- Ekonomisidan hämtar betalplanerna för alla projekt samtidigt i stället
+  för ett i taget.
+- Ekonomisidans tolv räkningar av verifikationer (en HEAD per månad) är en
+  RPC: `journal_entry_counts()` (0034, security invoker, så RLS gäller);
+  appen fyller i 0 för månader utan verifikationer. Uppmätt (varma
+  visningar): 32 anrop (proxy 1, sidan 31), 16,9–19,1 s före; 17 (proxy 1,
+  sidan 16), 8,3–11,6 s efter 0034. Före gick dessutom `invoices` (HEAD),
+  `customers`, `org_settings` och `content_blocks` två gånger per visning,
+  efter en. Saknas funktionen faller appen tillbaka på räkningen per månad.
+  Prov: `supabase/tests/0034_journal_entry_counts.sql`.
+- PDF-renderaren (`@react-pdf/renderer`) och sharp laddas lazy där PDF:er
+  skapas (mejl, påminnelser, inkasso, export, projektrapport). Före fanns
+  react-pdf i 13 vanliga adminsidors serverbundle (fakturor, ekonomi,
+  projekt, offerter …), nu bara i de tre PDF-routerna; fakturor 1211 →
+  1098 kB, ekonomi 1211 → 1013 kB. UBL (`peppol.xml`) och SIE låg redan
+  bara i sina egna routes.
+
+**Mäta själv:** sätt `SUPABASE_TRACE=1` i `.env.local` och starta
+`next dev`; `instrumentation.ts` loggar varje anrop till Supabase med route,
+metod, sökväg och tid (bara i dev, aldrig headers eller innehåll). Starta om
+dev-servern efter kodändringar, HMR tappar loggningen.
+
+**Kvar:** Vercel-funktionerna kör i `iad1` (USA) medan Supabase ligger i
+EU; varje anrop korsar Atlanten. Sätt funktionsregionen till samma som
+Supabase (checklistan avsnitt 1). Startguidens fyra frågor
+körs på varje sida för den som kan skriva, även när guiden är klar.
+
 ## Läge: självregistrering (0033)
 
 Ett nytt byggföretag kommer igång utan inbjudan. De tre sidorna är byggda

@@ -36,21 +36,23 @@ const keysOf = (data: unknown): string[] => (data && typeof data === "object" ? 
 
 export async function getOrgSettingsRecord(orgId?: string): Promise<StoredSettings> {
   const org = orgId ?? (await currentOrgId());
-  const fallback = await contentFallback();
   if (isDemo()) {
+    const fallback = await contentFallback();
     const data = g.__binaafyOrgSettings?.[org];
     return { orgId: org, settings: resolveOrgSettings(data, () => fallback), saved: !!data, updatedAt: null, savedKeys: keysOf(data) };
   }
   const supabase = await getDb();
-  const [{ data, error }, isFirst] = await Promise.all([
+  // Only the site's organisation falls back to the website's content; others skip reading it.
+  const isFirst = await isSiteOrg(org);
+  const [{ data, error }, fallback] = await Promise.all([
     supabase.from("org_settings").select("data, updated_at").eq("org_id", org).maybeSingle(),
-    isSiteOrg(org),
+    isFirst ? contentFallback() : null,
   ]);
   if (error) throw new Error(`Kunde inte läsa inställningarna: ${error.message}`);
   const stored = data?.data ?? {};
   return {
     orgId: org,
-    settings: resolveOrgSettings(stored, isFirst ? () => fallback : undefined),
+    settings: resolveOrgSettings(stored, fallback ? () => fallback : undefined),
     saved: !!data && Object.keys(stored as object).length > 0,
     updatedAt: (data?.updated_at as string | undefined) ?? null,
     savedKeys: keysOf(stored),

@@ -2,12 +2,15 @@ import "server-only";
 import { Resend } from "resend";
 import { site } from "../../placeholder";
 import { getOrgSettings } from "../org/settings-store";
-import { renderInvoicePdf, invoiceFileName } from "../../pdf/render-invoice";
+import { invoiceFileName } from "../../pdf/invoice-file-name";
 import { formatOre } from "../money";
 import { invoiceTotals } from "./totals";
 import { paymentReference } from "../documents/invoice";
 import { invoiceLabel, type InvoiceRecord } from "./store";
 import { sendRecipients, type Recipients } from "./recipients";
+
+// The PDF renderer loads on first use, not with every page that imports this module.
+const renderInvoicePdf: typeof import("../../pdf/render-invoice").renderInvoicePdf = async (...args) => (await import("../../pdf/render-invoice")).renderInvoicePdf(...args);
 
 const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 

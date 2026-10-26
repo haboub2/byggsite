@@ -18,8 +18,7 @@ import { demoJournalEntries, getInvoice, invoiceLabel, listInvoiceEvents, listIn
 import { documentRecipients, recipientsText, type Recipients } from "../invoices/recipients";
 import { openInvoiceBuyerPersonalNumber, PersonalNumberAccessError } from "../rot/store";
 import { formatPersonalNumber, maskPersonalNumber } from "../rot/pnr";
-import { renderInvoicePdf, invoiceFileName } from "../../pdf/render-invoice";
-import { renderCollectionLetterPdf, renderCollectionSummaryPdf } from "../../pdf/render-collection";
+import { invoiceFileName } from "../../pdf/invoice-file-name";
 import type { AmountLine, Creditor, Debtor, InvoiceFacts, LetterProps } from "../../pdf/CollectionPdf";
 import {
   collectionBlocker,
@@ -33,6 +32,13 @@ import {
   type ReminderRecord,
 } from "./collections";
 import { demoCollectionCases, type CollectionCaseRow } from "./demo";
+
+// The PDF renderer loads on first use, not with every page that imports this module.
+const renderInvoicePdf: typeof import("../../pdf/render-invoice").renderInvoicePdf = async (...args) => (await import("../../pdf/render-invoice")).renderInvoicePdf(...args);
+const renderCollectionLetterPdf: typeof import("../../pdf/render-collection").renderCollectionLetterPdf = async (...args) =>
+  (await import("../../pdf/render-collection")).renderCollectionLetterPdf(...args);
+const renderCollectionSummaryPdf: typeof import("../../pdf/render-collection").renderCollectionSummaryPdf = async (...args) =>
+  (await import("../../pdf/render-collection")).renderCollectionSummaryPdf(...args);
 
 /**
  * Inkasso (0031): the inkassokrav the creditor sends itself, and the cases

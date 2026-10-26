@@ -7,7 +7,7 @@ import { demoJournalEntries } from "../invoices/store";
 import { DEFAULT_ACCOUNT_NAMES } from "./posting";
 import { getOrgSettings } from "../org/settings-store";
 import { fiscalYearLabel } from "../org/settings";
-import { entriesIn, isPeriod, isPeriodLocked, monthRange, type LedgerEntry, type Period, type PeriodLock } from "./period";
+import { countsPerPeriod, entriesIn, isPeriod, isPeriodLocked, monthRange, periodsSpan, type LedgerEntry, type Period, type PeriodLock } from "./period";
 
 /**
  * The ledger as it is stored (journal_entries, journal_lines, accounts,
@@ -74,14 +74,24 @@ export async function listJournalEntries(range: { from: string; to: string }): P
   }));
 }
 
-/** How many entries each month holds: one count query per month, so the dashboard never reads the lines. */
+/**
+ * How many entries each month holds, counted in the database
+ * (journal_entry_counts, 0034) in one call, so the dashboard never reads
+ * the lines. Until 0034 has run, one count query per month.
+ */
 export async function journalEntryCounts(periods: Period[]): Promise<{ period: Period; count: number }[]> {
   if (isDemo()) {
     const all = demoJournalEntries();
     return periods.map((period) => ({ period, count: all.filter((e) => e.date.startsWith(period)).length }));
   }
+  if (periods.length === 0) return [];
   const supabase = await getDb();
   const org = await readOrgId();
+  const { from, to } = periodsSpan(periods);
+  const { data, error } = await supabase.rpc("journal_entry_counts", { p_org: org, p_from: from, p_to: to });
+  if (!error) return countsPerPeriod(periods, (data ?? []) as { period: string; count: number }[]);
+  // PGRST202: the function is not there yet (0034 not run).
+  if (error.code !== "PGRST202") throw new Error(`Kunde inte räkna verifikationer: ${error.message}`);
   return Promise.all(
     periods.map(async (period) => {
       const { from, to } = monthRange(period);

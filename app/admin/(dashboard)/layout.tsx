@@ -46,11 +46,13 @@ export default async function AdminDashboardLayout({
     );
   }
 
-  const orgs = (await listMyMemberships()).map((m) => ({ id: m.orgId, name: m.name }));
   const access = (["read", "write", "admin", "owner", "site"] as Access[]).filter((a) => hasAccess(check.role, a, check.site));
 
-  // The start guide's banner, for those who can work through it, until every step is done.
-  const [counts, onboarding] = await Promise.all([
+  // requireRole and the memberships come from the proxy's check (no round
+  // trip); the counters and the start guide's banner, for those who can work
+  // through it, are read side by side.
+  const [mine, counts, onboarding] = await Promise.all([
+    listMyMemberships(),
     loadNavCounts(access),
     access.includes("write")
       ? loadOnboarding(check.orgId, check.site).catch((err): Onboarding | null => {
@@ -59,6 +61,7 @@ export default async function AdminDashboardLayout({
         })
       : null,
   ]);
+  const orgs = mine.map((m) => ({ id: m.orgId, name: m.name }));
 
   return (
     <div className="admin">

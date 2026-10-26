@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   accountTotals,
+  countsPerPeriod,
   entriesIn,
   fiscalYearChangeProblem,
   isLocked,
@@ -11,6 +12,7 @@ import {
   monthRange,
   periodTodos,
   periodsBetween,
+  periodsSpan,
   previousMonth,
   recentPeriods,
   sieFileName,
@@ -71,6 +73,21 @@ test("months: range, previous, recent, validation", () => {
   assert.equal(isPeriod("2026-1"), false);
   assert.equal(isPeriod("2026-08"), true);
   assert.throws(() => monthRange("2026-00"));
+});
+
+test("entry counts: one date range for the months, 0 where the database has none", () => {
+  const months = recentPeriods("2026-02", 4);
+  assert.deepEqual(periodsSpan(months), { from: "2025-11-01", to: "2026-02-28" });
+  assert.deepEqual(periodsSpan(["2026-08"]), { from: "2026-08-01", to: "2026-08-31" });
+  assert.throws(() => periodsSpan([]));
+  // Rows come oldest first and only for months with entries; bigint may arrive as a string.
+  assert.deepEqual(countsPerPeriod(months, [{ period: "2025-11", count: 3 }, { period: "2026-01", count: "12" }, { period: "2026-03", count: 9 }]), [
+    { period: "2026-02", count: 0 },
+    { period: "2026-01", count: 12 },
+    { period: "2025-12", count: 0 },
+    { period: "2025-11", count: 3 },
+  ]);
+  assert.deepEqual(countsPerPeriod(months, []).map((r) => r.count), [0, 0, 0, 0]);
 });
 
 test("locks: a date inside, a whole month, and which months can be locked", () => {

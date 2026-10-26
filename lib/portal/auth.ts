@@ -1,6 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { createClient } from "../supabase/server";
+import { getRequestSession } from "../core/org/session";
 import { isDemo } from "../leads";
 
 /**
@@ -19,11 +19,8 @@ export async function getPortalUser(): Promise<PortalUser | null> {
     const email = (await cookies()).get(DEMO_COOKIE)?.value;
     return email ? { id: email, email, name: "", demo: true } : null;
   }
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user?.email) return null;
-  const name = typeof user.user_metadata?.name === "string" ? user.user_metadata.name : "";
-  return { id: user.id, email: user.email, name, demo: false };
+  // The proxy's check for this request (lib/core/org/session.ts).
+  const session = await getRequestSession();
+  if (!session?.email) return null;
+  return { id: session.userId, email: session.email, name: session.name, demo: false };
 }

@@ -1,13 +1,21 @@
 import Link from "next/link";
 import { services } from "@/lib/placeholder";
 import { getContent } from "@/lib/content/store";
+import type { Company } from "@/lib/content/schema";
 import { softwareAreas } from "@/lib/software-content";
 import { projectsReady } from "@/lib/projects";
 import { PRODUCT_NAME, PRODUCT_PATH } from "@/lib/product";
 
-export default async function Footer() {
+type Props = {
+  /** Passed by the 404 page, which reads them from a cache; otherwise read here. */
+  company?: Company;
+  showProjects?: boolean;
+};
+
+export default async function Footer(props: Props = {}) {
   const year = new Date().getFullYear();
-  const { company } = await getContent();
+  const company = props.company ?? (await getContent()).company;
+  const showProjects = props.showProjects ?? (await projectsReady());
 
   return (
     <footer className="ftr">
@@ -45,7 +53,7 @@ export default async function Footer() {
           <Link href="/referenser">Referenser</Link>
           <Link href="/omdomen">Omdömen</Link>
           <Link href="/guider">Guider</Link>
-          {(await projectsReady()) && <Link href="/bygg/projekt">Projekt</Link>}
+          {showProjects && <Link href="/bygg/projekt">Projekt</Link>}
           <Link href="/kontakt">Kontakt</Link>
           <Link href="/bygg/offert">Begär offert</Link>
           <Link href="/mjukvara/brief">Skicka brief</Link>
