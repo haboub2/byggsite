@@ -3,15 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
 import PageHero from "@/components/PageHero";
-import BeforeAfter from "@/components/BeforeAfter";
-import Lightbox from "@/components/Lightbox";
-import Reveal from "@/components/Reveal";
+import ProjectSpotlight from "@/components/ProjectSpotlight";
 import { Icon } from "@/components/Icons";
 import { Stats, CtaBand, Checklist, SectionHead } from "@/components/Sections";
 import { services } from "@/lib/placeholder";
 import { SIDES } from "@/lib/sides";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
-import { getPublishedProject, listPublishedProjects, resolve } from "@/lib/projects";
+import { getPublishedProject, listPublishedProjects, projectPhotos, resolve } from "@/lib/projects";
 
 export async function generateStaticParams() {
   return (await listPublishedProjects()).map((p) => ({ slug: p.slug }));
@@ -38,9 +36,14 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
 
   const service = services.find((s) => s.slug === p.service);
   const cover = resolve(p.cover);
-  const before = resolve(p.before);
-  const after = resolve(p.after);
-  const gallery = p.gallery.map(resolve).filter((g) => g !== null);
+  const shots = projectPhotos(p);
+  const others = (await listPublishedProjects()).map((o) => ({
+    href: `/bygg/projekt/${o.slug}`,
+    title: o.title,
+    category: services.find((s) => s.slug === o.service)?.title ?? null,
+    thumb: resolve(o.cover)!.url,
+    current: o.slug === p.slug,
+  }));
   const facts = [
     service && { value: service.title, label: "tjänst" },
     p.location && { value: p.location, label: "ort" },
@@ -79,13 +82,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         </div>
       )}
 
-      {before && after && (
-        <section className="sec">
+      {shots.photos.length > 0 && (
+        <section className="sec on-dark">
           <div className="container">
-            <SectionHead eyebrow="Före och efter" title="Samma rum, före och efter." aside="Dra i reglaget för att jämföra." />
-            <Reveal>
-              <BeforeAfter before={before} after={after} />
-            </Reveal>
+            <SectionHead
+              eyebrow="Bilder från jobbet"
+              title={shots.beforeIndex !== null ? "Före, under och efter." : "Så blev det."}
+              aside="Klicka i bildraden eller använd pilarna för att gå igenom jobbet."
+            />
+            <ProjectSpotlight {...shots} projects={others} />
           </div>
         </section>
       )}
@@ -109,15 +114,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
               <blockquote>”{p.testimonial.quote}”</blockquote>
               <figcaption>{p.testimonial.author}</figcaption>
             </figure>
-          </div>
-        </section>
-      )}
-
-      {gallery.length > 0 && (
-        <section className="sec">
-          <div className="container">
-            <SectionHead eyebrow="Bilder" title="Från bygget." />
-            <Lightbox images={gallery} />
           </div>
         </section>
       )}
