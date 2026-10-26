@@ -21,7 +21,7 @@ export default function ByggServicesIndex() {
       <JsonLd data={breadcrumbJsonLd([{ name: "Bygg", path: "/" }, { name: "Tjänster", path: "/bygg/tjanster" }])} />
       <PageHero
         crumbs={[{ label: "Bygg", href: "/" }, { label: "Tjänster" }]}
-        eyebrow="Register"
+        eyebrow="Våra tjänster"
         title="Nio tjänster, ett team."
         lead="Från ett nytt golv till ett helt hus. Allt görs av samma team, med en kontaktperson och ett fast pris."
       />

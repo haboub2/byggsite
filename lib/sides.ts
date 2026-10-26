@@ -34,8 +34,8 @@ export const SIDES: Record<Side, SideConfig> = {
     key: "bygg",
     label: "Bygg",
     home: "/",
-    word: "hus",
-    topic: "Bygg och renovering i södra och västra Sverige",
+    word: "hem",
+    topic: "Bygg och renovering från Göteborg till Malmö",
     lead: "Renovering, ombyggnad och nybygg i södra och västra Sverige. Ett team, en kontaktperson, från första skiss till sista detalj.",
     heroCta: { label: "Berätta om ditt projekt", href: "/bygg/offert" },
     heroSecondary: { label: "Se referenser", href: "/referenser" },
@@ -49,7 +49,7 @@ export const SIDES: Record<Side, SideConfig> = {
     ],
     hero: { image: "hero-bygg" },
     register: {
-      eyebrow: "Register — vad vi gör",
+      eyebrow: "Våra tjänster",
       title: "Nio tjänster, ett team.",
       aside: "Välj en rad för att läsa mer. Allt sker under samma projektansvar – med egen personal och behöriga specialister där det krävs.",
     },
@@ -69,13 +69,10 @@ export const SIDES: Record<Side, SideConfig> = {
       caption: "Vind, salt och fukt. Västkustens villkor.",
     },
     bridge: {
-      title: "Är du privatperson eller egen företagare?",
-      body: "Privatpersoner får fast pris och ROT-avdraget direkt på fakturan. Företagare får samma team till lokaler, webb och interna verktyg.",
-      links: [
-        { label: "Privatperson", href: "/bygg/offert" },
-        { label: "Egen företagare", href: "/mjukvara" },
-      ],
-      icon: "user",
+      title: "Vi bygger också system.",
+      body: "Vår andra halva gör webbplatser, automation och interna verktyg för företag. Samma ordning och raka besked som på bygget, bara i kod.",
+      links: [{ label: "Till Software", href: "/mjukvara" }],
+      icon: "code",
     },
     closing: {
       eyebrow: "En fråga, inte ett formulär",
@@ -101,7 +98,7 @@ export const SIDES: Record<Side, SideConfig> = {
     ],
     hero: { image: "hero-software" },
     register: {
-      eyebrow: "Register — vad vi gör",
+      eyebrow: "Våra tjänster",
       title: "Tre sätt att ta bort dubbelarbete.",
       aside: "Vi väljer aldrig teknik för teknikens skull. Varje uppdrag börjar med vad som kostar tid idag.",
     },
@@ -122,7 +119,7 @@ export const SIDES: Record<Side, SideConfig> = {
     },
     bridge: {
       title: "Byggt av folk som bygger.",
-      body: "Vår andra halva renoverar hus. Vi vet hur en arbetsdag på bygget ser ut — och vad ett system måste klara där.",
+      body: "Vår andra halva renoverar hem. Vi vet hur en arbetsdag på bygget ser ut — och vad ett system måste klara där.",
       links: [{ label: "Till Bygg", href: "/" }],
       icon: "house",
     },

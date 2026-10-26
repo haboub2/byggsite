@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
     title: "Binaafy — byggfirma i Göteborg, fast pris och ROT",
     absoluteTitle: true,
-    description: `Byggfirma i Göteborg för renovering, badrum, kök, tillbyggnad och tak i Väst- och Sydsverige. Fast pris, ROT på fakturan och ${warranty.bygg.sentence}.`,
+    description: `Byggfirma i Göteborg för renovering, badrum, kök, tillbyggnad och tak i södra och västra Sverige. Fast pris, ROT på fakturan och ${warranty.bygg.sentence}.`,
     path: "/",
     image: ogImage("hero-bygg"),
   });

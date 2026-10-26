@@ -54,7 +54,7 @@ export default async function ReferencesPage() {
         crumbs={[{ label: "Referenser" }]}
         eyebrow="Vårt arbete"
         title="Referenser."
-        lead="Hus vi har renoverat och system vi har byggt. Klicka på en referens för att se bilder, vad vi gjorde och vad kunden tycker."
+        lead="Hem vi har renoverat och system vi har byggt. Klicka på en referens för att se bilder, vad vi gjorde och vad kunden tycker."
       />
       <section className="sec">
         <div className="container">

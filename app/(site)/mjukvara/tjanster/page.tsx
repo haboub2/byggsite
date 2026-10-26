@@ -20,7 +20,7 @@ export default function SoftwareServicesIndex() {
       <JsonLd data={breadcrumbJsonLd([{ name: "Software", path: "/mjukvara" }, { name: "Tjänster", path: "/mjukvara/tjanster" }])} />
       <PageHero
         crumbs={[{ label: "Software", href: "/mjukvara" }, { label: "Tjänster" }]}
-        eyebrow="Register"
+        eyebrow="Våra tjänster"
         title="Tre sätt att ta bort dubbelarbete."
         lead="Vi väljer aldrig teknik för teknikens skull. Varje uppdrag börjar med att kartlägga vad som faktiskt kostar tid idag, och vilken av de tre formerna som löser det billigast."
       />
