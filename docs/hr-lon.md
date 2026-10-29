@@ -1,6 +1,8 @@
 # HR and payroll ("Personal och lön") — plan
 
-Status: **plan, written 2026-10-30. Nothing is built yet.** Written in English
+Status: **plan, written 2026-10-30. Phase 0 (rule book, tax tables,
+calculators) is built, see *Läge* below; nothing with a UI or a database
+yet.** Written in English
 because that is how the request was made; Swedish legal terms are kept in
 Swedish because that is what Skatteverket, the law and the collective
 agreements call them. "You" is Ibrahim (decisions, accounts, agreements), "a
@@ -18,6 +20,63 @@ means: the number on the payslip, in the bookkeeping, in the AGI file and in
 the bank file is the same number, computed from rules that carry the date
 they were checked, from time that someone approved, and every change leaves
 a trace. Every section below is written against that.
+
+## Läge: phase 0 done (2026-10-30)
+
+Pure TypeScript, no UI, no migration. `npm test` runs it all (the test
+script now quotes its glob; before, 26 test files in subfolders never ran).
+
+**Where things are**
+
+| What | File |
+|---|---|
+| Rule book, every row of section 4 with its source URL and check date | `lib/core/rules/payroll.ts` (`payrollRulesAt`, `agiDueDate`, `unverifiedRules`) |
+| Tax tables: parse Skatteverket's CSV, SHA-256, golden-vector gate, `tableTax`, `lumpSumTax` | `lib/core/payroll/tax-tables.ts`, vectors in `tax-tables.golden.json` |
+| Import script | `npm run tax-tables:import -- 2026` (`supabase/import-tax-tables.ts`; `--file`, `--out`; no database yet) |
+| Time → pay (OB, övertid bands, månadslön deductions, ATF) | `lib/core/payroll/time-to-pay.ts` |
+| Sjuklön, karensavdrag, återinsjuknande, ten-in-twelve | `lib/core/payroll/sick-pay.ts` |
+| Semester (7 §, procentregeln, sammalöneregeln, saving, skuld) | `lib/core/payroll/vacation.ts` |
+| Preliminary tax, engångsskatt, jämkning, 30 % | `lib/core/payroll/tax.ts` |
+| Arbetsgivaravgifter, AGI rounding, SAF-LO/ITP1 premium | `lib/core/payroll/contributions.ts` |
+| LAS clocks (SÄVA, vikariat, provanställning) | `lib/core/payroll/employment-clocks.ts` |
+| Pay item flags, frozen payslip, journal lines, `reconcile()` | `lib/core/payroll/payslip.ts`; seed `pay-items.default.ts` |
+| Three hand-checked payslips | `lib/core/payroll/fixtures/*.test.ts` |
+
+**Tax tables.** The 2026 monthly file (Skatteverket open data, SHA-256
+`7482130d…c841f0`, 7 966 lines, tables 29–42) passes 17 golden vectors
+read from SKVFS 2025:20's own table PDF. The repo keeps tables 32–34 as a
+sample; the full file is downloaded by the script.
+
+**Not verified** (kept, flagged `unverified` in the rule book, pinned by a
+test):
+
+- Rounding of a percent-based skatteavdrag (30 %, engångsskatt, jämkning):
+  no primary text found; we drop the öre.
+- LAS counting: Arbetsgivarverket counts a month as 30 days (12 months =
+  360) and unbroken employment in calendar months; that the 361st day
+  converts is our reading of "mer än tolv månader".
+- Fora's reporting deadline (last day of the month after payout) was only
+  seen in a search excerpt.
+
+**Where section 4 below was wrong** (the rule book has the right value):
+
+- Sjuklönekostnad is no longer reported in the AGI (ruta 499 was used for
+  periods 2018-07 to 2024-06). The calculators still give the figure.
+- Semesterlagen gives 12 % on variable pay under sammalöneregeln; 0,8 %
+  per day is the agreements' semestertillägg (Byggavtalet and
+  Tjänstemannaavtalet), with 4,6 % per day as the day value.
+- The young people's reduction is enacted (lag 2026:100): born 2003–2007
+  in 2026, from 2026-04-01 to 2027-09-30, 20,81 % up to 25 000 kr a month.
+- The older rate is still born 1938–1958 in 2026 (moves to 1959 in 2027).
+- Växa-stöd cap is 35 000 kr for hires after 2024-04-30, 25 000 kr before.
+- SAF-LO is invoiced at 4,4 % in 2026 (employees are credited 4,5 %).
+- Employers above 40 MSEK declare the AGI on the 26th but pay on the 12th.
+- Vikariat converts after 730 days (AD 2019 nr 56: at least 731).
+- Styrelsearvode is reported in ruta 011 and again in 023 ("varav").
+
+**Before 2027:** `payrollRulesAt` refuses 2027 dates until a 2027 set and
+2027 golden vectors are added (older rate moves to born 1959, the young
+band to 2004–2008, new tables and engångsbelopp).
 
 ---
 
