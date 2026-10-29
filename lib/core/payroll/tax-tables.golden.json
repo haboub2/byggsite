@@ -1,0 +1,33 @@
+{
+  "year": 2026,
+  "source": "SKVFS 2025:20, bilaga \"Skatteavdrag för månadslön 2026\" (Skatteverket's PDF of the regulation's tables, https://www.skatteverket.se/download/18.1522bf3f19aea8075ba5ae/1765287092986/allmanna-tabeller-manad.pdf, linked from https://www.skatteverket.se/foretag/arbetsgivare/arbetsgivaravgifterochskatteavdrag/skattetabeller/tekniskbeskrivningforskattetabeller.4.319dc1451507f2f99e86ee.html). Each figure was read from the PDF, not from the CSV the loader parses; percent rows (80 001 kr and up) are the table's percentage times the pay.",
+  "checked": "2026-10-30",
+  "knownFiles": [
+    {
+      "name": "Skattetabell månadslön 2026",
+      "url": "https://skatteverket.entryscape.net/store/9/resource/2615",
+      "sha256": "7482130db577e48f580eabb783c131fc8f013605a99459f7401b36d0d4c841f0",
+      "fileRowCount": 7966,
+      "lastModified": "2025-12-10"
+    }
+  ],
+  "vectors": [
+    { "table": 33, "column": 1, "monthlyPayKr": 18450, "taxKr": 3026 },
+    { "table": 33, "column": 1, "monthlyPayKr": 25000, "taxKr": 4622 },
+    { "table": 33, "column": 3, "monthlyPayKr": 25000, "taxKr": 2006 },
+    { "table": 33, "column": 1, "monthlyPayKr": 32000, "taxKr": 6381 },
+    { "table": 33, "column": 1, "monthlyPayKr": 35000, "taxKr": 7134 },
+    { "table": 33, "column": 4, "monthlyPayKr": 41500, "taxKr": 8789 },
+    { "table": 33, "column": 1, "monthlyPayKr": 52125, "taxKr": 12428 },
+    { "table": 33, "column": 1, "monthlyPayKr": 61000, "taxKr": 16525 },
+    { "table": 33, "column": 5, "monthlyPayKr": 79999, "taxKr": 30888 },
+    { "table": 33, "column": 1, "monthlyPayKr": 95000, "taxKr": 34200 },
+    { "table": 33, "column": 2, "monthlyPayKr": 150000, "taxKr": 63000 },
+    { "table": 34, "column": 1, "monthlyPayKr": 25000, "taxKr": 4760 },
+    { "table": 34, "column": 1, "monthlyPayKr": 35000, "taxKr": 7347 },
+    { "table": 34, "column": 6, "monthlyPayKr": 62000, "taxKr": 21953 },
+    { "table": 34, "column": 1, "monthlyPayKr": 90000, "taxKr": 32400 },
+    { "table": 32, "column": 1, "monthlyPayKr": 30000, "taxKr": 5703 },
+    { "table": 32, "column": 3, "monthlyPayKr": 48000, "taxKr": 7453 }
+  ]
+}
