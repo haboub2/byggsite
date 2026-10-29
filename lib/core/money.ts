@@ -91,6 +91,44 @@ export function percentOf(amount: Ore, percent: number): Ore {
   return roundHalfUp((ore(amount) * percent) / 100);
 }
 
+/** Drop the öre toward zero, Skatteverket's "öretal bortfaller": 1 234,99 kr → 1 234 kr. */
+export function truncateToKronor(amount: Ore): Ore {
+  return Math.trunc(ore(amount) / ORE_PER_KRONA) * ORE_PER_KRONA;
+}
+
+/**
+ * A percentage with at most two decimals as whole hundredths of a percent,
+ * so 31,42 % is 3 142. Throws on more decimals: a payroll rate with three
+ * decimals is a typo, not a rate.
+ */
+export function basisPoints(percent: number): number {
+  const bp = Math.round(percent * 100);
+  if (!Number.isFinite(percent) || Math.abs(percent * 100 - bp) > 1e-6) {
+    throw new RangeError(`Procentsatsen får ha högst två decimaler, fick ${percent}.`);
+  }
+  return bp;
+}
+
+/**
+ * `percent` of an amount, computed on integers (öre × basis points) so a
+ * rate like 31,42 % never picks up a binary fraction, then rounded half
+ * away from zero ("half-up") or toward zero ("down", öretal bortfaller).
+ */
+export function rateOf(amount: Ore, percent: number, rounding: "half-up" | "down" = "half-up"): Ore {
+  return fractionOf(amount, basisPoints(percent), 10_000, rounding);
+}
+
+/** amount × numerator / denominator, rounded once at the end. Månadslön × 12 / 365 per day. */
+export function fractionOf(amount: Ore, numerator: number, denominator: number, rounding: "half-up" | "down" = "half-up"): Ore {
+  if (!Number.isSafeInteger(numerator) || !Number.isSafeInteger(denominator) || denominator <= 0) {
+    throw new RangeError(`Bråket ${numerator}/${denominator} måste vara heltal med positiv nämnare.`);
+  }
+  const product = ore(amount) * numerator;
+  if (!Number.isSafeInteger(product)) throw new RangeError(`Beloppet ${amount} × ${numerator} blir för stort.`);
+  const value = product / denominator;
+  return rounding === "down" ? Math.trunc(value) || 0 : roundHalfUp(value);
+}
+
 /* ---------- formatting, Swedish ---------- */
 
 /** "12 345,50" — accounting style with two decimals, plain spaces (renders the

@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  basisPoints,
   formatKronor,
+  fractionOf,
   formatOre,
   grossFromNet,
   kronorToOre,
@@ -9,10 +11,12 @@ import {
   ore,
   parseKronor,
   percentOf,
+  rateOf,
   roundToKronor,
   splitEvenly,
   splitGross,
   sumOre,
+  truncateToKronor,
   vatOnNet,
 } from "./money";
 
@@ -88,4 +92,31 @@ test("parsing what a user types", () => {
   assert.equal(parseKronor("650"), 65_000);
   assert.throws(() => parseKronor("1,234.5"), RangeError);
   assert.throws(() => parseKronor("abc"), RangeError);
+});
+
+test("payroll rates: exact basis points, rounding half-up or down", () => {
+  assert.equal(basisPoints(31.42), 3_142);
+  assert.equal(basisPoints(0.43), 43);
+  assert.equal(basisPoints(12), 1_200);
+  assert.throws(() => basisPoints(10.215), RangeError);
+  // 31,42 % of 35 000 kr = 10 997 kr exactly.
+  assert.equal(rateOf(3_500_000, 31.42), 1_099_700);
+  // 31,42 % of 1 234,57 kr = 387,902... kr
+  assert.equal(rateOf(123_457, 31.42), 38_790);
+  // 30 % of 3 333,33 kr = 999,999 kr: half-up gives 1 000,00, down drops the fraction.
+  assert.equal(rateOf(333_333, 30), 100_000);
+  assert.equal(rateOf(333_333, 30, "down"), 99_999);
+  assert.equal(rateOf(-333_333, 30, "down"), -99_999);
+  // Kalenderdagsavdrag: 36 500 kr × 12 / 365 = 1 200 kr per day.
+  assert.equal(fractionOf(3_650_000, 12, 365), 120_000);
+  assert.equal(fractionOf(100, 1, 3), 33);
+  assert.equal(fractionOf(200, 1, 3), 67);
+  assert.equal(fractionOf(200, 1, 3, "down"), 66);
+});
+
+test("öretal bortfaller: truncate toward zero", () => {
+  assert.equal(truncateToKronor(123_499), 123_400);
+  assert.equal(truncateToKronor(123_400), 123_400);
+  assert.equal(truncateToKronor(-123_499), -123_400);
+  assert.equal(truncateToKronor(99), 0);
 });
