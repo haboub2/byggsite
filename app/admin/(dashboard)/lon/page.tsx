@@ -29,10 +29,10 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
   const today = todayIso();
   const [runs, { settings, confirmed }, employees] = await Promise.all([listRuns(), getPayrollSettings(), listEmployees()]);
   const canApprove = hasAccess(check.role, "admin");
-  // The next month without a run: this month if its pay day has not passed, otherwise next month.
-  const thisMonth = today.slice(0, 7);
-  const nextMonth = addDays(`${thisMonth}-28`, 7).slice(0, 7);
-  const suggested = [thisMonth, nextMonth].find((m) => !runs.some((r) => r.periodStart.startsWith(m)) && payDateFor(m, settings) >= today) ?? nextMonth;
+  // The first month from this one without a run whose pay day has not passed.
+  const months: string[] = [today.slice(0, 7)];
+  while (months.length < 13) months.push(addDays(`${months[months.length - 1]}-28`, 7).slice(0, 7));
+  const suggested = months.find((m) => !runs.some((r) => r.periodStart.startsWith(m)) && payDateFor(m, settings) >= today) ?? months[1];
   const periods = runPeriods(suggested, settings);
   const open = unconfirmedDecisions(confirmed);
 

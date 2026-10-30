@@ -229,8 +229,8 @@ export function PayslipPdf({ doc, number, employer, logo }: PayslipPdfProps) {
           <View style={s.box}>
             <Text style={s.boxH}>Semester</Text>
             <View style={s.boxRow}>
-              <Text style={s.boxK}>Betalda dagar kvar</Text>
-              <Text style={s.boxV}>{c?.vacation.remainingDays !== null && c?.vacation.remainingDays !== undefined ? String(c.vacation.remainingDays).replace(".", ",") : c?.vacation.rule === "procent" ? "procentregeln" : "–"}</Text>
+              <Text style={s.boxK}>{c?.vacation.rule === "procent" ? "Regel" : "Betalda dagar kvar"}</Text>
+              <Text style={s.boxV}>{c?.vacation.rule === "procent" ? "procentregeln" : c?.vacation.remainingDays !== null && c?.vacation.remainingDays !== undefined ? String(c.vacation.remainingDays).replace(".", ",") : "–"}</Text>
             </View>
             {c?.vacation.rule === "procent" && c.vacation.liabilityOre ? (
               <View style={s.boxRow}>
@@ -247,7 +247,7 @@ export function PayslipPdf({ doc, number, employer, logo }: PayslipPdfProps) {
             </View>
             {c?.pension.premiumOre ? (
               <View style={s.boxRow}>
-                <Text style={s.boxK}>Tjänstepension ({c.pension.scheme === "itp1" ? "ITP 1" : "SAF-LO"})</Text>
+                <Text style={s.boxK}>Pension {c.pension.scheme === "itp1" ? "ITP 1" : "SAF-LO"}</Text>
                 <Text style={s.boxV}>{kr(c.pension.premiumOre)}</Text>
               </View>
             ) : null}

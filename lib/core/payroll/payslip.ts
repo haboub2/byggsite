@@ -247,7 +247,7 @@ export function assemblePayslip(input: PayslipInput): PayslipDocument {
   };
 }
 
-export type JournalLine = { account: string; debitOre: Ore; creditOre: Ore; text: string };
+export type JournalLine = { account: string; debitOre: Ore; creditOre: Ore; text: string; /** The pay item's name, for a run's summed entry. */ item?: string };
 
 /**
  * The payslip's share of the run's journal entry (section 7): each line on
@@ -265,7 +265,9 @@ export function journalLines(
     out.push(amount > 0 ? { account, debitOre: amount, creditOre: 0, text } : { account, debitOre: 0, creditOre: -amount, text });
   };
   for (const l of doc.lines) {
+    const before = out.length;
     post(l.item.flags.account, l.amountOre, l.text);
+    if (out.length > before) out[out.length - 1].item = l.item.name;
     if (l.item.kind === "benefit") post(l.item.flags.counterAccount, -l.amountOre, `Motkonto ${l.text}`);
   }
   post(accounts.tax, -doc.totals.taxOre, "Personalskatt");

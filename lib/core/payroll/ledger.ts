@@ -36,7 +36,15 @@ export function sumByAccount(lines: readonly JournalLine[], text: (account: stri
 /** The payslips' part: lines, benefits' counter account, tax, net and contributions on the org's accounts. */
 export function payslipJournal(docs: readonly PayslipDocument[], accounts: PayrollAccounts): JournalLine[] {
   const mapping = { tax: accounts.tax, net: accounts.net, contributionCost: accounts.contributionCost, contributionLiability: accounts.contributionLiability };
-  return sumByAccount(docs.flatMap((d) => journalLines(d, mapping)));
+  const texts = new Map<string, string>([
+    [accounts.tax, "Personalskatt"],
+    [accounts.net, "Nettolön"],
+    [accounts.contributionCost, "Arbetsgivaravgifter"],
+    [accounts.contributionLiability, "Arbetsgivaravgifter"],
+  ]);
+  const lines = docs.flatMap((d) => journalLines(d, mapping));
+  for (const l of lines) if (!texts.has(l.account)) texts.set(l.account, l.item ?? l.text);
+  return sumByAccount(lines, (a) => texts.get(a) ?? "Lön");
 }
 
 /** Semesterlöneskuld change with its avgifter, and the pension accrual, summed per account. */

@@ -920,7 +920,7 @@ export async function bookRun(runId: string): Promise<void> {
     const locks = await listTimeLocks();
     if (!locks.some((l) => l.from <= r.time_period_start && l.to >= r.time_period_end)) await lockPeriod(r.time_period_start, r.time_period_end, `Lönekörning ${r.period_start.slice(0, 7)}`);
     const lines = [...payslipJournal(slips.map((s) => s.document), settings.accounts), ...accruals];
-    demo().journals[runId] = { entry: `V ${r.pay_date.slice(0, 4)}-L${demo().nextV++}`, lines };
+    demo().journals[runId] = { entry: `V ${r.pay_date.slice(0, 4)}-${demo().nextV++} (demo)`, lines };
     Object.assign(r, { status: "booked", journal_entry_id: runId, booked_at: new Date().toISOString(), totals: { ...r.totals, accrualsOre: accruals.reduce((s, l) => s + l.debitOre, 0) } });
     return;
   }

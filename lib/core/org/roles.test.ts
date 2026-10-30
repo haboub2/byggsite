@@ -85,6 +85,13 @@ test("Tid: owner, admin, staff (their projects) and the accountant (reads); Sche
   assert.equal(canOpenAdminPath("staff", "/admin/schema"), false);
 });
 
+test("Lönekörning and the payroll reports: owner, admin and the accountant; never staff, readonly or an employee", () => {
+  for (const p of ["/admin/lon", "/admin/lon/abc", "/admin/lon/lonebesked/abc", "/admin/rapporter"]) {
+    for (const r of ["owner", "admin", "accountant"] as const) assert.equal(canOpenAdminPath(r, p), true, `${r} ${p}`);
+    for (const r of ["staff", "readonly", "employee"] as const) assert.equal(canOpenAdminPath(r, p), false, `${r} ${p}`);
+  }
+});
+
 test("/min-tid: the employee, and owner and admin to try it; the login brings them back", () => {
   assert.equal(canOpenSelfPath("employee"), true);
   assert.equal(canOpenSelfPath("owner"), true);
