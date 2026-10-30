@@ -182,7 +182,25 @@ begin
   exception when insufficient_privilege then null;
   end;
   perform expense_add_receipt((select v from prov where k = 'utlagg'), v_path, repeat('ab', 32), 1234, 'image/jpeg', 'kvitto.jpg');
+  -- Registrerat men inte uppladdat: inskickningen vägras tills filen finns.
+  begin
+    perform expense_submit((select v from prov where k = 'utlagg'));
+    raise exception 'Ett utlägg med ett kvitto utan fil gick att skicka in';
+  exception when invalid_parameter_value then
+    if sqlerrm not like '%laddades inte upp%' then raise exception 'Fel meddelande: %', sqlerrm; end if;
+  end;
+  -- En misslyckad uppladdning tas bort från utlägget; en uppladdad fil tas aldrig bort.
+  perform expense_add_receipt((select v from prov where k = 'utlagg'), replace(v_path, '-1.jpg', '-2.jpg'), repeat('ab', 32), 1234, 'image/jpeg', 'misslyckad.jpg');
+  perform expense_remove_receipt((select v from prov where k = 'utlagg'), replace(v_path, '-1.jpg', '-2.jpg'));
+  if jsonb_array_length((select receipts from expense_claims where id = (select v from prov where k = 'utlagg'))) <> 1 then
+    raise exception 'Det misslyckade kvittot togs inte bort';
+  end if;
   insert into storage.objects (bucket_id, name) values ('hr', v_path);
+  begin
+    perform expense_remove_receipt((select v from prov where k = 'utlagg'), v_path);
+    raise exception 'Ett uppladdat kvitto togs bort';
+  exception when feature_not_supported then null;
+  end;
   begin
     perform expense_add_receipt((select v from prov where k = 'utlagg'),
       (select v from prov where k = 'a') || '/' || (select v from prov where k = 'fatima') || '/kvitto-' || (select v from prov where k = 'utlagg') || '-2.jpg',
@@ -316,6 +334,8 @@ insert into prov select 'park', id from x;
 select expense_add_receipt((select v from prov where k = 'park'),
   (select v from prov where k = 'a') || '/' || (select v from prov where k = 'erik') || '/kvitto-' || (select v from prov where k = 'park') || '-1.pdf',
   repeat('cd', 32), 2000, 'application/pdf', 'p.pdf');
+insert into storage.objects (bucket_id, name)
+values ('hr', (select v from prov where k = 'a') || '/' || (select v from prov where k = 'erik') || '/kvitto-' || (select v from prov where k = 'park') || '-1.pdf');
 select expense_submit((select v from prov where k = 'park'));
 select pg_temp.som('a1');
 select expense_approve((select v from prov where k = 'park'), 2000, 0, '{}', '2026-04-01/expenses-1');
@@ -421,6 +441,38 @@ begin
   perform pension_report_mark_filed(v_id);
 end $$;
 
+-- ---------------------------------------------------------------- traktamente utan övernattning
+
+-- En dagsresa ger inget skattefritt traktamente; databasen vägrar en skattefri del.
+select pg_temp.som('a4');
+with x as (
+insert into expense_claims (org_id, employee_id, kind, date_from, date_to, destination, departure_time, return_time, tax_free_ore, taxable_ore)
+values ((select v from prov where k = 'a'), (select v from prov where k = 'erik'), 'traktamente', '2026-11-03', '2026-11-03', 'Borås', '07:00', '20:00', 0, 30000)
+returning id)
+insert into prov select 'dag', id from x;
+with x as (
+insert into expense_claims (org_id, employee_id, kind, date_from, date_to, destination, departure_time, return_time, far_from_home, tax_free_ore, taxable_ore)
+values ((select v from prov where k = 'a'), (select v from prov where k = 'erik'), 'traktamente', '2026-11-04', '2026-11-05', 'Kungsbacka', '07:00', '20:00', false, 0, 60000)
+returning id)
+insert into prov select 'nara', id from x;
+select expense_submit((select v from prov where k = 'dag'));
+select expense_submit((select v from prov where k = 'nara'));
+select pg_temp.som('a5');
+do $$
+begin
+  begin
+    perform expense_approve((select v from prov where k = 'dag'), 30000, 0, '{}', 'x');
+    raise exception 'Skattefritt traktamente utan övernattning gick in';
+  exception when check_violation then null;
+  end;
+  begin
+    perform expense_approve((select v from prov where k = 'nara'), 60000, 0, '{}', 'x');
+    raise exception 'Skattefritt traktamente inom 50 km gick in';
+  exception when check_violation then null;
+  end;
+  perform expense_approve((select v from prov where k = 'dag'), 0, 30000, '{}', '2026-04-01/2026-01-01');
+end $$;
+
 -- ---------------------------------------------------------------- planeraren
 
 select pg_temp.som('a1');
@@ -468,6 +520,11 @@ begin
   begin
     perform collectum_basis((select v from prov where k = 'a'), '2026-11');
     raise exception 'B läste A:s Collectum-underlag';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform benefit_paid_until((select v from prov where k = 'bil'));
+    raise exception 'B kunde läsa när A:s förmån senast betalades';
   exception when insufficient_privilege then null;
   end;
   begin

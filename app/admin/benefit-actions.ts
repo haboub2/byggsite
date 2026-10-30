@@ -33,12 +33,11 @@ async function approver() {
   return check.ok && hasAccess(check.role, "admin") ? check : null;
 }
 
-async function run(employeeId: string, flik: string, fn: (who: { userId: string | null }) => Promise<string>): Promise<never> {
-  const who = await approver();
-  if (!who) redirect(tab(employeeId, flik, "fel", "Bara ägare och administratörer gör det."));
+async function run(employeeId: string, flik: string, fn: () => Promise<string>): Promise<never> {
+  if (!(await approver())) redirect(tab(employeeId, flik, "fel", "Bara ägare och administratörer gör det."));
   let message = "";
   try {
-    message = await fn(who);
+    message = await fn();
   } catch (err) {
     if (isRedirect(err)) throw err;
     redirect(tab(employeeId, flik, "fel", err instanceof Error ? err.message : "Det gick inte."));
@@ -53,11 +52,11 @@ async function run(employeeId: string, flik: string, fn: (who: { userId: string 
 
 export async function approveClaimAction(formData: FormData): Promise<void> {
   const employeeId = uuid(formData, "employeeId") ?? "";
-  await run(employeeId, "utlagg", async (who) => {
+  await run(employeeId, "utlagg", async () => {
     const id = uuid(formData, "claimId");
     const claim = id ? await getClaim(id) : null;
     if (!claim || claim.employeeId !== employeeId) throw new Error("Utlägget finns inte.");
-    const r = await approveClaim(claim.id, who.userId);
+    const r = await approveClaim(claim.id);
     return `Godkänt: ${kr(r.taxFreeOre)} skattefritt${r.taxableOre ? ` och ${kr(r.taxableOre)} skattepliktigt` : ""}. Betalas med nästa lönekörning.`;
   });
 }

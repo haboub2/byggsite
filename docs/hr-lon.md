@@ -418,7 +418,9 @@ the reviewed 0039 without dropping anything (existing imports get
 `completed_at = imported_at`). **Apply it on the hosted project after
 `0041_authorities_fixes.sql`.** Where the reviewed 0039 was applied (every
 new database, `supabase/tests/local/run.sh`) it changes nothing: a schema
-dump is the same with and without it. **Applied on the hosted project
+dump is the same with and without it. **Do not re-run it after 0042:** it rewrites
+`payroll_inputs_hash()` with 0039's text, which would drop 0042's
+expense claims and benefits from the run's fingerprint. **Applied on the hosted project
 2026-10-30**; `pay_runs.inputs_hash`, `tax_table_imports.completed_at`,
 `payroll_inputs_hash()` and `tax_tables_import_finish()` are there and the
 old `forbid_change` triggers are gone.
@@ -880,7 +882,9 @@ förmåner, utlägg, 3:12-planering och Collectum (0042)". **0042 has not run
 against Supabase.** Apply it after 0041, then run
 `supabase/tests/0042_benefits.sql` in the SQL editor. 0042 replaces
 `payroll_inputs_hash()`, so a run computed before 0042 is applied must be
-computed again before it can be approved.
+computed again before it can be approved, and **`0041_payroll_repair.sql`
+must not be run again after 0042** (it would put back 0039's fingerprint
+without the claims and benefits).
 
 **Where things are**
 
@@ -941,7 +945,8 @@ quotes are in the session notes folder (`hr-phase-5-research.md`).
   `expense_rules()` (the schabloner, kept equal to the rule book by
   `expenses.test.ts`): an utlägg is its amount, tax-free; milersättning's
   tax-free part at most km/10 × the schablon; traktamente's at most days ×
-  300 kr + nights × 150 kr. `expense_reject()` needs a reason. Approved is
+  300 kr + nights × 150 kr, and 0 for a trip without an overnight stay or
+  within 50 km. `expense_reject()` needs a reason. Approved is
   frozen by a trigger. Paid is set only by the trigger on `pay_runs` when
   a run goes `calculated → approved`: each payslip line with
   `source.kind = 'expense_claim'` must be the approved, unpaid claim of
@@ -952,8 +957,14 @@ quotes are in the session notes folder (`hr-phase-5-research.md`).
   claim first; the new storage policy `hr_receipt_insert` lets the person
   (or owner/admin) upload only a path the claim already lists,
   `{org}/{person}/kvitto-{claim}-{n}.{jpg,png,webp,heic,pdf}`; the existing
-  read policy covers payroll readers and the person. The app refuses a
-  file whose hash differs.
+  read policy covers payroll readers and the person. When the upload
+  fails the app calls `expense_remove_receipt()`, which takes the entry
+  off only while no object exists for it; `expense_submit()` and
+  `expense_approve()` refuse a claim that lists a receipt with no object in
+  the bucket. The app refuses a file whose hash differs.
+- `benefit_paid_until()` (the last paid month, for the freeze) reads only
+  the benefit's own person's payslips and is not granted to any role; the
+  freeze trigger is security definer.
 - `payroll_inputs_hash()` also takes approved unpaid claims and the
   benefits, so a claim approved or a benefit changed after the
   computation stops the approval ("räkna om").

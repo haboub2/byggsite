@@ -275,8 +275,8 @@ function boardContract(input: ContractInput): ContractContent {
       rows: payRows(e),
       paragraphs: [
         "Arvodet är beslutat av bolagsstämman och ändras bara genom ett nytt stämmobeslut.",
-        "Arvodet är inkomst av tjänst. Bolaget gör skatteavdrag (30 procent när bolaget inte är ledamotens huvudarbetsgivare, annars enligt skattetabell eller Skatteverkets beslut om jämkning) och betalar arbetsgivaravgifter, och redovisar arvodet för ledamoten i arbetsgivardeklarationen. Arvodet betalas till ledamoten personligen och kan normalt inte faktureras från ledamotens eget bolag.",
-        `${BOARD_FEE_INVOICE_RULE}`,
+        "Arvodet är inkomst av tjänst. Bolaget gör skatteavdrag (30 procent när bolaget inte är ledamotens huvudarbetsgivare, annars enligt skattetabell eller Skatteverkets beslut om jämkning) och betalar arbetsgivaravgifter, och redovisar arvodet för ledamoten i arbetsgivardeklarationen. Arvodet betalas till ledamoten personligen.",
+        BOARD_FEE_INVOICE_RULE,
       ],
     },
     {

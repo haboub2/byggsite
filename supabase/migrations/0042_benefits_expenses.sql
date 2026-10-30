@@ -2,6 +2,9 @@
 -- avsnitt 3, 6, 7, 11 och 12). Läggs på efter 0035–0041, som inte ändras;
 -- funktioner som byts ut här (pension_basis, pension_report_store,
 -- payroll_inputs_hash, seed_payroll_accounts) skrivs om med create or replace.
+-- OBS: 0041_payroll_repair.sql får INTE köras igen efter 0042: den skriver
+-- payroll_inputs_hash() med 0039:s text och skulle ta bort utläggen och
+-- förmånerna ur fingeravtrycket.
 --
 -- Appen räknar (lib/core/payroll/benefits.ts, expenses.ts, collectum.ts,
 -- owner-planner.ts); databasen lagrar, fryser och kontrollerar summor och
@@ -104,19 +107,22 @@ create index benefits_employee_idx on benefits (employee_id, valid_from);
 create trigger benefits_set_updated_at before update on benefits
   for each row execute function set_updated_at();
 
--- Den sista betalda månadens slut för en förmån (godkända lönebesked med en rad vars källa är förmånen).
+-- Den sista betalda månadens slut för en förmån: godkända lönebesked för
+-- förmånens person och organisation med en rad vars källa är förmånen. Bara
+-- för frysningen nedan (ingen roll får anropa den).
 create or replace function public.benefit_paid_until(p_benefit uuid) returns date
   language sql stable security definer set search_path = public
 as $$
   select max((p.document->>'periodEnd')::date)
-    from public.payslips p, jsonb_array_elements(p.document->'lines') l
-   where p.approved_at is not null and l->'source'->>'kind' = 'benefit' and l->'source'->>'id' = p_benefit::text
+    from public.benefits b
+    join public.payslips p on p.employee_id = b.employee_id and p.org_id = b.org_id and p.approved_at is not null
+    cross join lateral jsonb_array_elements(p.document->'lines') l
+   where b.id = p_benefit and l->'source'->>'kind' = 'benefit' and l->'source'->>'id' = p_benefit::text
 $$;
-revoke all on function public.benefit_paid_until(uuid) from public, anon;
-grant execute on function public.benefit_paid_until(uuid) to authenticated;
+revoke all on function public.benefit_paid_until(uuid) from public, anon, authenticated;
 
 create or replace function public.benefits_freeze() returns trigger
-  language plpgsql set search_path = public
+  language plpgsql security definer set search_path = public
 as $$
 declare
   v_paid date := public.benefit_paid_until(old.id);
@@ -279,8 +285,19 @@ $$;
 create trigger expense_claims_check before insert or update on expense_claims
   for each row execute function expense_claims_check();
 
+-- Kvitton som utlägget listar men som inte finns i hinken (uppladdningen
+-- misslyckades efter registreringen); expense_submit och expense_approve
+-- vägrar så länge det finns något.
+create or replace function public.expense_missing_receipts(p_claim public.expense_claims) returns int
+  language sql stable security definer set search_path = public
+as $$
+  select count(*)::int from jsonb_array_elements(p_claim.receipts) r
+   where not exists (select 1 from storage.objects o where o.bucket_id = 'hr' and o.name = r->>'path')
+$$;
+revoke all on function public.expense_missing_receipts(public.expense_claims) from public, anon, authenticated;
+
 -- Den anställde skickar in sitt utkast (eller lönebehörig någons); ett
--- utlägg behöver ett kvitto.
+-- utlägg behöver ett kvitto, och varje listat kvitto måste finnas i hinken.
 create or replace function public.expense_submit(p_id uuid) returns void
   language plpgsql security definer set search_path = public
 as $$
@@ -296,6 +313,9 @@ begin
   end if;
   if c.kind = 'utlagg' and jsonb_array_length(c.receipts) = 0 then
     raise exception 'Ett utlägg behöver ett kvitto; fotografera det och lägg till det.' using errcode = '22023';
+  end if;
+  if public.expense_missing_receipts(c) > 0 then
+    raise exception 'Ett kvitto laddades inte upp; ta bort det och lägg till det igen.' using errcode = '22023';
   end if;
   if c.tax_free_ore + c.taxable_ore <= 0 then
     raise exception 'Utlägget har inget belopp.' using errcode = '22023';
@@ -333,6 +353,9 @@ begin
   if p_tax_free is null or p_taxable is null or p_tax_free < 0 or p_taxable < 0 or p_tax_free + p_taxable <= 0 then
     raise exception 'Beloppen är fel.' using errcode = '22023';
   end if;
+  if public.expense_missing_receipts(c) > 0 then
+    raise exception 'Ett kvitto som utlägget listar finns inte i arkivet; utlägget kan inte godkännas.' using errcode = '22023';
+  end if;
   select * into x from public.expense_rules();
   if c.kind = 'utlagg' and (p_taxable <> 0 or p_tax_free <> c.amount_ore) then
     raise exception 'Ett utlägg ersätts med kvittots belopp, skattefritt.' using errcode = '23514';
@@ -343,6 +366,10 @@ begin
     if p_tax_free > v_max then
       raise exception 'Den skattefria milersättningen % öre är mer än schablonen % öre.', p_tax_free, v_max using errcode = '23514';
     end if;
+  end if;
+  -- En resa utan övernattning, eller inom 50 km, ger inget skattefritt traktamente (expenses.ts).
+  if c.kind = 'traktamente' and (c.date_from = c.date_to or not c.far_from_home) and p_tax_free <> 0 then
+    raise exception 'Traktamente utan övernattning mer än 50 km hemifrån är skattepliktigt i sin helhet.' using errcode = '23514';
   end if;
   if c.kind = 'traktamente' then
     v_max := (c.date_to - c.date_from + 1) * x.per_diem_full_ore + c.nights_without_lodging * x.per_diem_night_ore;
@@ -405,6 +432,31 @@ begin
   update public.expense_claims
      set receipts = receipts || jsonb_build_array(jsonb_build_object('path', p_path, 'sha256', p_sha256, 'size', p_size,
                                                                      'contentType', p_content_type, 'name', left(coalesce(p_name, ''), 120)))
+   where id = p_id;
+end;
+$$;
+
+-- Ett registrerat kvitto vars uppladdning misslyckades tas bort från
+-- utlägget (före godkännandet, och bara när ingen fil finns för sökvägen:
+-- en fil som finns blir aldrig utan rad).
+create or replace function public.expense_remove_receipt(p_id uuid, p_path text) returns void
+  language plpgsql security definer set search_path = public
+as $$
+declare
+  c public.expense_claims;
+begin
+  select * into c from public.expense_claims where id = p_id for update;
+  if c.id is null or not (public.is_self(c.employee_id) or public.can_payroll_approve(c.org_id)) then
+    raise exception 'Utlägget finns inte.' using errcode = '42501';
+  end if;
+  if c.status not in ('draft','submitted') then
+    raise exception 'Kvitton tas bort innan utlägget är godkänt.' using errcode = '0A000';
+  end if;
+  if exists (select 1 from storage.objects o where o.bucket_id = 'hr' and o.name = p_path) then
+    raise exception 'Kvittot är uppladdat och tas inte bort.' using errcode = '0A000';
+  end if;
+  update public.expense_claims
+     set receipts = (select coalesce(jsonb_agg(r order by n), '[]'::jsonb) from jsonb_array_elements(receipts) with ordinality x(r, n) where r->>'path' <> p_path)
    where id = p_id;
 end;
 $$;
@@ -781,12 +833,14 @@ revoke all on function public.expense_submit(uuid) from public, anon;
 revoke all on function public.expense_approve(uuid, bigint, bigint, jsonb, text) from public, anon;
 revoke all on function public.expense_reject(uuid, text) from public, anon;
 revoke all on function public.expense_add_receipt(uuid, text, text, int, text, text) from public, anon;
+revoke all on function public.expense_remove_receipt(uuid, text) from public, anon;
 revoke all on function public.collectum_basis(uuid, text) from public, anon;
 grant execute on function public.expense_rules() to authenticated;
 grant execute on function public.expense_submit(uuid) to authenticated;
 grant execute on function public.expense_approve(uuid, bigint, bigint, jsonb, text) to authenticated;
 grant execute on function public.expense_reject(uuid, text) to authenticated;
 grant execute on function public.expense_add_receipt(uuid, text, text, int, text, text) to authenticated;
+grant execute on function public.expense_remove_receipt(uuid, text) to authenticated;
 grant execute on function public.collectum_basis(uuid, text) to authenticated;
 
 commit;

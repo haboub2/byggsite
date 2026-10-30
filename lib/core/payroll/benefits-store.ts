@@ -23,8 +23,9 @@ import type { PayslipDocument } from "./payslip";
  *
  * Receipts lie in bucket hr under {org}/{person}/kvitto-{claim}-{n}.{ext}
  * with their SHA-256 on the claim; the claim lists a receipt before it is
- * uploaded (the bucket takes only a listed file), and a file whose hash
- * differs is never served. Demo mode keeps everything in memory and the
+ * uploaded (the bucket takes only a listed file); a failed upload takes
+ * the entry off again, submit and approval refuse a listed receipt without
+ * a file, and a file whose hash differs is never served. Demo mode keeps everything in memory and the
  * files under uploads/hr/; approving a run marks its claims paid there as
  * the database's trigger does.
  */
@@ -459,7 +460,11 @@ export async function addReceipt(claimId: string, file: { bytes: Buffer; content
   const { error } = await supabase.rpc("expense_add_receipt", { p_id: claimId, p_path: key, p_sha256: hash, p_size: file.bytes.length, p_content_type: file.contentType, p_name: name });
   if (error) fail("Kunde inte registrera kvittot", error);
   const up = await supabase.storage.from(HR_BUCKET).upload(key, file.bytes, { contentType: file.contentType, cacheControl: "60", upsert: false });
-  if (up.error) throw new Error(`Kvittot registrerades men filen kunde inte sparas (${up.error.message}). Lägg till det igen.`);
+  if (up.error) {
+    // The listed receipt has no file behind it: take it off the claim (the database allows that only while no object exists).
+    const { error: removeError } = await supabase.rpc("expense_remove_receipt", { p_id: claimId, p_path: key });
+    throw new Error(`Kvittot kunde inte sparas (${up.error.message})${removeError ? "; ta bort det och lägg till det igen" : ""}. Försök igen.`);
+  }
 }
 
 /** A receipt's bytes, checked against the hash recorded when it was added. */
@@ -493,14 +498,13 @@ export async function submitClaim(id: string): Promise<void> {
 }
 
 /** Approves with the amounts computed now from the rule book and the organisation's policy. */
-export async function approveClaim(id: string, actorUserId: string | null): Promise<ClaimResult> {
+export async function approveClaim(id: string): Promise<ClaimResult> {
   const claim = await getClaim(id);
   if (!claim) throw new Error("Utlägget finns inte.");
   const result = computeClaim(claimInput(claim), await expensePolicy());
   if (isDemo()) {
     const c = demo().claims.find((x) => x.id === id)!;
     if (c.status !== "submitted") throw new Error(`Bara ett inskickat utlägg kan godkännas (det är ${CLAIM_STATUS_LABEL[c.status].toLowerCase()}).`);
-    void actorUserId;
     Object.assign(c, { status: "approved", tax_free_ore: result.taxFreeOre, taxable_ore: result.taxableOre, computation: result.computation, rule_version: result.ruleVersion, approved_by_name: "demo@localhost", approved_at: new Date().toISOString() });
     return result;
   }
