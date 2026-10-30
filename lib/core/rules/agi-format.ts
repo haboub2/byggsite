@@ -146,6 +146,64 @@ export const FORA_FORMAT = {
   },
 } as const;
 
+/**
+ * Collectum, ITP1 for tjänstemän. Each month the employer reports every
+ * person's utbetalda bruttolön (before tax, after bruttolöneavdrag) in
+ * Collectum's internetkontor, even when it has not changed; what counts is
+ * Collectum's table of pensionsmedförande lön (lön och tillägg yes,
+ * kostnadsersättningar, förmåner, styrelsearvode and sjuklön beyond the
+ * statutory no), which the pay items' `pensionReportable` flag follows.
+ * There is no fixed day: a report must be in before the avstämning at
+ * 22.00 on the month's cutoff day to be on the next invoice, which is paid
+ * by the 15th of the month after. A file upload needs Collectum's
+ * "ITP-modul" in the payroll system, whose format is not published; the
+ * file here is a semicolon list of what the manual entry asks for, its
+ * layout ours and unverified, with the pay in the sixth column as Fora's.
+ */
+export const COLLECTUM_FORMAT = {
+  columns: ["personnummer", "fornamn", "efternamn", "kundnummer", "manad", "bruttolon"] as const,
+  separator: ";",
+  customerNoPattern: /^\d{3,20}$/,
+  /** Collectum's 2026 cutoff days (avstämning kl. 22.00) by the month they fall in. */
+  cutoffs: {
+    "2026-01": "2026-01-14",
+    "2026-02": "2026-02-16",
+    "2026-03": "2026-03-16",
+    "2026-04": "2026-04-15",
+    "2026-05": "2026-05-17",
+    "2026-06": "2026-06-15",
+    "2026-07": "2026-07-15",
+    "2026-08": "2026-08-13",
+    "2026-09": "2026-09-16",
+    "2026-10": "2026-10-14",
+    "2026-11": "2026-11-16",
+    "2026-12": "2026-12-14",
+  } as Readonly<Record<string, string>>,
+  /** A month without a published cutoff: this day of the month. */
+  fallbackCutoffDay: 14,
+  source: {
+    url: "https://collectum.se/administration/sa-rapporterar-du-ratt/lonerapportering",
+    checked: CHECKED,
+    note: "What to report, every month, is confirmed on collectum.se (Lönerapportering, Pensionsmedförande lön, Fakturakörningar).",
+  } satisfies RuleSource,
+  deadline: {
+    source: {
+      url: "https://collectum.se/avtal-och-faktura/faktura-och-premier/fakturakorningar",
+      checked: CHECKED,
+      unverified: true,
+      note: "The 2026 cutoff days are Collectum's; that a month's pay belongs before the cutoff in the month after it was paid is our reading (pay day on the 25th falls after that month's cutoff). 2027's days are not published yet: the 14th is used.",
+    } satisfies RuleSource,
+  },
+  file: {
+    source: {
+      url: "https://collectum.se/tjanstepensionen-itp/nyheter-och-tips/vanliga-fragor-och-svar",
+      checked: CHECKED,
+      unverified: true,
+      note: "Collectum's file format (the payroll system's ITP-modul) is not published; this file mirrors the manual entry in the internetkontor and is typed in by hand.",
+    } satisfies RuleSource,
+  },
+} as const;
+
 export function unverifiedFormatRules(): { path: string; note: string }[] {
   const out: { path: string; note: string }[] = [];
   const all: [string, RuleSource][] = [
@@ -155,6 +213,9 @@ export function unverifiedFormatRules(): { path: string; note: string }[] {
     ["agi.corrections", AGI_FORMAT.corrections.source],
     ["fora", FORA_FORMAT.source],
     ["fora.file", FORA_FORMAT.file.source],
+    ["collectum", COLLECTUM_FORMAT.source],
+    ["collectum.deadline", COLLECTUM_FORMAT.deadline.source],
+    ["collectum.file", COLLECTUM_FORMAT.file.source],
   ];
   for (const [path, s] of all) if (s.unverified) out.push({ path, note: s.note ?? "" });
   return out;

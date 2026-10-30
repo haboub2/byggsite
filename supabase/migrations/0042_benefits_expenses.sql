@@ -73,15 +73,17 @@ create table benefits (
   car_model              text not null default '' check (char_length(car_model) <= 120),
   first_registered_on    date,
   model_year             int check (model_year is null or model_year between 1950 and 2100),
-  fuel                   text check (fuel is null or fuel in ('bensin','diesel','el','laddhybrid','gas','etanol','annan')),
+  fuel                   text check (fuel is null or fuel in ('bensin','diesel','el','laddhybrid','vatgas','gas','etanol','annan')),
   new_car_price_ore      bigint check (new_car_price_ore is null or new_car_price_ore >= 0),
   extra_equipment_ore    bigint not null default 0 check (extra_equipment_ore >= 0),
   vehicle_tax_ore        bigint not null default 0 check (vehicle_tax_ore >= 0),     -- fordonsskatt per år
   business_mil_per_year  int not null default 0 check (business_mil_per_year >= 0), -- tjänstekörning i mil
   fuel_paid_by_employer  boolean not null default false,
   private_fuel_ore       bigint not null default 0 check (private_fuel_ore >= 0),     -- drivmedel för privat körning per månad, marknadsvärde
-  -- Kost (antal måltider per månad) och bostad/annan (marknadsvärde per månad)
+  -- Kost (antal måltider per månad), bostad (yta och område för Skatteverkets schablon), annan (marknadsvärde per månad)
   meals                  jsonb not null default '{}'::jsonb check (jsonb_typeof(meals) = 'object'),
+  housing_area_m2        numeric(6,1) check (housing_area_m2 is null or housing_area_m2 > 0),
+  housing_region         text check (housing_region is null or housing_region in ('storstockholm','storgoteborg','stormalmo','over75000','tatort','ovrigt')),
   market_value_ore       bigint not null default 0 check (market_value_ore >= 0),
   employee_payment_ore   bigint not null default 0 check (employee_payment_ore >= 0), -- vad den anställde betalar per månad
   -- Det appen räknade: värde per månad, regelversionen och parametrarna.
@@ -94,7 +96,9 @@ create table benefits (
   unique (id, org_id),
   foreign key (employee_id, org_id) references employees(id, org_id),
   check (valid_to is null or valid_to >= valid_from),
-  check (kind <> 'bil' or (new_car_price_ore is not null and first_registered_on is not null and fuel is not null and registration_number is not null))
+  check (kind <> 'bil' or (new_car_price_ore is not null and first_registered_on is not null and fuel is not null and registration_number is not null
+                           and model_year is not null)),
+  check (kind <> 'bostad' or (housing_area_m2 is not null and housing_region is not null))
 );
 create index benefits_employee_idx on benefits (employee_id, valid_from);
 create trigger benefits_set_updated_at before update on benefits
@@ -760,7 +764,7 @@ revoke all on benefits, expense_claims, owner_planner_snapshots from anon, authe
 grant select, insert, delete on benefits to authenticated;
 grant update (description, valid_from, valid_to, registration_number, car_model, first_registered_on, model_year, fuel, new_car_price_ore,
               extra_equipment_ore, vehicle_tax_ore, business_mil_per_year, fuel_paid_by_employer, private_fuel_ore, meals,
-              market_value_ore, employee_payment_ore, monthly_value_ore, rule_version, computation) on benefits to authenticated;
+              housing_area_m2, housing_region, market_value_ore, employee_payment_ore, monthly_value_ore, rule_version, computation) on benefits to authenticated;
 -- Status, godkännande, lönebesked och kvitton ändras bara genom funktionerna.
 grant select, delete on expense_claims to authenticated;
 grant insert (id, org_id, employee_id, kind, date_from, date_to, description, amount_ore, vat_ore, distance_km, car_type, destination,
