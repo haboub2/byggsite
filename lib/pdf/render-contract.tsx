@@ -6,6 +6,8 @@ import { getOrgSettings } from "../core/org/settings-store";
 import { getQuoteProfile } from "../quotes/profile-store";
 import { currentOrgId } from "../core/org/current";
 import { fileSafe } from "./invoice-file-name";
+import { readDocumentFile } from "../core/hr/store";
+import type { EmploymentDocument } from "../core/hr/schema";
 
 /** The employer as the contract names it: the organisation's company settings. */
 export async function contractEmployer(): Promise<{ employer: ContractEmployer; logo: string | null }> {
@@ -30,4 +32,26 @@ export async function renderContractPdf(input: ContractInput, logo: string | nul
 /** Anstallningsavtal-<person>-<date>.pdf */
 export function contractFileName(fileTitle: string, employeeName: string, date: string): string {
   return `${[fileTitle, fileSafe(employeeName, 40), date].filter(Boolean).join("-")}.pdf`;
+}
+
+/**
+ * A frozen contract as the HTTP response both document routes give (admin
+ * and /min-tid): the bytes checked against their hash, inline or as a
+ * download, never cached.
+ */
+export async function contractPdfResponse(doc: EmploymentDocument, employeeName: string, download: boolean): Promise<Response> {
+  let pdf: Buffer;
+  try {
+    pdf = await readDocumentFile(doc);
+  } catch (err) {
+    return new Response(err instanceof Error ? err.message : "Kunde inte hämta PDF:en.", { status: 500 });
+  }
+  const name = contractFileName(doc.template === "contract-uppdrag" ? "Styrelseuppdrag" : "Anstallningsavtal", employeeName, doc.createdAt.slice(0, 10));
+  return new Response(new Uint8Array(pdf), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${name}"`,
+      "Cache-Control": "private, no-store",
+    },
+  });
 }

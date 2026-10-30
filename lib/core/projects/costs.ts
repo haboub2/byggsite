@@ -23,6 +23,8 @@ export type ProjectCost = {
   supplier: string;
   createdBy: string | null;
   createdAt: string;
+  /** Written when time was approved (0037); changed only by a correction of the time row. */
+  timeEntryId: string | null;
 };
 
 export type ProjectCostInput = {
@@ -49,6 +51,7 @@ type Row = {
   supplier: string;
   created_by: string | null;
   created_at: string;
+  time_entry_id?: string | null;
 };
 
 const fromRow = (r: Row): ProjectCost => ({
@@ -63,13 +66,14 @@ const fromRow = (r: Row): ProjectCost => ({
   supplier: r.supplier,
   createdBy: r.created_by,
   createdAt: r.created_at,
+  timeEntryId: r.time_entry_id ?? null,
 });
 
 const g = globalThis as unknown as { __binaafyProjectCosts?: Row[] };
 const demo = () => (g.__binaafyProjectCosts ??= []);
 
 /** The row to store, checked: an hours row gets its amount from hours × rate. */
-export function costRow(projectId: string, input: ProjectCostInput, createdBy: string | null): Omit<Row, "id" | "created_at"> {
+export function costRow(projectId: string, input: ProjectCostInput, createdBy: string | null): Omit<Row, "id" | "created_at" | "time_entry_id"> {
   if (!COST_KINDS.includes(input.kind)) throw new Error("Okänd kostnadstyp.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.costDate)) throw new Error("Ange datum.");
   const description = input.description.trim().slice(0, 400);
@@ -123,10 +127,21 @@ export async function addProjectCost(projectId: string, input: ProjectCostInput,
 
 export async function removeProjectCost(projectId: string, id: string): Promise<void> {
   if (isDemo()) {
+    if (demo().some((r) => r.id === id && r.time_entry_id)) throw new Error("Kostnaden kommer från godkänd tid; rätta tidraden i stället.");
     g.__binaafyProjectCosts = demo().filter((r) => !(r.id === id && r.project_id === projectId));
     return;
   }
   const supabase = await getDb();
   const { error } = await supabase.from("project_costs").delete().eq("id", id).eq("org_id", await currentOrgId()).eq("project_id", projectId);
-  if (error) throw new Error(`Kunde inte ta bort kostnaden: ${error.message}`);
+  if (error) throw new Error(error.code === "0A000" ? error.message : `Kunde inte ta bort kostnaden: ${error.message}`);
+}
+
+/** Demo mode only: the cost rows approved time writes (the database's time_approve() does it otherwise). */
+export function demoAddTimeCost(row: Omit<Row, "id" | "created_at" | "supplier" | "kind"> & { time_entry_id: string }): void {
+  demo().push({ ...row, id: crypto.randomUUID(), kind: "hours", supplier: "", created_at: new Date().toISOString() });
+}
+
+/** Demo mode only: the hourly rate on an approved time row's cost, for its reversal. */
+export function demoTimeCostRate(timeEntryId: string): number | null {
+  return demo().find((r) => r.time_entry_id === timeEntryId)?.hourly_rate_ore ?? null;
 }

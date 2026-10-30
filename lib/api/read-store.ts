@@ -152,8 +152,8 @@ export async function listEventsPage(query: EventPageQuery): Promise<{ events: A
   const db = await getDb();
   const asc = query.order === "asc";
   let q = db.from("events").select("id, org_id, aggregate_type, aggregate_id, type, data, actor, created_at").eq("org_id", await currentOrgId());
-  // Personal events (0035) never leave through the API: the key holder is not a payroll reader.
-  q = q.neq("aggregate_type", "employee");
+  // Personal events (0035) and time locks and call-ins (0037) never leave through the API: the key holder is not a payroll reader.
+  q = q.not("aggregate_type", "in", "(employee,time)");
   if (query.aggregateType) q = q.eq("aggregate_type", query.aggregateType);
   if (query.aggregateId) q = q.eq("aggregate_id", query.aggregateId);
   if (query.type) q = q.eq("type", query.type);

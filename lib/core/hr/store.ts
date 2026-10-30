@@ -101,6 +101,7 @@ type EmploymentRow = {
   workplace: string;
   working_time_percent: number | string;
   weekly_hours: number | string | null;
+  schedule_id?: string | null;
   substitute_for: string;
   probation_ends_on: string | null;
   starts_on: string;
@@ -138,6 +139,7 @@ const employmentFromRow = (r: EmploymentRow): EmploymentVersion => ({
   workplace: r.workplace,
   workingTimePercent: Number(r.working_time_percent),
   weeklyHours: num(r.weekly_hours),
+  scheduleId: r.schedule_id ?? null,
   substituteFor: r.substitute_for,
   probationEndsOn: r.probation_ends_on,
   startsOn: r.starts_on,
@@ -451,6 +453,7 @@ export async function addEmploymentVersion(employeeId: string, input: Employment
     const id = crypto.randomUUID();
     let version = 1;
     let contractId = id;
+    let scheduleId: string | null = null;
     if (input.contractId) {
       const prev = s.employments.find((r) => r.contract_id === input.contractId && r.valid_to === null);
       if (!prev || prev.employee_id !== employeeId) throw new Error("Anställningen finns inte eller är avslutad.");
@@ -460,6 +463,8 @@ export async function addEmploymentVersion(employeeId: string, input: Employment
       prev.valid_to = d.toISOString().slice(0, 10);
       version = prev.version + 1;
       contractId = input.contractId;
+      // As employments_version() in 0037: the new version keeps the schedule.
+      scheduleId = prev.schedule_id ?? null;
     }
     s.employments.push({
       ...row,
@@ -467,6 +472,7 @@ export async function addEmploymentVersion(employeeId: string, input: Employment
       employee_id: employeeId,
       contract_id: contractId,
       version,
+      schedule_id: scheduleId,
       valid_to: null,
       document_id: null,
       created_at: new Date().toISOString(),

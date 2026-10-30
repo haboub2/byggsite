@@ -56,6 +56,7 @@ const version = (contractId: string, v: Partial<EmploymentVersion> & Pick<Employ
   workplace: "",
   workingTimePercent: 100,
   weeklyHours: 40,
+  scheduleId: null,
   substituteFor: "",
   probationEndsOn: null,
   endsOn: null,

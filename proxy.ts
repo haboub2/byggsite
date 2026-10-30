@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { adminLandingPath, canOpenAdminPath, isOpenAdminPath, isRole, isSiteAdminPath, type Role } from "./lib/core/org/roles";
+import { adminLandingPath, canOpenAdminPath, canOpenSelfPath, isOpenAdminPath, isRole, isSelfPath, isSiteAdminPath, type Role } from "./lib/core/org/roles";
 import {
   SESSION_TTL_MS,
   forwardHeaders,
@@ -31,6 +31,10 @@ type Cookie = { name: string; value: string; options?: CookieOptions };
  *                     Nobody signed out gets past /admin/login.
  *   /mitt-projekt/* — any signed-in user; RLS then limits customers to their
  *                     own projects. Admins may look too.
+ *   /min-tid/*      — the employee's own time (role employee, 0037); owners
+ *                     and admins may open it to try it. Anyone else signed in
+ *                     goes where their role lands; signed out, to the admin
+ *                     login, which brings them back.
  * Without a Supabase project configured, development runs on sample data
  * (demo mode) and production refuses everything behind a login.
  *
@@ -41,7 +45,8 @@ type Cookie = { name: string; value: string; options?: CookieOptions };
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAdmin = pathname.startsWith("/admin");
-  const login = isAdmin ? "/admin/login" : "/mitt-projekt/login";
+  const isSelf = isSelfPath(pathname);
+  const login = isAdmin || isSelf ? "/admin/login" : "/mitt-projekt/login";
 
   // Every response that lets the request through drops whatever the browser
   // sent under the session header's name; only the proxy's own value passes.
@@ -85,7 +90,7 @@ export async function proxy(request: NextRequest) {
     // registration landing sends to the login with its token kept (0033).
     if (pathname.startsWith("/admin/inbjudan/") || pathname === "/admin/registrera" || pathname.startsWith("/admin/registrera/")) return withCookies(pass());
     const to = new URL(login, request.url);
-    if (isAdmin && pathname !== "/admin") to.searchParams.set("next", pathname);
+    if ((isAdmin && pathname !== "/admin") || isSelf) to.searchParams.set("next", pathname);
     return withCookies(NextResponse.redirect(to));
   }
 
@@ -101,6 +106,13 @@ export async function proxy(request: NextRequest) {
     if (!current) return withCookies(pathname === "/admin" ? pass() : NextResponse.redirect(new URL("/mitt-projekt", request.url)));
     const site = isSiteAdminPath(pathname) && siteOrgId === current.orgId;
     if (!canOpenAdminPath(current.role, pathname, site)) return withCookies(NextResponse.redirect(new URL(adminLandingPath(current.role), request.url)));
+  }
+
+  if (isSelf) {
+    // The same choice of organisation as admin; a customer has no membership and goes to the portal.
+    const current = pickMembership(memberships ?? [], request.cookies.get(ORG_COOKIE)?.value);
+    if (!current) return withCookies(NextResponse.redirect(new URL("/mitt-projekt", request.url)));
+    if (!canOpenSelfPath(current.role)) return withCookies(NextResponse.redirect(new URL(adminLandingPath(current.role), request.url)));
   }
 
   // Without the secret, or when the memberships could not be read, nothing is
@@ -187,5 +199,5 @@ async function siteOrg(supabase: Supabase): Promise<string | null> {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/mitt-projekt/:path*"],
+  matcher: ["/admin/:path*", "/mitt-projekt/:path*", "/min-tid", "/min-tid/:path*"],
 };

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { adminLandingPath, assignableRoles, canOpenAdminPath, hasAccess } from "./roles";
+import { adminLandingPath, assignableRoles, canOpenAdminPath, canOpenSelfPath, hasAccess, isSelfPath, safeAdminNext } from "./roles";
 
 test("access levels", () => {
   assert.equal(hasAccess("accountant", "read"), true);
@@ -69,11 +69,30 @@ test("payroll: owner, admin and accountant read Personal; staff and readonly do 
   assert.equal(canOpenAdminPath("accountant", "/admin/personal/ny"), false);
 });
 
-test("employee: no admin page, lands in the portal; may be invited by owner and admin", () => {
+test("employee: no admin page, lands on /min-tid; may be invited by owner and admin", () => {
   for (const p of ["/admin", "/admin/idag", "/admin/ekonomi", "/admin/fakturor", "/admin/personal", "/admin/organisation"]) assert.equal(canOpenAdminPath("employee", p), false, p);
   assert.equal(canOpenAdminPath("employee", "/admin/inbjudan/abc"), true);
   assert.equal(hasAccess("employee", "read"), false);
-  assert.equal(adminLandingPath("employee"), "/mitt-projekt");
+  assert.equal(adminLandingPath("employee"), "/min-tid");
   assert.equal(adminLandingPath("accountant"), "/admin/ekonomi");
   assert.ok(assignableRoles("admin").includes("employee"));
+});
+
+test("Tid: owner, admin, staff (their projects) and the accountant (reads); Schema is payroll", () => {
+  for (const r of ["owner", "admin", "staff", "accountant"] as const) assert.equal(canOpenAdminPath(r, "/admin/tid"), true, r);
+  for (const r of ["readonly", "employee"] as const) assert.equal(canOpenAdminPath(r, "/admin/tid"), false, r);
+  assert.equal(canOpenAdminPath("accountant", "/admin/schema"), true);
+  assert.equal(canOpenAdminPath("staff", "/admin/schema"), false);
+});
+
+test("/min-tid: the employee, and owner and admin to try it; the login brings them back", () => {
+  assert.equal(canOpenSelfPath("employee"), true);
+  assert.equal(canOpenSelfPath("owner"), true);
+  assert.equal(canOpenSelfPath("admin"), true);
+  for (const r of ["staff", "accountant", "readonly"] as const) assert.equal(canOpenSelfPath(r), false, r);
+  assert.equal(isSelfPath("/min-tid"), true);
+  assert.equal(isSelfPath("/min-tid/dokument/abc"), true);
+  assert.equal(isSelfPath("/min-tidx"), false);
+  assert.equal(safeAdminNext("/min-tid"), "/min-tid");
+  assert.equal(safeAdminNext("//evil.example/min-tid"), null);
 });

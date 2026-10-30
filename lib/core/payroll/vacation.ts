@@ -88,6 +88,12 @@ export type EarnedDaysInput = {
   nonQualifyingDays: number;
   /** Agreed days per year if more than the law's 25. */
   daysPerYear?: number;
+  /**
+   * Days employed in the intjänandeår when the employment is not one
+   * unbroken stretch (several contracts with gaps, single-day SÄVA shifts);
+   * replaces the count from employedFrom–employedTo.
+   */
+  employmentDays?: number;
 };
 
 /**
@@ -101,7 +107,7 @@ export function paidDaysEarned(input: EarnedDaysInput): { paidDays: number; empl
   const yearDays = daysBetween(input.yearFrom, input.yearTo) + 1;
   const from = input.employedFrom > input.yearFrom ? input.employedFrom : input.yearFrom;
   const to = input.employedTo && input.employedTo < input.yearTo ? input.employedTo : input.yearTo;
-  const employmentDays = to < from ? 0 : daysBetween(from, to) + 1;
+  const employmentDays = input.employmentDays ?? (to < from ? 0 : daysBetween(from, to) + 1);
   const qualifyingDays = Math.max(0, employmentDays - input.nonQualifyingDays);
   // Integer arithmetic so 25 × 365 / 365 is exactly 25.
   const paidDays = Math.ceil((perYear * qualifyingDays) / yearDays - 1e-9);

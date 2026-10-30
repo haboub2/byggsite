@@ -13,6 +13,10 @@ import { todayIso } from "../quotes/schema";
 import type { Access } from "../core/org/roles";
 import { listEmployees, listEmployments, loadClocks } from "../core/hr/store";
 import { hrTodos, type HrTodo } from "../core/hr/today";
+import { countWaitingEntries, listAbsences, listShifts, listWaitingEntries, openOffer, timePeople } from "../core/hr/time-store";
+import { certificatesDue } from "../core/hr/absence";
+import { timeTodos, type TimeTodo } from "../core/hr/time-today";
+import { addDays } from "../core/rules/index";
 
 /**
  * Everything the "Idag" start page and the top bar's counters need, from the
@@ -21,7 +25,7 @@ import { hrTodos, type HrTodo } from "../core/hr/today";
  * than taking the page down.
  */
 
-export type TodoKind = "lead" | "quote" | "phase" | "photo" | "change" | "invoice" | "hr";
+export type TodoKind = "lead" | "quote" | "phase" | "photo" | "change" | "invoice" | "hr" | "time";
 
 export type Todo = {
   id: string;
@@ -81,9 +85,31 @@ async function loadHrTodos(today: string): Promise<HrTodo[]> {
   return hrTodos({ employees, versions, clocks, today });
 }
 
+/**
+ * Time rows (lib/core/hr/time-today.ts): time waiting for approval and
+ * unanswered call-ins for those who approve (RLS limits a project leader to
+ * their projects), missing läkarintyg for payroll readers only.
+ */
+async function loadTimeTodos(access: Access[], today: string): Promise<TimeTodo[]> {
+  const payroll = access.includes("payroll");
+  const [people, waiting, shifts, absences] = await Promise.all([
+    timePeople(),
+    listWaitingEntries(),
+    listShifts({ from: today, to: addDays(today, 60) }),
+    payroll ? listAbsences({ from: addDays(today, -60), to: today }) : [],
+  ]);
+  return timeTodos({
+    names: new Map(people.map((p) => [p.id, p.name])),
+    certificates: certificatesDue(absences.filter((a) => a.kind === "sjuk"), today),
+    openShifts: shifts.filter((s) => openOffer(s) && !s.offers.some((o) => o.status === "accepted")),
+    waiting,
+    today,
+  });
+}
+
 export async function loadToday(access: Access[], today = todayIso()): Promise<TodayData> {
   const canWrite = access.includes("write");
-  const [leads, sentQuotes, overduePhases, projects, overdueInvoices, events, hr] = await Promise.all([
+  const [leads, sentQuotes, overduePhases, projects, overdueInvoices, events, hr, time] = await Promise.all([
     canWrite ? safe("leads", () => listLeads({ status: "new" }, { limit: 20 }), { leads: [], total: 0 }) : { leads: [], total: 0 },
     canWrite ? safe("quotes", () => listQuotes({ status: "sent" }), []) : [],
     safe("phases", () => listOverduePhases(today), []),
@@ -91,6 +117,7 @@ export async function loadToday(access: Access[], today = todayIso()): Promise<T
     safe("invoices", () => listInvoices({ tab: "overdue" }), []),
     safe("events", () => listRecentEvents(6), []),
     access.includes("payroll") ? safe("personal", () => loadHrTodos(today), []) : [],
+    access.includes("time") && (access.includes("payroll") || access.includes("write")) ? safe("tid", () => loadTimeTodos(access, today), []) : [],
   ]);
 
   const active = projects.filter((p) => p.status === "active").slice(0, MAX_PROJECTS);
@@ -203,6 +230,19 @@ export async function loadToday(access: Access[], today = todayIso()): Promise<T
     });
   }
 
+  for (const t of time) {
+    todos.push({
+      id: `time-${t.id}`,
+      kind: "time",
+      tag: t.tag,
+      title: t.title,
+      meta: t.meta,
+      action: t.kind === "certificate" ? "Öppna frånvaron" : t.kind === "call-in" ? "Öppna Tid" : "Godkänn",
+      href: t.href,
+      weight: t.weight + 2,
+    });
+  }
+
   todos.sort((a, b) => a.weight - b.weight);
 
   const projectCards: TodayProject[] = bundles.map((b) => {
@@ -231,12 +271,14 @@ export async function loadToday(access: Access[], today = todayIso()): Promise<T
 }
 
 /** The three numbers in the top bar. Cheap enough for every admin page. */
-export async function loadNavCounts(access: Access[], today = todayIso()): Promise<{ inbox: number; projects: number; invoices: number }> {
+export async function loadNavCounts(access: Access[], today = todayIso()): Promise<{ inbox: number; projects: number; invoices: number; time: number }> {
   const canWrite = access.includes("write");
-  const [leads, phases, overdue] = await Promise.all([
+  const approves = access.includes("time") && (canWrite || access.includes("admin"));
+  const [leads, phases, overdue, waiting] = await Promise.all([
     canWrite ? safe("leads", () => listLeads({ status: "new" }, { limit: 1 }), { leads: [], total: 0 }) : { leads: [], total: 0 },
     safe("phases", () => listOverduePhases(today), []),
     safe("invoices", () => listInvoices({ tab: "overdue" }), []),
+    approves ? safe("tid", () => countWaitingEntries(), 0) : 0,
   ]);
-  return { inbox: leads.total, projects: new Set(phases.map((p) => p.project_id)).size, invoices: overdue.length };
+  return { inbox: leads.total, projects: new Set(phases.map((p) => p.project_id)).size, invoices: overdue.length, time: waiting };
 }
