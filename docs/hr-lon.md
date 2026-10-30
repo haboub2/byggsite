@@ -608,9 +608,9 @@ with the diff before a refile, the skattekonto amount and a "betalt" mark,
 Fora's monthly pay, the arbetsgivarintyg, the växa-stöd basis,
 Försäkringskassan's reminders and the year-end (semester transition and a
 year summary per person). Draft PR "HR fas 4: arbetsgivardeklaration,
-skattekonto, Fora, intyg och årsskifte (0040)". **0040 has not run against
-Supabase.** Apply it after 0039 (which, with 0036 and 0038, is still
-pending), then run `supabase/tests/0040_authorities.sql` in the SQL editor.
+skattekonto, Fora, intyg och årsskifte (0040)". 0040 is applied to the
+Supabase project (2026-10-30, after 0039) and
+`supabase/tests/0040_authorities.sql` passed there.
 Nothing is ever sent: the owner uploads the AGI file in Skatteverket's
 e-service and signs with BankID, and reports to Fora on Mina sidor.
 **Acceptance by Skatteverket's e-service for a real month is your test**
@@ -765,9 +765,12 @@ from day 15 with its deadline, and VAB/föräldraledighet started.
   more controls (the Kontroller appendix) than the schema; upload it to the
   [test service](https://sso.test.skatteverket.se/agd_tt/da_testtjanst_web/login.do?method=test)
   first, then a real month. Fora's file is ours (see below).
-- Nothing has run against Supabase: not 0040, not the RPCs with these
-  jsonb arguments, not `xpath` on a real file there, not the column grants
-  through PostgREST, not the intyg upload to the bucket.
+- 0040 and its SQL test have run against Supabase (so `agi_store`'s
+  `xpath` reading of the test's file, the RLS and the column grants as
+  seen from SQL hold there). The app itself has not run against Supabase:
+  not supabase-js's RPC calls with these jsonb arguments, not the column
+  grants through PostgREST (the store selects only the granted columns),
+  not the intyg upload to the bucket.
 - Idag's AGI, Fora and Försäkringskassan rows were not seen in the browser:
   on 30 October the November deadlines are too far off, and a sick spell
   reaching day 15 would touch October, which the approved run locked. They
