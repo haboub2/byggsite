@@ -32,7 +32,7 @@ import { DEFAULT_PAY_ITEMS } from "../pay-items.default";
 import { assemblePayslip, reconcile } from "../payslip";
 import { indexTaxTable, parseTaxTableCsv } from "../tax-tables";
 import { monthlyPay } from "../time-to-pay";
-import { monthlyVacationDayValue, paidDaysEarned, sameSalaryVacationPay, vacationLiability } from "../vacation";
+import { lawVacationYearModel, monthlyVacationDayValue, paidDaysEarned, sameSalaryVacationPay, vacationLiability, vacationYears } from "../vacation";
 
 const file = parseTaxTableCsv(readFileSync(join(__dirname, "skattetabell-manad-2026.sample.csv")));
 const rules = payrollRulesAt("2026-06-25");
@@ -70,7 +70,10 @@ test("fixture: månadslön 38 000 kr with five days of semester in June 2026", (
   assert.equal(doc.taxTableVersion, file.sha256);
   assert.equal(reconcile(doc).ok, true);
 
-  const earned = paidDaysEarned({ rules, yearFrom: "2025-04-01", yearTo: "2026-03-31", employedFrom: "2024-01-01", employedTo: null, nonQualifyingDays: 0 });
+  // By law June 2026's semester is paid by intjänandeår 2025-04-01–2026-03-31.
+  const { paidBy } = vacationYears("2026-06-08", lawVacationYearModel(rules));
+  assert.deepEqual(paidBy, { from: "2025-04-01", to: "2026-03-31" });
+  const earned = paidDaysEarned({ rules, yearFrom: paidBy.from, yearTo: paidBy.to, employedFrom: "2024-01-01", employedTo: null, nonQualifyingDays: 0 });
   assert.equal(earned.paidDays, 25);
   const day = monthlyVacationDayValue(SALARY, tjm.vacationDayValuePercent, tjm.vacationDailySupplementPercent);
   assert.equal(day, 205_200);

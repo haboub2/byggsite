@@ -20,6 +20,8 @@ export {
 } from "./sick-pay";
 export {
   vacationYear,
+  vacationYears,
+  lawVacationYearModel,
   qualifyingAbsence,
   paidDaysEarned,
   percentRuleVacationPay,
@@ -31,6 +33,7 @@ export {
   validSavedDays,
   vacationLiability,
   type SavedDays,
+  type VacationYearModel,
 } from "./vacation";
 export { preliminaryTax, type EmployeeTax, type TaxResult, type TaxMethod } from "./tax";
 export { employerContributions, contributionCategory, agiContributions, agiContributionTotal, pensionPremium, type ContributionResult, type AgiContributionRow } from "./contributions";

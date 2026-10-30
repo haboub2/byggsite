@@ -5,22 +5,52 @@
  * or per month for SÄVA and timlön), saved days, and the
  * semesterlöneskuld the balance sheet carries.
  *
- * The intjänandeår and the semesterår are the same year by default
- * (1 April–31 March, `vacation.yearStartMonthDay`), or a calendar year by
- * setting.
+ * Semesterlagen 3 §: the semesterår runs 1 April–31 March and the
+ * intjänandeår is the year before it, so days earned April 2025–March 2026
+ * are taken April 2026–March 2027. An agreement may move the start (a
+ * calendar year) or let the days be earned and taken in the same year;
+ * `vacationYears` takes both as a `VacationYearModel`, and the rule book's
+ * `vacation.yearStartMonthDay` and `vacation.earningModel` give the law's.
  */
 
 import { fractionOf, lineAmount, rateOf, sumOre, type Ore } from "../money";
 import { addDays, daysBetween, type IsoDate } from "../rules/index";
 import type { PayrollRuleSet } from "../rules/payroll";
 
-/** The vacation year that holds `date`, for a start like "04-01". */
-export function vacationYear(date: IsoDate, startMonthDay: string): { from: IsoDate; to: IsoDate } {
+export type DateRange = { from: IsoDate; to: IsoDate };
+
+/** The year (semesterår or intjänandeår, same shape) that holds `date`, for a start like "04-01". */
+export function vacationYear(date: IsoDate, startMonthDay: string): DateRange {
   const year = Number(date.slice(0, 4));
   const startThisYear = `${year}-${startMonthDay}`;
   const from = date >= startThisYear ? startThisYear : `${year - 1}-${startMonthDay}`;
   const to = addDays(`${Number(from.slice(0, 4)) + 1}-${startMonthDay}`, -1);
   return { from, to };
+}
+
+export type VacationYearModel = { startMonthDay: string; earning: "previous-year" | "same-year" };
+
+/** The law's model from the rule book: 1 April, earned the year before. */
+export const lawVacationYearModel = (rules: PayrollRuleSet): VacationYearModel => ({
+  startMonthDay: rules.vacation.yearStartMonthDay,
+  earning: rules.vacation.earningModel,
+});
+
+/**
+ * For a date: the semesterår it falls in and the intjänandeår that paid
+ * for it (`paidBy`); the intjänandeår the date's own work belongs to
+ * (`earningYear`, where today's pay accrues for the semesterlöneskuld) and
+ * the semesterår that work pays for (`paysFor`).
+ */
+export function vacationYears(date: IsoDate, model: VacationYearModel): { vacationYear: DateRange; paidBy: DateRange; earningYear: DateRange; paysFor: DateRange } {
+  const current = vacationYear(date, model.startMonthDay);
+  if (model.earning === "same-year") return { vacationYear: current, paidBy: current, earningYear: current, paysFor: current };
+  return {
+    vacationYear: current,
+    paidBy: vacationYear(addDays(current.from, -1), model.startMonthDay),
+    earningYear: current,
+    paysFor: vacationYear(addDays(current.to, 1), model.startMonthDay),
+  };
 }
 
 export type AbsenceDays = {

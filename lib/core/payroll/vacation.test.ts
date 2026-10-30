@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { payrollRulesAt } from "../rules/payroll";
 import {
+  lawVacationYearModel,
   monthlyVacationCompensation,
   monthlyVacationDayValue,
   paidDaysEarned,
@@ -12,6 +13,7 @@ import {
   terminationCompensation,
   vacationLiability,
   vacationYear,
+  vacationYears,
   validSavedDays,
 } from "./vacation";
 
@@ -23,6 +25,18 @@ test("the semesterår runs 1 April–31 March by default, or a calendar year", (
   assert.deepEqual(vacationYear("2026-06-10", rules.vacation.yearStartMonthDay), { from: "2026-04-01", to: "2027-03-31" });
   assert.deepEqual(vacationYear("2026-02-10", "04-01"), { from: "2025-04-01", to: "2026-03-31" });
   assert.deepEqual(vacationYear("2026-02-10", "01-01"), { from: "2026-01-01", to: "2026-12-31" });
+});
+
+test("3 §: by law the intjänandeår is the year before the semesterår; an agreement may use the same year", () => {
+  const law = vacationYears("2026-06-10", lawVacationYearModel(rules));
+  assert.deepEqual(law.vacationYear, { from: "2026-04-01", to: "2027-03-31" });
+  assert.deepEqual(law.paidBy, { from: "2025-04-01", to: "2026-03-31" });
+  // Work in June 2026 belongs to intjänandeår 2026/27 and pays for the semesterår starting 1 April 2027.
+  assert.deepEqual(law.earningYear, { from: "2026-04-01", to: "2027-03-31" });
+  assert.deepEqual(law.paysFor, { from: "2027-04-01", to: "2028-03-31" });
+  const sameYear = vacationYears("2026-06-10", { startMonthDay: "01-01", earning: "same-year" });
+  assert.deepEqual(sameYear.paidBy, { from: "2026-01-01", to: "2026-12-31" });
+  assert.deepEqual(sameYear.paysFor, sameYear.vacationYear);
 });
 
 test("7 §: paid days = ceil(25 × (employment days − days wholly absent without pay) / days in the year)", () => {
