@@ -154,13 +154,17 @@ export default async function ProjectEconomy({ bundle, notice }: { bundle: Proje
                   </span>
                   <span>
                     <strong>{kr(c.amountOre)}</strong>{" "}
-                    <form action={removeCostAction} style={{ display: "inline" }}>
-                      {hidden}
-                      <input type="hidden" name="cost" value={c.id} />
-                      <button type="submit" className="link-quiet" aria-label={`Ta bort kostnaden ${c.description || c.supplier}`}>
-                        Ta bort
-                      </button>
-                    </form>
+                    {c.timeEntryId ? (
+                      <span className="inbox-meta">från godkänd tid</span>
+                    ) : (
+                      <form action={removeCostAction} style={{ display: "inline" }}>
+                        {hidden}
+                        <input type="hidden" name="cost" value={c.id} />
+                        <button type="submit" className="link-quiet" aria-label={`Ta bort kostnaden ${c.description || c.supplier}`}>
+                          Ta bort
+                        </button>
+                      </form>
+                    )}
                   </span>
                 </li>
               ))}

@@ -128,6 +128,8 @@ export type EmploymentVersion = {
   workplace: string;
   workingTimePercent: number;
   weeklyHours: number | null;
+  /** The weekly schedule (schedules, 0037); a new version inherits the previous one's. */
+  scheduleId: string | null;
   substituteFor: string;
   probationEndsOn: IsoDate | null;
   startsOn: IsoDate;

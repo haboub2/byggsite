@@ -19,7 +19,7 @@ type Item = { href: string; label: string; access: Access; match?: (p: string) =
 
 export type AdminTopBarProps = {
   access: Access[];
-  counts: { inbox: number; projects: number; invoices: number };
+  counts: { inbox: number; projects: number; invoices: number; time: number };
   orgName: string;
   orgId: string;
   orgs: { id: string; name: string }[];
@@ -74,6 +74,8 @@ export default function AdminTopBar(p: AdminTopBarProps) {
     { href: "/admin/projekt", label: "Projekt", access: "write", count: p.counts.projects },
     { href: "/admin/fakturor", label: "Fakturor", access: "read", count: p.counts.invoices, alert: true },
     { href: "/admin/personal", label: "Personal", access: "payroll" },
+    { href: "/admin/tid", label: "Tid", access: "time", count: p.counts.time },
+    { href: "/admin/schema", label: "Schema", access: "payroll" },
   ].filter((i) => has(p.access, i.access as Access)) as Item[];
 
   const money: Item[] = [

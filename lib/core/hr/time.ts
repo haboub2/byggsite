@@ -362,3 +362,17 @@ function restWarnings(employeeId: string, list: readonly TimeEntry[]): AtlWarnin
 export function stockholmClock(now = new Date()): string {
   return new Intl.DateTimeFormat("sv-SE", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/Stockholm" }).format(now);
 }
+
+/** A Swedish wall-clock time "YYYY-MM-DDTHH:MM" (a datetime-local field) as an ISO instant, summer time included. */
+export function stockholmLocalToIso(local: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local);
+  if (!m) throw new RangeError(`Tiden skrivs ÅÅÅÅ-MM-DDTTT:MM, fick "${local}".`);
+  const asUtc = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+  // The offset Stockholm has at that moment: format the UTC guess there and compare.
+  const offsetAt = (t: number) => {
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Stockholm", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+    return Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute)) - t;
+  };
+  const first = asUtc - offsetAt(asUtc);
+  return new Date(asUtc - offsetAt(first)).toISOString();
+}

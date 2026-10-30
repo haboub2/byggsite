@@ -33,6 +33,7 @@ const version = (form: EmploymentForm): EmploymentVersion => ({
   workplace: form === "vd" ? "Huvudkontoret, Göteborg" : "",
   workingTimePercent: 100,
   weeklyHours: 40,
+  scheduleId: null,
   substituteFor: "Gustav Berg under föräldraledighet",
   probationEndsOn: "2027-04-30",
   startsOn: "2026-11-01",

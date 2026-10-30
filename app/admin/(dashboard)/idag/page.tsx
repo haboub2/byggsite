@@ -17,6 +17,7 @@ const TAG_TONE: Record<TodoKind, string> = {
   change: "idag-tag--cool",
   invoice: "idag-tag--alert",
   hr: "idag-tag--warm",
+  time: "idag-tag--cool",
 };
 
 const kr = (n: number) => `${Math.round(n).toLocaleString("sv-SE").replace(/ /g, " ")} kr`;
@@ -89,7 +90,7 @@ export default async function TodayPage() {
             <span>{d.todos.length === 0 ? "allt är gjort" : `${d.todos.length} saker`}</span>
           </div>
           {d.todos.length === 0 ? (
-            <p className="idag-empty">Inget väntar på dig just nu. Nya förfrågningar, försenade faser, förfallna fakturor och personal med LAS-klockor eller avtal som går ut dyker upp här.</p>
+            <p className="idag-empty">Inget väntar på dig just nu. Nya förfrågningar, försenade faser, förfallna fakturor, personal med LAS-klockor eller avtal som går ut, tid att godkänna, inringningar och läkarintyg dyker upp här.</p>
           ) : (
             <ul>
               {d.todos.map((t) => (

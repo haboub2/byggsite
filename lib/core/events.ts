@@ -56,6 +56,22 @@ export const EVENT_TYPES = [
   "employee_tax.versioned",
   "employment_document.created",
   "employment_document.signed",
+  // Tid och frånvaro (0037): aggregate "employee", lås och erbjudanden till poolen "time".
+  "schedule.created",
+  "time.submitted",
+  "time.approved",
+  "time.returned",
+  "time.corrected",
+  "time.locked",
+  "absence.reported",
+  "absence.updated",
+  "absence.approved",
+  "absence.certificate_received",
+  "absence.removed",
+  "shift.offered",
+  "shift.accepted",
+  "shift.declined",
+  "shift.withdrawn",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -76,7 +92,7 @@ export const WEBHOOK_EVENT_TYPES = [
 ] as const satisfies readonly EventType[];
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
-export type AggregateType = "customer" | "invoice" | "payment" | "rot_claim" | "export" | "api_key" | "organization" | "webhook" | "employee";
+export type AggregateType = "customer" | "invoice" | "payment" | "rot_claim" | "export" | "api_key" | "organization" | "webhook" | "employee" | "time";
 
 export type Actor =
   | { kind: "user"; id: string; name: string }
@@ -158,6 +174,21 @@ export const EVENT_LABEL: Record<EventType, { text: string; customer: boolean }>
   "employee_tax.versioned": { text: "Skatteuppgifter ändrade", customer: false },
   "employment_document.created": { text: "Anställningsavtal skapat", customer: false },
   "employment_document.signed": { text: "Anställningsavtal signerat", customer: false },
+  "schedule.created": { text: "Nytt schema", customer: false },
+  "time.submitted": { text: "Tid inskickad", customer: false },
+  "time.approved": { text: "Tid godkänd", customer: false },
+  "time.returned": { text: "Tid återskickad", customer: false },
+  "time.corrected": { text: "Tid rättad", customer: false },
+  "time.locked": { text: "Tidsperiod låst", customer: false },
+  "absence.reported": { text: "Frånvaro anmäld", customer: false },
+  "absence.updated": { text: "Frånvaro ändrad", customer: false },
+  "absence.approved": { text: "Frånvaro godkänd", customer: false },
+  "absence.certificate_received": { text: "Läkarintyg mottaget", customer: false },
+  "absence.removed": { text: "Frånvaro borttagen", customer: false },
+  "shift.offered": { text: "Pass erbjudet", customer: false },
+  "shift.accepted": { text: "Pass accepterat", customer: false },
+  "shift.declined": { text: "Pass avböjt", customer: false },
+  "shift.withdrawn": { text: "Erbjudande återkallat", customer: false },
 };
 
 /** The label for any stored event type, also one this version does not know. */

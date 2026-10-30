@@ -127,3 +127,9 @@ test("ATL veckovila: seven days in a row without 36 h off warns for that week", 
   assert.deepEqual(w.map((x) => [x.code, x.date]), [["weekly-rest", "2026-10-19"]]);
   assert.match(w[0].message, /Vecka 43/);
 });
+
+test("Swedish wall-clock time to an instant: winter +01, summer +02", async () => {
+  const { stockholmLocalToIso } = await import("./time");
+  assert.equal(stockholmLocalToIso("2026-11-05T18:00"), "2026-11-05T17:00:00.000Z");
+  assert.equal(stockholmLocalToIso("2026-07-01T07:30"), "2026-07-01T05:30:00.000Z");
+});

@@ -19,6 +19,7 @@ const base: EmploymentVersion = {
   workplace: "",
   workingTimePercent: 100,
   weeklyHours: 40,
+  scheduleId: null,
   substituteFor: "",
   probationEndsOn: null,
   startsOn: "2026-11-01",
