@@ -11,7 +11,7 @@ import { agiDueDate } from "@/lib/core/rules/payroll";
 import { listEmployees } from "@/lib/core/hr/store";
 import { getPayrollSettings, listRuns, RUN_STATUS_LABEL } from "@/lib/core/payroll/run-store";
 import { payDateFor, runPeriods, unconfirmedDecisions } from "@/lib/core/payroll/settings";
-import { monthLabel } from "@/lib/pdf/PayslipPdf";
+import { monthLabel } from "@/lib/core/payroll/format";
 import { Flash } from "@/components/admin/time/parts";
 import { createRunAction, seedDemoPayrollAction } from "@/app/admin/payroll-actions";
 

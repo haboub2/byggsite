@@ -11,7 +11,7 @@ import { timeProjects } from "@/lib/core/hr/time-store";
 import { listLabourCosts } from "@/lib/core/projects/costs";
 import { getPayrollSettings, latestPayslipPerPerson, listRuns, RUN_STATUS_LABEL } from "@/lib/core/payroll/run-store";
 import { contributionOnLiability } from "@/lib/core/payroll/ledger";
-import { monthLabel } from "@/lib/pdf/PayslipPdf";
+import { monthLabel } from "@/lib/core/payroll/format";
 
 export const metadata: Metadata = { title: "Lönerapporter" };
 

@@ -1,5 +1,6 @@
 import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { PayslipDocument } from "../core/payroll/payslip";
+import { monthLabel } from "../core/payroll/format";
 import { JAKARTA_BOLD, JAKARTA_ITALIC, JAKARTA_MEDIUM, JAKARTA_REGULAR } from "./fonts";
 
 /**
@@ -79,8 +80,6 @@ const s = StyleSheet.create({
 const kr = (ore: number) =>
   `${(ore / 100).toLocaleString("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/ /g, " ")} kr`;
 const qty = (n: number | null, unit: string | null) => (n === null ? "" : `${String(Math.round(n * 100) / 100).replace(".", ",")}${unit ? ` ${unit}` : ""}`);
-const MONTHS = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"];
-export const monthLabel = (iso: string) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
 
 const TAX_METHOD: Record<string, string> = {
   table: "tabell",

@@ -1,13 +1,18 @@
 import "server-only";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { PayslipPdf, monthLabel } from "./PayslipPdf";
+import { PayslipPdf } from "./PayslipPdf";
 import { contractEmployer } from "./render-contract";
 import { fileSafe } from "./invoice-file-name";
 import { readPayslipPdf, type StoredPayslip } from "../core/payroll/run-store";
 
-/** The payslip as PDF bytes from its frozen document, with the employer from the company settings. */
-export async function renderPayslipPdf(slip: StoredPayslip): Promise<Buffer> {
-  const { employer, logo } = await contractEmployer();
+export type PayslipEmployer = Awaited<ReturnType<typeof contractEmployer>>;
+
+/** The employer as the payslips name it (company settings and logo); read once per approval, not per payslip. */
+export const payslipEmployer = (): Promise<PayslipEmployer> => contractEmployer();
+
+/** The payslip as PDF bytes from its frozen document; pass the employer when rendering several. */
+export async function renderPayslipPdf(slip: StoredPayslip, from?: PayslipEmployer): Promise<Buffer> {
+  const { employer, logo } = from ?? (await contractEmployer());
   return renderToBuffer(<PayslipPdf doc={slip.document} number={slip.number} employer={employer} logo={logo} />);
 }
 
@@ -35,4 +40,3 @@ export async function payslipPdfResponse(slip: StoredPayslip, download: boolean)
   });
 }
 
-export { monthLabel };

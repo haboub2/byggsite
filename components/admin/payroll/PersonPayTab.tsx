@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatOre } from "@/lib/core/money";
 import { listCorrections, listEmployeePayslips, listRuns } from "@/lib/core/payroll/run-store";
-import { monthLabel } from "@/lib/pdf/PayslipPdf";
+import { monthLabel } from "@/lib/core/payroll/format";
 
 const kr = (ore: number) => formatOre(ore, { currency: true });
 

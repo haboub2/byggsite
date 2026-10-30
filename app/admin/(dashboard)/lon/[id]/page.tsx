@@ -23,7 +23,7 @@ import {
 import { payslipJournal, accrualLines } from "@/lib/core/payroll/ledger";
 import { payItemsOn, type RunCheck } from "@/lib/core/payroll/run";
 import type { JournalLine } from "@/lib/core/payroll/payslip";
-import { monthLabel } from "@/lib/pdf/PayslipPdf";
+import { monthLabel } from "@/lib/core/payroll/format";
 import { Flash } from "@/components/admin/time/parts";
 import {
   approveRunAction,

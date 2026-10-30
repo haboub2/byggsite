@@ -154,6 +154,7 @@ type RunRow = {
   rule_set_valid_from: string | null;
   tax_table_import_id: string | null;
   totals: RunTotals;
+  inputs_hash?: string | null;
   computed_by: string | null;
   computed_by_name: string | null;
   computed_at: string | null;
@@ -295,7 +296,6 @@ const demoRun = (id: string) => {
  * pending corrections, the semesterår), so approval can refuse a changed
  * underlag as the database does.
  */
-const demoInputs = new Map<string, string>();
 async function demoInputsHash(run: PayRun): Promise<string> {
   const [entries, absences, versions, tax, people, corrections, { settings }] = await Promise.all([
     listTimeEntries({ from: run.timeFrom, to: run.timeTo }),
@@ -835,7 +835,7 @@ export async function calculateRun(runId: string, today: IsoDate, opts: { store:
           pensionPremiumOre: sum((p) => p.pensionPremiumOre),
         },
       });
-      demoInputs.set(runId, await demoInputsHash(runFromRow(r)));
+      r.inputs_hash = await demoInputsHash(runFromRow(r));
     }
     return result;
   }
@@ -880,7 +880,7 @@ export async function approveRun(runId: string, actorUserId: string | null, rend
     if (open.length) throw new Error(`Tid i perioden är inte godkänd (${open.length} rader). Räkna om körningen.`);
     const slips = demo().payslips.filter((p) => p.run_id === runId).sort((a, b) => a.document.employeeName.localeCompare(b.document.employeeName, "sv"));
     if (slips.some((p) => p.net_ore < 0)) throw new Error("Ett lönebesked har negativ nettolön; lägg avdraget som en fordran i stället.");
-    if (demoInputs.get(runId) !== (await demoInputsHash(runFromRow(r)))) throw new Error("Underlaget har ändrats efter beräkningen; räkna om.");
+    if (r.inputs_hash !== (await demoInputsHash(runFromRow(r)))) throw new Error("Underlaget har ändrats efter beräkningen; räkna om.");
     if (!(await listTimeLocks()).some((l) => l.from <= r.time_period_start && l.to >= r.time_period_end)) await lockPeriod(r.time_period_start, r.time_period_end, `Lönekörning ${r.period_start.slice(0, 7)}`);
     const now = new Date().toISOString();
     for (const p of slips) Object.assign(p, { number: demo().nextL++, approved_at: now });

@@ -7,14 +7,13 @@
 
 import { addDays, daysBetween, type IsoDate } from "../rules/index";
 import { agiDueDate } from "../rules/payroll";
+import { monthLabel } from "./format";
 import { payDateFor, runDueFrom, type PayrollSettings } from "./settings";
 
 export type PayrollTodo = { id: string; kind: "run-due" | "approve" | "tax-account"; tag: string; title: string; meta: string; href: string; weight: number };
 
 type RunLike = { id: string; periodStart: IsoDate; payDate: IsoDate; agiPeriod: string; status: string; totals: { taxOre?: number; employerContributionOre?: number } };
 
-const MONTHS = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"];
-const monthName = (iso: string) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
 const kr = (ore: number) => `${Math.round(ore / 100).toLocaleString("sv-SE").replace(/\s/g, " ")} kr`;
 
 export function payrollTodos(input: { runs: readonly RunLike[]; settings: Pick<PayrollSettings, "payDay">; today: IsoDate; canApprove: boolean; hasPeople: boolean }): PayrollTodo[] {
@@ -31,7 +30,7 @@ export function payrollTodos(input: { runs: readonly RunLike[]; settings: Pick<P
         id: `run-due-${month}`,
         kind: "run-due",
         tag: "Lön",
-        title: `Lönen för ${monthName(`${month}-01`)} ska räknas`,
+        title: `Lönen för ${monthLabel(`${month}-01`)} ska räknas`,
         meta: `Lönedag ${payDate}, om ${days} ${days === 1 ? "dag" : "dagar"}`,
         href: run ? `/admin/lon/${run.id}` : "/admin/lon",
         weight: days <= 2 ? 1 : 4,
@@ -40,7 +39,7 @@ export function payrollTodos(input: { runs: readonly RunLike[]; settings: Pick<P
   }
   for (const r of input.runs) {
     if (r.status === "calculated" && input.canApprove) {
-      out.push({ id: `approve-${r.id}`, kind: "approve", tag: "Lön", title: `Lönen för ${monthName(r.periodStart)} väntar på godkännande`, meta: `Lönedag ${r.payDate}; den som räknade godkänner inte`, href: `/admin/lon/${r.id}`, weight: 2 });
+      out.push({ id: `approve-${r.id}`, kind: "approve", tag: "Lön", title: `Lönen för ${monthLabel(r.periodStart)} väntar på godkännande`, meta: `Lönedag ${r.payDate}; den som räknade godkänner inte`, href: `/admin/lon/${r.id}`, weight: 2 });
     }
     if (r.status === "draft" || r.status === "calculated") continue;
     const due = agiDueDate(r.agiPeriod);

@@ -11,7 +11,7 @@ import { stockholmClock } from "@/lib/core/hr/time";
 import { addCorrection, approveRun, bookRun, calculateRun, closeRun, createBankFile, createRun, discardRun, getPayslip, getRun, savePayrollDecision, storePayslipPdf } from "@/lib/core/payroll/run-store";
 import { seedDemoPayroll } from "@/lib/core/payroll/demo-seed";
 import { PAYROLL_DECISIONS, payrollSettingsSchema, type PayrollDecision, type PayrollSettings } from "@/lib/core/payroll/settings";
-import { renderPayslipPdf } from "@/lib/pdf/render-payslip";
+import { payslipEmployer, renderPayslipPdf } from "@/lib/pdf/render-payslip";
 
 /**
  * Lönekörning, Inställningar › Lön and the payslip's Rätta (docs/hr-lon.md,
@@ -129,7 +129,8 @@ export async function approveRunAction(formData: FormData): Promise<void> {
   await run(
     to,
     async () => {
-      const r = await approveRun(id, check.userId, (slip) => renderPayslipPdf(slip));
+      const employer = await payslipEmployer();
+      const r = await approveRun(id, check.userId, (slip) => renderPayslipPdf(slip, employer));
       return r.pdfErrors.length ? `Lönen är godkänd (${r.approved} lönebesked), men ${r.pdfErrors.length} PDF:er kunde inte sparas: ${r.pdfErrors.join("; ")}` : `Lönen är godkänd: ${r.approved} lönebesked numrerade och frysta, och tidsperioden är låst.`;
     },
     id

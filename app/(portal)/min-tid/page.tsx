@@ -11,7 +11,7 @@ import { DEMO_PICK_COOKIE, TIME_KIND_LABEL, TIME_KINDS, isOpenClock, isoWeek, st
 import { listAbsences, listShifts, listTimeEntries, myEmployee, openOffer, timeProjects } from "@/lib/core/hr/time-store";
 import { listEmployeePayslips } from "@/lib/core/payroll/run-store";
 import { formatOre } from "@/lib/core/money";
-import { monthLabel } from "@/lib/pdf/PayslipPdf";
+import { monthLabel } from "@/lib/core/payroll/format";
 import { signOut } from "@/app/admin/actions";
 import {
   addOwnTimeAction,
