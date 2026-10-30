@@ -283,6 +283,35 @@ const demoRun = (id: string) => {
   if (!r) throw new Error("Körningen finns inte.");
   return r;
 };
+/**
+ * Demo mode's payroll_inputs_hash(): what the run is computed from (time in
+ * the period, absence from a year back, versions, tax rows, the people,
+ * pending corrections, the semesterår), so approval can refuse a changed
+ * underlag as the database does.
+ */
+const demoInputs = new Map<string, string>();
+async function demoInputsHash(run: PayRun): Promise<string> {
+  const [entries, absences, versions, tax, people, corrections, { settings }] = await Promise.all([
+    listTimeEntries({ from: run.timeFrom, to: run.timeTo }),
+    listAbsences({ from: addMonths(run.timeFrom, -12), to: run.timeTo }),
+    listEmployments(),
+    listTaxVersions(),
+    listEmployees(),
+    listCorrections(),
+    getPayrollSettings(),
+  ]);
+  const state = {
+    time: entries.map((t) => [t.id, t.status === "locked" ? "approved" : t.status, t.hours, t.start, t.end, t.breakMinutes, t.kind, t.correctsId]),
+    absences: absences.map((a) => [a.id, a.kind, a.from, a.to, a.extent, !!a.approvedAt]),
+    versions: versions.map((v) => [v.id, v.scheduleId]),
+    tax: tax.map((t) => t.id),
+    people: people.map((e) => [e.id, e.birthDate, e.agreement, e.endedAt]),
+    corrections: corrections.filter((c) => c.targetRunId === null || c.targetRunId === run.id).map((c) => c.id),
+    vacationYear: settings.vacationYear,
+  };
+  return createHash("sha256").update(JSON.stringify(state)).digest("hex");
+}
+
 const demoFile = (key: string) => path.join(process.cwd(), "uploads", "hr", ...key.split("/"));
 
 /* ---------- settings ---------- */
@@ -757,6 +786,7 @@ export async function calculateRun(runId: string, today: IsoDate, opts: { store:
           pensionPremiumOre: sum((p) => p.pensionPremiumOre),
         },
       });
+      demoInputs.set(runId, await demoInputsHash(runFromRow(r)));
     }
     return result;
   }
@@ -801,6 +831,8 @@ export async function approveRun(runId: string, actorUserId: string | null, rend
     if (open.length) throw new Error(`Tid i perioden är inte godkänd (${open.length} rader). Räkna om körningen.`);
     const slips = demo().payslips.filter((p) => p.run_id === runId).sort((a, b) => a.document.employeeName.localeCompare(b.document.employeeName, "sv"));
     if (slips.some((p) => p.net_ore < 0)) throw new Error("Ett lönebesked har negativ nettolön; lägg avdraget som en fordran i stället.");
+    if (demoInputs.get(runId) !== (await demoInputsHash(runFromRow(r)))) throw new Error("Underlaget har ändrats efter beräkningen; räkna om.");
+    if (!(await listTimeLocks()).some((l) => l.from <= r.time_period_start && l.to >= r.time_period_end)) await lockPeriod(r.time_period_start, r.time_period_end, `Lönekörning ${r.period_start.slice(0, 7)}`);
     const now = new Date().toISOString();
     for (const p of slips) Object.assign(p, { number: demo().nextL++, approved_at: now });
     Object.assign(r, { status: "approved", approved_by: actorUserId ?? "demo", approved_by_name: "demo@localhost", approved_at: now });
@@ -917,8 +949,6 @@ export async function bookRun(runId: string): Promise<void> {
     const r = demoRun(runId);
     if (r.status !== "paid") throw new Error(`Körningen bokförs efter bankfilen (den är ${RUN_STATUS_LABEL[r.status].toLowerCase()}).`);
     if ((await listPeriodLocks()).some((l) => r.pay_date >= l.periodStart && r.pay_date <= l.periodEnd)) throw new Error(`Perioden för ${r.pay_date} är låst (exporterad till bokföringen).`);
-    const locks = await listTimeLocks();
-    if (!locks.some((l) => l.from <= r.time_period_start && l.to >= r.time_period_end)) await lockPeriod(r.time_period_start, r.time_period_end, `Lönekörning ${r.period_start.slice(0, 7)}`);
     const lines = [...payslipJournal(slips.map((s) => s.document), settings.accounts), ...accruals];
     demo().journals[runId] = { entry: `V ${r.pay_date.slice(0, 4)}-${demo().nextV++} (demo)`, lines };
     Object.assign(r, { status: "booked", journal_entry_id: runId, booked_at: new Date().toISOString(), totals: { ...r.totals, accrualsOre: accruals.reduce((s, l) => s + l.debitOre, 0) } });

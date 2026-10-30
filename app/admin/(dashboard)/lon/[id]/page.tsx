@@ -319,7 +319,7 @@ export default async function PayRunPage({ params, searchParams }: { params: Pro
                       Godkänn lönen
                     </button>
                     <span className="hr-muted">
-                      {isComputer ? "Du räknade lönen; en annan ägare eller administratör godkänner (fyra ögon)." : "Godkännandet fryser lönebeskeden, numrerar dem i serien L och gör PDF:erna. Det går inte att ändra efteråt."}
+                      {isComputer ? "Du räknade lönen; en annan ägare eller administratör godkänner (fyra ögon)." : `Godkännandet låser tiden ${run.timeFrom} – ${run.timeTo}, fryser lönebeskeden, numrerar dem i serien L och gör PDF:erna. Det går inte att ändra efteråt; har tid, frånvaro, avtal eller skatt ändrats sedan beräkningen vägras det tills lönen räknas om.`}
                     </span>
                   </form>
                 ) : (
@@ -353,9 +353,7 @@ export default async function PayRunPage({ params, searchParams }: { params: Pro
                   <button className="btn btn-primary" type="submit">
                     Bokför
                   </button>
-                  <span className="hr-muted">
-                    Verifikationen i serien V på lönedagen, och tiden {run.timeFrom} – {run.timeTo} låses.
-                  </span>
+                  <span className="hr-muted">Verifikationen i serien V på lönedagen.</span>
                 </form>
               )}
 

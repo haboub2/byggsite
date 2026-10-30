@@ -259,6 +259,32 @@ begin
   end;
 end $$;
 
+-- Underlaget ändras efter beräkningen: ägaren godkänner en ny tidrad i
+-- oktober. Godkännandet vägras tills lönen räknas om.
+with x as (
+  insert into time_entries (org_id, employee_id, work_date, start_time, end_time, hours)
+  values ((select v from prov where k = 'a'), (select v from prov where k = 'fatima'), '2026-10-13', '07:00', '12:00', 0)
+  returning id
+)
+insert into prov select 'tid2', id from x;
+select time_submit(array[(select v from prov where k = 'tid2')]);
+select time_approve(array[(select v from prov where k = 'tid2')]);
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000039a5","role":"authenticated","email":"a-admin@prov39.se"}';
+do $$
+begin
+  begin
+    perform payroll_run_approve((select v from prov where k = 'nov'));
+    raise exception 'Godkännandet gick igenom fast underlaget ändrats efter beräkningen';
+  exception when invalid_parameter_value then
+    if sqlerrm not like 'Underlaget har ändrats efter beräkningen%' then raise exception 'Fel meddelande: %', sqlerrm; end if;
+  end;
+  if exists (select 1 from time_locks where org_id = (select v from prov where k = 'a')) then
+    raise exception 'Tiden låstes fast godkännandet vägrades';
+  end if;
+end $$;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000039a1","role":"authenticated","email":"a-agare@prov39.se"}';
+select payroll_run_store_result((select v from prov where k = 'nov'), (select res from prov_result));
+
 -- Den anställde ser inget före godkännandet.
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000039a4","role":"authenticated","email":"erik@prov39.se"}';
 do $$
@@ -271,6 +297,11 @@ set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000039a5","r
 do $$
 begin
   if payroll_run_approve((select v from prov where k = 'nov')) <> 2 then raise exception 'Godkännandet gav inte två lönebesked'; end if;
+  -- Godkännandet låste tidsperioden, så de frysta lönebeskeden och tiden stämmer.
+  if not exists (select 1 from time_locks where org_id = (select v from prov where k = 'a') and period_start = '2026-10-01' and period_end = '2026-10-31')
+     or (select status from time_entries where id = (select v from prov where k = 'tid2')) <> 'locked' then
+    raise exception 'Godkännandet låste inte oktober';
+  end if;
   -- Numrerat i namnordning: Erik L1, Fatima L2.
   if (select number from payslips where employee_id = (select v from prov where k = 'erik')) <> 1
      or (select number from payslips where employee_id = (select v from prov where k = 'fatima')) <> 2 then
@@ -440,7 +471,7 @@ begin
     raise exception 'Verifikationens rader stämmer inte';
   end if;
   if not exists (select 1 from time_locks where org_id = (select v from prov where k = 'a') and period_start = '2026-10-01' and period_end = '2026-10-31') then
-    raise exception 'Tidsperioden låstes inte';
+    raise exception 'Tidsperioden är inte låst efter bokföringen';
   end if;
   if (select status from time_entries where id = (select v from prov where k = 'tid')) <> 'locked' then
     raise exception 'Oktobers tid är inte låst';

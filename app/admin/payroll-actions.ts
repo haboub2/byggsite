@@ -130,7 +130,7 @@ export async function approveRunAction(formData: FormData): Promise<void> {
     to,
     async () => {
       const r = await approveRun(id, check.userId, (slip) => renderPayslipPdf(slip));
-      return r.pdfErrors.length ? `Lönen är godkänd (${r.approved} lönebesked), men ${r.pdfErrors.length} PDF:er kunde inte sparas: ${r.pdfErrors.join("; ")}` : `Lönen är godkänd: ${r.approved} lönebesked numrerade och frysta.`;
+      return r.pdfErrors.length ? `Lönen är godkänd (${r.approved} lönebesked), men ${r.pdfErrors.length} PDF:er kunde inte sparas: ${r.pdfErrors.join("; ")}` : `Lönen är godkänd: ${r.approved} lönebesked numrerade och frysta, och tidsperioden är låst.`;
     },
     id
   );
@@ -175,7 +175,7 @@ export async function bookRunAction(formData: FormData): Promise<void> {
     to,
     async () => {
       await bookRun(id);
-      return "Lönen är bokförd i serien V och tidsperioden är låst.";
+      return "Lönen är bokförd i serien V.";
     },
     id
   );

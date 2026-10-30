@@ -21,13 +21,15 @@
 -- 5. pay_runs → payslips (+ payslip_lines): draft → calculated → approved
 --    → paid → booked → closed. Den som räknade godkänner inte (fyra ögon,
 --    regel 5). Ej godkänd tid i perioden stoppar beräkningen och
---    godkännandet (regel 3). Godkännandet fryser lönebeskeden och numrerar
---    dem i serien L. Ett godkänt lönebesked ändras aldrig (regel 6).
+--    godkännandet (regel 3), och ett underlag som ändrats efter
+--    beräkningen stoppar godkännandet. Godkännandet låser tidsperioden,
+--    fryser lönebeskeden och numrerar dem i serien L. Ett godkänt
+--    lönebesked ändras aldrig (regel 6).
 -- 6. bank_files: pain.001.001.03, fryst, skickas aldrig av systemet.
 --    Summan läses ur filens CtrlSum och jämförs med nettolönerna.
 -- 7. payroll_run_book(): en verifikation i serien V på lönedagen ur
 --    lönebeskedens rader och summor (plus appens periodiseringar för
---    semesterlöneskuld och tjänstepension); låser tidsperioden.
+--    semesterlöneskuld och tjänstepension).
 -- 8. payroll_reconciliation(): lönebesked = rader = verifikation = bankfil.
 --    payroll_run_close() vägrar annars (regel 7).
 -- 9. payroll_corrections: rättelse framåt, retroaktiva rader i nästa
@@ -276,6 +278,9 @@ create table pay_runs (
   rule_set_valid_from  date,
   tax_table_import_id  uuid references tax_table_imports(id),
   totals               jsonb not null default '{}'::jsonb,
+  -- Fingeravtryck av underlaget när lönen räknades (payroll_inputs_hash);
+  -- godkännandet vägrar om underlaget har ändrats sedan dess.
+  inputs_hash          text,
   computed_by          uuid,
   computed_by_name     text,
   computed_at          timestamptz,
@@ -631,6 +636,34 @@ as $$
 $$;
 revoke all on function public.payroll_unapproved_time(uuid) from public, anon, authenticated;
 
+-- Fingeravtrycket av det en körning räknas från: tidraderna i tidsperioden
+-- (låst räknas som godkänd), frånvaro det senaste året fram till periodens
+-- slut, alla anställningsversioner och skatterader, personernas
+-- födelsedatum, avtal och slutdatum, väntande rättelser och semesterår.
+-- Ändras något av det mellan beräkning och godkännande, eller tas något
+-- bort, ändras avtrycket.
+create or replace function public.payroll_inputs_hash(p_run uuid) returns text
+  language sql stable security definer set search_path = public
+as $$
+  select md5(concat_ws('|',
+    (select string_agg(concat_ws(',', t.id, case t.status when 'locked' then 'approved' else t.status end, t.hours, t.start_time,
+                                 t.end_time, t.break_minutes, t.kind, t.corrects_id), ';' order by t.id)
+       from public.time_entries t
+      where t.org_id = r.org_id and t.work_date between r.time_period_start and r.time_period_end),
+    (select string_agg(concat_ws(',', a.id, a.kind, a.from_date, a.to_date, a.extent, a.approved_at is not null), ';' order by a.id)
+       from public.absences a
+      where a.org_id = r.org_id and a.from_date <= r.time_period_end
+        and (a.to_date is null or a.to_date >= (r.time_period_start - interval '1 year')::date)),
+    (select string_agg(concat_ws(',', v.id, v.schedule_id), ';' order by v.id) from public.employments v where v.org_id = r.org_id),
+    (select string_agg(x.id::text, ';' order by x.id) from public.employee_tax x where x.org_id = r.org_id),
+    (select string_agg(concat_ws(',', e.id, e.birth_date, e.agreement, e.ended_at), ';' order by e.id) from public.employees e where e.org_id = r.org_id),
+    (select string_agg(c.id::text, ';' order by c.id) from public.payroll_corrections c
+      where c.org_id = r.org_id and (c.target_run_id is null or c.target_run_id = r.id)),
+    (select s.data->>'vacationYear' from public.payroll_settings s where s.org_id = r.org_id)))
+  from public.pay_runs r where r.id = p_run
+$$;
+revoke all on function public.payroll_inputs_hash(uuid) from public, anon, authenticated;
+
 -- En ny körning för månaden som p_period ligger i. Tid och frånvaro läses
 -- för samma månad eller månaden före (payroll_settings.data.variablePeriod).
 create or replace function public.payroll_run_create(p_org uuid, p_period date, p_pay_date date) returns uuid
@@ -792,6 +825,7 @@ begin
     computed_by = auth.uid(),
     computed_by_name = coalesce(auth.jwt()->>'email', ''),
     computed_at = now(),
+    inputs_hash = public.payroll_inputs_hash(p_run),
     totals = (select jsonb_build_object(
                 'payslips', count(*), 'grossOre', sum(gross_ore), 'taxOre', sum(tax_ore), 'netOre', sum(net_ore),
                 'employerContributionOre', sum(employer_contribution_ore), 'vacationLiabilityOre', sum(vacation_liability_ore),
@@ -858,6 +892,17 @@ begin
   end if;
   if exists (select 1 from public.payslips where run_id = p_run and net_ore < 0) then
     raise exception 'Ett lönebesked har negativ nettolön; lägg avdraget som en fordran i stället.' using errcode = '22023';
+  end if;
+  -- Det frysta ska vara räknat på det som gäller nu: tid, frånvaro, avtal,
+  -- skatt och rättelser får inte ha ändrats efter beräkningen.
+  if r.inputs_hash is distinct from public.payroll_inputs_hash(p_run) then
+    raise exception 'Underlaget har ändrats efter beräkningen; räkna om.' using errcode = '22023';
+  end if;
+  -- Tidsperioden låses nu, så att de frysta lönebeskeden och den låsta
+  -- tiden är samma sak (en period som redan är låst lämnas).
+  if not exists (select 1 from public.time_locks l where l.org_id = r.org_id
+                  and l.period_start <= r.time_period_start and l.period_end >= r.time_period_end) then
+    perform public.time_lock_period(r.org_id, r.time_period_start, r.time_period_end, 'Lönekörning ' || to_char(r.period_start, 'YYYY-MM'));
   end if;
 
   for v_ps in select p.id, p.employee_id, p.net_ore from public.payslips p join public.employees e on e.id = p.employee_id
@@ -950,7 +995,8 @@ $$;
 -- förmånernas motkonto, skatt, netto och arbetsgivaravgifter ur
 -- lönebeskeden (kontona ur payroll_settings.data.accounts), och appens
 -- periodiseringar (semesterlöneskuld, tjänstepension) som balanserar för
--- sig. Låsta perioder vägras av journal_entries_check_lock. Tidsperioden låses.
+-- sig. Låsta perioder vägras av journal_entries_check_lock. (Tidsperioden
+-- låstes vid godkännandet.)
 create or replace function public.payroll_run_book(p_run uuid, p_accruals jsonb default '[]') returns uuid
   language plpgsql security definer set search_path = public
 as $$
@@ -1023,11 +1069,6 @@ begin
   select coalesce(sum(debit_ore), 0), coalesce(sum(credit_ore), 0) into v_debit, v_credit from public.journal_lines where entry_id = v_entry;
   if v_debit <> v_credit then
     raise exception 'Lönens verifikation balanserar inte: debet % öre, kredit % öre.', v_debit, v_credit using errcode = '23514';
-  end if;
-
-  if not exists (select 1 from public.time_locks l where l.org_id = r.org_id
-                  and l.period_start <= r.time_period_start and l.period_end >= r.time_period_end) then
-    perform public.time_lock_period(r.org_id, r.time_period_start, r.time_period_end, 'Lönekörning ' || to_char(r.period_start, 'YYYY-MM'));
   end if;
 
   update public.pay_runs set status = 'booked', journal_entry_id = v_entry, booked_at = now(),
