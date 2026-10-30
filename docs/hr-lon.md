@@ -429,9 +429,15 @@ Supabase.** Apply it after 0036 and 0038 (both still pending), then run
   standard register (`payroll_seed_org`, also from `create_organization`
   and on the first run), plus series `L` (running, from 1), the payroll
   accounts and a `payroll_settings` row.
-- `tax_tables_import(record, rows)` (service role only) stores a year's
-  tables in kronor and refuses unless at least ten golden vectors passed in
-  the script and pass again against the stored rows (`tax_table_lookup`).
+- The tax tables (kronor) come in three service-role calls, because a year
+  is about 48 000 rows: `tax_tables_import_begin(record)` refuses fewer
+  than ten golden vectors or one that failed in the script (and removes an
+  earlier unfinished import of the same file), `tax_tables_import_rows`
+  takes the rows in parts of 2 000, and `tax_tables_import_finish` checks
+  every vector against the stored rows (`tax_table_lookup`): it sets
+  `completed_at`, or removes the import with its rows and says why. Only
+  finished imports are visible or used; a finished one never changes.
+  `tax_tables_import(record, rows)` does all three in one call.
 - `payroll_run_create(org, month, pay_date)`: one run per month; the time
   period is the month or the month before (`payroll_settings.data
   .variablePeriod`). `payroll_run_store_checks` saves the checklist.
@@ -440,11 +446,18 @@ Supabase.** Apply it after 0036 and 0038 (both still pending), then run
   payslip whose net is not gross + tax-free − tax + net adjustments, whose
   lines do not sum to the totals, whose tax table is not the run's import,
   or whose pay item version is not in the register. It replaces the
-  computed payslips and records `computed_by`.
+  computed payslips and records `computed_by` and a fingerprint of the
+  underlag (`payroll_inputs_hash`: the time rows of the time period, a
+  year of absence, all versions and tax rows, the people's birth date,
+  agreement and end, pending corrections, the semesterår).
 - `payroll_run_approve`: owner/admin, never `computed_by` (also a check
   constraint), and only someone on `payroll_settings.data.approvers` when
-  that list is not empty; re-checks unapproved time and refuses a negative
-  net. Numbers the payslips in series L in name order and freezes them:
+  that list is not empty; re-checks unapproved time, refuses a negative net
+  and refuses "Underlaget har ändrats efter beräkningen; räkna om." when
+  the fingerprint differs (a time row approved, an absence or tax row
+  added, anything removed). Then it locks the time period with
+  `time_lock_period` (unless a lock already covers it), so the frozen
+  payslips and the locked time are the same. Numbers the payslips in series L in name order and freezes them:
   after approval only the PDF path and hash may be set, once
   (`payslip_attach_pdf`, path `{org}/{person}/payslip-{id}.pdf` in bucket
   `hr`); lines cannot change or be deleted.
@@ -457,12 +470,12 @@ Supabase.** Apply it after 0036 and 0038 (both still pending), then run
   net and contributions on the accounts in `payroll_settings.data
   .accounts`, plus the app's accruals, which must balance and may not
   touch tax, net or the contribution liability. A locked bookkeeping
-  period is refused by `journal_entries_check_lock`. Locks the time period
-  with `time_lock_period` unless a lock already covers it.
+  period is refused by `journal_entries_check_lock`.
 - `payroll_reconciliation(run)`: net pay from the payslips, from the lines
   (sum − benefits − tax), from the entry's net account and from the bank
   file's CtrlSum, plus tax and contributions against the entry; `ok` when
-  all agree. `payroll_run_close` refuses otherwise.
+  all agree. `payroll_run_close` refuses otherwise and stores the sums on
+  the run (`totals.reconciliation`), which the reports read.
 - `payroll_correction_add(payslip, lines, reason)`: owner/admin, only on a
   closed run; retro lines with pay items from the register, the original
   run's AGI period and `agi_refile = true` for phase 4. The next run picks
@@ -510,10 +523,12 @@ Lönerapporter under Ekonomi, Inställningar: lön.
   fixtures), approved as the owner after the demo "accountant" computed
   (L1–L3, PDFs stored and served with their hash), the bank file refused
   without a salary account, the account saved in Inställningar › Lön, the
-  file created (3 transfers, CtrlSum 62 742,00), booked (balanced, the
-  October time locked), reconciled four ways and closed; Rätta on Anna's
+  file created (3 transfers, CtrlSum 62 742,00), booked (balanced),
+  reconciled four ways and closed; Rätta on Anna's
   payslip carried into December as an engångsskatt line; Idag showed
-  December waiting for approval; `/min-tid` as Anna showed only her
+  December waiting for approval; after the review's fixes, December's
+  approval was refused until it was computed again, and approving it
+  locked November's time; `/min-tid` as Anna showed only her
   payslip, Bo's PDF gave 404.
 
 **Not verified, or not done**
@@ -521,9 +536,8 @@ Lönerapporter under Ekonomi, Inställningar: lön.
 - Nothing has run against Supabase: not 0039 itself, not supabase-js's
   RPC calls with these jsonb arguments, not the upload and
   `payslip_attach_pdf`, not `xpath` there (it is in standard Postgres),
-  not RLS through PostgREST. The tax table loader sends a year's ~48 000
-  rows in one RPC call; that may hit a request size limit and need
-  chunking inside one transaction.
+  not RLS through PostgREST, not the chunked tax table load (tested in
+  SQL with small parts only).
 - The bank file is not validated against a bank's validator or the XSD.
   Swedbank's five-digit clearing numbers go whole into the BBAN but as
   four digits into `MmbId`; confirm with the bank.
@@ -560,7 +574,10 @@ Lönerapporter under Ekonomi, Inställningar: lön.
   procentregeln semesterlön per day is the vacation percent of the
   earning year's semesterlönegrundande pay on approved payslips here,
   divided by the vacation days, so it is 0 until a year of payslips
-  exists (a warning). Semesterersättning is paid monthly only for SÄVA
+  exists (a warning); the earning year counts each line when it was
+  earned (månadslön in its month, everything else in the time period), so
+  March's OB paid in April belongs to the year ending 31 March.
+  Semesterersättning is paid monthly only for SÄVA
   under procentregeln. A negative retro line reduces the lump-sum base but
   gives no negative engångsskatt. Without an agreement, and for Byggavtalet
   on månadslön, the deduction rules are Tjänstemannaavtalet's (a warning).
