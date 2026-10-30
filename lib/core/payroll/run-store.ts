@@ -18,7 +18,7 @@ import { addMonths } from "./employment-clocks";
 import { DEFAULT_PAY_ITEMS } from "./pay-items.default";
 import { indexTaxTable, parseTaxTableCsv, checkGoldenVectors, type TaxTableIndex, type TaxTableRow, type GoldenFile } from "./tax-tables";
 import goldenJson from "./tax-tables.golden.json";
-import { computeRun, payItemsOn, type RunCheck, type RunInput, type RunPerson, type RunResult } from "./run";
+import { computeRun, earningYearHistory, payItemsOn, type RunCheck, type RunInput, type RunPerson, type RunResult } from "./run";
 import { accrualLines, payslipJournal, reconciliationSums } from "./ledger";
 import { salaryFile, salaryFileTotalOre } from "./bank-file";
 import { parsePayrollSettings, payrollSettingsSchema, runPeriods, type PayrollConfirmed, type PayrollDecision, type PayrollSettings } from "./settings";
@@ -686,7 +686,11 @@ export async function loadRunInput(run: PayRun, today: IsoDate): Promise<RunInpu
     const yearStart = `${run.payDate.slice(0, 4)}-${vacationModel}`;
     const currentYearFrom = run.payDate >= yearStart ? yearStart : `${year - 1}-${vacationModel}`;
     const paidByFrom = `${Number(currentYearFrom.slice(0, 4)) - 1}-${vacationModel}`;
-    const paidBy = own.filter((p) => p.document.periodStart >= paidByFrom && p.document.periodStart < currentYearFrom);
+    const paidBy = earningYearHistory(
+      own.map((p) => p.document),
+      paidByFrom,
+      currentYearFrom
+    );
     people.push({
       employee: e,
       versions: mine,
@@ -699,8 +703,8 @@ export async function loadRunInput(run: PayRun, today: IsoDate): Promise<RunInpu
         yearToDateCashGrossOre: thisYear.reduce((s, p) => s + p.document.totals.cashGrossOre, 0),
         yearToDateTaxOre: thisYear.reduce((s, p) => s + p.document.totals.taxOre, 0),
         vacationLiabilityOre: own.length ? own[own.length - 1].vacationLiabilityOre : 0,
-        vacationBasisPaidByYearOre: paidBy.reduce((s, p) => s + p.document.bases.vacationBasisOre, 0),
-        variablePayPaidByYearOre: paidBy.reduce((s, p) => s + p.document.lines.filter((l) => l.item.kind === "ob" || l.item.kind === "overtime").reduce((a, l) => a + l.amountOre, 0), 0),
+        vacationBasisPaidByYearOre: paidBy.vacationBasisOre,
+        variablePayPaidByYearOre: paidBy.variablePayOre,
       },
       corrections: corrections.filter((c) => c.employeeId === e.id && (c.targetRunId === null || c.targetRunId === run.id)).map((c) => ({ id: c.id, lines: c.lines, reason: c.reason })),
       clock: clocks.get(e.id) ?? null,

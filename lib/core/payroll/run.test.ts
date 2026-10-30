@@ -17,7 +17,7 @@ import type { EmploymentVersion, TaxVersion } from "../hr/schema";
 import type { TimeEntry } from "../hr/time";
 import { DEFAULT_PAY_ITEMS } from "./pay-items.default";
 import { indexTaxTable, parseTaxTableCsv } from "./tax-tables";
-import { computeRun, payItemsOn, type RunInput, type RunPerson } from "./run";
+import { computeRun, earningYearHistory, payItemsOn, type RunInput, type RunPerson } from "./run";
 import { payDateFor, payrollSettingsSchema, runPeriods, type PayrollSettings } from "./settings";
 import { accrualLines, payslipJournal, reconciliationSums, runJournal } from "./ledger";
 import { salaryFile, salaryFileTotalOre } from "./bank-file";
@@ -341,4 +341,25 @@ test("property: lines sum to totals, the journal balances and the four reconcili
     const sums = reconciliationSums({ docs: run.payslips.map((s) => s.document), journal: payslipJournal(run.payslips.map((s) => s.document), accounts), bankTotalOre: salaryFileTotalOre(bank.xml), netAccount: accounts.net });
     assert.equal(sums.ok, true, JSON.stringify(sums));
   }
+});
+
+test("history: OB and övertid count in the intjänandeår they were earned, not the one they were paid in", () => {
+  const bo = person({ id: "bo", name: "Bo", birthDate: "1988-02-02", agreement: "byggavtalet" });
+  bo.versions = [version({ employeeId: "bo", form: "tillsvidare", payForm: "hourly", hourlyRateOre: 20_000, startsOn: "2025-01-01", vacationRule: "procent", vacationPercent: 13 })];
+  bo.schedule = { kind: "weekly", hours: [8, 8, 8, 8, 8, 0, 0], holidaysOff: true };
+  // Evening work on Tuesday 10 March 2026 (OB), paid in April under the common model.
+  bo.timeEntries = [entry("bo", "2026-03-10", "18:00", "22:00")];
+  const april = computeRun(runFor("2026-04", {}, [bo])).payslips[0].document;
+  assert.equal(april.context?.timeFrom, "2026-03-01");
+  const ob = april.lines.filter((l) => l.item.kind === "ob").reduce((s, l) => s + l.amountOre, 0);
+  assert.ok(ob > 0);
+  // The intjänandeår 2025-04-01 – 2026-03-31 gets March's work; 2026/27 does not, though the pay date is in April.
+  assert.deepEqual(earningYearHistory([april], "2025-04-01", "2026-04-01"), { vacationBasisOre: april.bases.vacationBasisOre, variablePayOre: ob });
+  assert.deepEqual(earningYearHistory([april], "2026-04-01", "2027-04-01"), { vacationBasisOre: 0, variablePayOre: 0 });
+  // Månadslön belongs to its own month: April's salary is in 2026/27.
+  const anna = person({ id: "anna", name: "Anna", birthDate: "1990-05-05", agreement: "tjanstemannaavtalet" });
+  anna.versions = [version({ employeeId: "anna", form: "tillsvidare", payForm: "monthly", monthlySalaryOre: 3_000_000, startsOn: "2024-01-01", vacationRule: "sammalon" })];
+  const salary = computeRun(runFor("2026-04", {}, [anna])).payslips[0].document;
+  assert.equal(earningYearHistory([salary], "2026-04-01", "2027-04-01").vacationBasisOre, 3_000_000);
+  assert.equal(earningYearHistory([salary], "2025-04-01", "2026-04-01").vacationBasisOre, 0);
 });

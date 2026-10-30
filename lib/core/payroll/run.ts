@@ -133,6 +133,30 @@ export function payItemsOn(rows: readonly (PayItem & { validFrom: IsoDate })[], 
   return [...best.values()].map((r) => ({ code: r.code, name: r.name, kind: r.kind, version: r.version, flags: r.flags })).sort((a, b) => a.code.localeCompare(b.code));
 }
 
+/* ---------- history ---------- */
+
+/**
+ * Semesterlönegrundande pay and variable pay (OB, övertid) earned in an
+ * intjänandeår [from, to), from earlier payslips. Each line is dated by
+ * when it was earned, not by the payslip: månadslön in the salary month
+ * (periodStart), everything else in the period time and absence were read
+ * from (context.timeFrom, the month before under the common model), so
+ * March's OB paid in April belongs to the year that ends 31 March.
+ */
+export function earningYearHistory(docs: readonly PayslipDocument[], from: IsoDate, to: IsoDate): { vacationBasisOre: Ore; variablePayOre: Ore } {
+  let vacationBasisOre = 0;
+  let variablePayOre = 0;
+  for (const d of docs) {
+    for (const l of d.lines) {
+      const earnedOn = l.item.kind === "salary" ? d.periodStart : (d.context?.timeFrom ?? d.periodStart);
+      if (earnedOn < from || earnedOn >= to) continue;
+      if (l.item.flags.vacationPayBasis) vacationBasisOre += l.amountOre;
+      if (l.item.kind === "ob" || l.item.kind === "overtime") variablePayOre += l.amountOre;
+    }
+  }
+  return { vacationBasisOre, variablePayOre };
+}
+
 /* ---------- codes and agreements ---------- */
 
 type Group = "collective" | "salaried";
