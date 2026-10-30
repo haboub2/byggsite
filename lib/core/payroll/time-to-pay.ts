@@ -15,6 +15,7 @@ import { addDays, type IsoDate } from "../rules/index";
 import type { AgreementRules, DayKind, TimeBand } from "../rules/payroll";
 import { holidayName, isoWeekday, isWorkday } from "../../workdays";
 import type { PayLineInput } from "./payslip";
+import { scheduledHours, type WorkSchedule } from "./sick-pay";
 
 export type WorkBlock = {
   date: IsoDate;
@@ -42,13 +43,24 @@ function firstOfEachCode(bands: readonly TimeBand[]): TimeBand[] {
   return bands.filter((b) => !seen.has(b.code) && seen.add(b.code));
 }
 
+type CompiledBand = { band: TimeBand; from: number; to: number };
+const compiled = new WeakMap<readonly TimeBand[], CompiledBand[]>();
+
+/** The bands with their times parsed once per agreement, not once per worked minute. */
+function compile(bands: readonly TimeBand[]): CompiledBand[] {
+  let list = compiled.get(bands);
+  if (!list) {
+    list = bands.map((band) => ({ band, from: minutesOf(band.from), to: minutesOf(band.to) }));
+    compiled.set(bands, list);
+  }
+  return list;
+}
+
 /** The band (highest percent, or lowest divisor, if several match) for one minute, or null. */
 function bandAt(bands: readonly TimeBand[], kind: DayKind, minute: number): TimeBand | null {
   let best: TimeBand | null = null;
-  for (const b of bands) {
+  for (const { band: b, from, to } of compile(bands)) {
     if (!b.days.includes(kind)) continue;
-    const from = minutesOf(b.from);
-    const to = minutesOf(b.to);
     const inside = from < to ? minute >= from && minute < to : minute >= from || minute < to;
     const better = !best || (b.percent ?? 0) > (best.percent ?? 0) || (b.monthlyDivisor ?? Infinity) < (best.monthlyDivisor ?? Infinity);
     if (inside && better) best = b;
@@ -142,6 +154,8 @@ export type MonthlyPayInput = {
   monthlySalaryOre: Ore;
   /** Unpaid absence in the month (tjänstledighet); the salary is already the part-time salary if any. */
   absences: readonly UnpaidAbsence[];
+  /** The employee's schedule: working days are the scheduled ones. Without it, the national calendar (Mon–Fri, not helgdag). */
+  schedule?: WorkSchedule;
   codes: { salary: string; deduction: string };
   text?: string;
 };
@@ -153,6 +167,11 @@ export type MonthlyPayResult = { lines: PayLineInput[]; deductionOre: Ore };
  * `workdayMethodMaxDays` working days is deducted per working day
  * (månadslön / workdayDivisor) or per hour (månadslön / hourDivisor); a
  * longer spell per calendar day (månadslön × 12 / 365).
+ *
+ * Working days are the employee's scheduled days when `schedule` is given;
+ * a weekly schedule with fewer days than a full week also scales the
+ * divisor (Mon–Wed: månadslön / (3 × 21 / 5)). Without a schedule the
+ * national calendar is used, which is right only for full-time Mon–Fri.
  */
 export function monthlyPay(input: MonthlyPayInput): MonthlyPayResult {
   const { agreement, monthlySalaryOre } = input;
@@ -162,6 +181,8 @@ export function monthlyPay(input: MonthlyPayInput): MonthlyPayResult {
   ];
   if (!input.absences.length) return { lines, deductionOre: 0 };
   if (!d) throw new Error(`${agreement.name}: löneavdrag vid tjänstledighet för månadslön finns inte i regelboken.`);
+  const schedule = input.schedule;
+  const weekDays = schedule?.kind === "weekly" ? Math.min(d.fullWeekDays, schedule.hours.filter((h) => h > 0).length) || d.fullWeekDays : d.fullWeekDays;
   for (const a of input.absences) {
     const label = a.text ?? "Tjänstledig";
     if (a.hours !== undefined) {
@@ -174,10 +195,10 @@ export function monthlyPay(input: MonthlyPayInput): MonthlyPayResult {
     let calendarDays = 0;
     for (let day = a.from; day <= a.to; day = addDays(day, 1)) {
       calendarDays++;
-      if (isWorkday(day)) workdays++;
+      if (schedule ? scheduledHours(schedule, day) > 0 : isWorkday(day)) workdays++;
     }
     if (workdays <= d.workdayMethodMaxDays) {
-      const unit = fractionOf(monthlySalaryOre, 1, d.workdayDivisor);
+      const unit = fractionOf(monthlySalaryOre, d.fullWeekDays, d.workdayDivisor * weekDays);
       lines.push({ code: input.codes.deduction, text: `${label} ${a.from}–${a.to}, arbetsdagsavdrag`, quantity: workdays, unit: "dag", unitPriceOre: -unit, basisOre: monthlySalaryOre, ratePercent: null, amountOre: -unit * workdays, from: a.from, to: a.to });
     } else {
       const amount = fractionOf(monthlySalaryOre, d.calendarDayNumerator * calendarDays, d.calendarDayDenominator);

@@ -127,6 +127,8 @@ function measure(days: Set<number>, from: number, to: number, daysPerMonth: numb
   return total;
 }
 
+const MAX_STEP = 4;
+
 function clock(periods: readonly EmploymentPeriod[], asOf: IsoDate, limitDays: number, rules: PayrollRuleSet, sava: boolean): Clock {
   const years = rules.las.windowYears;
   const perMonth = sava ? rules.las.savaDaysPerMonth : null;
@@ -137,16 +139,35 @@ function clock(periods: readonly EmploymentPeriod[], asOf: IsoDate, limitDays: n
   const today = DAY(asOf);
   const daysInWindow = count(today);
 
+  // From one day to the next the count moves by at most MAX_STEP (a day
+  // added, a 28-day month completing to 30, a day leaving the window), so
+  // the search can jump over days that cannot cross the limit instead of
+  // rescanning the window for every day.
   let convertsOn: IsoDate | null = null;
   if (daysInWindow > limitDays) {
-    // Already passed: the first day it passed, walking back.
+    // Already passed: walk back to the first day it passed.
     let d = today;
-    while (d - 1 >= today - 6 * 366 && count(d - 1) > limitDays) d--;
+    let c = daysInWindow;
+    while (d > today - 6 * 366) {
+      const step = Math.max(1, Math.floor((c - limitDays - 1) / MAX_STEP));
+      const prev = count(d - step);
+      if (prev > limitDays) {
+        d -= step;
+        c = prev;
+      } else if (step === 1) break;
+      else c = limitDays + 1; // overshot: go back to single steps from here
+    }
     convertsOn = FROM_DAY(d);
   } else {
-    // The count only grows on a day that is itself counted.
-    for (let d = today + 1; d <= DAY(horizon); d++) {
-      if (days.has(d) && count(d) > limitDays) {
+    let d = today;
+    let c = daysInWindow;
+    const end = DAY(horizon);
+    while (d < end) {
+      d += Math.max(1, Math.floor((limitDays - c) / MAX_STEP));
+      c = count(Math.min(d, end));
+      if (c > limitDays) {
+        // Back up to the first day over the limit.
+        while (count(d - 1) > limitDays) d--;
         convertsOn = FROM_DAY(d);
         break;
       }

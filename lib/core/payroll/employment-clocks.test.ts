@@ -111,3 +111,37 @@ test("provanställning: six months, notice two weeks before, converts the day af
   assert.equal(employmentClocks([sava("2026-01-01", null)], "2026-06-01", rules).probation, null);
 });
 
+
+test("property: the projected conversion day is the first day whose own count passes the limit", () => {
+  // Deterministic random SÄVA patterns (short jobs, some months with three or more), checked
+  // against a day-by-day oracle: employmentClocks(periods, day).daysInWindow.
+  let seed = 7;
+  const random = () => ((seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648) / 2_147_483_648);
+  let converted = 0;
+  for (let n = 0; n < 12; n++) {
+    const jobs: EmploymentPeriod[] = [];
+    let d = "2025-01-01";
+    while (d < "2027-06-30") {
+      const length = 1 + Math.floor(random() * (random() < 0.2 ? 60 : 8));
+      jobs.push(sava(d, addDaysIso(d, length - 1)));
+      d = addDaysIso(d, length + Math.floor(random() * 6));
+    }
+    const asOf = "2025-09-30";
+    const fast = employmentClocks(jobs, asOf, rules).sava;
+    let oracle: string | null = null;
+    for (let day = addDaysIso(asOf, 1); day <= "2027-06-30"; day = addDaysIso(day, 1)) {
+      if (employmentClocks(jobs, day, rules).sava.daysInWindow > rules.las.savaLimitDays) {
+        oracle = day;
+        break;
+      }
+    }
+    assert.equal(fast.convertsOn, oracle, `pattern ${n}`);
+    if (oracle) converted++;
+    if (oracle) {
+      // From a later date the walk back finds the same day.
+      assert.equal(employmentClocks(jobs, addDaysIso(oracle, 40), rules).sava.convertsOn, oracle, `pattern ${n} backwards`);
+    }
+  }
+  // Most patterns must actually convert, or the test proves little.
+  assert.ok(converted >= 8, `only ${converted} of 12 patterns converted`);
+});

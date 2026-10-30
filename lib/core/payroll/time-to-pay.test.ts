@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { sumOre } from "../money";
 import { payrollRulesAt } from "../rules/payroll";
+import type { WorkSchedule } from "./sick-pay";
 import { atfAccrual, dayKind, hourlyPay, monthlyOvertime, monthlyPay } from "./time-to-pay";
 
 const rules = payrollRulesAt("2026-04-25");
@@ -87,6 +88,16 @@ test("monthly salary: arbetsdagsavdrag 1/21 up to five days, kalenderdagsavdrag 
   assert.equal(r.deductionOre, 350_000 + 1_208_219 + 63_000);
   assert.equal(sumOre(r.lines.map((l) => l.amountOre)), 3_675_000 - r.deductionOre);
   assert.throws(() => monthlyPay({ agreement: bygg, monthlySalaryOre: 3_500_000, codes: { salary: "1011", deduction: "1151" }, absences: [{ from: "2026-03-02", to: "2026-03-02" }] }), /finns inte i regelboken/);
+});
+
+test("a part-timer on Mon–Wed: only scheduled days count, at månadslön / (3 × 21 / 5)", () => {
+  const monWed: WorkSchedule = { kind: "weekly", hours: [8, 8, 8, 0, 0, 0, 0], holidaysOff: true };
+  // Absent Mon 2 – Fri 6 March: three scheduled days. 21 000 × 5 / 63 = 1 666,67 kr a day.
+  const r = monthlyPay({ agreement: tjm, monthlySalaryOre: 2_100_000, schedule: monWed, codes: { salary: "1010", deduction: "1150" }, absences: [{ from: "2026-03-02", to: "2026-03-06" }] });
+  assert.deepEqual(r.lines.slice(1).map((l) => [l.quantity, l.unitPriceOre, l.amountOre]), [[3, -166_667, -500_001]]);
+  // Without a schedule the calendar counts five days at 1/21 (only right for full time).
+  const calendar = monthlyPay({ agreement: tjm, monthlySalaryOre: 2_100_000, codes: { salary: "1010", deduction: "1150" }, absences: [{ from: "2026-03-02", to: "2026-03-06" }] });
+  assert.deepEqual(calendar.lines.slice(1).map((l) => [l.quantity, l.amountOre]), [[5, -500_000]]);
 });
 
 test("arbetstidsförkortning accrues per day: Byggavtalet 40 h a year, Tjänstemannaavtalet 6 days from April 2026", () => {

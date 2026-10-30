@@ -94,6 +94,8 @@ export type AgreementRules = {
     /** Up to this many working days: arbetsdagsavdrag (månadslön / workdayDivisor per day). */
     workdayMethodMaxDays: number;
     workdayDivisor: number;
+    /** A part-timer working fewer days a week: the divisor is scaled by days worked / fullWeekDays. */
+    fullWeekDays: number;
     /** Part of a day: månadslön / hourDivisor per hour. */
     hourDivisor: number;
     /** Longer: kalenderdagsavdrag, månadslön × 12 / 365 per calendar day. */
@@ -205,6 +207,12 @@ export type PayrollRuleSet = {
     maxSavedYears: number;
     /** Default semesterår start, MM-DD (3 §). */
     yearStartMonthDay: string;
+    /**
+     * Which intjänandeår pays for a semesterår. The law (3 §): the year
+     * before ("previous-year"). An agreement may let the days be earned and
+     * taken in the same year ("same-year").
+     */
+    earningModel: "previous-year" | "same-year";
     /** Sick days that count as semesterlönegrundande per intjänandeår (17 §). */
     sickCountedDays: number;
     /** Föräldraledighet days that count, and for a single parent (17 a §). */
@@ -477,8 +485,9 @@ const TJANSTEMANNAAVTALET: AgreementRules = {
   obOnOvertime: false,
   // Arbetstidsförkortning: 5 days for 2025-04-01–2026-03-31, 6 from 2026-04-01.
   atf: { hoursPerYear: null, daysPerYear: 5 },
-  // § 10 mom 2:2 and mom 3:2.
-  absenceDeduction: { workdayMethodMaxDays: 5, workdayDivisor: 21, hourDivisor: 175, calendarDayNumerator: 12, calendarDayDenominator: 365 },
+  // § 10 mom 2:2 (1/21 per day, månadslön / (days a week × 21 / 5) for
+  // part-timers on fewer days, × 12/365 beyond five days) and mom 3:2 (1/175 per hour).
+  absenceDeduction: { workdayMethodMaxDays: 5, workdayDivisor: 21, fullWeekDays: 5, hourDivisor: 175, calendarDayNumerator: 12, calendarDayDenominator: 365 },
   pensionScheme: "itp1",
   source: { url: TJM_0031, checked: CHECKED },
 };
@@ -560,6 +569,7 @@ const SET_2026: PayrollRuleSet = {
     minDaysTakenPerYear: 20,
     maxSavedYears: 5,
     yearStartMonthDay: "04-01",
+    earningModel: "previous-year",
     sickCountedDays: 180,
     parentalCountedDays: 120,
     parentalCountedDaysSingle: 180,
