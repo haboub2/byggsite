@@ -47,6 +47,16 @@ export function payslipJournal(docs: readonly PayslipDocument[], accounts: Payro
   return sumByAccount(lines, (a) => texts.get(a) ?? "Lön");
 }
 
+/**
+ * Arbetsgivaravgifter on a semesterlöneskuld (or its change) at the
+ * person's effective rate on the payslip: the payslip's avgift over its
+ * base, so the young people's cap, which blends two rates, is respected.
+ */
+export function contributionOnLiability(doc: PayslipDocument, liabilityOre: Ore): Ore {
+  const c = doc.contributions;
+  return c.baseOre > 0 ? fractionOf(liabilityOre, c.amountOre, c.baseOre) : 0;
+}
+
 /** Semesterlöneskuld change with its avgifter, and the pension accrual, summed per account. */
 export function accrualLines(slips: readonly LedgerPayslip[], accounts: PayrollAccounts): JournalLine[] {
   const raw: JournalLine[] = [];
@@ -58,10 +68,7 @@ export function accrualLines(slips: readonly LedgerPayslip[], accounts: PayrollA
   for (const s of slips) {
     const cost = s.group === "collective" ? accounts.vacationCostCollective : accounts.vacationCostSalaried;
     post(cost, accounts.vacationLiability, s.vacationLiabilityChangeOre, "Förändring semesterlöneskuld");
-    // The avgifter on the change at the person's effective rate this month (the young people's cap blends two rates).
-    const c = s.document.contributions;
-    const onChange = c.baseOre > 0 ? fractionOf(s.vacationLiabilityChangeOre, c.amountOre, c.baseOre) : 0;
-    post(accounts.vacationContributionCost, accounts.vacationContributionLiability, onChange, "Sociala avgifter på semesterlöneskuld");
+    post(accounts.vacationContributionCost, accounts.vacationContributionLiability, contributionOnLiability(s.document, s.vacationLiabilityChangeOre), "Sociala avgifter på semesterlöneskuld");
     post(accounts.pensionCost, accounts.pensionLiability, s.pensionPremiumOre, "Tjänstepension, beräknad premie");
   }
   const texts = new Map(raw.map((l) => [l.account, l.text]));

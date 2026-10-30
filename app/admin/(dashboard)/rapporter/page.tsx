@@ -9,7 +9,8 @@ import { todayIso } from "@/lib/quotes/schema";
 import { listEmployees } from "@/lib/core/hr/store";
 import { timeProjects } from "@/lib/core/hr/time-store";
 import { listLabourCosts } from "@/lib/core/projects/costs";
-import { getPayrollSettings, listApprovedPayslips, listRuns, reconcileRun, RUN_STATUS_LABEL, type StoredPayslip } from "@/lib/core/payroll/run-store";
+import { getPayrollSettings, latestPayslipPerPerson, listRuns, RUN_STATUS_LABEL } from "@/lib/core/payroll/run-store";
+import { contributionOnLiability } from "@/lib/core/payroll/ledger";
 import { monthLabel } from "@/lib/pdf/PayslipPdf";
 
 export const metadata: Metadata = { title: "Lönerapporter" };
@@ -27,23 +28,22 @@ export default async function PayrollReportsPage() {
   if (!check.ok) redirect("/admin/login");
   const today = todayIso();
   const from = addDays(today, -365);
-  const [runs, slips, employees, costs, projects, { settings }] = await Promise.all([
+  const [runs, latest, employees, costs, projects, { settings }] = await Promise.all([
     listRuns(),
-    listApprovedPayslips({ from: addDays(today, -800), to: addDays(today, 60) }),
+    latestPayslipPerPerson({ from: addDays(today, -800), to: addDays(today, 60) }),
     listEmployees(),
     listLabourCosts({ from, to: today }).catch(() => []),
     timeProjects().catch(() => []),
     getPayrollSettings(),
   ]);
-  const recons = await Promise.all(runs.filter((r) => r.status !== "draft").slice(0, 12).map(async (r) => ({ run: r, rec: await reconcileRun(r) })));
+  // Closed runs carry the reconciliation they were closed with; open ones are not reconciled yet.
+  const recons = runs.filter((r) => r.status !== "draft").slice(0, 12);
 
   // Semesterlöneskuld: each person's liability after their latest approved payslip.
-  const latest = new Map<string, StoredPayslip & { run: { payDate: string } }>();
-  for (const s of [...slips].sort((a, b) => a.run.payDate.localeCompare(b.run.payDate))) latest.set(s.employeeId, s);
   const name = new Map(employees.map((e) => [e.id, e.name]));
   const liabilities = [...latest.values()].filter((s) => s.vacationLiabilityOre > 0).sort((a, b) => (name.get(a.employeeId) ?? "").localeCompare(name.get(b.employeeId) ?? "", "sv"));
   const liabilityTotal = liabilities.reduce((s, x) => s + x.vacationLiabilityOre, 0);
-  const contributionsOnLiability = liabilities.reduce((s, x) => s + (x.document.contributions.baseOre > 0 ? Math.round((x.vacationLiabilityOre * x.document.contributions.amountOre) / x.document.contributions.baseOre) : 0), 0);
+  const contributionsOnLiability = liabilities.reduce((s, x) => s + contributionOnLiability(x.document, x.vacationLiabilityOre), 0);
 
   // Labour cost per project and month (project_costs from approved time).
   const projectName = new Map(projects.map((p) => [p.id, p.title]));
@@ -212,18 +212,21 @@ export default async function PayrollReportsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {recons.map(({ run, rec }) => (
-                      <tr key={run.id}>
-                        <td>
-                          <Link href={`/admin/lon/${run.id}`}>{monthLabel(run.periodStart)}</Link>
-                        </td>
-                        <td className="tg-num">{kr(rec.payslipsOre)}</td>
-                        <td className="tg-num">{kr(rec.linesOre)}</td>
-                        <td className="tg-num">{rec.journalOre === null ? "–" : kr(rec.journalOre)}</td>
-                        <td className="tg-num">{rec.bankOre === null ? "–" : kr(rec.bankOre)}</td>
-                        <td>{rec.ok ? "Ja" : run.status === "closed" ? "Nej" : "Inte än"}</td>
-                      </tr>
-                    ))}
+                    {recons.map((run) => {
+                      const rec = run.totals.reconciliation;
+                      return (
+                        <tr key={run.id}>
+                          <td>
+                            <Link href={`/admin/lon/${run.id}`}>{monthLabel(run.periodStart)}</Link>
+                          </td>
+                          <td className="tg-num">{kr(rec?.payslipsOre ?? run.totals.netOre)}</td>
+                          <td className="tg-num">{rec ? kr(rec.linesOre) : "–"}</td>
+                          <td className="tg-num">{rec?.journalOre === null || !rec ? "–" : kr(rec.journalOre)}</td>
+                          <td className="tg-num">{rec?.bankOre === null || !rec ? "–" : kr(rec.bankOre)}</td>
+                          <td>{rec ? (rec.ok ? "Ja" : "Nej") : `Inte stängd (${RUN_STATUS_LABEL[run.status].toLowerCase()})`}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -565,6 +565,10 @@ begin
   if (select status from pay_runs where id = (select v from prov where k = 'nov')) <> 'closed' then
     raise exception 'Körningen stängdes inte';
   end if;
+  if (select totals->'reconciliation' from pay_runs where id = (select v from prov where k = 'nov'))
+     <> '{"ok": true, "bankOre": 3815000, "taxOre": 1185000, "linesOre": 3815000, "journalOre": 3815000, "payslipsOre": 3815000, "journalTaxOre": 1185000, "contributionsOre": 1571000, "journalContributionsOre": 1571000}'::jsonb then
+    raise exception 'Avstämningen sparades inte på körningen: %', (select totals->'reconciliation' from pay_runs where id = (select v from prov where k = 'nov'));
+  end if;
   begin
     perform payroll_correction_add((select id from payslips where employee_id = (select v from prov where k = 'erik')),
       '[{"code":"9999","text":"Fel","amountOre":100}]', 'Fel löneart');

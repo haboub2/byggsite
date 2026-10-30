@@ -58,6 +58,8 @@ export type RunTotals = {
   vacationLiabilityOre?: number;
   pensionPremiumOre?: number;
   accrualsOre?: number;
+  /** payroll_reconciliation() as it stood when the run was closed. */
+  reconciliation?: Reconciliation;
 };
 
 export type PayRun = {
@@ -105,6 +107,9 @@ export type StoredPayslip = {
   approvedAt: string | null;
   createdAt: string;
 };
+
+/** A payslip without its document, for lists. */
+export type PayslipSummary = Omit<StoredPayslip, "document">;
 
 export type Correction = {
   id: string;
@@ -206,14 +211,14 @@ type PayslipRow = {
   approved_at: string | null;
   created_at: string;
 };
-const PAYSLIP_COLUMNS =
-  "id, run_id, employee_id, number, document, gross_ore, tax_ore, net_ore, employer_contribution_ore, contribution_rate, vacation_liability_ore, pension_premium_ore, pdf_path, pdf_sha256, approved_at, created_at";
-const payslipFromRow = (r: PayslipRow): StoredPayslip => ({
+const SUMMARY_COLUMNS =
+  "id, run_id, employee_id, number, gross_ore, tax_ore, net_ore, employer_contribution_ore, contribution_rate, vacation_liability_ore, pension_premium_ore, pdf_path, pdf_sha256, approved_at, created_at";
+const PAYSLIP_COLUMNS = `${SUMMARY_COLUMNS}, document`;
+const summaryFromRow = (r: Omit<PayslipRow, "document">): PayslipSummary => ({
   id: r.id,
   runId: r.run_id,
   employeeId: r.employee_id,
   number: r.number,
-  document: r.document,
   grossOre: Number(r.gross_ore),
   taxOre: Number(r.tax_ore),
   netOre: Number(r.net_ore),
@@ -226,6 +231,7 @@ const payslipFromRow = (r: PayslipRow): StoredPayslip => ({
   approvedAt: r.approved_at,
   createdAt: r.created_at,
 });
+const payslipFromRow = (r: PayslipRow): StoredPayslip => ({ ...summaryFromRow(r), document: r.document });
 
 type CorrectionRow = {
   id: string;
@@ -531,6 +537,39 @@ export async function listApprovedPayslips(range: { from: IsoDate; to: IsoDate }
     slips = (data as PayslipRow[]).map(payslipFromRow);
   }
   return slips.map((s) => ({ ...s, run: byId.get(s.runId) as PayRun }));
+}
+
+/** Approved payslips with pay dates in [from, to], without their documents (lists and picking the ones to open). */
+export async function listApprovedPayslipSummaries(range: { from: IsoDate; to: IsoDate }): Promise<(PayslipSummary & { run: PayRun })[]> {
+  const runs = (await listRuns()).filter((r) => r.approvedAt && r.payDate >= range.from && r.payDate <= range.to);
+  if (!runs.length) return [];
+  const byId = new Map(runs.map((r) => [r.id, r]));
+  let rows: PayslipSummary[];
+  if (isDemo()) rows = demo().payslips.filter((p) => byId.has(p.run_id)).map(summaryFromRow);
+  else {
+    const supabase = await getDb();
+    const { data, error } = await supabase.from("payslips").select(SUMMARY_COLUMNS).in("run_id", [...byId.keys()]).limit(10_000);
+    if (error) fail("Kunde inte hämta lönebeskeden", error);
+    rows = (data as Omit<PayslipRow, "document">[]).map(summaryFromRow);
+  }
+  return rows.map((s) => ({ ...s, run: byId.get(s.runId) as PayRun }));
+}
+
+/** Each person's latest approved payslip with a pay date in the range (a run's diff, the semesterlöneskuld): summaries first, then only those documents. */
+export async function latestPayslipPerPerson(range: { from: IsoDate; to: IsoDate }, excludeRunId?: string): Promise<Map<string, StoredPayslip>> {
+  const latest = new Map<string, PayslipSummary & { run: PayRun }>();
+  for (const s of (await listApprovedPayslipSummaries(range)).filter((x) => x.runId !== excludeRunId).sort((a, b) => a.run.payDate.localeCompare(b.run.payDate))) latest.set(s.employeeId, s);
+  const docs = await getPayslips([...latest.values()].map((s) => s.id));
+  return new Map(docs.map((d) => [d.employeeId, d]));
+}
+
+export async function getPayslips(ids: readonly string[]): Promise<StoredPayslip[]> {
+  if (!ids.length) return [];
+  if (isDemo()) return demo().payslips.filter((p) => ids.includes(p.id)).map(payslipFromRow);
+  const supabase = await getDb();
+  const { data, error } = await supabase.from("payslips").select(PAYSLIP_COLUMNS).in("id", [...ids]);
+  if (error) fail("Kunde inte hämta lönebeskeden", error);
+  return (data as PayslipRow[]).map(payslipFromRow);
 }
 
 export async function listCorrections(q: { employeeId?: string } = {}): Promise<Correction[]> {
@@ -971,7 +1010,7 @@ export async function closeRun(runId: string): Promise<void> {
     if (r.status !== "booked") throw new Error("Körningen stängs efter bokföringen.");
     const rec = await reconcileRun(runFromRow(r));
     if (!rec.ok) throw new Error(`Avstämningen går inte ihop: lönebesked ${rec.payslipsOre}, rader ${rec.linesOre}, verifikation ${rec.journalOre}, bankfil ${rec.bankOre} (öre).`);
-    Object.assign(r, { status: "closed", closed_at: new Date().toISOString() });
+    Object.assign(r, { status: "closed", closed_at: new Date().toISOString(), totals: { ...r.totals, reconciliation: rec } });
     return;
   }
   const supabase = await getDb();

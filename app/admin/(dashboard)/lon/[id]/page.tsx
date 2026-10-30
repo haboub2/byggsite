@@ -10,7 +10,7 @@ import { formatWhen } from "@/lib/admin-format";
 import {
   getPayrollSettings,
   getRun,
-  listApprovedPayslips,
+  latestPayslipPerPerson,
   listCorrections,
   listPayItems,
   listRunPayslips,
@@ -64,20 +64,19 @@ export default async function PayRunPage({ params, searchParams }: { params: Pro
   const run = await getRun(id);
   if (!run) notFound();
   const canApprove = hasAccess(check.role, "admin");
-  const [slips, earlier, { settings }, journal, corrections, items] = await Promise.all([
+  const [slips, previous, { settings }, journal, corrections, items] = await Promise.all([
     listRunPayslips(id),
-    listApprovedPayslips({ from: addDays(run.payDate, -400), to: addDays(run.payDate, -1) }),
+    latestPayslipPerPerson({ from: addDays(run.payDate, -400), to: addDays(run.payDate, -1) }, run.id),
     getPayrollSettings(),
     runJournalEntry(run),
     listCorrections(),
     listPayItems(),
   ]);
-  const reconciliation = run.status === "draft" ? null : await reconcileRun(run);
+  // A closed run carries the reconciliation it was closed with.
+  const reconciliation = run.status === "draft" ? null : (run.totals.reconciliation ?? (await reconcileRun(run)));
   const step = currentStep(run);
   const due = agiDueDate(run.agiPeriod);
   const isComputer = !!run.computedBy && run.computedBy === check.userId;
-  const previous = new Map<string, StoredPayslip>();
-  for (const p of earlier.filter((x) => x.runId !== run.id).sort((a, b) => a.run.payDate.localeCompare(b.run.payDate))) previous.set(p.employeeId, p);
   const blocks = run.checks.filter((c) => c.level === "block");
   const preview =
     run.status === "paid" || run.status === "approved"

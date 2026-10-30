@@ -1248,7 +1248,13 @@ begin
       c.payslips_ore, c.lines_ore, c.journal_ore, c.bank_ore, c.tax_ore, c.journal_tax_ore, c.contributions_ore, c.journal_contributions_ore
       using errcode = '23514';
   end if;
-  update public.pay_runs set status = 'closed', closed_at = now() where id = p_run;
+  -- Summorna sparas på körningen, så att rapporterna läser dem utan att räkna om.
+  update public.pay_runs set status = 'closed', closed_at = now(),
+         totals = totals || jsonb_build_object('reconciliation', jsonb_build_object(
+           'payslipsOre', c.payslips_ore, 'linesOre', c.lines_ore, 'journalOre', c.journal_ore, 'bankOre', c.bank_ore,
+           'taxOre', c.tax_ore, 'journalTaxOre', c.journal_tax_ore, 'contributionsOre', c.contributions_ore,
+           'journalContributionsOre', c.journal_contributions_ore, 'ok', c.ok))
+   where id = p_run;
   perform public.payroll_log(r.org_id, p_run, 'payroll.run_closed', jsonb_build_object('netOre', c.payslips_ore));
 end;
 $$;
