@@ -406,6 +406,23 @@ Supabase.** Apply it after 0036 and 0038 (both still pending), then run
 `supabase/tests/0039_payroll.sql` in the SQL editor. `0021_rls.sql` and
 `0033_registration.sql` now expect three number series (F, V, L).
 
+**The hosted project has the pre-review 0039 (repair: `0041_payroll_repair.sql`).**
+0039 was applied to Supabase in its version from before the review
+(e66a1d6), then 0040 and 0041_authorities_fixes. The review's changes to
+0039 (70fec99..a76fe6f) were therefore missing there: no
+`tax_table_imports.completed_at`, no `pay_runs.inputs_hash`, no
+`tax_tables_import_begin/_rows/_finish` or `payroll_inputs_hash()`, the old
+`forbid_change` triggers on the tax tables, and the old run functions.
+`supabase/migrations/0041_payroll_repair.sql` brings such a database up to
+the reviewed 0039 without dropping anything (existing imports get
+`completed_at = imported_at`). **Apply it on the hosted project after
+`0041_authorities_fixes.sql`.** Where the reviewed 0039 was applied (every
+new database, `supabase/tests/local/run.sh`) it changes nothing: a schema
+dump is the same with and without it. **Applied on the hosted project
+2026-10-30**; `pay_runs.inputs_hash`, `tax_table_imports.completed_at`,
+`payroll_inputs_hash()` and `tax_tables_import_finish()` are there and the
+old `forbid_change` triggers are gone.
+
 **Where things are**
 
 | What | File |
