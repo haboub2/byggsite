@@ -35,8 +35,8 @@ test("månadslön without reported time: the contract's hours on workdays, less 
   assert.equal(c.from, "2026-01-01");
   assert.equal(c.months.length, 10);
   const oct = c.months[9];
-  // 22 workdays in October 2026, two sick: 20 × 8 h.
-  assert.deepEqual([oct.month, oct.employedDays, oct.workedHours, oct.hoursFromSchedule, oct.absenceDays.sjuk, oct.payOre], ["2026-10", 31, 160, true, 2, 3_176_923]);
+  // 22 workdays in October 2026, two sick: 20 × 8 h worked, 16 h frånvaro.
+  assert.deepEqual([oct.month, oct.employedDays, oct.workedHours, oct.absenceHours, oct.hoursFromSchedule, oct.absenceDays.sjuk, oct.payOre], ["2026-10", 31, 160, 16, true, 2, 3_176_923]);
   assert.equal(c.employments[0].form, "Tillsvidareanställning");
 });
 
@@ -53,9 +53,17 @@ test("timlön: approved time per month, övertid apart, pay counted in the month
   assert.equal(c.from, "2025-10-31");
   const sep = c.months.find((m) => m.month === "2026-09");
   assert.ok(sep);
-  assert.deepEqual([sep.workedHours, sep.overtimeHours, sep.hoursFromSchedule, sep.payOre], [24, 2, false, 450_000]);
+  // 22 h worked (the 2 h övertid apart, the submitted row not counted).
+  assert.deepEqual([sep.workedHours, sep.overtimeHours, sep.hoursFromSchedule, sep.payOre], [22, 2, false, 450_000]);
   assert.equal(c.months.find((m) => m.month === "2026-10")?.payOre, 0);
-  assert.deepEqual(c.totals, { workedHours: 24, overtimeHours: 2, payOre: 450_000 });
+  assert.deepEqual(c.totals, { workedHours: 22, absenceHours: 0, overtimeHours: 2, payOre: 450_000 });
+});
+
+test("semester counts as worked time, not frånvaro", () => {
+  const leave: Absence = { id: "l", employeeId: "x", kind: "semester", from: "2026-10-05", to: "2026-10-09", extent: 1, certificateReceivedOn: null, sickPeriodId: null, note: "", approvedAt: null, createdAt: "" };
+  const c = certificateContent({ ...base, versions: [version({})], timeEntries: [], absences: [leave], payslips: [], to: "2026-10-31" });
+  const oct = c.months[c.months.length - 1];
+  assert.deepEqual([oct.workedHours, oct.absenceHours, oct.absenceDays.semester], [176, 0, 5]);
 });
 
 test("a board assignment gives no certificate", () => {

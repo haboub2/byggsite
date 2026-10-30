@@ -44,20 +44,17 @@ export const AUTHORITY_RULES: AuthorityRules = {
   },
   fora: {
     reportByMonthsAfter: 1,
-    source: {
-      url: "https://www.fora.se/foretag/rapportera-loner-och-premier/sa-funkar-rapporteringen-till-fora/",
-      checked: CHECKED,
-      unverified: true,
-      note: "Phase 0 saw the deadline only in a search excerpt; see the Fora file rules in agi-format.ts for what phase 4 found.",
-    },
+    // "senast sista dagen i den månad som kommer efter utbetalningsmånaden"; phase 0 had it from a search excerpt only.
+    source: { url: "https://www.fora.se/foretag/rapportera-loner-och-premier/sa-funkar-rapporteringen-till-fora/", checked: CHECKED },
   },
   certificate: {
     months: 12,
+    // Form SO 11 (2021-06-01): at least the last twelve months worked, per calendar month; IAF-fastställd, 47 § lag (1997:238).
     source: {
-      url: "https://www.arbetsgivarintyg.nu/",
+      url: "https://www.sverigesakassor.se/media/coxpqhuz/blankett-arbetsgivarintyg-formular.pdf",
       checked: CHECKED,
       unverified: true,
-      note: "The form's own fields were not read from a primary source; the PDF lists employment, hours and pay per month and the reason for leaving.",
+      note: "The PDF follows SO 11's content (employment, hours, frånvaro and övertid per month, pay, reason for leaving) but is not the form itself; the a-kassa may ask for SO 11 or arbetsgivarintyg.nu. Extending the months back over long absence is not done.",
     },
   },
 };

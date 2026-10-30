@@ -8,12 +8,16 @@
  * - The employment: each contract with its form, start and end, title,
  *   pay form and the latest pay and working time.
  * - Per calendar month for the last `months` (AUTHORITY_RULES.certificate)
- *   up to the last day the certificate covers: hours worked (approved time;
- *   for månadslön without reported time, the contract's weekly hours on the
- *   workdays employed less whole-day absence), övertid and mertid hours,
- *   absence days per kind, and the pay earned in the month from the
- *   approved payslips (månadslön in its month, everything else in the month
- *   the work was done, as the earning year of section 5 counts it).
+ *   up to the last day the certificate covers, as form SO 11 (Sveriges
+ *   a-kassor, 2021-06-01) asks: hours worked without övertid (approved
+ *   time; for månadslön without reported time, the contract's hours on the
+ *   workdays employed, where paid leave such as semester counts as worked),
+ *   frånvaro in hours (absence with a pay deduction: sjuk, VAB,
+ *   föräldraledighet, tjänstledighet; sjuk even when sjuklön is paid),
+ *   övertid, absence days per kind, and the pay earned in the month from
+ *   the approved payslips (månadslön in its month, everything else in the
+ *   month the work was done, as the earning year of section 5 counts it)
+ *   for the form's Komplettering.
  * - Why the employment ended, which the owner chooses.
  */
 
@@ -59,7 +63,10 @@ export type CertificateMonth = {
   month: string;
   /** Days employed in the month. */
   employedDays: number;
+  /** Worked hours without övertid; paid leave counts as worked. */
   workedHours: number;
+  /** Hours of absence with a pay deduction (SO 11 "frånvaro"). */
+  absenceHours: number;
   overtimeHours: number;
   /** Hours from the contract instead of reported time (månadslön without time reporting). */
   hoursFromSchedule: boolean;
@@ -74,7 +81,7 @@ export type CertificateContent = {
   to: IsoDate;
   employments: CertificateEmployment[];
   months: CertificateMonth[];
-  totals: { workedHours: number; overtimeHours: number; payOre: Ore };
+  totals: { workedHours: number; absenceHours: number; overtimeHours: number; payOre: Ore };
   reason: LeavingReason;
   reasonText: string;
   madeOn: IsoDate;
@@ -95,6 +102,8 @@ export type CertificateInput = {
 };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+/** Absence that SO 11 counts as frånvaro; semester, permission and kompledighet are paid and count as worked. */
+const DEDUCTED: readonly AbsenceKind[] = ["sjuk", "vab", "foraldraledig", "tjanstledig"];
 const max = (a: IsoDate, b: IsoDate) => (a > b ? a : b);
 const min = (a: IsoDate, b: IsoDate) => (a < b ? a : b);
 
@@ -148,6 +157,7 @@ export function certificateContent(input: CertificateInput): CertificateContent 
     const b = min(monthEnd(m), input.to);
     let employedDays = 0;
     let scheduleHours = 0;
+    let absenceHours = 0;
     const absenceDays: Partial<Record<AbsenceKind, number>> = {};
     for (const d of days(a, b)) {
       const v = employedOn(d);
@@ -155,19 +165,19 @@ export function certificateContent(input: CertificateInput): CertificateContent 
       employedDays++;
       const absent = input.absences.filter((x) => x.from <= d && (x.to ?? input.to) >= d);
       for (const x of absent) absenceDays[x.kind] = round2((absenceDays[x.kind] ?? 0) + x.extent);
-      if (v.payForm === "monthly" && isWorkday(d)) {
-        const daily = (v.weeklyHours ?? (40 * v.workingTimePercent) / 100) / 5;
-        const away = Math.min(1, absent.reduce((s, x) => s + x.extent, 0));
-        scheduleHours += daily * (1 - away);
-      }
+      if (!isWorkday(d)) continue;
+      const daily = (v.weeklyHours ?? (v.payForm === "monthly" ? (40 * v.workingTimePercent) / 100 : 0)) / 5;
+      const away = Math.min(1, absent.filter((x) => DEDUCTED.includes(x.kind)).reduce((s, x) => s + x.extent, 0));
+      absenceHours += daily * away;
+      if (v.payForm === "monthly") scheduleHours += daily * (1 - away);
     }
     const rows = approved.filter((e) => e.workDate >= a && e.workDate <= b);
     const reported = rows.length > 0;
-    const workedHours = round2(reported ? rows.reduce((s, e) => s + e.hours, 0) : scheduleHours);
+    const workedHours = round2(reported ? rows.filter((e) => e.kind !== "overtime").reduce((s, e) => s + e.hours, 0) : scheduleHours);
     const overtimeHours = round2(rows.filter((e) => e.kind === "overtime").reduce((s, e) => s + e.hours, 0));
     const payOre = sumOre(input.payslips.flatMap((doc) => doc.lines.filter((l) => l.item.flags.taxable && l.item.kind !== "benefit" && lineMonth(doc, l) === m).map((l) => l.amountOre)));
     if (!employedDays && !payOre) continue;
-    out.push({ month: m, employedDays, workedHours, overtimeHours, hoursFromSchedule: !reported && scheduleHours > 0, absenceDays, payOre });
+    out.push({ month: m, employedDays, workedHours, absenceHours: round2(absenceHours), overtimeHours, hoursFromSchedule: !reported && scheduleHours > 0, absenceDays, payOre });
   }
 
   return {
@@ -179,6 +189,7 @@ export function certificateContent(input: CertificateInput): CertificateContent 
     months: out,
     totals: {
       workedHours: round2(out.reduce((s, x) => s + x.workedHours, 0)),
+      absenceHours: round2(out.reduce((s, x) => s + x.absenceHours, 0)),
       overtimeHours: round2(out.reduce((s, x) => s + x.overtimeHours, 0)),
       payOre: sumOre(out.map((x) => x.payOre)),
     },
