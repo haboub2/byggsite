@@ -417,7 +417,10 @@ the reviewed 0039 without dropping anything (existing imports get
 `completed_at = imported_at`). **Apply it on the hosted project after
 `0041_authorities_fixes.sql`.** Where the reviewed 0039 was applied (every
 new database, `supabase/tests/local/run.sh`) it changes nothing: a schema
-dump is the same with and without it.
+dump is the same with and without it. **Applied on the hosted project
+2026-10-30**; `pay_runs.inputs_hash`, `tax_table_imports.completed_at`,
+`payroll_inputs_hash()` and `tax_tables_import_finish()` are there and the
+old `forbid_change` triggers are gone.
 
 **Where things are**
 
