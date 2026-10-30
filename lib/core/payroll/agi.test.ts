@@ -181,3 +181,27 @@ test("identities and the schema files are the ones the rule book names", () => {
     assert.equal(createHash("sha256").update(readFileSync(join(SCHEMA_DIR, name))).digest("hex"), sha, name);
   }
 });
+
+test("the SQL test's month (supabase/tests/0040_authorities.sql) gives the same sums here as agi_build() there", () => {
+  const slips = [
+    slip("erik", "Erik Eriksson", 1992, "2026-11-25", [["1010", 3_200_050]], 645_000),
+    slip("fatima", "Fatima Falk", 2004, "2026-11-25", [["1100", 3_000_000], ["1800", 150_000], ["1910", 50_000]], 540_000),
+    slip("gustav", "Gustav Gran", 1950, "2026-11-25", [["1600", 1_000_000]], 300_000),
+  ];
+  const b = agiBuild("2026-11", slips);
+  assert.equal(b.totals.contributionsOre, 1_831_900);
+  assert.equal(b.totals.taxOre, 1_485_000);
+  assert.deepEqual(b.totals.contributionRows, [
+    { category: "full", ratePercent: 31.42, baseOre: 3_850_000, amountOre: 1_209_600 },
+    { category: "young", ratePercent: 20.81, baseOre: 2_500_000, amountOre: 520_200 },
+    { category: "older", ratePercent: 10.21, baseOre: 1_000_000, amountOre: 102_100 },
+  ]);
+  const fatima = b.people.find((p) => p.employeeId === "fatima");
+  assert.deepEqual(fatima?.contributions, [
+    { category: "young", ratePercent: 20.81, baseOre: 2_500_000 },
+    { category: "full", ratePercent: 31.42, baseOre: 650_000 },
+  ]);
+  const repaid = agiBuild("2026-11", slips, [{ id: "r", employeeId: "erik", period: "2026-11", payslipId: "p-erik", amountOre: 600_000, reason: "För mycket" }]);
+  assert.equal(repaid.totals.contributionsOre, 1_643_400);
+  assert.equal(repaid.totals.taxOre, 1_485_000);
+});
