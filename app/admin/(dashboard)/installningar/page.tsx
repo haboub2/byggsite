@@ -89,7 +89,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <tbody>
             {series.map((s) => (
               <tr key={s.series}>
-                <td>{s.series === "F" ? "F (fakturor)" : s.series === "V" ? "V (verifikationer)" : s.series}</td>
+                <td>{s.series === "F" ? "F (fakturor)" : s.series === "V" ? "V (verifikationer)" : s.series === "L" ? "L (lönebesked)" : s.series}</td>
                 <td>{s.perYear ? "Per år" : "Löpande"}</td>
                 <td>{s.start}</td>
                 <td>{s.next ?? s.start}</td>
@@ -97,7 +97,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             ))}
           </tbody>
         </table>
-        <p style={{ marginTop: 24 }}>
+        <p style={{ marginTop: 24 }} className="hr-inline">
+          <Link href="/admin/installningar/lon" className="link-quiet">
+            Lön: lönebeslut, kontering, lönekonto
+          </Link>
           <Link href="/admin/organisation" className="link-quiet">
             Medlemmar och roller
           </Link>
