@@ -5,7 +5,11 @@
  * semesterlöneskuld (7090 / 7290 against 2920) with the arbetsgivaravgifter
  * on it (7519 against 2941), and the expected tjänstepension premium
  * (7410 against 2950) until Fora's or Collectum's invoice books the real
- * cost.
+ * cost. From phase 5 also the särskild löneskatt on that premium (24,26 %,
+ * 7533 against 2514; it is paid with the company's inkomstdeklaration)
+ * and the avtalsförsäkringar on the pay (7570 against 2940: Fora's TFA,
+ * TGL and TSL for arbetare, Collectum's sjukpension and premiebefrielse,
+ * TFA, TGL and TRR for ITP1; rules/benefits.ts `insurance`).
  *
  * payroll_run_book() (0039) builds the payslip part itself from the stored
  * lines; the app sends only `accruals`. `runJournal` gives the whole entry
@@ -13,6 +17,9 @@
  */
 
 import { fractionOf, sumOre, type Ore } from "../money";
+import { benefitRulesAt } from "../rules/benefits";
+import { payrollRulesAt } from "../rules/payroll";
+import { specialPayrollTax } from "./collectum";
 import { journalLines, type JournalLine, type PayslipDocument } from "./payslip";
 import type { PayrollAccounts } from "./settings";
 
@@ -57,7 +64,27 @@ export function contributionOnLiability(doc: PayslipDocument, liabilityOre: Ore)
   return c.baseOre > 0 ? fractionOf(liabilityOre, c.amountOre, c.baseOre) : 0;
 }
 
-/** Semesterlöneskuld change with its avgifter, and the pension accrual, summed per account. */
+/**
+ * The avtalsförsäkringar on a payslip's pay, expected from the rule book:
+ * for SAF-LO the percent of the Fora pay (lines with a Fora category), for
+ * ITP1 the percents below and above the 7,5 IBB cap of the
+ * pension-reportable pay. The invoices book the real cost.
+ */
+/** The insurance percents have three decimals (0,665 %); rateOf takes two. */
+const rate3 = (amount: Ore, percent: number): Ore => fractionOf(amount, Math.round(percent * 1000), 100_000);
+
+export function insurancePremium(doc: PayslipDocument): Ore {
+  const scheme = doc.context?.pension.scheme ?? "none";
+  if (scheme === "none") return 0;
+  const ins = benefitRulesAt(doc.payDate).insurance;
+  if (scheme === "saf-lo") return rate3(Math.max(0, sumOre(doc.lines.filter((l) => l.item.flags.foraCategory !== null).map((l) => l.amountOre))), ins.collective.percent);
+  const pay = Math.max(0, doc.bases.pensionBasisOre);
+  const r = payrollRulesAt(doc.payDate);
+  const cap = fractionOf(r.baseAmounts.inkomstbasbeloppOre, Math.round(r.pension.itp1.capIbbPerYear * 10), 120);
+  return rate3(Math.min(pay, cap), ins.salaried.percentBelowCap) + rate3(Math.max(0, pay - cap), ins.salaried.percentAboveCap);
+}
+
+/** Semesterlöneskuld change with its avgifter, the pension accrual with its särskild löneskatt, and the insurances, summed per account. */
 export function accrualLines(slips: readonly LedgerPayslip[], accounts: PayrollAccounts): JournalLine[] {
   const raw: JournalLine[] = [];
   const post = (debit: string, credit: string, amount: Ore, text: string) => {
@@ -70,6 +97,8 @@ export function accrualLines(slips: readonly LedgerPayslip[], accounts: PayrollA
     post(cost, accounts.vacationLiability, s.vacationLiabilityChangeOre, "Förändring semesterlöneskuld");
     post(accounts.vacationContributionCost, accounts.vacationContributionLiability, contributionOnLiability(s.document, s.vacationLiabilityChangeOre), "Sociala avgifter på semesterlöneskuld");
     post(accounts.pensionCost, accounts.pensionLiability, s.pensionPremiumOre, "Tjänstepension, beräknad premie");
+    post(accounts.specialPayrollTaxCost, accounts.specialPayrollTaxLiability, specialPayrollTax(s.document.payDate, s.pensionPremiumOre), "Särskild löneskatt på pensionspremie");
+    post(accounts.insuranceCost, accounts.insuranceLiability, insurancePremium(s.document), "Avtalsförsäkringar, beräknad premie");
   }
   const texts = new Map(raw.map((l) => [l.account, l.text]));
   return sumByAccount(raw, (a) => texts.get(a) ?? "Periodisering");

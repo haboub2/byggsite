@@ -22,6 +22,10 @@ import { payDateFor, payrollSettingsSchema, runPeriods, type PayrollSettings } f
 import { accrualLines, payslipJournal, reconciliationSums, runJournal } from "./ledger";
 import { salaryFile, salaryFileTotalOre } from "./bank-file";
 import { journalLines, reconcile } from "./payslip";
+import { agiBuild } from "./agi";
+import { collectumBasis } from "./collectum";
+import type { Benefit } from "./benefits";
+import { computeClaim, type ApprovedClaim } from "./expenses";
 
 const file = parseTaxTableCsv(readFileSync(join(__dirname, "fixtures", "skattetabell-manad-2026.sample.csv")));
 const taxTable = { importId: "import-2026", version: file.sha256, index: indexTaxTable(file.rows) };
@@ -362,4 +366,112 @@ test("history: OB and övertid count in the intjänandeår they were earned, not
   const salary = computeRun(runFor("2026-04", {}, [anna])).payslips[0].document;
   assert.equal(earningYearHistory([salary], "2026-04-01", "2027-04-01").vacationBasisOre, 3_000_000);
   assert.equal(earningYearHistory([salary], "2025-04-01", "2026-04-01").vacationBasisOre, 0);
+});
+
+/* ---------- phase 5 ---------- */
+
+test("phase 5: the board's quarterly fee runs through the run and the AGI (011 and 023, 30 % tax), nothing between quarters", () => {
+  const board = person({ id: "board-1", name: "Styrelseledamot", birthDate: "1972-07-07", agreement: "none" });
+  board.versions = [version({ employeeId: "board-1", form: "uppdrag", payForm: "fee", feeOre: 1_500_000, feePeriod: "quarter", startsOn: "2026-01-01", decisionReference: "Årsstämma 2025-12-15 § 8" })];
+  board.tax = [taxRow("board-1", false)];
+  const months = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"];
+  const paid = months.map((m) => computeRun(runFor(m, {}, [board])).payslips.length);
+  assert.deepEqual(paid, [0, 0, 1, 0, 0, 1]);
+  const run = computeRun(runFor("2026-06", {}, [board]));
+  const doc = run.payslips[0].document;
+  assert.equal(doc.lines[0].text, "Styrelsearvode kv 2 2026");
+  const agi = agiBuild("2026-06", [{ payslipId: "l1", runId: "r6", employeeId: "board-1", document: doc }]);
+  assert.deepEqual(agi.problems, []);
+  assert.deepEqual(agi.people[0].boxes, { "001": 450_000, "011": 1_500_000, "012": 0, "013": 0, "023": 1_500_000, "131": 0 });
+  assert.equal(agi.totals.contributionsOre, 471_300); // 31,42 % × 15 000
+  assert.equal(doc.context?.pension.scheme, "none");
+});
+
+test("phase 5: bilförmån (Skatteverket's 2026 car) and 21 lunches on a payslip, booked 7385/7382 against 7399, AGI 013/012, outside Collectum", () => {
+  const eva = person({ id: "eva", name: "Eva Ek", birthDate: "1984-04-04", agreement: "tjanstemannaavtalet" });
+  eva.versions = [version({ employeeId: "eva", form: "tillsvidare", payForm: "monthly", monthlySalaryOre: 4_000_000, startsOn: "2024-01-01", pensionScheme: "itp1" })];
+  const benefit = (b: Partial<Benefit>): Benefit => ({ id: "x", employeeId: "eva", kind: "bil", description: "", validFrom: "2026-01-01", validTo: null, car: null, meals: {}, housing: null, marketValueOre: 0, employeePaymentOre: 0, ...b });
+  eva.benefits = [
+    benefit({ id: "bil-1", car: { registrationNumber: "ABC123", model: "Volvo V60", firstRegisteredOn: "2024-03-01", modelYear: 2024, fuel: "diesel", newCarPriceOre: 30_000_000, extraEquipmentOre: 2_200_000, vehicleTaxOre: 405_000, businessMilPerYear: 0, fuelPaidByEmployer: false } }),
+    benefit({ id: "kost-1", kind: "kost", description: "lunch", meals: { lunchOrDinner: 21 } }),
+    benefit({ id: "gammal", kind: "annan", description: "Slutad", marketValueOre: 10_000, validTo: "2026-10-31" }),
+  ];
+  const run = computeRun(runFor("2026-11", {}, [eva]));
+  assert.equal(run.checks.filter((c) => c.level === "block").length, 0, JSON.stringify(run.checks));
+  const slip = run.payslips[0];
+  const doc = slip.document;
+  assert.deepEqual(doc.lines.map((l) => [l.code, l.amountOre, l.source?.id ?? null]), [
+    ["1010", 4_000_000, null],
+    ["1800", 600_300, "bil-1"],
+    ["1810", 260_400, "kost-1"],
+  ]);
+  assert.equal(doc.totals.benefitOre, 860_700);
+  assert.equal(doc.bases.tableTaxableOre, 4_860_700);
+  assert.equal(doc.contributions.baseOre, 4_860_700);
+  assert.equal(doc.totals.netOre, 4_000_000 - doc.totals.taxOre);
+  const by: Record<string, number> = {};
+  for (const j of journalLines(doc)) by[j.account] = (by[j.account] ?? 0) + j.debitOre - j.creditOre;
+  assert.equal(by["7385"], 600_300);
+  assert.equal(by["7382"], 260_400);
+  assert.equal(by["7399"], -860_700);
+  const agi = agiBuild("2026-11", [{ payslipId: "l1", runId: "r", employeeId: "eva", document: doc }]);
+  assert.equal(agi.people[0].boxes["013"], 600_300);
+  assert.equal(agi.people[0].boxes["012"], 260_400);
+  assert.equal(agi.people[0].boxes["011"], 4_000_000);
+  // ITP1 on the salary only; the premium's särskild löneskatt and the insurances in the accruals.
+  assert.equal(collectumBasis("2026-11", [{ payslipId: "l1", employeeId: "eva", document: doc }])[0].payOre, 4_000_000);
+  assert.equal(slip.pensionPremiumOre, 180_000);
+  const acc = Object.fromEntries(accrualLines([slip], accounts).map((l) => [l.account, l.debitOre - l.creditOre]));
+  assert.equal(acc["7410"], 180_000);
+  assert.equal(acc["7533"], 43_668); // 24,26 % × 1 800
+  assert.equal(acc["2514"], -43_668);
+  assert.equal(acc["7570"], 26_600); // 0,665 % × 40 000
+  assert.equal(runJournal([slip], accounts).debitOre, runJournal([slip], accounts).creditOre);
+});
+
+test("phase 5: milersättning 60 mil with the own car and a two-day traktamente are paid tax-free and taxable, with AGI ticks 050 and 051", () => {
+  const ali = person({ id: "ali", name: "Ali Berg", birthDate: "1991-09-09", agreement: "tjanstemannaavtalet" });
+  ali.versions = [version({ employeeId: "ali", form: "tillsvidare", payForm: "monthly", monthlySalaryOre: 3_500_000, startsOn: "2024-01-01" })];
+  const approved = (id: string, input: Parameters<typeof computeClaim>[0], policy: Parameters<typeof computeClaim>[1], description: string): ApprovedClaim => {
+    const r = computeClaim(input, policy);
+    return { id, kind: input.kind, dateFrom: input.dateFrom, dateTo: input.dateTo, description, taxFreeOre: r.taxFreeOre, taxableOre: r.taxableOre, computation: r.computation };
+  };
+  const policy = { ...payrollSettingsSchema.parse({}).expenses, ownCarPerMilOre: 3_000 };
+  ali.expenseClaims = [
+    approved("mil-1", { kind: "milersattning", dateFrom: "2026-10-12", dateTo: "2026-10-12", distanceKm: 600, carType: "egen" }, policy, "Borås"),
+    approved("trakt-1", { kind: "traktamente", dateFrom: "2026-10-20", dateTo: "2026-10-21", departureTime: "07:00", returnTime: "20:00", nightsWithoutLodging: 0, meals: { "2026-10-21": { breakfast: true } }, longStay: "none", farFromHome: true }, policy, "Jönköping"),
+    approved("utl-1", { kind: "utlagg", dateFrom: "2026-10-14", dateTo: "2026-10-14", amountOre: 45_000, vatOre: 9_000 }, policy, "Skruv"),
+    // Dated after the salary month: next run.
+    approved("sen", { kind: "utlagg", dateFrom: "2026-12-02", dateTo: "2026-12-02", amountOre: 10_000, vatOre: 0 }, policy, "Senare"),
+  ];
+  const run = computeRun(runFor("2026-11", {}, [ali]));
+  assert.equal(run.checks.filter((c) => c.level === "block").length, 0, JSON.stringify(run.checks));
+  const doc = run.payslips[0].document;
+  assert.deepEqual(doc.lines.map((l) => [l.code, l.amountOre]), [
+    ["1010", 3_500_000],
+    ["1910", 150_000],
+    ["1911", 30_000],
+    ["1900", 54_000],
+    ["1920", 45_000],
+  ]);
+  assert.equal(doc.totals.taxFreeReimbursementOre, 249_000);
+  assert.equal(doc.totals.cashGrossOre, 3_530_000);
+  assert.equal(doc.totals.netOre, 3_530_000 + 249_000 - doc.totals.taxOre);
+  assert.equal(doc.bases.pensionBasisOre, 3_500_000);
+  assert.equal(doc.bases.vacationBasisOre, 3_500_000);
+  const agi = agiBuild("2026-11", [{ payslipId: "l1", runId: "r", employeeId: "ali", document: doc }]);
+  assert.equal(agi.people[0].boxes["011"], 3_530_000);
+  assert.deepEqual(agi.people[0].ticks, { "050": true, "051": true });
+  const by = Object.fromEntries(journalLines(doc).map((j) => [j.account, j.debitOre - j.creditOre]));
+  assert.deepEqual([by["7331"], by["7332"], by["7321"], by["7690"]], [150_000, 30_000, 54_000, 45_000]);
+  assert.equal(reconcile(doc).ok, true);
+});
+
+test("phase 5: a person with only an approved claim gets a payslip with the reimbursement", () => {
+  const p = person({ id: "p", name: "Per", birthDate: "1980-01-01", agreement: "none" });
+  p.versions = [version({ employeeId: "p", form: "tillsvidare", payForm: "hourly", hourlyRateOre: 20_000, startsOn: "2025-01-01" })];
+  p.expenseClaims = [{ id: "u", kind: "utlagg", dateFrom: "2026-10-01", dateTo: "2026-10-01", description: "Parkering", taxFreeOre: 2_000, taxableOre: 0, computation: {} }];
+  const run = computeRun(runFor("2026-11", {}, [p]));
+  assert.deepEqual(run.payslips[0].document.lines.map((l) => [l.code, l.amountOre]), [["1920", 2_000]]);
+  assert.equal(run.payslips[0].document.totals.netOre, 2_000);
 });

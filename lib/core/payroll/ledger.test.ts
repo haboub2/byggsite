@@ -39,11 +39,12 @@ test("the journal: one line per account, as payroll_run_book() sums the stored l
   assert.equal(reconciliationSums({ docs: [a, b], journal: lines, bankTotalOre: a.totals.netOre + b.totals.netOre, netAccount: "2820" }).ok, true);
 });
 
-test("accruals: semesterlöneskuld change with avgifter at the person's rate, and the pension premium", () => {
+test("accruals: semesterlöneskuld change with avgifter at the person's rate, the pension premium and its särskild löneskatt", () => {
   const a = doc("a", "1010", 3_200_000);
   const acc = accrualLines([{ document: a, group: "salaried", vacationLiabilityChangeOre: 100_000, pensionPremiumOre: 144_000 }], accounts);
   const by = Object.fromEntries(acc.map((l) => [l.account, l.debitOre - l.creditOre]));
-  assert.deepEqual(by, { "2920": -100_000, "2941": -31_420, "2950": -144_000, "7290": 100_000, "7410": 144_000, "7519": 31_420 });
+  // Särskild löneskatt 24,26 % × 1 440 kr = 349,34 kr (phase 5); no scheme on the document, no insurance.
+  assert.deepEqual(by, { "2514": -34_934, "2920": -100_000, "2941": -31_420, "2950": -144_000, "7290": 100_000, "7410": 144_000, "7519": 31_420, "7533": 34_934 });
   // A falling liability reverses the cost.
   const down = accrualLines([{ document: a, group: "collective", vacationLiabilityChangeOre: -50_000, pensionPremiumOre: 0 }], accounts);
   assert.equal(down.find((l) => l.account === "7090")?.creditOre, 50_000);

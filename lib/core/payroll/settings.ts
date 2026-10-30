@@ -28,6 +28,12 @@ export const payrollAccountsSchema = z.object({
   vacationContributionLiability: account.default("2941"),
   pensionCost: account.default("7410"),
   pensionLiability: account.default("2950"),
+  /** Särskild löneskatt on the pension premium (phase 5). */
+  specialPayrollTaxCost: account.default("7533"),
+  specialPayrollTaxLiability: account.default("2514"),
+  /** The avtalsförsäkringar (Fora's TFA, TGL, TSL; Collectum's sjukpension and premiebefrielse, TRR). */
+  insuranceCost: account.default("7570"),
+  insuranceLiability: account.default("2940"),
 });
 export type PayrollAccounts = z.infer<typeof payrollAccountsSchema>;
 
@@ -83,12 +89,23 @@ export const payrollSettingsSchema = z.object({
       contactEmail: z.union([z.literal(""), z.string().trim().email("Ange en giltig e-postadress.")]).default(""),
     })
     .default({}),
+  /** Utlägg och ersättningar: what the organisation pays per mil and per day; null pays Skatteverket's schablon. */
+  expenses: z
+    .object({
+      ownCarPerMilOre: z.coerce.number().int().min(0).max(100_000).default(2_500),
+      companyCarPerMilOre: z.coerce.number().int().min(0).max(100_000).nullable().default(null),
+      companyElectricCarPerMilOre: z.coerce.number().int().min(0).max(100_000).nullable().default(null),
+      perDiemFullDayOre: z.coerce.number().int().min(0).max(1_000_000).nullable().default(null),
+      perDiemHalfDayOre: z.coerce.number().int().min(0).max(1_000_000).nullable().default(null),
+      perDiemNightOre: z.coerce.number().int().min(0).max(1_000_000).nullable().default(null),
+    })
+    .default({}),
   /** Växa-stöd: the first employees the owner says qualify (at most two). */
   vaxaStod: z.object({ employeeIds: z.array(z.string().uuid()).max(2, "Växa-stöd gäller högst två anställda.").default([]) }).default({}),
 });
 export type PayrollSettings = z.infer<typeof payrollSettingsSchema>;
 
-export const PAYROLL_DECISIONS = ["period", "payDay", "vacationYear", "agreement", "approvers", "bank", "accounts", "pension", "agi", "vaxaStod"] as const;
+export const PAYROLL_DECISIONS = ["period", "payDay", "vacationYear", "agreement", "approvers", "bank", "accounts", "pension", "agi", "vaxaStod", "expenses"] as const;
 export type PayrollDecision = (typeof PAYROLL_DECISIONS)[number];
 export type PayrollConfirmed = Partial<Record<PayrollDecision, string>>;
 
@@ -103,6 +120,7 @@ export const DECISION_LABEL: Record<PayrollDecision, string> = {
   pension: "Fora och Collectum",
   agi: "Arbetsgivardeklarationen",
   vaxaStod: "Växa-stöd",
+  expenses: "Utlägg och ersättningar",
 };
 
 /** What the default is and why, shown until the decision is saved. */
@@ -117,6 +135,7 @@ export const DECISION_DEFAULT: Record<PayrollDecision, string> = {
   pension: "Inga kundnummer: premierna periodiseras men ingen rapport görs.",
   agi: "Omsättning högst 40 miljoner kr: AGI och betalning den 12:e (17:e i januari och augusti). Kontaktperson: företagets undertecknare, telefon och e-post.",
   vaxaStod: "Ingen vald: inget underlag för växa-stöd.",
+  expenses: "Skatteverkets schabloner: 25 kr/mil med egen bil, 12 kr (9,50 kr el) med förmånsbil, traktamente 300/150 kr och natt 150 kr; inget skattepliktigt över.",
 };
 
 export function parsePayrollSettings(data: unknown): PayrollSettings {

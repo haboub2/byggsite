@@ -8,8 +8,10 @@ test("defaults: the common model, the 25th, the law's semesterår, BAS accounts"
   assert.equal(s.payDay, 25);
   assert.equal(s.accounts.net, "2820");
   assert.deepEqual(vacationModelFor(s), { startMonthDay: "04-01", earning: "previous-year" });
-  assert.equal(unconfirmedDecisions({}).length, 10);
-  assert.deepEqual(unconfirmedDecisions({ period: "x", payDay: "x", vacationYear: "x", agreement: "x", approvers: "x", bank: "x", accounts: "x", agi: "x", vaxaStod: "x" }), ["pension"]);
+  assert.equal(unconfirmedDecisions({}).length, 11);
+  assert.deepEqual(unconfirmedDecisions({ period: "x", payDay: "x", vacationYear: "x", agreement: "x", approvers: "x", bank: "x", accounts: "x", agi: "x", vaxaStod: "x", expenses: "x" }), ["pension"]);
+  assert.deepEqual([s.accounts.specialPayrollTaxCost, s.accounts.specialPayrollTaxLiability, s.accounts.insuranceCost, s.accounts.insuranceLiability], ["7533", "2514", "7570", "2940"]);
+  assert.equal(s.expenses.ownCarPerMilOre, 2_500);
   // A broken row falls back to the defaults instead of stopping the run.
   assert.equal(parsePayrollSettings({ payDay: "abc" }).payDay, 25);
 });
