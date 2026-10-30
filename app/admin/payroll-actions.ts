@@ -218,7 +218,7 @@ export async function correctionAction(formData: FormData): Promise<void> {
       const original = await getRun(slip.runId);
       const lineText = text(formData, "text") || `Rättelse lönebesked L${slip.number} (${original?.periodStart.slice(0, 7) ?? ""})`;
       await addCorrection(slip.id, [{ code, text: lineText, quantity: null, unit: null, unitPriceOre: null, basisOre: null, ratePercent: null, amountOre }], reason);
-      return `Rättelsen läggs i nästa körning som retroaktiv rad; AGI för ${original?.agiPeriod ?? "originalmånaden"} ska omprövas (fas 4).`;
+      return `Rättelsen läggs i nästa körning som retroaktiv rad och redovisas i arbetsgivardeklarationen för den månad den betalas, inte i ${original?.agiPeriod ?? "originalmånaden"}.`;
     },
     slip.runId
   );

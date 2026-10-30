@@ -22,7 +22,7 @@
  */
 
 import { sumOre, type Ore } from "../money";
-import { addDays, type IsoDate } from "../rules/index";
+import { eachDay, addDays, type IsoDate } from "../rules/index";
 import { AUTHORITY_RULES } from "../rules/authorities";
 import { isWorkday } from "../../workdays";
 import type { Absence, AbsenceKind } from "../hr/absence";
@@ -107,10 +107,6 @@ const DEDUCTED: readonly AbsenceKind[] = ["sjuk", "vab", "foraldraledig", "tjans
 const max = (a: IsoDate, b: IsoDate) => (a > b ? a : b);
 const min = (a: IsoDate, b: IsoDate) => (a < b ? a : b);
 
-function* days(from: IsoDate, to: IsoDate): Generator<IsoDate> {
-  for (let d = from; d <= to; d = addDays(d, 1)) yield d;
-}
-
 /** Each payslip line's month: dated lines by their date, månadslön in the salary month, the rest in the time period's month. */
 function lineMonth(doc: PayslipDocument, line: PayslipDocument["lines"][number]): string {
   if (line.from) return line.from.slice(0, 7);
@@ -159,7 +155,7 @@ export function certificateContent(input: CertificateInput): CertificateContent 
     let scheduleHours = 0;
     let absenceHours = 0;
     const absenceDays: Partial<Record<AbsenceKind, number>> = {};
-    for (const d of days(a, b)) {
+    for (const d of eachDay(a, b)) {
       const v = employedOn(d);
       if (!v) continue;
       employedDays++;

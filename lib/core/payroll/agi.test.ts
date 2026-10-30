@@ -205,3 +205,9 @@ test("the SQL test's month (supabase/tests/0040_authorities.sql) gives the same 
   assert.equal(repaid.totals.contributionsOre, 1_643_400);
   assert.equal(repaid.totals.taxOre, 1_485_000);
 });
+
+test("a run paid in the month that is approved but not closed stops the AGI, as agi_build() says it", () => {
+  const b = agiBuild("2026-11", example15().map((x) => ({ ...x, document: { ...x.document, payDate: "2026-11-25" } as PayslipDocument })), [], [{ periodStart: "2026-11-01", payDate: "2026-11-25" }]);
+  assert.deepEqual(b.problems, ["Körningen för november 2026 (lönedag 2026-11-25) är inte stängd; stäng den innan arbetsgivardeklarationen skapas."]);
+  assert.deepEqual(agiBuild("2026-11", [], [], [{ periodStart: "2026-10-01", payDate: "2026-10-23" }]).problems, []);
+});

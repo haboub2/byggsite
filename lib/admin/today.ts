@@ -18,7 +18,7 @@ import { certificatesDue } from "../core/hr/absence";
 import { timeTodos, type TimeTodo } from "../core/hr/time-today";
 import { getPayrollSettings, listRunPayslips, listRuns } from "../core/payroll/run-store";
 import { payrollTodos, type AgiPayment, type PayrollTodo } from "../core/payroll/today";
-import { listAgiDeclarations, listPensionReports } from "../core/payroll/authorities-store";
+import { listAgiDeclarationSummaries, listPensionReports } from "../core/payroll/authorities-store";
 import { authorityTodos, type AuthorityTodo } from "../core/payroll/authorities-today";
 import { fkReminders } from "../core/payroll/fk";
 import { addDays } from "../core/rules/index";
@@ -112,9 +112,21 @@ async function loadTimeTodos(access: Access[], today: string): Promise<TimeTodo[
   });
 }
 
+/** What the payroll and the authorities' rows both read, loaded once per Idag. */
+async function loadPayrollData() {
+  const [runs, { settings }, employees, declarations] = await Promise.all([
+    listRuns(),
+    getPayrollSettings(),
+    listEmployees(),
+    listAgiDeclarationSummaries().catch((): Awaited<ReturnType<typeof listAgiDeclarationSummaries>> => []),
+  ]);
+  return { runs, settings, employees, declarations };
+}
+type PayrollData = Awaited<ReturnType<typeof loadPayrollData>>;
+
 /** Payroll rows (lib/core/payroll/today.ts): a run due, a run to approve, the skattekonto payment (the stored AGI's amount once there is one). */
-async function loadPayrollTodos(access: Access[], today: string): Promise<PayrollTodo[]> {
-  const [runs, { settings }, employees, declarations] = await Promise.all([listRuns(), getPayrollSettings(), listEmployees(), listAgiDeclarations().catch(() => [])]);
+async function loadPayrollTodos(access: Access[], today: string, data: Promise<PayrollData>): Promise<PayrollTodo[]> {
+  const { runs, settings, employees, declarations } = await data;
   const agi = new Map<string, AgiPayment>();
   for (const d of declarations) if (!agi.has(d.period) && d.status !== "corrected") agi.set(d.period, { amountOre: d.taxOre + d.contributionsOre, version: d.version, paid: !!d.paidAt });
   return payrollTodos({ runs, settings, today, canApprove: access.includes("admin"), hasPeople: employees.some((e) => !e.endedAt), agi });
@@ -125,15 +137,8 @@ async function loadPayrollTodos(access: Access[], today: string): Promise<Payrol
  * Fora due and not filed, for the last three pay months, and
  * Försäkringskassan's reminders from the absences.
  */
-async function loadAuthorityTodos(today: string): Promise<AuthorityTodo[]> {
-  const [runs, { settings }, employees, declarations, reports, absences] = await Promise.all([
-    listRuns(),
-    getPayrollSettings(),
-    listEmployees(),
-    listAgiDeclarations(),
-    listPensionReports(),
-    listAbsences({ from: addDays(today, -120), to: today }),
-  ]);
+async function loadAuthorityTodos(today: string, data: Promise<PayrollData>): Promise<AuthorityTodo[]> {
+  const [{ runs, settings, employees, declarations }, reports, absences] = await Promise.all([data, listPensionReports(), listAbsences({ from: addDays(today, -120), to: today })]);
   const recent = runs.filter((r) => r.approvedAt && r.payDate >= addDays(today, -95));
   const foraPeriods: string[] = [];
   for (const r of recent.filter((x) => x.status === "closed")) {
@@ -154,6 +159,9 @@ async function loadAuthorityTodos(today: string): Promise<AuthorityTodo[]> {
 
 export async function loadToday(access: Access[], today = todayIso()): Promise<TodayData> {
   const canWrite = access.includes("write");
+  const payrollData = access.includes("payroll") ? loadPayrollData() : null;
+  // A rejected shared load is reported by the two loaders that await it, not as an unhandled rejection.
+  payrollData?.catch(() => undefined);
   const [leads, sentQuotes, overduePhases, projects, overdueInvoices, events, hr, time, payroll, authorities] = await Promise.all([
     canWrite ? safe("leads", () => listLeads({ status: "new" }, { limit: 20 }), { leads: [], total: 0 }) : { leads: [], total: 0 },
     canWrite ? safe("quotes", () => listQuotes({ status: "sent" }), []) : [],
@@ -163,8 +171,8 @@ export async function loadToday(access: Access[], today = todayIso()): Promise<T
     safe("events", () => listRecentEvents(6), []),
     access.includes("payroll") ? safe("personal", () => loadHrTodos(today), []) : [],
     access.includes("time") && (access.includes("payroll") || access.includes("write")) ? safe("tid", () => loadTimeTodos(access, today), []) : [],
-    access.includes("payroll") ? safe("lön", () => loadPayrollTodos(access, today), []) : [],
-    access.includes("payroll") ? safe("myndigheter", () => loadAuthorityTodos(today), []) : [],
+    payrollData ? safe("lön", () => loadPayrollTodos(access, today, payrollData), []) : [],
+    payrollData ? safe("myndigheter", () => loadAuthorityTodos(today, payrollData), []) : [],
   ]);
 
   const active = projects.filter((p) => p.status === "active").slice(0, MAX_PROJECTS);

@@ -11,7 +11,9 @@
  * reported in the month it is paid, retro lines and kvittning included)
  * plus salary the employee paid back (återkrav) for that month, which
  * lowers 011 and the avgifter and leaves 001 (Skatteverket, "Rätta en
- * arbetsgivardeklaration"). Nothing is recomputed from time or contracts.
+ * arbetsgivardeklaration"). A run paid in the month that is approved but
+ * not closed is a problem: the month cannot be declared without it.
+ * Nothing is recomputed from time or contracts.
  *
  * Per person: 011 cash pay (or 131 when the year's pay stays under the
  * 1 000 kr limit, so no avgifter), 012 and 013 benefits, 023 the board fee
@@ -30,6 +32,7 @@ import { payrollRulesAt, type PayrollRuleSet } from "../rules/payroll";
 import { AGI_FORMAT } from "../rules/agi-format";
 import { agiContributions, agiContributionTotal, type AgiContributionRow, type ContributionCategory, type ContributionResult } from "./contributions";
 import type { PayslipDocument } from "./payslip";
+import { monthLabel } from "./format";
 
 export const AGI_AMOUNT_BOXES = ["001", "011", "012", "013", "023", "131"] as const;
 export type AgiBox = (typeof AGI_AMOUNT_BOXES)[number];
@@ -90,12 +93,15 @@ function contributionResult(rules: PayrollRuleSet, category: ContributionCategor
   return { category: "full", baseOre, ratePercent: c.fullPercent, amountOre: 0, parts, reducedBaseOre: 0, fullBaseOre: baseOre };
 }
 
+/** A run paid in the month that is approved, paid or booked but not closed. */
+export type AgiOpenRun = { periodStart: string; payDate: string };
+
 /**
  * The month's AGI from frozen payslips and repayments. Pass only approved
- * payslips of closed runs whose pay day is in `period`, and the
- * repayments recorded for `period`.
+ * payslips of closed runs whose pay day is in `period`, the repayments
+ * recorded for `period`, and the runs paid in it that are not closed yet.
  */
-export function agiBuild(period: string, slips: readonly AgiSlip[], repayments: readonly AgiRepayment[] = []): AgiBuild {
+export function agiBuild(period: string, slips: readonly AgiSlip[], repayments: readonly AgiRepayment[] = [], openRuns: readonly AgiOpenRun[] = []): AgiBuild {
   if (!isAgiPeriod(period)) throw new RangeError(`Perioden skrivs ÅÅÅÅ-MM, fick "${period}".`);
   const rules = payrollRulesAt(`${period}-01`);
   const byPerson = new Map<string, AgiSlip[]>();
@@ -106,6 +112,8 @@ export function agiBuild(period: string, slips: readonly AgiSlip[], repayments: 
   const problems: string[] = [];
   const people: AgiPerson[] = [];
   const results: ContributionResult[] = [];
+  for (const r of [...openRuns].sort((a, b) => a.payDate.localeCompare(b.payDate)))
+    if (r.payDate.slice(0, 7) === period) problems.push(`Körningen för ${monthLabel(r.periodStart)} (lönedag ${r.payDate}) är inte stängd; stäng den innan arbetsgivardeklarationen skapas.`);
   for (const r of repayments) if (!byPerson.has(r.employeeId)) problems.push(`Återbetalningen "${r.reason}" gäller ett lönebesked som inte är med i ${period}.`);
 
   for (const [employeeId, list] of byPerson) {

@@ -187,6 +187,11 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 }
 
+/** Every calendar day in [from, to], both ends included. */
+export function* eachDay(from: IsoDate, to: IsoDate): Generator<IsoDate> {
+  for (let d = from; d <= to; d = addDays(d, 1)) yield d;
+}
+
 /** Add days to an ISO date. */
 export function addDays(date: string, days: number): IsoDate {
   assertIsoDate(date);

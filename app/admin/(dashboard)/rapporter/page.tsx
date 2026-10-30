@@ -14,7 +14,7 @@ import { contributionOnLiability } from "@/lib/core/payroll/ledger";
 import { monthLabel } from "@/lib/core/payroll/format";
 import { agiDueFor } from "@/lib/core/payroll/settings";
 import { isAgiPeriod } from "@/lib/core/payroll/agi";
-import { listAgiDeclarations, type AgiDeclaration } from "@/lib/core/payroll/authorities-store";
+import { listAgiDeclarationSummaries, type AgiDeclarationSummary } from "@/lib/core/payroll/authorities-store";
 import { markAgiPaidAction } from "@/app/admin/authorities-actions";
 import { Flash } from "@/components/admin/time/parts";
 import { AgiSection, ForaSection, VaxaSection, YearEndSection } from "@/components/admin/payroll/AuthoritySections";
@@ -45,7 +45,7 @@ export default async function PayrollReportsPage({ searchParams }: { searchParam
     listLabourCosts({ from, to: today }).catch(() => []),
     timeProjects().catch(() => []),
     getPayrollSettings(),
-    listAgiDeclarations().catch((): AgiDeclaration[] => []),
+    listAgiDeclarationSummaries().catch((): AgiDeclarationSummary[] => []),
   ]);
   // The months the reports offer: every pay month with an approved run; the latest closed one first.
   const payMonths = [...new Set(runs.filter((r) => r.approvedAt).map((r) => r.agiPeriod))].sort().reverse();
@@ -209,7 +209,9 @@ export default async function PayrollReportsPage({ searchParams }: { searchParam
                               {due.payBy < today && !d?.paidAt ? " (passerat)" : ""}
                             </td>
                             <td>
-                              {d ? (
+                              {d && d.status !== "filed" && !d.paidAt ? (
+                                <span className="hr-muted">lämna AGI v{d.version} först</span>
+                              ) : d ? (
                                 canApprove ? (
                                   <form action={markAgiPaidAction}>
                                     <input type="hidden" name="id" value={d.id} />

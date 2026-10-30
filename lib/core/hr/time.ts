@@ -366,6 +366,16 @@ export function stockholmClock(now = new Date()): string {
   return new Intl.DateTimeFormat("sv-SE", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/Stockholm" }).format(now);
 }
 
+/** Swedish wall-clock date and time "YYYY-MM-DDTHH:MM:SS" (a file's Skapad stamp). */
+export function stockholmDateTime(now = new Date()): string {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Stockholm", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      .formatToParts(now)
+      .map((x) => [x.type, x.value]),
+  );
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}`;
+}
+
 /** A Swedish wall-clock time "YYYY-MM-DDTHH:MM" (a datetime-local field) as an ISO instant, summer time included. */
 export function stockholmLocalToIso(local: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local);

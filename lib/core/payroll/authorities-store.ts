@@ -10,6 +10,7 @@ import { addDays, type IsoDate } from "../rules/index";
 import { HR_BUCKET, listEmployees, listEmployments, revealPnr } from "../hr/store";
 import { closeLeaveYearDemo, listAbsences, listSchedules, listTimeEntries } from "../hr/time-store";
 import { scheduleFromRules } from "../hr/absence";
+import { stockholmDateTime } from "../hr/time";
 import { maskPnr } from "../hr/schema";
 import { getPayrollSettings, listEmployeePayslips, listRunPayslips, listRuns, type StoredPayslip } from "./run-store";
 import { agiBuild, agiRecords, agiXml, checkAgiXml, diffAgi, isAgiPeriod, type AgiBuild, type AgiDiffRow, type AgiRecord, type AgiRepayment } from "./agi";
@@ -54,6 +55,9 @@ export type AgiDeclaration = {
   createdAt: string;
 };
 
+/** A version without its records and totals, for lists, Idag and the status checks. */
+export type AgiDeclarationSummary = Omit<AgiDeclaration, "records" | "totals">;
+
 export type Repayment = AgiRepayment & { repaidOn: IsoDate; createdAt: string };
 
 export type PensionReport = { id: string; period: string; scheme: "fora" | "collectum"; version: number; status: AgiStatus; sha256: string; lines: ForaLine[]; totalOre: number; filedAt: string | null; createdAt: string };
@@ -83,8 +87,9 @@ type DeclarationRow = {
   paid_at: string | null;
   created_at: string;
 };
-const DECLARATION_COLUMNS = "id, period, version, status, schema_version, sha256, tax_ore, contributions_ore, totals, records, run_ids, filed_at, filed_by_name, paid_at, created_at";
-const declarationFromRow = (r: DeclarationRow): AgiDeclaration => ({
+const SUMMARY_COLUMNS = "id, period, version, status, schema_version, sha256, tax_ore, contributions_ore, run_ids, filed_at, filed_by_name, paid_at, created_at";
+const DECLARATION_COLUMNS = `${SUMMARY_COLUMNS}, totals, records`;
+const summaryFromRow = (r: Omit<DeclarationRow, "records" | "totals">): AgiDeclarationSummary => ({
   id: r.id,
   period: r.period,
   version: r.version,
@@ -93,14 +98,13 @@ const declarationFromRow = (r: DeclarationRow): AgiDeclaration => ({
   sha256: r.sha256,
   taxOre: Number(r.tax_ore),
   contributionsOre: Number(r.contributions_ore),
-  totals: r.totals,
-  records: r.records,
   runIds: r.run_ids ?? [],
   filedAt: r.filed_at,
   filedByName: r.filed_by_name,
   paidAt: r.paid_at,
   createdAt: r.created_at,
 });
+const declarationFromRow = (r: DeclarationRow): AgiDeclaration => ({ ...summaryFromRow(r), totals: r.totals, records: r.records });
 
 type PensionRow = { id: string; period: string; scheme: "fora" | "collectum"; version: number; status: AgiStatus; sha256: string; lines: ForaLine[]; total_ore: number; filed_at: string | null; created_at: string };
 const pensionFromRow = (r: PensionRow): PensionReport => ({ id: r.id, period: r.period, scheme: r.scheme, version: r.version, status: r.status, sha256: r.sha256, lines: r.lines, totalOre: Number(r.total_ore), filedAt: r.filed_at, createdAt: r.created_at });
@@ -138,16 +142,6 @@ async function closedSlipsPaidIn(period: string): Promise<StoredPayslip[]> {
   return slips.filter((s) => s.approvedAt);
 }
 
-/** Swedish wall-clock time for the file's Skapad: ÅÅÅÅ-MM-DDTtt:mm:ss. */
-function stockholmTimestamp(now = new Date()): string {
-  const p = Object.fromEntries(
-    new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Stockholm", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
-      .formatToParts(now)
-      .map((x) => [x.type, x.value]),
-  );
-  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}`;
-}
-
 /* ---------- arbetsgivardeklarationen ---------- */
 
 export async function listRepayments(period?: string): Promise<Repayment[]> {
@@ -164,30 +158,58 @@ export async function listRepayments(period?: string): Promise<Repayment[]> {
 /** The month's AGI as it stands now, from the closed runs and the repayments (agi_build). */
 export async function buildAgi(period: string): Promise<AgiBuild> {
   if (!isAgiPeriod(period)) throw new Error("Välj en månad.");
-  if (isDemo()) return agiBuild(period, (await closedSlipsPaidIn(period)).map((s) => ({ payslipId: s.id, runId: s.runId, employeeId: s.employeeId, document: s.document })), await listRepayments(period));
+  if (isDemo()) {
+    const open = (await listRuns()).filter((r) => (r.status === "approved" || r.status === "paid" || r.status === "booked") && r.payDate.slice(0, 7) === period);
+    const slips = (await closedSlipsPaidIn(period)).map((s) => ({ payslipId: s.id, runId: s.runId, employeeId: s.employeeId, document: s.document }));
+    return agiBuild(period, slips, await listRepayments(period), open);
+  }
   const supabase = await getDb();
   const { data, error } = await supabase.rpc("agi_build", { p_org: await currentOrgId(), p_period: period });
   if (error) fail("Kunde inte bygga arbetsgivardeklarationen", error);
   return data as AgiBuild;
 }
 
-export async function listAgiDeclarations(): Promise<AgiDeclaration[]> {
-  if (isDemo()) return demo().declarations.map(declarationFromRow).sort((a, b) => b.period.localeCompare(a.period) || b.version - a.version);
+/** The month's payslips a repayment can be recorded against: number and ruta 011 per payslip (agi_repayment_add caps per payslip). */
+export async function agiPayslips(period: string): Promise<{ id: string; employeeId: string; name: string; number: number | null; cashOre: number }[]> {
+  return (await closedSlipsPaidIn(period)).map((s) => ({
+    id: s.id,
+    employeeId: s.employeeId,
+    name: s.document.employeeName,
+    number: s.number,
+    cashOre: s.document.lines.filter((l) => l.item.flags.agiBox === "011").reduce((sum, l) => sum + l.amountOre, 0),
+  }));
+}
+
+/** Every version with its records (the preview and the diffs), newest first; optionally one month. */
+export async function listAgiDeclarations(period?: string): Promise<AgiDeclaration[]> {
+  const order = (a: AgiDeclaration, b: AgiDeclaration) => b.period.localeCompare(a.period) || b.version - a.version;
+  if (isDemo()) return demo().declarations.map(declarationFromRow).filter((d) => !period || d.period === period).sort(order);
   const supabase = await getDb();
-  const { data, error } = await supabase.from("agi_declarations").select(DECLARATION_COLUMNS).order("period", { ascending: false }).order("version", { ascending: false }).limit(500);
+  let q = supabase.from("agi_declarations").select(DECLARATION_COLUMNS);
+  if (period) q = q.eq("period", period);
+  const { data, error } = await q.order("period", { ascending: false }).order("version", { ascending: false }).limit(500);
   if (error) fail("Kunde inte hämta arbetsgivardeklarationerna", error);
   return (data as DeclarationRow[]).map(declarationFromRow);
 }
 
-export async function getAgiDeclaration(id: string): Promise<AgiDeclaration | null> {
-  return (await listAgiDeclarations()).find((d) => d.id === id) ?? null;
+/** Every version without records and totals, newest first (lists, Idag, the "filed" checks). */
+export async function listAgiDeclarationSummaries(): Promise<AgiDeclarationSummary[]> {
+  if (isDemo()) return demo().declarations.map(summaryFromRow).sort((a, b) => b.period.localeCompare(a.period) || b.version - a.version);
+  const supabase = await getDb();
+  const { data, error } = await supabase.from("agi_declarations").select(SUMMARY_COLUMNS).order("period", { ascending: false }).order("version", { ascending: false }).limit(500);
+  if (error) fail("Kunde inte hämta arbetsgivardeklarationerna", error);
+  return (data as Omit<DeclarationRow, "records" | "totals">[]).map(summaryFromRow);
+}
+
+export async function getAgiDeclaration(id: string): Promise<AgiDeclarationSummary | null> {
+  return (await listAgiDeclarationSummaries()).find((d) => d.id === id) ?? null;
 }
 
 export type AgiPreview = { build: AgiBuild; latest: AgiDeclaration | null; records: AgiRecord[]; diff: AgiDiffRow[]; unchanged: boolean };
 
-/** What storing the month now would give: the records with their specifikationsnummer and the diff against the latest version. */
-export async function previewAgi(period: string): Promise<AgiPreview> {
-  const [build, declarations, employees] = await Promise.all([buildAgi(period), listAgiDeclarations(), listEmployees()]);
+/** What storing the month now would give: the records with their specifikationsnummer and the diff against the latest version. Pass the month's versions if they are loaded. */
+export async function previewAgi(period: string, loaded?: readonly AgiDeclaration[]): Promise<AgiPreview> {
+  const [build, declarations, employees] = await Promise.all([buildAgi(period), loaded ?? listAgiDeclarations(period), listEmployees()]);
   const latest = declarations.find((d) => d.period === period) ?? null;
   const masked = new Map(employees.map((e) => [e.id, e.pnrMasked]));
   const records = agiRecords(build, latest?.records ?? [], (id) => masked.get(id) ?? "");
@@ -217,7 +239,7 @@ export async function storeAgi(period: string): Promise<{ id: string; version: n
     employerId: company.orgNr,
     contact: { name: settings.agi.contactName || company.signer, phone: settings.agi.contactPhone || company.phone, email: settings.agi.contactEmail || company.email },
     programName: "Binaafy",
-    createdAt: stockholmTimestamp(),
+    createdAt: stockholmDateTime(),
     records,
     payeeId: (id) => pnr.get(id) ?? "",
     totals: build.totals,
@@ -274,6 +296,7 @@ export async function markAgiPaid(id: string, paid: boolean): Promise<void> {
   if (isDemo()) {
     const d = demo().declarations.find((x) => x.id === id);
     if (!d) throw new Error("Deklarationen finns inte.");
+    if (paid && d.status !== "filed") throw new Error(`Version ${d.version} är inte lämnad; markera den som lämnad innan skattekontot markeras betalt.`);
     d.paid_at = paid ? (d.paid_at ?? new Date().toISOString()) : null;
     return;
   }
@@ -283,7 +306,7 @@ export async function markAgiPaid(id: string, paid: boolean): Promise<void> {
 }
 
 /** The frozen file (with personnummer), owner/admin; checked against its hash. */
-export async function getAgiXml(id: string): Promise<{ xml: string; declaration: AgiDeclaration } | null> {
+export async function getAgiXml(id: string): Promise<{ xml: string; declaration: AgiDeclarationSummary } | null> {
   const declaration = await getAgiDeclaration(id);
   if (!declaration) return null;
   let xml: string;
@@ -298,9 +321,8 @@ export async function getAgiXml(id: string): Promise<{ xml: string; declaration:
   return { xml, declaration };
 }
 
-/** What a stored version changed against the one before (agi_diff, from the stored records). */
-export async function storedAgiDiff(id: string): Promise<AgiDiffRow[]> {
-  const all = await listAgiDeclarations();
+/** What a stored version changed against the one before (agi_diff, from the stored records of the loaded versions). */
+export function storedAgiDiff(all: readonly AgiDeclaration[], id: string): AgiDiffRow[] {
   const d = all.find((x) => x.id === id);
   if (!d) return [];
   const prev = all.find((x) => x.period === d.period && x.version === d.version - 1);
@@ -435,7 +457,7 @@ export async function listVaxaClaims(): Promise<VaxaClaim[]> {
 
 /** Ansökt i e-tjänsten: the eligible rows of the month are recorded (the month's AGI must be filed first). */
 export async function storeVaxaClaims(period: string): Promise<number> {
-  const [basis, declarations, claims] = await Promise.all([vaxaStodFor(period), listAgiDeclarations(), listVaxaClaims()]);
+  const [basis, declarations, claims] = await Promise.all([vaxaStodFor(period), listAgiDeclarationSummaries(), listVaxaClaims()]);
   if (!declarations.some((d) => d.period === period && d.status === "filed")) throw new Error(`Lämna arbetsgivardeklarationen för ${period} innan du ansöker om växa-stöd.`);
   const rows = basis.rows.filter((r) => r.eligible && !claims.some((c) => c.period === period && c.employeeId === r.employeeId));
   if (!rows.length) throw new Error("Ingen i månaden har rätt till växa-stöd, eller ansökan är redan registrerad.");

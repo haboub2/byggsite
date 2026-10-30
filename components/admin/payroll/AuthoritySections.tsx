@@ -8,8 +8,10 @@ import { agiDueFor, type PayrollSettings } from "@/lib/core/payroll/settings";
 import { foraDueDate } from "@/lib/core/payroll/fora";
 import {
   AGI_STATUS_LABEL,
+  agiPayslips,
   foraLines,
   listAgiDeclarations,
+  listAgiDeclarationSummaries,
   listPensionReports,
   listRepayments,
   listVaxaClaims,
@@ -76,10 +78,10 @@ const boxValue = (code: AgiBox | AgiTick, v: number | boolean | null) => (v === 
 export async function AgiSection({ period, months, settings, canApprove, keep }: { period: string; months: readonly string[]; settings: PayrollSettings; canApprove: boolean; keep: Record<string, string> }) {
   let data;
   try {
-    const [preview, declarations, repayments] = await Promise.all([previewAgi(period), listAgiDeclarations(), listRepayments(period)]);
-    const versions = declarations.filter((d) => d.period === period);
-    const diffs = await Promise.all(versions.map((v) => storedAgiDiff(v.id)));
-    data = { preview, versions, repayments, diffs };
+    const versions = await listAgiDeclarations(period);
+    const [preview, repayments, slips] = await Promise.all([previewAgi(period, versions), listRepayments(period), agiPayslips(period)]);
+    const diffs = versions.map((v) => storedAgiDiff(versions, v.id));
+    data = { preview, versions, repayments, diffs, slips };
   } catch (err) {
     return (
       <div className="hr-card" id="agi">
@@ -88,7 +90,9 @@ export async function AgiSection({ period, months, settings, canApprove, keep }:
       </div>
     );
   }
-  const { preview, versions, repayments, diffs } = data;
+  const { preview, versions, repayments, diffs, slips } = data;
+  const slipCount = new Map<string, number>();
+  for (const s of slips) slipCount.set(s.employeeId, (slipCount.get(s.employeeId) ?? 0) + 1);
   const { build, latest, records, diff, unchanged } = preview;
   const due = agiDueFor(period, settings);
   const nextVersion = (latest?.version ?? 0) + 1;
@@ -291,11 +295,12 @@ export async function AgiSection({ period, months, settings, canApprove, keep }:
           <summary>Registrera återbetald lön (återkrav)</summary>
           <form action={addRepaymentAction} className="tg-fields hr-gap">
             <div className="efield">
-              <label htmlFor="rp-slip">Person</label>
+              <label htmlFor="rp-slip">Lönebesked</label>
               <select id="rp-slip" name="payslipId" className="tg-select" required>
-                {build.people.map((p) => (
-                  <option key={p.employeeId} value={p.payslipIds[0]}>
-                    {p.name}
+                {slips.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {(slipCount.get(s.employeeId) ?? 0) > 1 ? ` · L${s.number} (ruta 011 ${kr(s.cashOre)})` : ""}
                   </option>
                 ))}
               </select>
@@ -315,6 +320,7 @@ export async function AgiSection({ period, months, settings, canApprove, keep }:
             <button className="btn btn-ghost hr-btn-small" type="submit">
               Registrera
             </button>
+            <span className="hr-muted">Högst lönebeskedets ruta 011. Gäller återbetalningen flera lönebesked, registrera en per lönebesked.</span>
           </form>
         </details>
       )}
@@ -432,7 +438,7 @@ export async function ForaSection({ period, months, settings, canApprove, keep }
 export async function VaxaSection({ period, months, canApprove, keep }: { period: string; months: readonly string[]; canApprove: boolean; keep: Record<string, string> }) {
   let data;
   try {
-    const [basis, claims, declarations] = await Promise.all([vaxaStodFor(period), listVaxaClaims(), listAgiDeclarations()]);
+    const [basis, claims, declarations] = await Promise.all([vaxaStodFor(period), listVaxaClaims(), listAgiDeclarationSummaries()]);
     data = { basis, claims: claims.filter((c) => c.period === period), filed: declarations.some((d) => d.period === period && d.status === "filed") };
   } catch (err) {
     return (

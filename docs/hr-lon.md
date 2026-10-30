@@ -5,7 +5,7 @@ calculators), phase 1 (people, contracts, LAS clocks, migration 0035),
 phase 2 (time, schedules, absence, /min-tid, migration 0037), phase 3
 (the payroll run, migration 0039; the parallel run of rule 9 is still to
 do) and phase 4 (AGI, skattekonto, Fora, intyg, växa-stöd, year-end,
-migration 0040; no file has been through Skatteverket's or Fora's
+migrations 0040 and 0041; no file has been through Skatteverket's or Fora's
 services yet) are built, see the *Läge* sections below.** Written in English
 because that is how the request was made; Swedish legal terms are kept in
 Swedish because that is what Skatteverket, the law and the collective
@@ -610,7 +610,11 @@ Försäkringskassan's reminders and the year-end (semester transition and a
 year summary per person). Draft PR "HR fas 4: arbetsgivardeklaration,
 skattekonto, Fora, intyg och årsskifte (0040)". 0040 is applied to the
 Supabase project (2026-10-30, after 0039) and
-`supabase/tests/0040_authorities.sql` passed there.
+`supabase/tests/0040_authorities.sql` passed there. The review's fixes are
+in `0041_authorities_fixes.sql`, **which must be applied after 0040 and has
+not run against Supabase**; then run `supabase/tests/0040_authorities.sql`
+again (it now covers 0041, and `0039_payroll.sql` no longer checks the
+unused `agi_refile`).
 Nothing is ever sent: the owner uploads the AGI file in Skatteverket's
 e-service and signs with BankID, and reports to Fora on Mina sidor.
 **Acceptance by Skatteverket's e-service for a real month is your test**
@@ -632,6 +636,7 @@ Skatteverket's test service first.
 | Försäkringskassan reminders | `lib/core/payroll/fk.ts` |
 | Idag rows (AGI due, Fora due, FK); the skattekonto row now takes the stored AGI and disappears when marked paid | `lib/core/payroll/authorities-today.ts`, `lib/core/payroll/today.ts`, `lib/admin/today.ts` |
 | Migration: `agi_declarations`, `agi_repayments`, `pension_reports`, `employer_certificates`, `vaxa_stod_claims`, `year_closings`, three columns on `leave_balances`, the functions, RLS, events | `supabase/migrations/0040_authorities.sql` |
+| Review fixes: an open run stops the AGI, växa-stöd's cap and month from the employment start, paid only when filed, `agi_refile` unused | `supabase/migrations/0041_authorities_fixes.sql` |
 | SQL tests | `supabase/tests/0040_authorities.sql` |
 | The SQL's rules and the SQL test's month against the rule book and `agiBuild()` | `lib/core/payroll/authorities-parity.test.ts`, `agi.test.ts` |
 | Store (RLS and the database's functions; memory in demo mode) | `lib/core/payroll/authorities-store.ts` |
@@ -658,8 +663,11 @@ field per rate) and compares 487 and 497 with its own sums.
 
 **What the database does**
 
-- `agi_build(org, period)`, readable by the accountant: the closed runs
-  with pay day in the month, from `payslip_lines.agi_box` and the frozen
+- `agi_build(org, period)`, readable by the accountant: a run with pay day
+  in the month that is approved, paid or booked but not closed is a
+  problem ("Körningen för … är inte stängd"), so the file cannot be made
+  without it (0041; 0040's sums are now `agi_build_sums()`). The sums are
+  the closed runs with pay day in the month, from `payslip_lines.agi_box` and the frozen
   documents (category, avgiftsunderlag, tax), minus repayments for the
   month. Per person: boxes in whole kronor (öre dropped), 023 = lines of
   kind `fee`, 131 instead of 011 under the 1 000 kr rule, ticks for 050
@@ -681,12 +689,13 @@ field per rate) and compares 487 and 497 with its own sums.
   become `corrected`. The file and the sums never change (trigger); only
   the status, filed and paid.
 - `agi_mark_filed(id)` (the latest draft; earlier filed versions become
-  `corrected`), `agi_mark_paid(id, paid)`, `agi_diff(id)` (per person and
+  `corrected`), `agi_mark_paid(id, paid)` (only a filed version, 0041), `agi_diff(id)` (per person and
   box against the version before), `agi_xml(id)` (owner/admin: the file
   has the personnummer; the `xml` column is not granted to anyone).
 - `agi_repayment_add(payslip, amount, reason, repaid_on)`, owner/admin:
   salary the employee paid back for a payslip in a closed run, at most its
-  011; it lowers 011 and the avgifter for that month (`agi.repayment_added`).
+  011 (the form lists each payslip, so someone with two in a month repays
+  against each); it lowers 011 and the avgifter for that month (`agi.repayment_added`).
 - `pension_basis(org, period, 'fora')` and `pension_report_store` (lines
   and the file's total must be the basis), `pension_report_mark_filed`,
   `pension_report_file` (owner/admin).
@@ -695,8 +704,11 @@ field per rate) and compares 487 and 497 with its own sums.
   (`employee.certificate_created`); the person reads their own, and the
   PDF through the `hr` bucket's existing policy.
 - `vaxa_stod_basis(org, period)` and `vaxa_stod_claim_store` (the month's
-  AGI must be filed, at most two people, only the full avgift category,
-  cap and refund recomputed).
+  AGI must be filed, at most two people, only the full avgift category;
+  0041: the cap, 35 000 kr or 25 000 kr for employment begun before
+  2024-05-01, and the month 1–24 are derived from the start of the
+  person's employment in SQL, `vaxa_employment_start()` as
+  `employmentStart()` in `vaxa-stod.ts`, and the refund recomputed).
 - `year_summary(org, year)` and `year_close(org, year, rows)`: the
   semesterår ending in the year (31 March by law, 31 December by calendar
   year, from `payroll_settings`) must have ended; each person's closing
@@ -734,18 +746,21 @@ from day 15 with its deadline, and VAB/föräldraledighet started.
 
 **Verified**
 
-- `npm test` (629), `npm run lint` (0 errors), `tsc` clean. Every AGI
+- `npm test` (631), `npm run lint` (0 errors), `tsc` clean. Every AGI
   file the tests write validates against Skatteverket's XSD with
   `xmllint` (the test skips the check, saying so, where `xmllint` is
   missing). Example file 15 is a golden test: 487 = 18 881 kr, 497 =
   28 140 kr.
-- All migrations through 0040 on Postgres 17 with the shim; all 17 SQL
+- All migrations through 0041 on Postgres 17 with the shim; all 17 SQL
   test files pass, `0040_authorities.sql` included: B sees nothing of A;
   the accountant builds but cannot store, mark filed or paid, or read the
   file; a refile gets version 2 and `agi_diff` shows only the person who
   changed (one box); the sums equal the closed run's; Fora, växa-stöd,
   the year summary; `year_close` writes and locks the balances and
-  refuses a second time; the intyg is the person's own.
+  refuses a second time; the intyg is the person's own; and with 0041 an
+  approved but open run makes a problem that stops `agi_store`, a draft
+  cannot be marked paid, and a pre-May-2024 hire claimed with the 35 000 kr
+  cap (or past month 24) is refused.
 - In demo mode in the browser: phase 3's three people, November run
   closed; AGI v1 (Anna, Bo, Cecilia; 011 79 716 kr, 487 25 046 kr where the
   payslips' öre sum is 25 047 kr, 497 16 974 kr), downloaded and validated
@@ -765,7 +780,7 @@ from day 15 with its deadline, and VAB/föräldraledighet started.
   more controls (the Kontroller appendix) than the schema; upload it to the
   [test service](https://sso.test.skatteverket.se/agd_tt/da_testtjanst_web/login.do?method=test)
   first, then a real month. Fora's file is ours (see below).
-- 0040 and its SQL test have run against Supabase (so `agi_store`'s
+- 0041 has not run against Supabase. 0040 and its SQL test have (so `agi_store`'s
   `xpath` reading of the test's file, the RLS and the column grants as
   seen from SQL hold there). The app itself has not run against Supabase:
   not supabase-js's RPC calls with these jsonb arguments, not the column
@@ -821,8 +836,9 @@ from day 15 with its deadline, and VAB/föräldraledighet started.
   back (återkrav) corrects the month it was paid: 011 and the avgifter go
   down, 001 stays. That is the new `agi_repayments`, and what makes a
   refile. `payroll_corrections.agi_refile` (set by 0039 for this phase) is
-  not used; the person's Lön tab now says a correction is reported in the
-  month it is paid.
+  not used: the app no longer reads it, 0041 makes its default false with
+  a comment (the column stays, since 0039 is applied), and the Lön tab and
+  Rätta's message say a correction is reported in the month it is paid.
 - Section 4: Fora's deadline (last day of the month after the payout) is
   now confirmed on fora.se; phase 0's rule book still flags it, since an
   old rule set is not edited (`AUTHORITY_RULES.fora` has the checked

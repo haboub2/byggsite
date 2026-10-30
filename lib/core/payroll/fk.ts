@@ -14,7 +14,7 @@
  *   in the last `recentDays`.
  */
 
-import { addDays, daysBetween, type IsoDate } from "../rules/index";
+import { eachDay, addDays, daysBetween, type IsoDate } from "../rules/index";
 import { AUTHORITY_RULES } from "../rules/authorities";
 import { lastDay, linkSickPeriods, sickRules, type Absence } from "../hr/absence";
 
@@ -30,10 +30,6 @@ export type FkReminder = {
   dueBy: IsoDate | null;
   absenceIds: string[];
 };
-
-function* days(from: IsoDate, to: IsoDate): Generator<IsoDate> {
-  for (let d = from; d <= to; d = addDays(d, 1)) yield d;
-}
 
 export function fkReminders(absences: readonly Absence[], asOf: IsoDate, options: { recentDays?: number } = {}): FkReminder[] {
   const rules = AUTHORITY_RULES.forsakringskassan;
@@ -54,7 +50,7 @@ export function fkReminders(absences: readonly Absence[], asOf: IsoDate, options
       let n = 0;
       let dueFrom: IsoDate | null = null;
       for (const s of spells) {
-        for (const d of days(s.from, lastDay(s, asOf))) {
+        for (const d of eachDay(s.from, lastDay(s, asOf))) {
           if (d > asOf) break;
           if (++n === sick.employerDays + 1) dueFrom = d;
         }

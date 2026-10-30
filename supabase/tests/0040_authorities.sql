@@ -1,5 +1,5 @@
--- RLS- och funktionsprov för 0040 (myndigheterna, docs/hr-lon.md fas 4).
--- Körs i Supabase SQL-editor efter 0040, eller lokalt med
+-- RLS- och funktionsprov för 0040 och 0041 (myndigheterna, docs/hr-lon.md fas 4).
+-- Körs i Supabase SQL-editor efter 0041, eller lokalt med
 -- supabase/tests/local/run.sh. Allt sker i en transaktion som rullas
 -- tillbaka; "Prov 0040: alla gick igenom" betyder att allt höll.
 --
@@ -126,8 +126,11 @@ insert into prov values
   ('erik',   hr_create_employee((select v from prov where k = 'a'), '{"name":"Erik Eriksson","email":"erik@prov40.se"}', '199206301234', '8327', '9 123 456 789')),
   ('fatima', hr_create_employee((select v from prov where k = 'a'), '{"name":"Fatima Falk"}', null, '6000', '123 456 789')),
   ('gustav', hr_create_employee((select v from prov where k = 'a'), '{"name":"Gustav Gran"}', null, '6000', '123 456 780'));
+-- Erik anställd efter april 2024 (taket 35 000 kr), Fatima före (25 000 kr).
 insert into employments (org_id, employee_id, form, pay_form, monthly_salary_ore, weekly_hours, starts_on, valid_from, vacation_rule) values
-  ((select v from prov where k = 'a'), (select v from prov where k = 'erik'), 'tillsvidare', 'monthly', 3200050, 40, '2023-01-01', '2023-01-01', 'sammalon');
+  ((select v from prov where k = 'a'), (select v from prov where k = 'erik'), 'tillsvidare', 'monthly', 3200050, 40, '2025-03-01', '2025-03-01', 'sammalon');
+insert into employments (org_id, employee_id, form, pay_form, hourly_rate_ore, starts_on, valid_from, vacation_rule, vacation_percent) values
+  ((select v from prov where k = 'a'), (select v from prov where k = 'fatima'), 'tillsvidare', 'hourly', 18000, '2024-03-01', '2024-03-01', 'procent', 12);
 
 reset role;
 insert into memberships (org_id, user_id, role) values ((select v from prov where k = 'a'), '00000000-0000-4000-8000-0000000040a4', 'employee');
@@ -158,13 +161,26 @@ select payroll_bank_file_store((select v from prov where k = 'nov'),
   || '<CdtTrfTxInf><Amt><InstdAmt Ccy="SEK">25550.50</InstdAmt></Amt></CdtTrfTxInf><CdtTrfTxInf><Amt><InstdAmt Ccy="SEK">25100.00</InstdAmt></Amt></CdtTrfTxInf>'
   || '<CdtTrfTxInf><Amt><InstdAmt Ccy="SEK">7000.00</InstdAmt></Amt></CdtTrfTxInf></PmtInf></CstmrCdtTrfInitn></Document>', 'PROV', '2026-11-25');
 
--- Före stängningen finns inget att deklarera.
+-- Före stängningen finns inget att deklarera, och den öppna körningen är ett problem som stoppar filen (0041).
 select pg_temp.som('a2');
 do $$
+declare
+  b jsonb := agi_build((select v from prov where k = 'a'), '2026-11');
 begin
-  if jsonb_array_length(agi_build((select v from prov where k = 'a'), '2026-11')->'people') <> 0 then
+  if jsonb_array_length(b->'people') <> 0 then
     raise exception 'En körning som inte är stängd kom med i AGI';
   end if;
+  if b->'problems'->>0 not like 'Körningen för november 2026 (lönedag 2026-11-25) är inte stängd%' then
+    raise exception 'Den öppna körningen syns inte som problem: %', b->'problems';
+  end if;
+end $$;
+select pg_temp.som('a1');
+do $$
+begin
+  perform agi_store((select v from prov where k = 'a'), '2026-11', pg_temp.agi_fil('[]', 0, 0), '[]');
+  raise exception 'AGI kunde skapas medan körningen var öppen';
+exception when invalid_parameter_value then
+  if sqlerrm not like '%inte stängd%' then raise exception 'Fel meddelande: %', sqlerrm; end if;
 end $$;
 
 select pg_temp.som('a5');
@@ -187,6 +203,7 @@ begin
   if (b->'totals'->>'contributionsOre')::bigint <> 1831900 or (b->'totals'->>'taxOre')::bigint <> 1485000 then
     raise exception 'Summorna blev fel: %', b->'totals';
   end if;
+  if jsonb_array_length(b->'problems') <> 0 then raise exception 'Problem efter stängningen: %', b->'problems'; end if;
   -- Summorna är de stängda körningarnas: skatten är körningens, avgifterna i hela kronor per sats.
   if (b->'totals'->>'taxOre')::bigint <> (select (totals->>'taxOre')::bigint from pay_runs where id = (select v from prov where k = 'nov')) then
     raise exception 'Skatten i AGI är inte körningens';
@@ -317,6 +334,12 @@ begin
   end;
   v_id := agi_store((select v from prov where k = 'a'), '2026-11', pg_temp.agi_fil(r, 16434, 14850), r);
   insert into prov values ('agi2', v_id);
+  -- Ett utkast markeras inte betalt (0041).
+  begin
+    perform agi_mark_paid(v_id, true);
+    raise exception 'Ett utkast kunde markeras betalt';
+  exception when feature_not_supported then null;
+  end;
   if (select version from agi_declarations where id = v_id) <> 2 or (select status from agi_declarations where id = (select v from prov where k = 'agi1')) <> 'filed' then
     raise exception 'Omprövningen blev inte version 2 bredvid den lämnade version 1';
   end if;
@@ -366,16 +389,35 @@ begin
        where b->>'employeeId' = (select v from prov where k = 'erik')::text) <> 3200050 then
     raise exception 'Växa-stödets underlag för Erik blev fel';
   end if;
-  -- 32 000 kr × 21,21 % = 6 787,20 → 6 787 kr; Fatima har redan ungdomsnedsättningen.
+  -- Fatima anställdes före maj 2024: taket är 25 000 kr, inte 35 000 kr som appen skickar (0041).
   begin
     perform vaxa_stod_claim_store((select v from prov where k = 'a'), '2026-11', jsonb_build_array(jsonb_build_object(
-      'employeeId', (select v from prov where k = 'fatima'), 'monthNo', 3, 'baseOre', 3150000, 'cappedBaseOre', 2500000, 'refundOre', 530200)));
-    raise exception 'Växa-stöd för någon med ungdomsnedsättning gick in';
+      'employeeId', (select v from prov where k = 'fatima'), 'monthNo', 33, 'baseOre', 3150000, 'cappedBaseOre', 3150000, 'refundOre', 668100)));
+    raise exception 'Växa-stöd med fel tak gick in';
+  exception when check_violation then
+    if sqlerrm not like 'Taket är 25000 kr (anställd från 2024-03-01)%' then raise exception 'Fel meddelande om taket: %', sqlerrm; end if;
+  end;
+  -- Med rätt tak: månad 33 är efter de 24 månaderna.
+  begin
+    perform vaxa_stod_claim_store((select v from prov where k = 'a'), '2026-11', jsonb_build_array(jsonb_build_object(
+      'employeeId', (select v from prov where k = 'fatima'), 'monthNo', 33, 'baseOre', 3150000, 'cappedBaseOre', 2500000, 'refundOre', 530200)));
+    raise exception 'Växa-stöd efter 24 månader gick in';
+  exception when check_violation then
+    if sqlerrm not like 'Månad 33 av anställningen%' then raise exception 'Fel meddelande om månaden: %', sqlerrm; end if;
+  end;
+  -- Erik från 2025-03-01: månad 21, 32 000 kr × 21,21 % = 6 787,20 → 6 787 kr.
+  begin
+    perform vaxa_stod_claim_store((select v from prov where k = 'a'), '2026-11', jsonb_build_array(jsonb_build_object(
+      'employeeId', (select v from prov where k = 'erik'), 'monthNo', 3, 'baseOre', 3200050, 'cappedBaseOre', 3200000, 'refundOre', 678700)));
+    raise exception 'Fel månad gick in';
   exception when check_violation then null;
   end;
   if vaxa_stod_claim_store((select v from prov where k = 'a'), '2026-11', jsonb_build_array(jsonb_build_object(
-       'employeeId', (select v from prov where k = 'erik'), 'monthNo', 3, 'baseOre', 3200050, 'cappedBaseOre', 3200000, 'refundOre', 678700))) <> 1 then
+       'employeeId', (select v from prov where k = 'erik'), 'monthNo', 21, 'baseOre', 3200050, 'cappedBaseOre', 3200000, 'refundOre', 678700))) <> 1 then
     raise exception 'Växa-stödet registrerades inte';
+  end if;
+  if (select month_no from vaxa_stod_claims where employee_id = (select v from prov where k = 'erik')) <> 21 then
+    raise exception 'Månaden sparades inte';
   end if;
 
   if (select s from jsonb_array_elements(year_summary((select v from prov where k = 'a'), 2026)) s where s->>'name' = 'Erik Eriksson')
