@@ -11,9 +11,15 @@ import type { IsoDate } from "../rules/index";
 import type { PayrollRuleSet } from "../rules/payroll";
 import { lumpSumPercent, tableTax, type TaxTableIndex, type TaxTableRow } from "./tax-tables";
 
-/** The shape of an `employee_tax` row valid on the pay date. */
+/**
+ * The shape of an `employee_tax` row valid on the pay date. "table" is the
+ * normal case (A-skattsedel: table and column, or the 30 % side-income rate
+ * when we are not the main employer); a percent decided by Skatteverket is
+ * a jämkning with its validity, not a kind of its own. "none" is for a
+ * person Skatteverket has exempted from skatteavdrag here.
+ */
 export type EmployeeTax = {
-  kind: "table" | "percent" | "none";
+  kind: "table" | "none";
   tableNo: number | null;
   /** 1 for most employees; 3 for pay to someone who was 66 at the start of the year. */
   columnNo: number | null;
@@ -32,9 +38,9 @@ export type TaxMethod =
   | "jamkning-percent"
   | "jamkning-amount"
   | "side-income"
-  | "percent"
   | "none"
-  | "below-annual-threshold";
+  | "below-annual-threshold"
+  | "below-single-payment";
 
 export type TaxResult = {
   method: TaxMethod;
@@ -86,9 +92,11 @@ export function preliminaryTax(input: TaxInput): TaxResult {
 
   if (input.expectedAnnualPayOre < rules.employerContributions.minAnnualPayOre) return result({ method: "below-annual-threshold" });
   if (tax.kind === "none") return result({ method: "none" });
+  // SFL 10 kap. 4 § 1: no skatteavdrag on a payment below 100 kr.
+  const paymentOre = tableBaseOre + lumpSumBaseOre;
+  if (paymentOre > 0 && paymentOre < rules.preliminaryTax.minSinglePaymentOre) return result({ method: "below-single-payment" });
 
   const adjustment = tax.adjustment && tax.adjustment.validTo >= input.payDate ? tax.adjustment : null;
-  const allBase = tableBaseOre + lumpSumBaseOre;
 
   if (adjustment?.mode === "percent") {
     return result({ method: "jamkning-percent", tableOre: percentTax(tableBaseOre, adjustment.percent), lumpSumOre: percentTax(lumpSumBaseOre, adjustment.percent), percent: adjustment.percent });
@@ -97,12 +105,11 @@ export function preliminaryTax(input: TaxInput): TaxResult {
     const p = rules.preliminaryTax.sideIncomePercent;
     return result({ method: "side-income", tableOre: percentTax(tableBaseOre, p), lumpSumOre: percentTax(lumpSumBaseOre, p), percent: p });
   }
-  if (tax.kind === "percent") {
-    const p = rules.preliminaryTax.sideIncomePercent;
-    return result({ method: "percent", tableOre: percentTax(allBase, p), percent: p });
-  }
 
-  if (tax.tableNo === null || tax.columnNo === null) throw new Error("Skattetabell och kolumn saknas för den anställde.");
+  // We are the main employer: the table decides. Never fall back to a flat rate.
+  if (tax.tableNo === null || tax.columnNo === null) {
+    throw new Error("Skattetabell och kolumn saknas för den anställde: lägg in A-skattsedeln (eller tabell och kolumn från Skatteverket) innan lönen räknas.");
+  }
   if (!input.taxTable) throw new Error(`Skattetabellerna för ${input.payDate.slice(0, 4)} är inte importerade.`);
   const column = tax.columnNo;
   const tableIncome = adjustment?.mode === "amount" ? Math.max(0, tableBaseOre + adjustment.monthlyIncomeChangeOre) : tableBaseOre;

@@ -74,6 +74,13 @@ test):
 - Vikariat converts after 730 days (AD 2019 nr 56: at least 731).
 - Styrelsearvode is reported in ruta 011 and again in 023 ("varav").
 
+**Changes to section 3 for phase 1:** `employee_tax.kind` is `table` or
+`none`; there is no `percent` kind (a percent decided by Skatteverket is a
+jämkning with its validity, and a main employer without a table is an
+error, never a silent 30 %). `leave_balances` should store the semesterår
+model (`startMonthDay`, earned the year before or the same year), see
+`vacationYears()`.
+
 **Before 2027:** `payrollRulesAt` refuses 2027 dates until a 2027 set and
 2027 golden vectors are added (older rate moves to born 1959, the young
 band to 2004–2008, new tables and engångsbelopp).

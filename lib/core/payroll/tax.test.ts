@@ -65,7 +65,17 @@ test("no tax under the 1 000 kr year rule, or for kind none", () => {
   assert.equal(preliminaryTax(input({ tax: { ...t33, kind: "none" } })).totalOre, 0);
 });
 
-test("refuses to guess: no table imported, or no table on the employee", () => {
+test("refuses to guess: no table imported, or a main employer without the A-skattsedel's table", () => {
   assert.throws(() => preliminaryTax(input({ taxTable: null })), /inte importerade/);
-  assert.throws(() => preliminaryTax(input({ tax: { ...t33, tableNo: null } })), /saknas/);
+  assert.throws(() => preliminaryTax(input({ tax: { ...t33, tableNo: null } })), /A-skattsedeln/);
+  assert.throws(() => preliminaryTax(input({ tax: { ...t33, columnNo: null } })), /A-skattsedeln/);
+  // Not the main employer needs no table: 30 %.
+  assert.equal(preliminaryTax(input({ tax: { ...t33, tableNo: null, columnNo: null, mainEmployer: false } })).method, "side-income");
+});
+
+test("SFL 10 kap. 4 § 1: no skatteavdrag on a payment below 100 kr", () => {
+  const small = preliminaryTax(input({ tax: { ...t33, mainEmployer: false }, tableBaseOre: 9_999 }));
+  assert.equal(small.method, "below-single-payment");
+  assert.equal(small.totalOre, 0);
+  assert.equal(preliminaryTax(input({ tax: { ...t33, mainEmployer: false }, tableBaseOre: 10_000 })).totalOre, 3_000);
 });
