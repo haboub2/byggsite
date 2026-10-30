@@ -68,8 +68,12 @@ export default async function TidPage({ searchParams }: { searchParams: Promise<
     r.entries.push(e);
     rows.set(key, r);
   }
+  // Projects by name, time without a project last.
   const grouped = [...rows.values()].sort(
-    (a, b) => (projectName.get(a.projectId ?? "") ?? "~").localeCompare(projectName.get(b.projectId ?? "") ?? "~", "sv") || (name.get(a.employeeId) ?? "").localeCompare(name.get(b.employeeId) ?? "", "sv")
+    (a, b) =>
+      Number(a.projectId === null) - Number(b.projectId === null) ||
+      (projectName.get(a.projectId ?? "") ?? "").localeCompare(projectName.get(b.projectId ?? "") ?? "", "sv") ||
+      (name.get(a.employeeId) ?? "").localeCompare(name.get(b.employeeId) ?? "", "sv")
   );
   const submittedAll = week.filter((e) => e.status === "submitted");
   const { week: weekNo } = isoWeek(monday);

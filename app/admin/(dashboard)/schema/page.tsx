@@ -154,7 +154,7 @@ export default async function SchemaPage({ searchParams }: { searchParams: Promi
                     ))}
                   </p>
                 ) : (
-                  <p className="efield-hint">{current?.payForm === "hourly" ? "Inget veckoschema: sjuklön räknas på bokade pass." : "Inget veckoschema: sjuklön räknas på avtalets timmar måndag–fredag tills ett schema finns."}</p>
+                  <p className="efield-hint">{!current ? "Ingen gällande anställning att lägga ett schema på; inringda pass syns i kalendern." : current.payForm === "hourly" ? "Inget veckoschema: sjuklön räknas på bokade pass." : "Inget veckoschema: sjuklön räknas på avtalets timmar måndag–fredag tills ett schema finns."}</p>
                 )}
                 {canWrite && current && (
                   <details className="hr-details">

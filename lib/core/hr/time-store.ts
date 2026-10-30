@@ -470,6 +470,7 @@ export async function clockOut(entryId: string, time: string, breakMinutes: numb
   if (isDemo()) {
     const r = demoEntry(entryId);
     if (!r.start_time || r.end_time) throw new Error("Du är inte instämplad.");
+    if (r.start_time.slice(0, 5) === time) throw new Error("Start och slut är samma klockslag.");
     const hours = blockHours(r.start_time, time, breakMinutes);
     if (hours <= 0) throw new Error("Rasten är längre än passet.");
     Object.assign(r, { end_time: time, break_minutes: breakMinutes, hours });
@@ -903,6 +904,8 @@ export async function answerShift(shiftId: string, accept: boolean, employeeId: 
       form: "sava",
       payForm: "hourly",
       workplace: project?.title ?? template.workplace,
+      workingTimePercent: 100,
+      weeklyHours: null,
       startsOn: shift.shift_date,
       endsOn: shift.shift_date,
       validFrom: shift.shift_date,

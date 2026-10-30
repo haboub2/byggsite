@@ -52,6 +52,7 @@ export const timeEntryInputSchema = z
   .superRefine((v, ctx) => {
     const issue = (path: string, message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
     if ((v.start === null) !== (v.end === null)) issue(v.start ? "end" : "start", "Ange både start och slut, eller bara timmar.");
+    if (v.start && v.start === v.end) issue("end", "Start och slut är samma klockslag; skriv ett dygnspass som timmar.");
     if (v.start && v.end && blockHours(v.start, v.end, v.breakMinutes) <= 0) issue("breakMinutes", "Rasten är längre än passet.");
     if (!v.start && v.hours === null) issue("hours", "Ange start och slut, eller antal timmar.");
   })

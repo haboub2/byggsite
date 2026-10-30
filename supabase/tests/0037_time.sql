@@ -164,6 +164,11 @@ begin
     raise exception 'En öppen instämpling kunde skickas in';
   exception when invalid_parameter_value then null;
   end;
+  begin
+    update time_entries set end_time = '07:00' where work_date = '2026-10-26' and end_time is null;
+    raise exception 'Utstämpling på samma klockslag gav ett dygn';
+  exception when invalid_parameter_value then null;
+  end;
   update time_entries set end_time = '15:30' where work_date = '2026-10-26' and end_time is null;
   if (select hours from time_entries where work_date = '2026-10-26') <> 8.5 then raise exception 'Utstämplingen gav fel timmar'; end if;
 

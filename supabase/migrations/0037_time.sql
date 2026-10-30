@@ -389,6 +389,10 @@ begin
     raise exception 'Projektet finns inte i organisationen.' using errcode = '22023';
   end if;
   if new.start_time is not null and new.end_time is not null then
+    -- Lika tider vore ett dygn; ett pass på 24 timmar skrivs som timmar.
+    if new.start_time = new.end_time then
+      raise exception 'Start och slut är samma klockslag.' using errcode = '22023';
+    end if;
     new.hours := public.time_block_hours(new.start_time, new.end_time, new.break_minutes);
     if new.hours <= 0 then
       raise exception 'Rasten är längre än passet.' using errcode = '22023';

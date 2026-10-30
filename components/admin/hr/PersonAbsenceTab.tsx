@@ -185,7 +185,6 @@ export async function PersonAbsenceTab({ employeeId, today, canWrite }: { employ
                         <td>{dayLabel(d.date)} {d.date}</td>
                         <td>
                           {d.dayNo}
-                          {d.dayNo === 1 && " (karensdag)"}
                           {d.date === s.certificateFrom && " · läkarintyg från i dag"}
                         </td>
                         <td>{hoursLabel(d.lostHours)}</td>

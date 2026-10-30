@@ -114,7 +114,7 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
           <span className="eyebrow eyebrow--accent">Min tid</span>
           <h1>{me.name.split(" ")[0]}</h1>
           <p className="mt-muted">
-            {dayLabel(today)} {today} · {check.orgName}
+            {new Intl.DateTimeFormat("sv-SE", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${today}T12:00:00Z`))} · {check.orgName}
           </p>
         </div>
         <form action={signOut}>

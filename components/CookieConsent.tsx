@@ -12,8 +12,8 @@ type Consent = "granted" | "denied";
 export default function CookieConsent() {
   const [choice, setChoice] = useState<Consent | null>(null);
   const [ready, setReady] = useState(false);
-  // The website's question, not the app's: never over the admin login or the portal.
-  const app = /^\/(admin|mitt-projekt)(\/|$)/.test(usePathname() ?? "");
+  // The website's question, not the app's: never over the admin login, the portal or Min tid.
+  const app = /^\/(admin|mitt-projekt|min-tid)(\/|$)/.test(usePathname() ?? "");
 
   useEffect(() => {
     let stored: string | null = null;
