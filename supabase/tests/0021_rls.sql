@@ -34,7 +34,8 @@ begin
   if n <> 1 then raise exception 'B ser inte sin kund (%).', n; end if;
   -- create_organization satte upp serier, konton och inställningar.
   select count(*) into n from number_series where org_id = (select v from prov where k = 'b');
-  if n <> 2 then raise exception 'Nummerserierna saknas (%).', n; end if;
+  -- F, V och L (lönebesked, 0039).
+  if n <> 3 then raise exception 'Nummerserierna saknas (%).', n; end if;
   select count(*) into n from accounts where org_id = (select v from prov where k = 'b');
   if n < 10 then raise exception 'Kontoplanen saknas (%).', n; end if;
   select count(*) into n from org_settings where org_id = (select v from prov where k = 'b');
