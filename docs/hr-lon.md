@@ -1,8 +1,9 @@
 # HR and payroll ("Personal och lön") — plan
 
 Status: **plan, written 2026-10-30. Phase 0 (rule book, tax tables,
-calculators) is built, see *Läge* below; nothing with a UI or a database
-yet.** Written in English
+calculators) and phase 1 (people, contracts, LAS clocks, migration 0035)
+are built, see the two *Läge* sections below; time, payroll and AGI are
+not.** Written in English
 because that is how the request was made; Swedish legal terms are kept in
 Swedish because that is what Skatteverket, the law and the collective
 agreements call them. "You" is Ibrahim (decisions, accounts, agreements), "a
@@ -84,6 +85,120 @@ model (`startMonthDay`, earned the year before or the same year), see
 **Before 2027:** `payrollRulesAt` refuses 2027 dates until a 2027 set and
 2027 golden vectors are added (older rate moves to born 1959, the young
 band to 2004–2008, new tables and engångsbelopp).
+
+## Läge: phase 1 done (2026-10-30)
+
+People, contracts, tax data and the LAS clocks, in the database and in
+`/admin/personal`. Draft PR "HR fas 1: personal, anställningar och avtal
+(0035)"; not applied to the production database.
+
+**Where things are**
+
+| What | File |
+|---|---|
+| Migration: tables, encryption, role `employee`, RLS, events, bucket `hr`, clocks | `supabase/migrations/0035_hr.sql` |
+| SQL tests (RLS, encryption, versions, documents, the employee role, every clock case) | `supabase/tests/0035_rls.sql` |
+| Run all migrations and SQL tests on a local Postgres, no Supabase | `supabase/tests/local/run.sh` (with `shim.sql`) |
+| Clock cases shared by TypeScript and SQL; regenerate the SQL block | `lib/core/hr/clock-cases.ts`, `npx tsx supabase/tests/gen-0035-clocks.ts` |
+| Types, zod, personnummer, versions → LAS periods, missing data, Idag rows | `lib/core/hr/{schema,clocks,missing,today,draft,format}.ts` |
+| Store (RLS and the database's functions; memory in demo mode) | `lib/core/hr/store.ts` |
+| Contract text per form (LAS 6 c §, SÄVA information, VD, styrelse) | `lib/core/hr/contract.ts`; PDF `lib/pdf/EmploymentContractPdf.tsx`, `lib/pdf/render-contract.tsx` |
+| Server actions | `app/admin/hr-actions.ts` |
+| Pages | `app/admin/(dashboard)/personal/` (list, `ny`, `[id]` with tabs, `[id]/dokument/[docId]` PDF) |
+| Roles and access `payroll` | `lib/core/org/roles.ts`, `proxy.ts` |
+
+**What the database does**
+
+- `employees` with `pnr_enc`/`bank_account_enc` (pgp_sym_encrypt, keys
+  `hr_pnr_key`, `hr_bank_key` in Vault, derived per organisation as in
+  0023), `pnr_hash` (HMAC with `hr_pnr_hash_key`), `pnr_masked` and
+  `birth_date` in clear. The migration creates the three Vault secrets if
+  they are missing. No role can select the ciphertexts; `hr_employee_pnr()`
+  and `hr_employee_bank_account()` decrypt for owner/admin only and write
+  `employee.pnr_revealed` / `employee.bank_revealed` to `events` every time.
+  New people go through `hr_create_employee()`.
+- `employments` is versioned: an insert with `contract_id` closes the
+  current version the day before (trigger), the same day replaces a version
+  that never took effect; nothing else may change (`document_id` is set when
+  a contract is signed). `employee_tax` rows are insert-only with
+  `valid_from`, `kind` is `table` or `none`, and a main employer without a
+  table is a check violation. `employment_documents` are frozen except the
+  one-time signing (`hr_sign_document()`); the PDF lies in bucket `hr` under
+  `{org}/{person}/{document}.pdf` with its SHA-256, and the app refuses to
+  serve a file whose hash differs. `leave_balances` stores the semesterår
+  model per row (`year_start_month_day`, `earning_model`); nothing fills
+  the balances yet.
+- Roles: `employee` added to `memberships` and `invitations`.
+  **`is_org_member()` now leaves `employee` out**, so every existing policy
+  (invoices, customers, the event log, the exports bucket, which 0035 also
+  patches) keeps an employee out; they see their own membership row, their
+  organisation's name and, through `is_self()`, their own HR rows and PDFs.
+  An invitation with role `employee` links the login to the person by
+  e-mail (trigger on `memberships`). `can_payroll_read` (owner, admin,
+  accountant) reads everything HR; `can_payroll_approve` (owner, admin)
+  writes. Personal events (`aggregate_type = 'employee'`) are hidden from
+  staff and readonly by a restrictive policy and never leave through the
+  public API.
+- `employment_clocks(org, as_of)` counts per person from the versions
+  (`employment_periods()`: each version from max(start, valid_from) to
+  min(end, valid_to, probation end); consecutive versions of one form in a
+  contract are one period). `las_clocks()` is a port of
+  `employment-clocks.ts` with the same search; `las_rules()` holds the rule
+  book's LAS values and `clock-parity.test.ts` fails if they drift.
+
+**The app.** Personal list with form, pay form, agreement, clocks (days to
+conversion; red within 30 days, or when the limit has passed while the
+person still holds the form, which by LAS 5 a § already is tillsvidare) and
+missing-data badges. Person page with the tabs of section 11: Anställning
+(contracts, versions, "Skapa avtal (PDF)", download, "Markera som signerad"
+with a date, a new version, a new contract) and Skatt (current row, history,
+new row) have content; Lön, Tid, Frånvaro, Utlägg, Förmåner say which phase
+fills them; Uppgifter holds contact details, a new personnummer or account,
+and the person's history. The personnummer is masked until "Visa"
+(owner/admin), which logs. Idag adds LAS rows (converting within 30 days,
+or passed while still on the form), provanställningar ending within 14 days
+and contracts ending within 30. Nav "Personal" for owner, admin and
+accountant; staff and readonly do not see it and the proxy turns them away;
+an employee reaches no admin page and lands in the portal.
+
+**Verified**
+
+- `npm test` (539 tests) and `npm run lint` (0 errors); `tsc` clean.
+- All 34 earlier migrations plus 0035 applied to Postgres 17 with the
+  shim, and all 14 SQL test files pass, the earlier ones included after the
+  `is_org_member` change. `0035_rls.sql` runs 44 clock cases (the reference
+  test's cases and its 12 random SÄVA patterns, forwards and backwards)
+  through `las_clocks()` with the reference's whole row as expectation.
+- In demo mode in the browser: a tillsvidare, a vikariat chain, a SÄVA
+  chain (three shifts in one month, an extension by a new version), a board
+  member and a provanställning created through the forms, contracts
+  generated, downloaded (PDF, hash checked) and signed, the reveal logged,
+  the list and Idag rows correct. The same periods through `las_clocks()`
+  give the same days and dates as the screen (350 of 360 → 2026-11-11;
+  vikariat 791, converted 2026-05-31; provanställning ends 2026-11-09).
+
+**Not verified, or not done**
+
+- Nothing has run against Supabase: not Vault (`vault.create_secret` in
+  the migration, the shim fakes it), not Storage policies on the real
+  `storage.objects`, not supabase-js's RPC calls with these signatures, not
+  RLS through PostgREST. Run `0035_rls.sql` in the SQL editor after
+  applying 0035, and walk the demo steps above with a real login.
+- Roles in the browser: demo mode is always owner, so the accountant's
+  read-only pages and the employee's redirect were tested only in SQL and
+  in `roles.test.ts`.
+- The contract texts are written from LAS 6 c § and the agreements as
+  summarised in this plan, not reviewed by a lawyer. The "vid behov"
+  paragraph names a default (pass vardagar 06–18, 24 hours' notice) that
+  you should confirm or override under Övriga villkor.
+- `sasong` is not counted by any clock: the reference counts only `sava`
+  and `vikariat` (LAS 5 a §), although section 2 says säsong counts as
+  SÄVA; decide before phase 2.
+- `schedule_id` on `employments` has no table yet (phase 2). `leave_balances`
+  has the model but no balances, and nothing reads it yet.
+- E-signature, sending the contract by e-mail, and amendment/termination
+  documents (the `kind` values exist, nothing creates them).
+- Linking a login to a person other than by the invitation's e-mail.
 
 ---
 
