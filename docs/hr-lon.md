@@ -1,9 +1,9 @@
 # HR and payroll ("Personal och lön") — plan
 
 Status: **plan, written 2026-10-30. Phase 0 (rule book, tax tables,
-calculators) and phase 1 (people, contracts, LAS clocks, migration 0035)
-are built, see the two *Läge* sections below; time, payroll and AGI are
-not.** Written in English
+calculators), phase 1 (people, contracts, LAS clocks, migration 0035) and
+phase 2 (time, schedules, absence, /min-tid, migration 0037) are built, see
+the *Läge* sections below; payroll and AGI are not.** Written in English
 because that is how the request was made; Swedish legal terms are kept in
 Swedish because that is what Skatteverket, the law and the collective
 agreements call them. "You" is Ibrahim (decisions, accounts, agreements), "a
@@ -208,6 +208,158 @@ an employee reaches no admin page and lands in the portal.
 - E-signature, sending the contract by e-mail, and amendment/termination
   documents (the `kind` values exist, nothing creates them).
 - Linking a login to a person other than by the invitation's e-mail.
+
+## Läge: phase 2 done (2026-10-30)
+
+Time, schedules, call-ins, absence and the employee's own page. Draft PR
+"HR fas 2: tid, schema, frånvaro och /min-tid (0037)". **0037 has not been
+applied to Supabase.** Apply it after 0036 and run
+`supabase/tests/0037_time.sql` in the SQL editor.
+
+**Where things are**
+
+| What | File |
+|---|---|
+| Migration: schedules, shifts and offers, time entries, locks, absences and sick periods, project leader, RLS, events, functions | `supabase/migrations/0037_time.sql` |
+| SQL tests (B sees nothing, employee, leader, accountant, lock, correction, call-in → SÄVA → clock, sick periods) | `supabase/tests/0037_time.sql` |
+| Time rows → `WorkBlock[]`, sums, ISO weeks, ATL warnings | `lib/core/hr/time.ts` |
+| Sick-period rule, `sickPay()` fed with the schedule and partial days, läkarintyg day, ten in twelve, semester days | `lib/core/hr/absence.ts` |
+| Semester per semesterår (earned, taken, saved) with the stored model | `lib/core/hr/balances.ts` |
+| Approved row → `project_costs` row (and its reversal) | `lib/core/hr/project-cost.ts` |
+| Idag rows (läkarintyg, call-ins, time to approve) | `lib/core/hr/time-today.ts` |
+| Form schemas | `lib/core/hr/time-schema.ts` |
+| Store (RLS and the database's functions; memory in demo mode) | `lib/core/hr/time-store.ts`, loaders `lib/core/hr/person-time.ts` |
+| Server actions | `app/admin/time-actions.ts`, `app/(portal)/min-tid/actions.ts` |
+| Pages | `app/admin/(dashboard)/tid/`, `app/admin/(dashboard)/schema/`, the person page's Tid and Frånvaro tabs (`components/admin/hr/PersonTimeTab.tsx`, `PersonAbsenceTab.tsx`), `app/(portal)/min-tid/` |
+| Roles `time` and `self`, `/min-tid` in the proxy, employee lands on `/min-tid` | `lib/core/org/roles.ts`, `proxy.ts` |
+
+**What the database does**
+
+- `schedules` + `schedule_rules`: one block per weekday (start, end, break),
+  frozen once made. `employments.schedule_id` now has its foreign key; a
+  version gets its schedule once (like the signed contract), a new version
+  inherits the previous one's, and a new pattern on a version that has one
+  is a new version from a chosen day (`hr_set_schedule()`; the working time
+  is part of the contract). 0037 replaces `employments_version()` and
+  `employments_freeze()` for this.
+- `shifts` (planned, or offered) and `shift_offers` (one row per person
+  offered). The pool is everyone not ended whose latest contract is a SÄVA
+  with timlön (`shift_pool()`). `shift_answer()` with yes inserts a new
+  one-day SÄVA from the person's latest timlön contract and points
+  `shifts.sava_period_id` at it, so `employment_clocks()` counts the shift;
+  the other offers expire. An accepted shift is frozen.
+- `time_entries`: draft → submitted → approved → locked. Hours are
+  computed from start, end and break in the database; equal start and end
+  are refused (a 24-hour stretch is written as hours). After approval a row
+  never changes: `time_correct()` adds a reversal (same day, kind, project,
+  hours negated, `corrects_id`) and optionally a replacement, both
+  submitted and approved as usual; each row is corrected at most once.
+  Submitting, approving, returning, correcting and locking go through
+  functions that write one event per person per batch.
+- Approval (`time_approve()`) writes the `project_costs` row in the same
+  transaction. The amount is computed in the app (`project-cost.ts`: timlön
+  or månadslön via `monthlyToHourlyOre`, plus the arbetsgivaravgift rate
+  for the person's birth year) from `time_cost_basis()`; the database
+  checks that hours and project are the row's and refuses an approval of a
+  project row without its cost. Cost rows from time (`time_entry_id`) can
+  only be reversed by a correction; their hours may be negative.
+- `time_locks`: no insert, update, delete or approval of time, and no
+  absence change that touches the locked days. Locking refuses while drafts
+  or submitted rows remain in the period, and marks the approved ones
+  `locked`. A lock is never removed.
+- `absences` (0,25 steps per day, open end for sjuk, läkarintyg date,
+  approval) and `sick_periods`, linked by `sick_relink()` after every
+  change: a spell starting at most `sick_rules().relapse_days` (5) days
+  after the period's last day continues it. Overlapping sick spells are
+  refused. Only owner/admin approve and record certificates.
+- `portal_projects.leader_user_id`, set only by owner/admin and only to
+  staff or higher; `can_approve_time(project)`. A leader (staff) cannot
+  approve their own time; owner and admin can.
+- RLS as section 10: an employee reads their own rows and writes their own
+  drafts, submitted rows and unapproved absence; a leader sees and approves
+  their projects' time (names through `time_people()`, no other personal
+  data, no absence); payroll readers read everything; the accountant
+  approves nothing. Personal events are `aggregate_type = 'employee'`;
+  locks and offers to the pool are `'time'`, and neither leaves through the
+  public API.
+
+**The app.** Tid: the week per project and person with net hours and
+status per day, approve a day, a person's week or everything submitted,
+return with a note, the week's rows with Rätta on approved ones, ATL
+warnings, locks, call-ins with who answered, and who leads each project
+(admin). Schema: the month calendar (schedule hours, shifts, absence
+codes), each person's weekly pattern with a form for a new one, planned
+shifts. Person › Tid: the month by week with sums and ATL warnings, and
+time entered for the person. Person › Frånvaro: absences with approve,
+läkarintyg received, last sick day and remove; every sick spell day by day
+from `sickPay()` (day numbers through återinsjuknande, karensavdrag once,
+employer days 1–14, the läkarintyg day); semester per semesterår with
+"Spara saldona" (writes `leave_balances`). Idag: missing läkarintyg (payroll
+readers), unanswered call-ins and time waiting (those who approve). Nav: Tid
+for owner, admin, staff and accountant; Schema for payroll. `/min-tid`
+(mobile): stamp in and out on a project, today's shift, call-ins (yes/no),
+the week with "Skicka in veckan", time added afterwards, report absence and
+"Jag är frisk i dag", own contracts. Employees land there after login.
+
+**Verified**
+
+- `npm test` (571 tests), `npm run lint` (0 errors), `tsc` clean.
+- All migrations through 0037 on Postgres with the shim; all 15 SQL test
+  files pass, `0037_time.sql` included.
+- In demo mode in the browser: a month salary person with a schedule and a
+  behovsanställd created; a week reported from a phone-sized `/min-tid`
+  (stamped in, rows added, the week submitted), approved on Tid with
+  project costs (242,63 kr/h × 8 h = 1 941 kr, as hand-computed), Monday
+  corrected from 8 to 7 h and the cost reversed, the week locked; a call-in
+  offered, accepted on `/min-tid`, and a one-day SÄVA registered; sick
+  spells 1–2 and 7–15 September as one period (one karensavdrag of
+  1 181,60 kr, days 1–11, läkarintyg from 12 September, also on Idag) and a
+  half-day spell in October as a new one; balances saved.
+
+**Not verified, or not done**
+
+- Nothing has run against Supabase: not supabase-js's RPC calls with these
+  signatures (`uuid[]` and `jsonb` arguments), not RLS through PostgREST,
+  not `leave_balances` upsert. Run `0037_time.sql` in the SQL editor.
+- Roles in the browser: demo mode is always owner, so the leader's,
+  accountant's and employee's views were tested only in SQL and
+  `roles.test.ts`; the real employee login → `/min-tid` redirect was not
+  walked.
+- The database's `current_date` is UTC: on the evening of the day before,
+  Swedish time, a shift may still count as "tomorrow" for acceptance.
+- The ATL rest checks are approximations (documented in `atlWarnings`);
+  they warn, never block.
+- Project cost is pay + arbetsgivaravgift only: no övertid or OB premium,
+  semester, pension or the young people's cap (phase 3 has those numbers).
+  The hourly cost on a cost row is visible to every org member who sees
+  project costs, staff included; a staff leader can also call
+  `time_cost_basis()` for their projects' rows and see the person's pay.
+- A planned shift assigned directly (Schema) is not an employment; only an
+  accepted call-in creates a SÄVA. A behovsanställd's planned shift needs
+  its own SÄVA registered under Anställning.
+- Corrections of locked rows are refused; they belong in the next payroll
+  run as retro lines (phase 3).
+- Absence approval has no flow beyond the button (no notification).
+  Semester requests from `/min-tid` are reports until approved.
+- No payslips or expenses on `/min-tid` (phases 3 and 5).
+
+**Where sections 3, 10 and 11 turned out wrong or thin**
+
+- Section 3: one `shifts` table cannot hold a call-in to several people;
+  `shift_offers` holds each person's answer. `time_entries.kind = 'ob'` is
+  redundant (the band comes from the clock); it is kept as worked time. A
+  correction is a pair (reversal + replacement), not one row. A
+  `sick_periods` table was added. `leave_balances.paid_days` holds days
+  taken. `project_costs` got `time_entry_id`.
+- Section 10: "staff approve time for projects where they are
+  project_leader" needed a project-leader field
+  (`portal_projects.leader_user_id`) and a rule that a leader does not
+  approve their own time. Staff need the names of the people on their
+  projects without the personnel register: `time_people()`.
+- Section 11: Tid is not a Personal page for access: staff reach it
+  (`/admin/tid`, access `time`), Personal and Schema stay payroll-only.
+  `/min-tid` is outside `/admin` with its own access `self` (employee, and
+  owner/admin to try it).
 
 ---
 
