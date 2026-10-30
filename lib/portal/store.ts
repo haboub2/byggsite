@@ -439,6 +439,12 @@ export async function updateProject(id: string, form: ProjectForm): Promise<void
 
 export async function removeProject(id: string): Promise<void> {
   if (isDemo()) {
+    // As portal_projects_time_on_delete() in 0038, on the time demo store (lib/core/hr/time-store.ts).
+    const time = (globalThis as unknown as { __binaafyTime?: { entries: { project_id: string | null; status: string }[] } }).__binaafyTime;
+    if (time?.entries.some((e) => e.project_id === id && (e.status === "approved" || e.status === "locked"))) {
+      throw new Error("Projektet har godkänd tid och kan inte tas bort; markera det som avslutat i stället.");
+    }
+    for (const e of time?.entries ?? []) if (e.project_id === id) e.project_id = null;
     const d = demo();
     d.projects = d.projects.filter((p) => p.id !== id);
     d.phases = d.phases.filter((p) => p.project_id !== id);
@@ -452,7 +458,8 @@ export async function removeProject(id: string): Promise<void> {
   }
   const supabase = await createSessionClient();
   const { error } = await supabase.from("portal_projects").delete().eq("id", id);
-  if (error) fail("Kunde inte ta bort projektet", error.message);
+  // 0A000: the project has approved time (0038); the message says what to do instead.
+  if (error) throw new Error(error.code === "0A000" ? error.message : `Kunde inte ta bort projektet: ${error.message}`);
 }
 
 /** Bump updated_at so the list order and "senast uppdaterad" follow activity. */

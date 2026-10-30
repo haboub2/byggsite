@@ -6,7 +6,7 @@ import { lawVacationYearModel, type VacationYearModel } from "../payroll/vacatio
 import { inForce, versionsOn, type EmploymentVersion } from "./schema";
 import { scheduleFromRules, sickBreakdown, sickRules, type Absence, type SickBreakdown } from "./absence";
 import { vacationBalances, type VacationBalance } from "./balances";
-import { netHours, type TimeEntry } from "./time";
+import { blockHours, netHours, type TimeEntry } from "./time";
 import { listEmployments } from "./store";
 import { listAbsences, listLeaveBalances, listSchedules, listShifts, listTimeEntries, type Schedule, type StoredBalance } from "./time-store";
 
@@ -45,13 +45,7 @@ export async function workScheduleFor(employeeId: string, version: EmploymentVer
   if (!version || version.payForm === "hourly") {
     const shifts = (await listShifts(range)).filter((x) => x.employeeId === employeeId && (x.offerStatus === null || x.offerStatus === "accepted"));
     const hours: Record<IsoDate, number> = {};
-    for (const x of shifts) {
-      const [sh, sm] = x.start.split(":").map(Number);
-      const [eh, em] = x.end.split(":").map(Number);
-      let mins = eh * 60 + em - (sh * 60 + sm);
-      if (mins <= 0) mins += 24 * 60;
-      hours[x.date] = (hours[x.date] ?? 0) + Math.round(((mins - x.breakMinutes) / 60) * 100) / 100;
-    }
+    for (const x of shifts) hours[x.date] = (hours[x.date] ?? 0) + blockHours(x.start, x.end, x.breakMinutes);
     return { schedule: { kind: "shifts", hours }, source: "shifts", weekly: 0 };
   }
   const weekly = version.weeklyHours ?? (40 * version.workingTimePercent) / 100;

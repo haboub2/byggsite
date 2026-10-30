@@ -55,3 +55,22 @@ test("a calendar-year model earned the same year, and tjänstledighet that does 
 test("styrelseuppdrag gives no semester", () => {
   assert.deepEqual(vacationBalances({ model: LAW, versions: [version("2026-01-01", { form: "uppdrag", vacationRule: "none", vacationDays: 0 })], absences: [], schedule: null, asOf: "2026-10-30" }), []);
 });
+
+test("a gap between two contracts earns nothing: tillsvidare 2020–2021, again from 2025", () => {
+  const versions = [version("2020-01-01", { id: "a", contractId: "a", endsOn: "2021-12-31" }), version("2025-01-01", { id: "b", contractId: "b" })];
+  const rows = vacationBalances({ model: LAW, versions, absences: [], schedule: MON_FRI, asOf: "2026-10-30" });
+  const earned = Object.fromEntries(rows.map((r) => [r.yearFrom, r.earnedDays]));
+  // Earned April 2021–March 2022: 275 days of 365 → 19. 2022–2024 nothing; 2024/25: Jan–Mar 2025 → 7.
+  assert.equal(earned["2022-04-01"], 19);
+  assert.equal(earned["2023-04-01"], 0);
+  assert.equal(earned["2024-04-01"], 0);
+  assert.equal(earned["2025-04-01"], 7);
+  assert.equal(earned["2026-04-01"], 25);
+});
+
+test("a behovsanställd with two one-day SÄVA earns for two days, not the months between", () => {
+  const sava = (id: string, day: string) => version(day, { id, contractId: id, form: "sava", endsOn: day, vacationRule: "procent" });
+  const rows = vacationBalances({ model: LAW, versions: [sava("s1", "2026-09-01"), sava("s2", "2027-02-10")], absences: [], schedule: null, asOf: "2027-04-15" });
+  // Intjänandeår April 2026–March 2027: 2 days of 365 → 25 × 2 / 365 = 0,14 → 1.
+  assert.deepEqual(rows.map((r) => [r.yearFrom, r.earnedDays]), [["2026-04-01", 0], ["2027-04-01", 1]]);
+});

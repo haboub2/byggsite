@@ -1,5 +1,5 @@
--- RLS- och funktionsprov för 0037 (tid, schema och frånvaro, docs/hr-lon.md
--- fas 2). Körs i Supabase SQL-editor efter 0037, eller lokalt med
+-- RLS- och funktionsprov för 0037 och 0038 (tid, schema och frånvaro,
+-- docs/hr-lon.md fas 2). Körs i Supabase SQL-editor efter 0038, eller lokalt med
 -- supabase/tests/local/run.sh. Allt sker i en transaktion som rullas
 -- tillbaka; "Prov 0037: alla gick igenom" betyder att allt höll.
 --
@@ -144,6 +144,12 @@ begin
     raise exception 'Erik kunde sätta sin rad som godkänd';
   exception when insufficient_privilege then null;
   end;
+  -- En inskickad rad som Erik ändrar blir ett utkast igen (0038) och skickas in på nytt.
+  update time_entries set note = 'Till grossisten i Kungsbacka' where id = (select v from prov where k = 'erik_travel');
+  if (select status from time_entries where id = (select v from prov where k = 'erik_travel')) <> 'draft' then
+    raise exception 'Den ändrade inskickade raden blev inte ett utkast';
+  end if;
+  if time_submit(array[(select v from prov where k = 'erik_travel')]) <> 1 then raise exception 'Raden kunde inte skickas in igen'; end if;
   -- Ingen tid åt någon annan.
   begin
     insert into time_entries (org_id, employee_id, work_date, hours) values ((select v from prov where k = 'a'), (select v from prov where k = 'fatima'), '2026-10-20', 8);
@@ -271,7 +277,6 @@ set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000037a3","r
 do $$
 declare
   n int;
-  v_costs jsonb;
   v_ids uuid[];
 begin
   -- Ledaren ser P1:s rader (Eriks fyra dagar och resan, Fatimas utkast), inte P2, ingen frånvaro.
@@ -286,34 +291,31 @@ begin
   select count(*) into n from time_people((select v from prov where k = 'a'));
   if n <> 3 then raise exception 'Ledaren får % namn ur time_people.', n; end if;
 
+  -- Ingen kostnadsfunktion som visar kollegors lön (0038 tog bort time_cost_basis).
+  if to_regprocedure('public.time_cost_basis(uuid[])') is not null then raise exception 'time_cost_basis finns kvar'; end if;
+
   v_ids := array(select id from time_entries where employee_id = (select v from prov where k = 'erik') and project_id = (select v from prov where k = 'p1'));
-  select count(*) into n from time_cost_basis(v_ids) where pay_form = 'monthly' and monthly_salary_ore = 3200000;
-  if n <> 5 then raise exception 'Kostnadsunderlaget gav % rader.', n; end if;
-  -- Utan projektkostnaden godkänns inget.
-  begin
-    perform time_approve(v_ids);
-    raise exception 'Godkännande utan projektkostnad gick igenom';
-  exception when invalid_parameter_value then null;
-  end;
-  -- Kostnaden räknas i appen; här 300 kr/h.
-  select jsonb_agg(jsonb_build_object('entryId', id, 'hours', hours, 'hourlyRateOre', 30000, 'amountOre', round(hours * 30000), 'description', 'Erik ' || work_date))
-    into v_costs from time_entries where id = any(v_ids);
-  n := time_approve(v_ids, v_costs);
+  n := time_approve(v_ids);
   if n <> 5 then raise exception 'Ledaren godkände % rader, väntade 5.', n; end if;
   select count(*) into n from project_costs where time_entry_id = any(v_ids) and kind = 'hours';
   if n <> 5 then raise exception 'Godkännandet skrev % projektkostnader.', n; end if;
-  if (select sum(amount_ore) from project_costs where time_entry_id = any(v_ids)) <> (4 * 8 + 1.5) * 30000 then
-    raise exception 'Projektkostnaden blev %', (select sum(amount_ore) from project_costs where time_entry_id = any(v_ids));
+  -- Kostnaden räknas i databasen: 32 000 kr/mån, 40 h/v, född 1992 → 184,62 kr/h + 31,42 % = 242,63 kr/h
+  -- (samma som lib/core/hr/project-cost.test.ts), avrundat per rad.
+  if exists (select 1 from project_costs where time_entry_id = any(v_ids) and (hourly_rate_ore <> 24263 or amount_ore <> round(hours * 24263))) then
+    raise exception 'Projektkostnaden räknades fel: %', (select string_agg(hours || ' h × ' || hourly_rate_ore || ' = ' || amount_ore, ', ') from project_costs where time_entry_id = any(v_ids));
+  end if;
+  if (select description from project_costs where time_entry_id = (select v from prov where k = 'erik_19')) <> 'Erik Eriksson 2026-10-19, 8 h arbete'
+     or (select description from project_costs where time_entry_id = (select v from prov where k = 'erik_travel')) <> 'Erik Eriksson 2026-10-21, 1,5 h restid' then
+    raise exception 'Kostnadens text: %', (select string_agg(description, ' / ') from project_costs where time_entry_id = any(v_ids));
   end if;
   -- P2 är inte ledarens; Fatimas utkast är inte inskickat.
   begin
-    perform time_approve(array[(select v from prov where k = 'erik_23')], '[]');
+    perform time_approve(array[(select v from prov where k = 'erik_23')]);
     raise exception 'Ledaren kunde godkänna P2';
   exception when insufficient_privilege then null;
   end;
   begin
-    perform time_approve(array(select id from time_entries where employee_id = (select v from prov where k = 'fatima')),
-                         '[]');
+    perform time_approve(array(select id from time_entries where employee_id = (select v from prov where k = 'fatima')));
     raise exception 'Ett utkast kunde godkännas';
   exception when invalid_parameter_value then null;
   end;
@@ -340,14 +342,16 @@ begin
   perform time_correct((select v from prov where k = 'erik_19'), '{"start":"07:00","end":"15:00","breakMinutes":60}', 'Gick tidigare');
   v_ids := array(select id from time_entries where corrects_id = (select v from prov where k = 'erik_19'));
   if cardinality(v_ids) <> 2 then raise exception 'Rättelsen gav % rader.', cardinality(v_ids); end if;
-  select jsonb_agg(jsonb_build_object('entryId', id, 'hours', hours, 'hourlyRateOre', 30000, 'amountOre', round(hours * 30000), 'description', 'Rättelse'))
-    into v_costs from time_entries where id = any(v_ids);
-  perform time_approve(v_ids, v_costs);
+  perform time_approve(v_ids);
   if (select sum(hours) from time_entries where work_date = '2026-10-19' and employee_id = (select v from prov where k = 'erik') and status = 'approved') <> 7 then
     raise exception 'Måndagen blev inte 7 timmar efter rättelsen';
   end if;
-  if (select sum(amount_ore) from project_costs where cost_date = '2026-10-19' and project_id = (select v from prov where k = 'p1')) <> 7 * 30000 then
+  if (select sum(amount_ore) from project_costs where cost_date = '2026-10-19' and project_id = (select v from prov where k = 'p1')) <> 7 * 24263 then
     raise exception 'Projektkostnaden vändes inte';
+  end if;
+  if not exists (select 1 from project_costs where cost_date = '2026-10-19' and amount_ore = -194104 and hourly_rate_ore = 24263
+                 and description = 'Rättelse: Erik Eriksson 2026-10-19, −8 h arbete') then
+    raise exception 'Vändningen fick inte den vända radens timkostnad';
   end if;
   begin
     perform time_correct((select v from prov where k = 'erik_19'));
@@ -389,8 +393,16 @@ begin
     raise exception 'Perioden låstes med oattesterade rader';
   exception when invalid_parameter_value then null;
   end;
-  perform time_approve(array[(select v from prov where k = 'erik_23')],
-    jsonb_build_array(jsonb_build_object('entryId', (select v from prov where k = 'erik_23'), 'hours', 8, 'hourlyRateOre', 30000, 'amountOre', 240000)));
+  perform time_approve(array[(select v from prov where k = 'erik_23')]);
+  -- Gustav har ingen anställning den dagen: hans tid på ett projekt godkänns inte.
+  insert into time_entries (org_id, employee_id, work_date, hours, project_id, status)
+  values ((select v from prov where k = 'a'), (select v from prov where k = 'gustav'), '2026-10-22', 4, (select v from prov where k = 'p1'), 'submitted');
+  begin
+    perform time_approve(array(select id from time_entries where employee_id = (select v from prov where k = 'gustav')));
+    raise exception 'Tid utan anställning godkändes';
+  exception when invalid_parameter_value then null;
+  end;
+  delete from time_entries where employee_id = (select v from prov where k = 'gustav');
   delete from time_entries where employee_id = (select v from prov where k = 'fatima');
   perform time_lock_period((select v from prov where k = 'a'), '2026-10-19', '2026-10-25', 'Oktober v. 43');
   select count(*) into n from time_entries where work_date between '2026-10-19' and '2026-10-25' and status = 'locked';
@@ -540,8 +552,6 @@ begin
   if n <> 0 then raise exception 'B får A:s namn'; end if;
   select count(*) into n from time_projects((select v from prov where k = 'a'));
   if n <> 0 then raise exception 'B får A:s projekt'; end if;
-  select count(*) into n from time_cost_basis(array(select v from prov where k like 'erik\_%'));
-  if n <> 0 then raise exception 'B får A:s kostnadsunderlag'; end if;
   begin
     perform time_approve(array[(select v from prov where k = 'erik_21')]);
     raise exception 'B kunde godkänna A:s tid';
@@ -563,6 +573,53 @@ begin
   exception when insufficient_privilege then null;
   end;
 end $$;
+
+-- ---------------------------------------------------------------- ett projekt med godkänd tid tas inte bort (0038)
+
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000037a1","role":"authenticated","email":"a-agare@prov37.se"}';
+do $$
+begin
+  begin
+    delete from portal_projects where id = (select v from prov where k = 'p1');
+    raise exception 'Ett projekt med godkänd tid togs bort';
+  exception when feature_not_supported then null;
+  end;
+  -- P2 har bara Eriks godkända fredag; ett nytt projekt med ett utkast tas bort och utkastet blir utan projekt.
+  insert into portal_projects (org_id, title) values ((select v from prov where k = 'a'), 'P3 Tillfälligt');
+  insert into prov select 'p3', id from portal_projects where title = 'P3 Tillfälligt';
+  insert into time_entries (org_id, employee_id, work_date, hours, project_id)
+  values ((select v from prov where k = 'a'), (select v from prov where k = 'erik'), '2026-11-02', 2, (select v from prov where k = 'p3'));
+  delete from portal_projects where id = (select v from prov where k = 'p3');
+  if exists (select 1 from portal_projects where id = (select v from prov where k = 'p3')) then raise exception 'P3 togs inte bort'; end if;
+  if (select project_id from time_entries where work_date = '2026-11-02' and employee_id = (select v from prov where k = 'erik')) is not null then
+    raise exception 'Utkastet behöll det borttagna projektet';
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------- timkostnaden (samma fall som project-cost.test.ts)
+--
+-- lib/core/hr/contribution-parity.test.ts läser raderna nedan och räknar
+-- samma fall med internalHourlyCost(); båda sidor ska ge sista talet.
+
+reset role;
+create function pg_temp.prov_cost(p_name text, p_pay text, p_monthly bigint, p_hourly bigint, p_weekly numeric, p_pct numeric,
+                                  p_birth date, p_on date, p_expected bigint) returns void
+  language plpgsql
+as $$
+declare
+  v bigint := time_hourly_cost_ore(p_pay, p_monthly, p_hourly, p_weekly, p_pct, p_birth, p_on);
+begin
+  if v is distinct from p_expected then raise exception 'Timkostnad %: % öre, väntade %.', p_name, v, p_expected; end if;
+end;
+$$;
+select pg_temp.prov_cost('månadslön 32 000, 40 h, född 1992', 'monthly', 3200000, null, 40, 100, '1992-06-30', '2026-10-19', 24263);
+select pg_temp.prov_cost('timlön 180, född 2005, oktober 2026', 'hourly', null, 18000, null, 100, '2005-02-01', '2026-10-19', 21746);
+select pg_temp.prov_cost('timlön 180, född 2005, mars 2026', 'hourly', null, 18000, null, 100, '2005-02-01', '2026-03-15', 23656);
+select pg_temp.prov_cost('timlön 200, född 1955', 'hourly', null, 20000, null, 100, '1955-03-03', '2026-10-19', 22042);
+select pg_temp.prov_cost('timlön 200, född 1936', 'hourly', null, 20000, null, 100, '1936-01-01', '2026-10-19', 20000);
+select pg_temp.prov_cost('timlön 180, okänd födelsedag', 'hourly', null, 18000, null, 100, null, '2026-10-19', 23656);
+select pg_temp.prov_cost('månadslön 16 000, 50 %, inga veckotimmar', 'monthly', 1600000, null, null, 50, '1992-06-30', '2026-10-19', 24263);
+select pg_temp.prov_cost('månadslön 41 000, 37,5 h, född 1958', 'monthly', 4100000, null, 37.5, 100, '1958-12-31', '2026-06-01', 27807);
 
 do $$ begin raise notice 'Prov 0037: alla gick igenom'; end $$;
 

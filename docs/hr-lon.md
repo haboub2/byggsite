@@ -213,15 +213,19 @@ an employee reaches no admin page and lands in the portal.
 
 Time, schedules, call-ins, absence and the employee's own page. Draft PR
 "HR fas 2: tid, schema, frånvaro och /min-tid (0037)". 0037 is applied to
-the Supabase project (2026-10-30, after 0036), and
-`supabase/tests/0037_time.sql` passes in the SQL editor there.
+the Supabase project (2026-10-30, after 0036) and its test passed there.
+The review's fixes are in `0038_time_fixes.sql`, **which must be applied
+after 0037 and has not run against Supabase**; then run
+`supabase/tests/0037_time.sql` again in the SQL editor (it now covers 0038).
 
 **Where things are**
 
 | What | File |
 |---|---|
 | Migration: schedules, shifts and offers, time entries, locks, absences and sick periods, project leader, RLS, events, functions | `supabase/migrations/0037_time.sql` |
-| SQL tests (B sees nothing, employee, leader, accountant, lock, correction, call-in → SÄVA → clock, sick periods) | `supabase/tests/0037_time.sql` |
+| Review fixes: hourly cost computed in SQL, `time_cost_basis()` dropped, an edited submitted row becomes a draft, project delete with approved time refused | `supabase/migrations/0038_time_fixes.sql` |
+| SQL tests (B sees nothing, employee, leader, accountant, lock, correction, call-in → SÄVA → clock, sick periods, the 0038 fixes, hourly-cost cases) | `supabase/tests/0037_time.sql` |
+| The SQL contribution rates and hourly-cost cases against the rule book and `internalHourlyCost()` | `lib/core/hr/contribution-parity.test.ts` |
 | Time rows → `WorkBlock[]`, sums, ISO weeks, ATL warnings | `lib/core/hr/time.ts` |
 | Sick-period rule, `sickPay()` fed with the schedule and partial days, läkarintyg day, ten in twelve, semester days | `lib/core/hr/absence.ts` |
 | Semester per semesterår (earned, taken, saved) with the stored model | `lib/core/hr/balances.ts` |
@@ -255,14 +259,22 @@ the Supabase project (2026-10-30, after 0036), and
   hours negated, `corrects_id`) and optionally a replacement, both
   submitted and approved as usual; each row is corrected at most once.
   Submitting, approving, returning, correcting and locking go through
-  functions that write one event per person per batch.
-- Approval (`time_approve()`) writes the `project_costs` row in the same
-  transaction. The amount is computed in the app (`project-cost.ts`: timlön
-  or månadslön via `monthlyToHourlyOre`, plus the arbetsgivaravgift rate
-  for the person's birth year) from `time_cost_basis()`; the database
-  checks that hours and project are the row's and refuses an approval of a
-  project row without its cost. Cost rows from time (`time_entry_id`) can
-  only be reversed by a correction; their hours may be negative.
+  functions that write one event per person per batch. A submitted row the
+  person changes becomes a draft again and must be submitted anew (0038);
+  a payroll approver's change keeps it submitted.
+- Approval (`time_approve(ids)`, 0038) writes the `project_costs` row in the
+  same transaction and computes it there: `time_hourly_cost_ore()` is the
+  timlön, or månadslön × 12 / (52 × veckotimmar, or 40 × omfattningen),
+  plus `employer_contribution_percent()` for the person's birth year and
+  the work date (`employer_contribution_rules()` holds the rule book's
+  numbers like `las_rules()`). A reversal takes the reversed row's rate.
+  `contribution-parity.test.ts` checks the numbers against
+  `payrollRulesAt()` and runs the SQL test's cost cases through
+  `internalHourlyCost()`, which demo mode still uses. Nothing about the
+  cost comes from the client, and 0037's `time_cost_basis()` (which let a
+  staff leader read a colleague's pay and birth date) is gone. Cost rows
+  from time (`time_entry_id`) can only be reversed by a correction; their
+  hours may be negative.
 - `time_locks`: no insert, update, delete or approval of time, and no
   absence change that touches the locked days. Locking refuses while drafts
   or submitted rows remain in the period, and marks the approved ones
@@ -278,7 +290,7 @@ the Supabase project (2026-10-30, after 0036), and
 - RLS as section 10: an employee reads their own rows and writes their own
   drafts, submitted rows and unapproved absence; a leader sees and approves
   their projects' time (names through `time_people()`, no other personal
-  data, no absence); payroll readers read everything; the accountant
+  data, no absence, no pay); payroll readers read everything; the accountant
   approves nothing. Personal events are `aggregate_type = 'employee'`;
   locks and offers to the pool are `'time'`, and neither leaves through the
   public API.
@@ -303,9 +315,9 @@ the week with "Skicka in veckan", time added afterwards, report absence and
 
 **Verified**
 
-- `npm test` (571 tests), `npm run lint` (0 errors), `tsc` clean.
-- All migrations through 0037 on Postgres with the shim; all 15 SQL test
-  files pass, `0037_time.sql` included.
+- `npm test` (575 tests), `npm run lint` (0 errors), `tsc` clean.
+- All migrations through 0038 on Postgres with the shim; all 15 SQL test
+  files pass, `0037_time.sql` included (it now also covers 0038).
 - In demo mode in the browser: a month salary person with a schedule and a
   behovsanställd created; a week reported from a phone-sized `/min-tid`
   (stamped in, rows added, the week submitted), approved on Tid with
@@ -318,10 +330,12 @@ the week with "Skicka in veckan", time added afterwards, report absence and
 
 **Not verified, or not done**
 
-- 0037 is applied and its SQL test passes on Supabase, but the app has not
-  run against Supabase yet: not supabase-js's RPC calls with these
-  signatures (`uuid[]` and `jsonb` arguments), not RLS through PostgREST,
-  not the `leave_balances` upsert.
+- 0038 has not run against Supabase. 0037 is applied and its test passed
+  there, but the app has not run against Supabase yet: not supabase-js's
+  RPC calls with these signatures (`uuid[]` and `jsonb` arguments), not
+  RLS through PostgREST, not the `leave_balances` upsert. The demo-mode
+  walk-through was done before 0038; the 0038 changes were tested in SQL
+  and `npm test`, not again in the browser.
 - Roles in the browser: demo mode is always owner, so the leader's,
   accountant's and employee's views were tested only in SQL and
   `roles.test.ts`; the real employee login → `/min-tid` redirect was not
@@ -332,9 +346,18 @@ the week with "Skicka in veckan", time added afterwards, report absence and
   they warn, never block.
 - Project cost is pay + arbetsgivaravgift only: no övertid or OB premium,
   semester, pension or the young people's cap (phase 3 has those numbers).
-  The hourly cost on a cost row is visible to every org member who sees
-  project costs, staff included; a staff leader can also call
-  `time_cost_basis()` for their projects' rows and see the person's pay.
+- **Decision (review finding 1):** `project_costs.hourly_rate_ore` on rows
+  from time is left visible to every org member who reads project costs,
+  staff included. The margin needs the labour cost, and amount ÷ hours on
+  the same row gives the rate anyway, so hiding the column alone would
+  protect nothing; hiding it properly means a separate, payroll-only cost
+  table or one aggregated row per project and month. Revisit before the
+  product has staff who should not see colleagues' cost.
+- **Decision (review finding 8):** a project with approved (or locked)
+  time cannot be deleted: the database refuses with "markera det som
+  avslutat i stället", and the project's delete action now removes the row
+  before its files and shows that message. Drafts and submitted rows on a
+  deleted project are kept without a project.
 - A planned shift assigned directly (Schema) is not an employment; only an
   accepted call-in creates a SÄVA. A behovsanställd's planned shift needs
   its own SÄVA registered under Anställning.
@@ -346,6 +369,12 @@ the week with "Skicka in veckan", time added afterwards, report absence and
 
 **Where sections 3, 10 and 11 turned out wrong or thin**
 
+- Section 3 and 7: the project cost is computed in the database at approval
+  (a client-sent amount could be wrong or reveal pay). Semester balances
+  count only the days actually employed: contracts with gaps, or a
+  behovsanställd's one-day shifts, are not one stretch (`employedIntervals`
+  in `balances.ts`, and `paidDaysEarned()` takes an `employmentDays`
+  override).
 - Section 3: one `shifts` table cannot hold a call-in to several people;
   `shift_offers` holds each person's answer. `time_entries.kind = 'ob'` is
   redundant (the band comes from the clock); it is kept as worked time. A

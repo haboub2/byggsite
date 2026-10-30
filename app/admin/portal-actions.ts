@@ -209,8 +209,13 @@ export async function deleteProject(formData: FormData): Promise<void> {
       ...(bundle.project.report_hash ? [`projects/${id}/rapport-${bundle.project.report_hash}.pdf`] : []),
       `projects/${id}/dokumentation.zip`,
     ];
+    // The row first: the database refuses a project with approved time (0038), and then the files must stay.
+    try {
+      await removeProject(id);
+    } catch (err) {
+      redirect(projectUrl(id, { fel: err instanceof Error ? err.message : "Kunde inte ta bort projektet." }));
+    }
     await Promise.all(keys.map((k) => removePortalFile(k).catch(() => undefined)));
-    await removeProject(id);
   }
   refresh(id);
   redirect(LIST);

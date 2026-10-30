@@ -13,7 +13,7 @@ import { todayIso } from "../quotes/schema";
 import type { Access } from "../core/org/roles";
 import { listEmployees, listEmployments, loadClocks } from "../core/hr/store";
 import { hrTodos, type HrTodo } from "../core/hr/today";
-import { listAbsences, listShifts, listWaitingEntries, openOffer, timePeople } from "../core/hr/time-store";
+import { countWaitingEntries, listAbsences, listShifts, listWaitingEntries, openOffer, timePeople } from "../core/hr/time-store";
 import { certificatesDue } from "../core/hr/absence";
 import { timeTodos, type TimeTodo } from "../core/hr/time-today";
 import { addDays } from "../core/rules/index";
@@ -278,7 +278,7 @@ export async function loadNavCounts(access: Access[], today = todayIso()): Promi
     canWrite ? safe("leads", () => listLeads({ status: "new" }, { limit: 1 }), { leads: [], total: 0 }) : { leads: [], total: 0 },
     safe("phases", () => listOverduePhases(today), []),
     safe("invoices", () => listInvoices({ tab: "overdue" }), []),
-    approves ? safe("tid", () => listWaitingEntries(), []) : [],
+    approves ? safe("tid", () => countWaitingEntries(), 0) : 0,
   ]);
-  return { inbox: leads.total, projects: new Set(phases.map((p) => p.project_id)).size, invoices: overdue.length, time: waiting.length };
+  return { inbox: leads.total, projects: new Set(phases.map((p) => p.project_id)).size, invoices: overdue.length, time: waiting };
 }

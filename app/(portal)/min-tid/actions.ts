@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/admin";
 import { isDemo } from "@/lib/leads";
 import { todayIso } from "@/lib/quotes/schema";
 import { SELF_REPORTED_KINDS } from "@/lib/core/hr/absence";
+import { addDays } from "@/lib/core/rules/index";
 import { absenceInputSchema, timeEntryInputSchema } from "@/lib/core/hr/time-schema";
 import { DEMO_PICK_COOKIE, stockholmClock } from "@/lib/core/hr/time";
 import {
@@ -100,12 +101,10 @@ export async function addOwnTimeAction(formData: FormData): Promise<void> {
 }
 
 export async function deleteOwnTimeAction(formData: FormData): Promise<void> {
-  const e = await me();
+  await me();
   await run(async () => {
-    const id = text(formData, "entryId");
-    const mine = await listTimeEntries({ from: "2000-01-01", to: "2999-12-31", employeeId: e.id });
-    if (!mine.some((x) => x.id === id)) throw new Error("Raden finns inte.");
-    await deleteTimeEntry(id);
+    // RLS lets a person delete only their own drafts; anything else removes no row and deleteTimeEntry says so.
+    await deleteTimeEntry(text(formData, "entryId"));
     return "Raden är borttagen.";
   });
 }
@@ -142,9 +141,7 @@ export async function backFromSickAction(formData: FormData): Promise<void> {
     const back = text(formData, "date") || todayIso();
     const a = (await listAbsences({ employeeId: e.id })).find((x) => x.id === id);
     if (!a || a.kind !== "sjuk" || a.to) throw new Error("Det finns ingen pågående sjukanmälan.");
-    const last = new Date(`${back}T00:00:00Z`);
-    last.setUTCDate(last.getUTCDate() - 1);
-    const to = last.toISOString().slice(0, 10);
+    const to = addDays(back, -1);
     if (to < a.from) {
       await deleteAbsence(id);
       return "Sjukanmälan är borttagen.";

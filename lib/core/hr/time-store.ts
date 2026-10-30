@@ -350,6 +350,18 @@ export async function listTimeEntries(q: { from: IsoDate; to: IsoDate; employeeI
   return (data as TimeRow[]).map(entryFromRow);
 }
 
+/** How many submitted rows wait for approval (the top bar's count), without reading them. */
+export async function countWaitingEntries(): Promise<number> {
+  if (isDemo()) return demo().entries.filter((r) => r.status === "submitted").length;
+  const supabase = await getDb();
+  let s = supabase.from("time_entries").select("id", { count: "exact", head: true }).eq("status", "submitted");
+  const org = await readOrgId();
+  if (org) s = s.eq("org_id", org);
+  const { count, error } = await s;
+  if (error) fail("Kunde inte räkna tiden", error);
+  return count ?? 0;
+}
+
 /** Submitted rows waiting for approval, as far back as they go (Idag). */
 export async function listWaitingEntries(): Promise<TimeEntry[]> {
   if (isDemo()) return demo().entries.filter((r) => r.status === "submitted").map(entryFromRow);
@@ -396,7 +408,7 @@ export async function addTimeEntry(employeeId: string, input: TimeEntryInput, op
   return data.id as string;
 }
 
-/** Change a draft or a submitted row (it goes back to draft if it was submitted by the person). */
+/** Change a draft or a submitted row; a submitted row the person changes goes back to draft (0038), one a payroll approver changes stays submitted. */
 export async function updateTimeEntry(id: string, input: TimeEntryInput): Promise<void> {
   const row = entryRow(input);
   if (isDemo()) {
@@ -404,6 +416,7 @@ export async function updateTimeEntry(id: string, input: TimeEntryInput): Promis
     if (r.status === "approved" || r.status === "locked") throw new Error("En godkänd tidrad ändras inte; gör en rättelse.");
     demoGuardDate(r.work_date);
     demoGuardDate(input.date);
+    // Demo mode is always the owner (a payroll approver): a submitted row stays submitted, as in the database.
     Object.assign(r, row, { hours: input.start && input.end ? blockHours(input.start, input.end, input.breakMinutes) : input.hours });
     return;
   }
@@ -503,41 +516,7 @@ export async function submitEntries(ids: string[]): Promise<number> {
   return Number(data ?? 0);
 }
 
-type BasisRow = {
-  entry_id: string;
-  employee_id: string;
-  employee_name: string;
-  birth_date: string | null;
-  work_date: string;
-  hours: number | string;
-  kind: TimeKind;
-  project_id: string | null;
-  corrects_id: string | null;
-  pay_form: "monthly" | "hourly" | null;
-  monthly_salary_ore: number | null;
-  hourly_rate_ore: number | null;
-  weekly_hours: number | string | null;
-  working_time_percent: number | string | null;
-  corrected_hourly_rate_ore: number | null;
-};
-const basisFromRow = (r: BasisRow): CostBasis => ({
-  entryId: r.entry_id,
-  employeeName: r.employee_name,
-  birthDate: r.birth_date,
-  workDate: r.work_date,
-  hours: Number(r.hours),
-  kind: r.kind,
-  projectId: r.project_id,
-  correctsId: r.corrects_id,
-  payForm: r.pay_form,
-  monthlySalaryOre: r.monthly_salary_ore === null ? null : Number(r.monthly_salary_ore),
-  hourlyRateOre: r.hourly_rate_ore === null ? null : Number(r.hourly_rate_ore),
-  weeklyHours: r.weekly_hours === null ? null : Number(r.weekly_hours),
-  workingTimePercent: r.working_time_percent === null ? null : Number(r.working_time_percent),
-  correctedHourlyRateOre: r.corrected_hourly_rate_ore === null ? null : Number(r.corrected_hourly_rate_ore),
-});
-
-/** The cost basis in demo mode, from the HR demo store, as time_cost_basis() reads it. */
+/** Demo mode: what time_approve() reads for the cost, from the HR demo store. */
 async function demoBasis(ids: string[]): Promise<CostBasis[]> {
   const [people, versions] = await Promise.all([listEmployees(), listEmployments()]);
   return ids.map((id) => {
@@ -566,10 +545,10 @@ async function demoBasis(ids: string[]): Promise<CostBasis[]> {
 }
 
 /**
- * Approve submitted rows. The project cost of each row with a project is
- * computed here (lib/core/hr/project-cost.ts) from what time_cost_basis()
- * gives for rows the caller may approve, and time_approve() writes the
- * approval and the costs in one transaction.
+ * Approve submitted rows. time_approve() (0038) writes the approval and
+ * each project row's cost in one transaction, computing the hourly cost in
+ * the database; demo mode computes the same with projectCostFor (the
+ * parity is tested in contribution-parity.test.ts).
  */
 export async function approveEntries(ids: string[], actorEmail: string | null): Promise<number> {
   if (!ids.length) return 0;
@@ -590,10 +569,7 @@ export async function approveEntries(ids: string[], actorEmail: string | null): 
     return n;
   }
   const supabase = await getDb();
-  const basis = await supabase.rpc("time_cost_basis", { p_entries: ids });
-  if (basis.error) fail("Kunde inte räkna projektkostnaden", basis.error);
-  const costs = ((basis.data ?? []) as BasisRow[]).map(basisFromRow).map((b) => projectCostFor(b)).filter((c): c is ProjectCostRow => c !== null);
-  const { data, error } = await supabase.rpc("time_approve", { p_entries: ids, p_costs: costs });
+  const { data, error } = await supabase.rpc("time_approve", { p_entries: ids });
   if (error) fail("Kunde inte godkänna tiden", error);
   return Number(data ?? 0);
 }

@@ -4,13 +4,14 @@
  * contracts, the absences and the row's stored model (when the year starts,
  * and whether days are earned the year before or the same year), every
  * semesterår from the first contract to `asOf` gets the paid days earned
- * (paidDaysEarned), the days taken (semester absences on scheduled days)
+ * (paidDaysEarned, on the days actually employed: gaps between contracts
+ * do not earn), the days taken (semester absences on scheduled days)
  * and the days saved to later years (savableDays). The store writes them to
  * leave_balances; the semesterlöneskuld in öre is the payroll run's
  * (phase 3).
  */
 
-import { addDays, type IsoDate } from "../rules/index";
+import { addDays, daysBetween, type IsoDate } from "../rules/index";
 import { paidDaysEarned, qualifyingAbsence, savableDays, vacationYear, vacationYears, type VacationYearModel } from "../payroll/vacation";
 import type { WorkSchedule } from "../payroll/sick-pay";
 import { absenceWorkdays, sickRules, wholeDaysAbsent, type Absence } from "./absence";
@@ -52,14 +53,42 @@ export type BalancesInput = {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** The employment span: the first start and the last end (null while employed) of the contracts that give semester. */
-function employmentSpan(versions: readonly EmploymentVersion[]): { from: IsoDate; to: IsoDate | null; daysPerYear: number } | null {
-  const v = versions.filter((x) => x.vacationRule !== "none" && !(x.validTo !== null && x.validTo < x.validFrom));
-  if (!v.length) return null;
-  const from = v.reduce((m, x) => (x.startsOn < m ? x.startsOn : m), v[0].startsOn);
-  const to = v.some((x) => x.endsOn === null) ? null : v.reduce((m, x) => ((x.endsOn as IsoDate) > m ? (x.endsOn as IsoDate) : m), v[0].endsOn as IsoDate);
-  const latest = [...v].sort((a, b) => b.validFrom.localeCompare(a.validFrom) || b.version - a.version)[0];
-  return { from, to, daysPerYear: latest.vacationDays };
+/**
+ * The days employed, as merged intervals: each version from max(start,
+ * valid from) to min(end, valid to) (null while it runs), overlapping or
+ * touching intervals joined. Contracts without semester (styrelseuppdrag)
+ * and versions replaced before they took effect are left out. Gaps between
+ * contracts, or between a behovsanställd's one-day shifts, are not employment.
+ */
+export function employedIntervals(versions: readonly EmploymentVersion[]): { from: IsoDate; to: IsoDate | null }[] {
+  const raw = versions
+    .filter((x) => x.vacationRule !== "none" && !(x.validTo !== null && x.validTo < x.validFrom))
+    .map((x) => {
+      const from = x.validFrom > x.startsOn ? x.validFrom : x.startsOn;
+      const ends = [x.endsOn, x.validTo].filter((d): d is IsoDate => d !== null);
+      return { from, to: ends.length ? ends.reduce((m, d) => (d < m ? d : m)) : null };
+    })
+    .filter((i) => i.to === null || i.to >= i.from)
+    .sort((a, b) => a.from.localeCompare(b.from));
+  const out: { from: IsoDate; to: IsoDate | null }[] = [];
+  for (const i of raw) {
+    const last = out[out.length - 1];
+    if (last && (last.to === null || i.from <= addDays(last.to, 1))) {
+      if (last.to !== null && (i.to === null || i.to > last.to)) last.to = i.to;
+    } else out.push({ ...i });
+  }
+  return out;
+}
+
+/** Days of the intervals inside [from, to]. */
+function daysWithin(intervals: readonly { from: IsoDate; to: IsoDate | null }[], range: { from: IsoDate; to: IsoDate }): number {
+  let n = 0;
+  for (const i of intervals) {
+    const from = i.from > range.from ? i.from : range.from;
+    const to = i.to === null || i.to > range.to ? range.to : i.to;
+    if (to >= from) n += daysBetween(from, to) + 1;
+  }
+  return n;
 }
 
 /**
@@ -68,13 +97,18 @@ function employmentSpan(versions: readonly EmploymentVersion[]): { from: IsoDate
  * year, 18 §); a year in which saved days were taken saves none.
  */
 export function vacationBalances(input: BalancesInput): VacationBalance[] {
-  const span = employmentSpan(input.versions);
-  if (!span) return [];
+  const intervals = employedIntervals(input.versions);
+  if (!intervals.length) return [];
   const { model, asOf } = input;
+  const first = intervals[0].from;
+  const lastInterval = intervals[intervals.length - 1];
+  const daysPerYear = [...input.versions].filter((x) => x.vacationRule !== "none").sort((a, b) => b.validFrom.localeCompare(a.validFrom) || b.version - a.version)[0].vacationDays;
   const out: VacationBalance[] = [];
   const saved: { earnedIn: IsoDate; days: number }[] = [];
-  const last = vacationYear(span.to && span.to < asOf ? span.to : asOf, model.startMonthDay);
-  for (let year = vacationYear(span.from, model.startMonthDay); year.from <= last.from; year = vacationYear(addDays(year.to, 1), model.startMonthDay)) {
+  // Up to today, or, once the last contract has ended, the semesterår its last days paid for.
+  const paysFor = lastInterval.to ? vacationYears(lastInterval.to, model).paysFor.from : asOf;
+  const last = vacationYear(paysFor < asOf ? paysFor : asOf, model.startMonthDay);
+  for (let year = vacationYear(first, model.startMonthDay); year.from <= last.from; year = vacationYear(addDays(year.to, 1), model.startMonthDay)) {
     const rules = sickRules(year.from);
     const earning = vacationYears(year.from, model).paidBy;
     const range = { from: earning.from, to: earning.to };
@@ -93,10 +127,11 @@ export function vacationBalances(input: BalancesInput): VacationBalance[] {
       rules,
       yearFrom: earning.from,
       yearTo: earning.to,
-      employedFrom: span.from,
-      employedTo: span.to,
+      employedFrom: first,
+      employedTo: lastInterval.to,
+      employmentDays: daysWithin(intervals, range),
       nonQualifyingDays,
-      daysPerYear: span.daysPerYear,
+      daysPerYear,
     }).paidDays + 0;
 
     const takenDays = round2(input.absences.filter((a) => a.kind === "semester").reduce((s, a) => s + absenceWorkdays(a, year, input.schedule, asOf), 0));
