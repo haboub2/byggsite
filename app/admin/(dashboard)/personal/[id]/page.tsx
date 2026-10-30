@@ -32,28 +32,31 @@ import { TaxForm } from "@/components/admin/hr/TaxForm";
 import { ContactForm } from "@/components/admin/hr/EmployeeForm";
 import { SecretsForm } from "@/components/admin/hr/SecretsForm";
 import { GenerateContractButton, SignDocumentForm } from "@/components/admin/hr/DocumentActions";
+import { PersonTimeTab } from "@/components/admin/hr/PersonTimeTab";
+import { PersonAbsenceTab } from "@/components/admin/hr/PersonAbsenceTab";
+import { Flash } from "@/components/admin/time/parts";
 
 export const metadata: Metadata = { title: "Person" };
 
-/** The tabs of section 11; this phase fills Anställning and Skatt, the rest say which phase does. */
+/** The tabs of section 11; Lön, Utlägg and Förmåner say which phase fills them. */
 const TABS = [
   { key: "anstallning", label: "Anställning" },
   { key: "skatt", label: "Skatt" },
   { key: "lon", label: "Lön", phase: "Lönebesked kommer med lönekörningen i fas 3." },
-  { key: "tid", label: "Tid", phase: "Tidrapporter per projekt och månadsvyn kommer i fas 2." },
-  { key: "franvaro", label: "Frånvaro", phase: "Sjukdom, VAB, semester och saldon kommer i fas 2." },
+  { key: "tid", label: "Tid" },
+  { key: "franvaro", label: "Frånvaro" },
   { key: "utlagg", label: "Utlägg", phase: "Utlägg, milersättning och traktamente kommer i fas 5." },
   { key: "formaner", label: "Förmåner", phase: "Bilförmån och andra förmåner kommer i fas 5." },
   { key: "uppgifter", label: "Uppgifter" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
-export default async function PersonPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ flik?: string; skapad?: string }> }) {
+export default async function PersonPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ flik?: string; skapad?: string; manad?: string; ok?: string; fel?: string }> }) {
   const check = await requireRole("payroll");
   if (!check.ok) redirect("/admin/login");
   const canWrite = hasAccess(check.role, "admin");
   const { id } = await params;
-  const { flik, skapad } = await searchParams;
+  const { flik, skapad, manad, ok, fel } = await searchParams;
   const tab: TabKey = TABS.some((t) => t.key === flik) ? (flik as TabKey) : "anstallning";
   const today = todayIso();
 
@@ -97,6 +100,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
           </div>
         </div>
         {skapad && <p className="admin-flash">Personen är tillagd. Lägg in avtalet nedan, och skatteuppgifterna under Skatt.</p>}
+        <Flash ok={ok} error={fel} />
 
         <nav className="inbox-tabs" aria-label="Flik">
           {TABS.map((t) => (
@@ -111,10 +115,11 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
             <EmploymentTab employeeId={id} agreement={employee.agreement} versions={versions} documents={documents} clock={clock} today={today} canWrite={canWrite} />
           )}
           {tab === "skatt" && <TaxTab employeeId={id} rows={tax} current={current} today={today} canWrite={canWrite} />}
+          {tab === "tid" && <PersonTimeTab employeeId={id} month={/^\d{4}-\d{2}$/.test(manad ?? "") ? (manad as string) : today.slice(0, 7)} today={today} canWrite={canWrite} />}
+          {tab === "franvaro" && <PersonAbsenceTab employeeId={id} today={today} canWrite={canWrite} />}
           {placeholder && "phase" in placeholder && (
             <div className="inbox-empty">
               <p>{placeholder.phase}</p>
-              {tab === "franvaro" && <p className="hr-muted">Semesteråret följer lagen tills Inställningar › Lön finns: 1 april–31 mars, intjänat året före.</p>}
             </div>
           )}
           {tab === "uppgifter" && (
