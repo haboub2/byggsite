@@ -212,9 +212,9 @@ an employee reaches no admin page and lands in the portal.
 ## Läge: phase 2 done (2026-10-30)
 
 Time, schedules, call-ins, absence and the employee's own page. Draft PR
-"HR fas 2: tid, schema, frånvaro och /min-tid (0037)". **0037 has not been
-applied to Supabase.** Apply it after 0036 and run
-`supabase/tests/0037_time.sql` in the SQL editor.
+"HR fas 2: tid, schema, frånvaro och /min-tid (0037)". 0037 is applied to
+the Supabase project (2026-10-30, after 0036). Run
+`supabase/tests/0037_time.sql` in the SQL editor to check it there.
 
 **Where things are**
 
@@ -318,9 +318,10 @@ the week with "Skicka in veckan", time added afterwards, report absence and
 
 **Not verified, or not done**
 
-- Nothing has run against Supabase: not supabase-js's RPC calls with these
-  signatures (`uuid[]` and `jsonb` arguments), not RLS through PostgREST,
-  not `leave_balances` upsert. Run `0037_time.sql` in the SQL editor.
+- 0037 is applied, but nothing of the app has run against Supabase yet:
+  not supabase-js's RPC calls with these signatures (`uuid[]` and `jsonb`
+  arguments), not RLS through PostgREST, not the `leave_balances` upsert.
+  `0037_time.sql` has not been reported run in the SQL editor.
 - Roles in the browser: demo mode is always owner, so the leader's,
   accountant's and employee's views were tested only in SQL and
   `roles.test.ts`; the real employee login → `/min-tid` redirect was not
