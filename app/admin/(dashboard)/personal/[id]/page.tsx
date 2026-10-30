@@ -35,19 +35,22 @@ import { GenerateContractButton, SignDocumentForm } from "@/components/admin/hr/
 import { PersonTimeTab } from "@/components/admin/hr/PersonTimeTab";
 import { PersonAbsenceTab } from "@/components/admin/hr/PersonAbsenceTab";
 import { PersonPayTab } from "@/components/admin/payroll/PersonPayTab";
+import { PersonExpensesTab } from "@/components/admin/payroll/PersonExpensesTab";
+import { PersonBenefitsTab } from "@/components/admin/payroll/PersonBenefitsTab";
+import { BOARD_FEE_INVOICE_RULE } from "@/lib/core/hr/contract";
 import { Flash } from "@/components/admin/time/parts";
 
 export const metadata: Metadata = { title: "Person" };
 
-/** The tabs of section 11; Utlägg and Förmåner say which phase fills them. */
+/** The tabs of section 11. */
 const TABS = [
   { key: "anstallning", label: "Anställning" },
   { key: "skatt", label: "Skatt" },
   { key: "lon", label: "Lön" },
   { key: "tid", label: "Tid" },
   { key: "franvaro", label: "Frånvaro" },
-  { key: "utlagg", label: "Utlägg", phase: "Utlägg, milersättning och traktamente kommer i fas 5." },
-  { key: "formaner", label: "Förmåner", phase: "Bilförmån och andra förmåner kommer i fas 5." },
+  { key: "utlagg", label: "Utlägg" },
+  { key: "formaner", label: "Förmåner" },
   { key: "uppgifter", label: "Uppgifter" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
@@ -67,7 +70,6 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   const badges = missingData({ employee, versions, tax, documents, today });
   const clock = clocks.get(id) ?? null;
   const current = taxOn(tax, today);
-  const placeholder = TABS.find((t) => t.key === tab && "phase" in t);
 
   return (
     <section className="sec sec--tight">
@@ -119,11 +121,8 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
           {tab === "tid" && <PersonTimeTab employeeId={id} month={/^\d{4}-\d{2}$/.test(manad ?? "") ? (manad as string) : today.slice(0, 7)} today={today} canWrite={canWrite} />}
           {tab === "franvaro" && <PersonAbsenceTab employeeId={id} today={today} canWrite={canWrite} />}
           {tab === "lon" && <PersonPayTab employeeId={id} canApprove={canWrite} />}
-          {placeholder && "phase" in placeholder && (
-            <div className="inbox-empty">
-              <p>{placeholder.phase}</p>
-            </div>
-          )}
+          {tab === "utlagg" && <PersonExpensesTab employeeId={id} canApprove={canWrite} />}
+          {tab === "formaner" && <PersonBenefitsTab employeeId={id} today={today} canWrite={canWrite} />}
           {tab === "uppgifter" && (
             <div className="hr-two">
               <div className="hr-stack">
@@ -259,6 +258,8 @@ function EmploymentTab({
                 <>
                   <dt>Stämmans beslut</dt>
                   <dd>{latest.decisionReference || "–"}</dd>
+                  <dt>Faktura för arvodet</dt>
+                  <dd>{BOARD_FEE_INVOICE_RULE}</dd>
                 </>
               ) : (
                 <>
