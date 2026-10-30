@@ -460,9 +460,22 @@ export function latestVersions(versions: readonly EmploymentVersion[]): Employme
 /** Whether a contract is in force on `date`: started and not ended. */
 export const inForce = (v: EmploymentVersion, date: IsoDate) => v.startsOn <= date && (v.endsOn === null || v.endsOn >= date);
 
-/** The tax row valid on `date`: the latest one that has started. */
+/** The tax row valid on `date`: the latest one that has started; of rows from the same day, the last entered (a correction). */
 export function taxOn(rows: readonly TaxVersion[], date: IsoDate): TaxVersion | null {
   let best: TaxVersion | null = null;
-  for (const r of rows) if (r.validFrom <= date && (!best || r.validFrom > best.validFrom)) best = r;
+  for (const r of rows) {
+    if (r.validFrom > date) continue;
+    if (!best || r.validFrom > best.validFrom || (r.validFrom === best.validFrom && r.createdAt > best.createdAt)) best = r;
+  }
   return best;
+}
+
+/** Rows a later row from the same day has corrected; the history shows them as replaced. */
+export function supersededTaxRows(rows: readonly TaxVersion[]): Set<string> {
+  const latest = new Map<string, TaxVersion>();
+  for (const r of rows) {
+    const b = latest.get(r.validFrom);
+    if (!b || r.createdAt > b.createdAt) latest.set(r.validFrom, r);
+  }
+  return new Set(rows.filter((r) => latest.get(r.validFrom) !== r).map((r) => r.id));
 }

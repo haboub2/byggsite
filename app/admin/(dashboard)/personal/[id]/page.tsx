@@ -20,6 +20,7 @@ import {
   TAX_SOURCE_LABEL,
   VACATION_RULE_LABEL,
   latestVersions,
+  supersededTaxRows,
   taxOn,
   type EmploymentDocument,
   type EmploymentVersion,
@@ -224,6 +225,7 @@ function EmploymentTab({
       {contracts.length === 0 && <div className="inbox-empty">Inget avtal än.</div>}
       {contracts.map((latest) => {
         const list = versions.filter((v) => v.contractId === latest.contractId).sort((a, b) => b.version - a.version);
+        const contractStart = list.reduce((min, v) => (v.startsOn < min ? v.startsOn : min), latest.startsOn);
         const state = contractState(latest, today);
         return (
           <article key={latest.contractId} className="hr-card">
@@ -306,7 +308,7 @@ function EmploymentTab({
                                     Signerat {d.signedAt}
                                   </span>
                                 ) : canWrite ? (
-                                  <SignDocumentForm documentId={d.id} today={today} />
+                                  <SignDocumentForm documentId={d.id} today={today} min={contractStart} />
                                 ) : (
                                   <span className="inv-status">Inte signerat</span>
                                 )}
@@ -354,6 +356,7 @@ function TaxTab({ employeeId, rows, current, today, canWrite }: { employeeId: st
         ? `${t.adjustmentPercent} % till ${t.adjustmentValidTo}`
         : `${formatOre(t.adjustmentMonthlyChangeOre ?? 0, { decimals: 0, currency: true })}/mån till ${t.adjustmentValidTo}`
       : "–";
+  const superseded = supersededTaxRows(rows);
   return (
     <div className="hr-stack">
       <div className="hr-card">
@@ -389,8 +392,11 @@ function TaxTab({ employeeId, rows, current, today, canWrite }: { employeeId: st
               </thead>
               <tbody>
                 {rows.map((t) => (
-                  <tr key={t.id}>
-                    <td>{t.validFrom}</td>
+                  <tr key={t.id} data-replaced={superseded.has(t.id) || undefined}>
+                    <td>
+                      {t.validFrom}
+                      {superseded.has(t.id) && <span className="hr-muted">Rättad av en senare rad</span>}
+                    </td>
                     <td>{describe(t)}</td>
                     <td>{jamkning(t)}</td>
                     <td>{TAX_SOURCE_LABEL[t.source]}</td>

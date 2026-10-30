@@ -90,13 +90,15 @@ band to 2004–2008, new tables and engångsbelopp).
 
 People, contracts, tax data and the LAS clocks, in the database and in
 `/admin/personal`. Draft PR "HR fas 1: personal, anställningar och avtal
-(0035)"; not applied to the production database.
+(0035)". 0035 is applied to the Supabase project; the review's fixes are in
+`0036_hr_fixes.sql`, which must be applied after it.
 
 **Where things are**
 
 | What | File |
 |---|---|
 | Migration: tables, encryption, role `employee`, RLS, events, bucket `hr`, clocks | `supabase/migrations/0035_hr.sql` |
+| Review fixes: periods with gaps, same-day tax corrections, signing old contracts, clocks per person | `supabase/migrations/0036_hr_fixes.sql` |
 | SQL tests (RLS, encryption, versions, documents, the employee role, every clock case) | `supabase/tests/0035_rls.sql` |
 | Run all migrations and SQL tests on a local Postgres, no Supabase | `supabase/tests/local/run.sh` (with `shim.sql`) |
 | Clock cases shared by TypeScript and SQL; regenerate the SQL block | `lib/core/hr/clock-cases.ts`, `npx tsx supabase/tests/gen-0035-clocks.ts` |
@@ -121,9 +123,14 @@ People, contracts, tax data and the LAS clocks, in the database and in
   current version the day before (trigger), the same day replaces a version
   that never took effect; nothing else may change (`document_id` is set when
   a contract is signed). `employee_tax` rows are insert-only with
-  `valid_from`, `kind` is `table` or `none`, and a main employer without a
-  table is a check violation. `employment_documents` are frozen except the
-  one-time signing (`hr_sign_document()`); the PDF lies in bucket `hr` under
+  `valid_from`; several rows may share a date and the last entered wins, so a
+  wrong table is corrected by entering the row again (0036). `kind` is
+  `table` or `none`, and a main employer without a table is a check
+  violation. `employment_documents` are frozen except the one-time signing
+  (`hr_sign_document()`, any date from the contract's start to today, so
+  paper contracts from before the register can be recorded); the row is
+  written before the PDF is uploaded, so a refused row never leaves an
+  orphan file. The PDF lies in bucket `hr` under
   `{org}/{person}/{document}.pdf` with its SHA-256, and the app refuses to
   serve a file whose hash differs. `leave_balances` stores the semesterår
   model per row (`year_start_month_day`, `earning_model`); nothing fills
@@ -139,10 +146,13 @@ People, contracts, tax data and the LAS clocks, in the database and in
   writes. Personal events (`aggregate_type = 'employee'`) are hidden from
   staff and readonly by a restrictive policy and never leave through the
   public API.
-- `employment_clocks(org, as_of)` counts per person from the versions
-  (`employment_periods()`: each version from max(start, valid_from) to
-  min(end, valid_to, probation end); consecutive versions of one form in a
-  contract are one period). `las_clocks()` is a port of
+- `employment_clocks(org, as_of, employee)` counts per person from the
+  versions (`employment_periods()`: each version from max(start, valid_from)
+  to min(end, valid_to, probation end); consecutive versions of one form in
+  a contract are one period only when they touch, so an extension
+  registered after the end date does not count the gap, 0036). People
+  without SÄVA, vikariat or provanställning get zeros without counting;
+  Idag skips the call when nobody has such a form. `las_clocks()` is a port of
   `employment-clocks.ts` with the same search; `las_rules()` holds the rule
   book's LAS values and `clock-parity.test.ts` fails if they drift.
 
@@ -163,8 +173,8 @@ an employee reaches no admin page and lands in the portal.
 
 **Verified**
 
-- `npm test` (539 tests) and `npm run lint` (0 errors); `tsc` clean.
-- All 34 earlier migrations plus 0035 applied to Postgres 17 with the
+- `npm test` (542 tests) and `npm run lint` (0 errors); `tsc` clean.
+- All 34 earlier migrations plus 0035 and 0036 applied to Postgres 17 with the
   shim, and all 14 SQL test files pass, the earlier ones included after the
   `is_org_member` change. `0035_rls.sql` runs 44 clock cases (the reference
   test's cases and its 12 random SÄVA patterns, forwards and backwards)
@@ -179,6 +189,8 @@ an employee reaches no admin page and lands in the portal.
 
 **Not verified, or not done**
 
+- 0036 has not run against Supabase. Apply it after 0035 and run
+  `supabase/tests/0035_rls.sql` in the SQL editor; it covers both.
 - Nothing has run against Supabase: not Vault (`vault.create_secret` in
   the migration, the shim fakes it), not Storage policies on the real
   `storage.objects`, not supabase-js's RPC calls with these signatures, not
@@ -191,9 +203,6 @@ an employee reaches no admin page and lands in the portal.
   summarised in this plan, not reviewed by a lawyer. The "vid behov"
   paragraph names a default (pass vardagar 06–18, 24 hours' notice) that
   you should confirm or override under Övriga villkor.
-- `sasong` is not counted by any clock: the reference counts only `sava`
-  and `vikariat` (LAS 5 a §), although section 2 says säsong counts as
-  SÄVA; decide before phase 2.
 - `schedule_id` on `employments` has no table yet (phase 2). `leave_balances`
   has the model but no balances, and nothing reads it yet.
 - E-signature, sending the contract by e-mail, and amendment/termination
@@ -253,7 +262,7 @@ an employee reaches no admin page and lands in the portal.
 | **Långtidsvikariat** | Same legal form as vikariat. | Same counting; differs in practice: fixed schedule, usually månadslön, known end date, often a notice clause. A preset, not a separate form. |
 | **Särskild visstidsanställning (SÄVA)** | Fixed term without a reason. Since 2022-10-01 it replaces allmän visstidsanställning. | Count days: more than **12 months in 5 years** converts. If a person has **three or more SÄVA in one calendar month, the days between them count too**. Written information to the employee that the form is SÄVA. Warn well ahead of 12 months. |
 | **"Vid behov" / intermittent** | Not a form. Each accepted shift is a new short SÄVA. | Call-in offers from the schedule (SMS/push, accept or decline). Each accepted shift becomes a SÄVA period in the register, so the 12-month and three-in-a-month rules are counted on real data, not guessed. No pay between shifts, semesterersättning 12 % (13 % under Byggavtalet) paid per shift or per month. |
-| **Säsong** | Seasonal. | Supported as a form with the same counting rules as SÄVA; no special UI. |
+| **Säsong** | Seasonal. | Supported as a form; no conversion clock (LAS 5 a § converts only SÄVA and vikariat), only företrädesrätt under 25 §. No special UI. |
 | **VD** | An employee, but LAS does not apply to företagsledare (1 § LAS). | Contract type "VD-avtal" with its own notice and severance terms, no LAS counting, no provanställning. Sjuklön and semester as for employees unless the contract says otherwise. Usually also an owner (next row). |
 | **Owner in a fåmansföretag** | Employee of their own AB. | Salary is ordinary payroll. Flag `owner` on the employee for the 3:12 planner (section 6) and because växa-stöd and some benefits treat owners differently. |
 | **Styrelseledamot** | Not employed; styrelsearvode is **inkomst av tjänst** decided by the bolagsstämma. | Pay form "arvode": arbetsgivaravgifter by age group as for salary, preliminary tax 30 % when we are not the main employer (or by the person's jämkning decision), reported per person in AGI. **No semester, no sjuklön, no LAS, no tjänstepension** unless agreed. No arbetsgivaravgift or skatteavdrag when the year's total to the person is under 1 000 kr. Since HFD 2017 the fee cannot be invoiced from the member's own company in the normal case. A review of this taxation is due 2027-10-31; the rule set carries the date. |

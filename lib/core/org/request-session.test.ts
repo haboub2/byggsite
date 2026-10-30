@@ -9,6 +9,7 @@ import {
   signSession,
   verifySession,
   type RequestSession,
+  type SessionMembership,
 } from "./request-session";
 import { proxy } from "../../../proxy";
 
@@ -158,4 +159,15 @@ test("signed out on an invitation or registration link: let through, without the
     if (saved.url === undefined) delete env.NEXT_PUBLIC_SUPABASE_URL;
     if (saved.key === undefined) delete env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   }
+});
+
+test("pickMembership: without a matching cookie, a membership that reaches admin before an employee one (0035)", () => {
+  const m = (orgId: string, role: SessionMembership["role"]) => ({ orgId, role, name: orgId, slug: orgId, orgNr: "", joinedAt: "2026-01-01T00:00:00Z" });
+  const both = [m("work", "employee"), m("own", "owner")];
+  assert.equal(pickMembership(both, undefined)?.orgId, "own");
+  assert.equal(pickMembership(both, "unknown")?.orgId, "own");
+  // The cookie still decides when it names one of the user's own.
+  assert.equal(pickMembership(both, "work")?.orgId, "work");
+  // Only employee memberships: that one.
+  assert.equal(pickMembership([m("work", "employee")], undefined)?.orgId, "work");
 });

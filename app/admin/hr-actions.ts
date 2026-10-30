@@ -180,7 +180,7 @@ export async function generateContractAction(_prev: DocumentActionState, formDat
     if (!employee || !employment) return { error: "Anställningen finns inte." };
     if (!employer.orgNr || !employer.street) return { error: "Organisationsnummer och adress saknas under Inställningar › Företaget; avtalet behöver dem." };
     // The clock row as the database counts it, so the SÄVA information states the same days as the list.
-    const clocks = employment.form === "sava" ? ((await loadClocks(today)).get(employeeId) ?? clocksForVersions(versions, today, payrollRulesAt(today))) : null;
+    const clocks = employment.form === "sava" ? ((await loadClocks(today, employeeId)).get(employeeId) ?? clocksForVersions(versions, today, payrollRulesAt(today))) : null;
     const pnr12 = employee.pnrMasked ? await revealPnr(employeeId, "anställningsavtal") : null;
     const { pdf, content } = await renderContractPdf({ employer, employee, pnr12, employment, clocks, today }, logo);
     const documentId = await storeDocument({

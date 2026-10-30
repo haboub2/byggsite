@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { employeeInputSchema, employmentInputSchema, luhnOk, maxProbationEnd, normalizePnr, pnrBirthDate, taxInputSchema, taxOn, versionsOn, type EmploymentVersion, type TaxVersion } from "./schema";
+import { employeeInputSchema, employmentInputSchema, luhnOk, maxProbationEnd, normalizePnr, pnrBirthDate, supersededTaxRows, taxInputSchema, taxOn, versionsOn, type EmploymentVersion, type TaxVersion } from "./schema";
 
 const today = "2026-10-30";
 
@@ -82,4 +82,13 @@ test("which version and which tax row apply on a date", () => {
   const t = (validFrom: string) => ({ validFrom }) as TaxVersion;
   assert.equal(taxOn([t("2026-01-01"), t("2026-07-01")], "2026-06-30")?.validFrom, "2026-01-01");
   assert.equal(taxOn([t("2026-07-01")], "2026-06-30"), null);
+});
+
+test("a tax row entered again for the same day corrects the earlier one (0036)", () => {
+  const row = (id: string, validFrom: string, createdAt: string, tableNo: number) => ({ id, validFrom, createdAt, tableNo }) as TaxVersion;
+  const wrong = row("a", "2026-11-01", "2026-10-30T08:00:00Z", 33);
+  const fixed = row("b", "2026-11-01", "2026-10-30T09:00:00Z", 34);
+  assert.equal(taxOn([wrong, fixed], "2026-11-15")?.tableNo, 34);
+  assert.equal(taxOn([fixed, wrong], "2026-11-15")?.tableNo, 34);
+  assert.deepEqual([...supersededTaxRows([wrong, fixed])], ["a"]);
 });

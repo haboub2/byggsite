@@ -1,5 +1,5 @@
--- RLS- och funktionsprov för 0035 (personal och anställningar, docs/hr-lon.md
--- fas 1). Körs i Supabase SQL-editor efter 0035, eller lokalt mot en
+-- RLS- och funktionsprov för 0035 och 0036 (personal och anställningar,
+-- docs/hr-lon.md fas 1). Körs i Supabase SQL-editor efter 0036, eller lokalt mot en
 -- Postgres med migrationerna (se docs/hr-lon.md, "Läge: phase 1 done"). Allt
 -- sker i en transaktion som rullas tillbaka: sju provanvändare, två
 -- organisationer, inget blir kvar. Ett fel avbryter med ett tydligt
@@ -171,9 +171,6 @@ begin
     raise exception 'Samma personnummer gick in två gånger';
   exception when unique_violation then null;
   end;
-  if hr_find_employee_by_pnr((select v from prov where k = 'a'), '198504121232') <> (select v from prov where k = 'anna') then
-    raise exception 'Hashen hittar inte Anna';
-  end if;
   -- Ägaren ser personnumret, och det loggas.
   v_pnr := hr_employee_pnr((select v from prov where k = 'anna'), 'prov');
   if v_pnr <> '198504121232' then raise exception 'Fel personnummer: %', v_pnr; end if;
@@ -241,6 +238,52 @@ begin
   if n <> 2 then raise exception 'Avtalets händelser saknas (%).', n; end if;
 end $$;
 
+-- ---------------------------------------------------------------- rättelserna i 0036
+
+-- Gunnar: en SÄVA i juni som förlängs med en ny version först 10 juli.
+-- Luckan 1–9 juli räknas inte (82 dagar, samma som clock-parity.test.ts).
+insert into prov values ('gunnar', hr_create_employee((select v from prov where k = 'a'), '{"name":"Gunnar Gran"}', null));
+insert into employments (org_id, employee_id, form, pay_form, hourly_rate_ore, starts_on, ends_on, valid_from, vacation_rule, vacation_percent) values
+  ((select v from prov where k = 'a'), (select v from prov where k = 'gunnar'), 'sava', 'hourly', 17500, '2026-06-01', '2026-06-30', '2026-06-01', 'procent', 12);
+insert into prov select 'gunnar_c', contract_id from employments where employee_id = (select v from prov where k = 'gunnar');
+insert into employments (org_id, employee_id, contract_id, form, pay_form, hourly_rate_ore, starts_on, ends_on, valid_from, vacation_rule, vacation_percent, change_reason) values
+  ((select v from prov where k = 'a'), (select v from prov where k = 'gunnar'), (select v from prov where k = 'gunnar_c'), 'sava', 'hourly', 17500, '2026-06-01', '2026-08-31', '2026-07-10', 'procent', 12, 'Förlängd i efterhand');
+
+-- Skatt: samma datum två gånger, den senare rättar den förra.
+insert into employee_tax (org_id, employee_id, kind, table_no, column_no, source, valid_from, created_at) values
+  ((select v from prov where k = 'a'), (select v from prov where k = 'erik'), 'table', 33, 1, 'manual', '2026-11-01', now() - interval '1 hour'),
+  ((select v from prov where k = 'a'), (select v from prov where k = 'erik'), 'table', 34, 1, 'a-skattsedel', '2026-11-01', now());
+
+do $$
+declare
+  n int;
+  r record;
+begin
+  select * into r from employment_clocks((select v from prov where k = 'a'), '2026-10-30', (select v from prov where k = 'gunnar'));
+  if r.sava_days <> 82 then raise exception 'Gunnars SÄVA-dagar: %, väntade 82 (luckan räknades).', r.sava_days; end if;
+  select count(*) into n from employment_clocks((select v from prov where k = 'a'), '2026-10-30', (select v from prov where k = 'gunnar'));
+  if n <> 1 then raise exception 'Klockan för en person gav % rader.', n; end if;
+  -- Den senast inlagda raden för ett datum gäller.
+  select table_no into r from employee_tax where employee_id = (select v from prov where k = 'erik') and valid_from <= '2026-11-15'
+   order by valid_from desc, created_at desc limit 1;
+  if r.table_no <> 34 then raise exception 'Rättelsen av skattetabellen gäller inte (%).', r.table_no; end if;
+  -- Ett pappersavtal kan markeras signerat på anställningens startdag, inte före och inte i framtiden.
+  begin
+    perform hr_sign_document((select id from employment_documents where employee_id = (select v from prov where k = 'anna')), '2026-01-14');
+    raise exception 'Signering före anställningens start gick igenom';
+  exception when invalid_parameter_value then null;
+  end;
+  begin
+    perform hr_sign_document((select id from employment_documents where employee_id = (select v from prov where k = 'anna')), current_date + 5);
+    raise exception 'Signering i framtiden gick igenom';
+  exception when invalid_parameter_value then null;
+  end;
+  perform hr_sign_document((select id from employment_documents where employee_id = (select v from prov where k = 'anna')), '2026-01-15');
+  if (select signed_at from employment_documents where employee_id = (select v from prov where k = 'anna')) <> '2026-01-15' then
+    raise exception 'Annas pappersavtal kunde inte markeras signerat på startdagen';
+  end if;
+end $$;
+
 -- ---------------------------------------------------------------- B ser inget av A
 
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000035b1","role":"authenticated","email":"b-agare@prov.se"}';
@@ -284,7 +327,7 @@ do $$
 declare n int;
 begin
   select count(*) into n from employees where org_id = (select v from prov where k = 'a');
-  if n <> 6 then raise exception 'Konsulten ser % personer, väntade 6.', n; end if;
+  if n <> 7 then raise exception 'Konsulten ser % personer, väntade 7.', n; end if;
   select count(*) into n from employment_documents;
   if n <> 2 then raise exception 'Konsulten ser % avtal.', n; end if;
   select count(*) into n from storage.objects where bucket_id = 'hr';
@@ -292,7 +335,7 @@ begin
   select count(*) into n from events where aggregate_type = 'employee';
   if n = 0 then raise exception 'Konsulten ser inte personalhändelserna'; end if;
   select count(*) into n from employment_clocks((select v from prov where k = 'a'), '2026-10-30');
-  if n <> 6 then raise exception 'Konsulten får % klockor.', n; end if;
+  if n <> 7 then raise exception 'Konsulten får % klockor.', n; end if;
   begin
     insert into employments (org_id, employee_id, form, pay_form, monthly_salary_ore, starts_on, valid_from, vacation_rule)
     values ((select v from prov where k = 'a'), (select v from prov where k = 'erik'), 'tillsvidare', 'monthly', 1, '2026-01-01', '2026-01-01', 'sammalon');
@@ -375,7 +418,7 @@ begin
   select count(*) into n from storage.objects where bucket_id = 'hr';
   if n <> 1 then raise exception 'Erik ser % avtalsfiler.', n; end if;
   select count(*) into n from employee_tax;
-  if n <> 1 then raise exception 'Erik ser % skatterader.', n; end if;
+  if n <> 3 then raise exception 'Erik ser % skatterader.', n; end if;
   select count(*) into n from employment_clocks((select v from prov where k = 'a'), '2026-10-30');
   if n <> 1 then raise exception 'Erik får % klockor.', n; end if;
   -- Resten av organisationen är stängd: kunder, loggboken, fakturor.

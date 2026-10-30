@@ -133,3 +133,22 @@ test("clockAlerts: days to conversion, converted, provanställning", () => {
   assert.equal(prov[0].daysUntil, 43);
   assert.deepEqual(clockAlerts(clockRow(employmentClocks([], "2026-06-01", rules)), "2026-06-01"), []);
 });
+
+test("an extension registered after the end date does not count the gap (0036; same rows in 0035_rls.sql)", () => {
+  const gunnar = [
+    version("g", { form: "sava", startsOn: "2026-06-01", endsOn: "2026-06-30", validFrom: "2026-06-01", validTo: "2026-07-09" }),
+    version("g", { version: 2, form: "sava", startsOn: "2026-06-01", endsOn: "2026-08-31", validFrom: "2026-07-10" }),
+  ];
+  assert.deepEqual(employmentPeriods(gunnar), [
+    { form: "sava", startsOn: "2026-06-01", endsOn: "2026-06-30" },
+    { form: "sava", startsOn: "2026-07-10", endsOn: "2026-08-31" },
+  ]);
+  // June is a whole month (30); 10 July–31 August is one month to 9 August (30) and 22 days.
+  assert.equal(clocksForVersions(gunnar, "2026-10-30", rules).sava_days, 82);
+  // Touching versions are still one period: an extension from the day after the end.
+  const touching = [
+    version("t", { form: "sava", startsOn: "2026-06-01", endsOn: "2026-06-30", validFrom: "2026-06-01", validTo: "2026-06-30" }),
+    version("t", { version: 2, form: "sava", startsOn: "2026-06-01", endsOn: "2026-08-31", validFrom: "2026-07-01" }),
+  ];
+  assert.deepEqual(employmentPeriods(touching), [{ form: "sava", startsOn: "2026-06-01", endsOn: "2026-08-31" }]);
+});

@@ -5,6 +5,7 @@ import { contractContent, type ContractEmployer, type ContractInput } from "../c
 import { getOrgSettings } from "../core/org/settings-store";
 import { getQuoteProfile } from "../quotes/profile-store";
 import { currentOrgId } from "../core/org/current";
+import { fileSafe } from "./invoice-file-name";
 
 /** The employer as the contract names it: the organisation's company settings. */
 export async function contractEmployer(): Promise<{ employer: ContractEmployer; logo: string | null }> {
@@ -26,15 +27,7 @@ export async function renderContractPdf(input: ContractInput, logo: string | nul
   return { pdf, content };
 }
 
-const fileSafe = (v: string) =>
-  v
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^A-Za-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 40);
-
 /** Anstallningsavtal-<person>-<date>.pdf */
 export function contractFileName(fileTitle: string, employeeName: string, date: string): string {
-  return `${[fileTitle, fileSafe(employeeName), date].filter(Boolean).join("-")}.pdf`;
+  return `${[fileTitle, fileSafe(employeeName, 40), date].filter(Boolean).join("-")}.pdf`;
 }

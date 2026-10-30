@@ -58,8 +58,10 @@ export function clockRow(c: Clocks): ClockRow {
  * A person's periods from their employment versions: each version applies
  * from max(startsOn, validFrom) to min(endsOn, validTo), a
  * provanställning at most to its probationEndsOn; versions that
- * follow each other in one contract with the same form are one period, so
- * a pay rise during a provanställning does not move its start.
+ * follow each other in one contract with the same form and touch (the next
+ * starts at the latest the day after the previous one ends) are one period,
+ * so a pay rise during a provanställning does not move its start, and an
+ * extension registered after the end date does not count the gap.
  */
 export function employmentPeriods(versions: readonly EmploymentVersion[]): EmploymentPeriod[] {
   const byContract = new Map<string, EmploymentVersion[]>();
@@ -67,12 +69,16 @@ export function employmentPeriods(versions: readonly EmploymentVersion[]): Emplo
   const periods: EmploymentPeriod[] = [];
   for (const list of byContract.values()) {
     let current: EmploymentPeriod | null = null;
+    // The previous live version's end, as employment_periods() compares with lag(t).
+    let prevTo: string | null = null;
     for (const v of [...list].sort((a, b) => a.version - b.version)) {
       const from = v.startsOn > v.validFrom ? v.startsOn : v.validFrom;
       const ends = [v.endsOn, v.validTo, v.form === "provanstallning" ? v.probationEndsOn : null].filter((d): d is string => d !== null).sort();
       const to = ends.length ? ends[0] : null;
       if (to !== null && to < from) continue; // replaced before it took effect
-      if (current && current.form === v.form) {
+      const touches = prevTo === null || from <= addDays(prevTo, 1);
+      prevTo = to;
+      if (current && current.form === v.form && touches) {
         current.startsOn = current.startsOn < from ? current.startsOn : from;
         current.endsOn = current.endsOn === null || to === null ? null : current.endsOn > to ? current.endsOn : to;
       } else {

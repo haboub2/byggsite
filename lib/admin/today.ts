@@ -74,7 +74,10 @@ const kr = (n: number) => `${Math.round(n).toLocaleString("sv-SE").replace(/ /g
 
 /** Personal rows (lib/core/hr/today.ts), for those who read payroll. */
 async function loadHrTodos(today: string): Promise<HrTodo[]> {
-  const [employees, versions, clocks] = await Promise.all([listEmployees(), listEmployments(), loadClocks(today)]);
+  const [employees, versions] = await Promise.all([listEmployees(), listEmployments()]);
+  // The clocks only when someone has a form that runs one; the rest need just the end dates.
+  const clocked = new Set(versions.filter((v) => v.form === "sava" || v.form === "vikariat" || v.form === "provanstallning").map((v) => v.employeeId));
+  const clocks = clocked.size === 0 ? new Map() : clocked.size === 1 ? await loadClocks(today, [...clocked][0]) : await loadClocks(today);
   return hrTodos({ employees, versions, clocks, today });
 }
 

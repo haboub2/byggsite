@@ -1,9 +1,10 @@
 import type { InvoiceKind } from "../core/documents/invoice";
 
-const fileSafe = (v: string, max: number) =>
+/** A name part for a file: accents dropped, everything but letters and digits to "-", at most `max` characters. */
+export const fileSafe = (v: string, max: number) =>
   v
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^A-Za-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, max);

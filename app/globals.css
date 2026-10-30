@@ -2252,7 +2252,7 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .hr-dl dt { color: var(--ink-3); }
 .hr-dl dd { margin: 0; }
 .hr-dl--inline { grid-template-columns: max-content minmax(0, 1fr); }
-.hr-versions tr[data-replaced] td { color: var(--ink-3); }
+.hr-versions tr[data-replaced] td, .hr-card tr[data-replaced] td { color: var(--ink-3); }
 .hr-docs { display: grid; gap: 6px; margin-bottom: 6px; font-size: 13.5px; }
 .hr-inline { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .hr-btn-small { min-height: 32px; padding: 5px 12px; font-size: 13px; }

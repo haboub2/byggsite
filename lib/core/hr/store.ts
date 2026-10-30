@@ -493,7 +493,7 @@ export async function listTaxVersions(employeeId?: string): Promise<TaxVersion[]
   if (employeeId) q = q.eq("employee_id", employeeId);
   const org = await readOrgId();
   if (org) q = q.eq("org_id", org);
-  const { data, error } = await q.order("valid_from", { ascending: false }).limit(5000);
+  const { data, error } = await q.order("valid_from", { ascending: false }).order("created_at", { ascending: false }).limit(5000);
   if (error) fail("Kunde inte hämta skatteuppgifterna", error);
   return (data as TaxRow[]).map(taxFromRow);
 }
@@ -512,17 +512,13 @@ export async function addTaxVersion(employeeId: string, t: TaxInput): Promise<vo
     note: t.note,
   };
   if (isDemo()) {
-    if (demo().tax.some((r) => r.employee_id === employeeId && r.valid_from === t.validFrom)) throw new Error("Det finns redan skatteuppgifter från det datumet. Välj ett senare datum.");
     demo().tax.push({ ...row, id: crypto.randomUUID(), employee_id: employeeId, created_at: new Date().toISOString() });
     demoLog(employeeId, "employee_tax.versioned", { kind: t.kind, validFrom: t.validFrom });
     return;
   }
   const supabase = await getDb();
   const { error } = await supabase.from("employee_tax").insert({ ...row, org_id: await currentOrgId(), employee_id: employeeId });
-  if (error) {
-    if (error.code === "23505") throw new Error("Det finns redan skatteuppgifter från det datumet. Välj ett senare datum.");
-    fail("Kunde inte spara skatteuppgifterna", error);
-  }
+  if (error) fail("Kunde inte spara skatteuppgifterna", error);
 }
 
 /* ---------- documents ---------- */
@@ -588,10 +584,14 @@ export async function storeDocument(input: {
     return id;
   }
   const supabase = await getDb();
-  const up = await supabase.storage.from(HR_BUCKET).upload(key, input.pdf, { contentType: "application/pdf", cacheControl: "60", upsert: false });
-  if (up.error) throw new Error(`Kunde inte spara PDF:en: ${up.error.message}`);
+  // The row first: if it is refused, no PDF with a personnummer is left in
+  // the bucket without a row (there is no delete policy). If the upload then
+  // fails, the row says so (readDocumentFile refuses it) and a new contract
+  // can be made.
   const { error } = await supabase.from("employment_documents").insert({ ...row, org_id: org });
   if (error) fail("Kunde inte spara avtalet", error);
+  const up = await supabase.storage.from(HR_BUCKET).upload(key, input.pdf, { contentType: "application/pdf", cacheControl: "60", upsert: false });
+  if (up.error) throw new Error(`Avtalet registrerades men PDF:en kunde inte sparas (${up.error.message}). Skapa avtalet igen.`);
   return id;
 }
 
@@ -615,6 +615,9 @@ export async function signDocument(id: string, signedOn: string): Promise<void> 
     const d = demo().documents.find((x) => x.id === id);
     if (!d) throw new Error("Avtalet finns inte.");
     if (d.signed_at) throw new Error("Avtalet är redan markerat som signerat.");
+    const version = demo().employments.find((x) => x.id === d.employment_id);
+    const start = demo().employments.filter((x) => x.contract_id === version?.contract_id).reduce((m, x) => (x.starts_on < m ? x.starts_on : m), version?.starts_on ?? signedOn);
+    if (signedOn < start) throw new Error(`Signeringsdatumet ska vara mellan anställningens start (${start}) och i dag.`);
     d.signed_at = signedOn;
     const e = demo().employments.find((x) => x.id === d.employment_id);
     if (e) e.document_id = id;
@@ -628,17 +631,19 @@ export async function signDocument(id: string, signedOn: string): Promise<void> 
 
 /* ---------- clocks and history ---------- */
 
-/** The LAS clocks per person on `asOf`, counted by the database (the reference in demo mode). */
-export async function loadClocks(asOf: string): Promise<Map<string, EmployeeClockRow>> {
+/** The LAS clocks on `asOf`, counted by the database (the reference in demo mode): everyone, or one person. */
+export async function loadClocks(asOf: string, employeeId?: string): Promise<Map<string, EmployeeClockRow>> {
   if (isDemo()) {
     const rules = payrollRulesAt(asOf);
-    const all = await listEmployments();
+    const all = await listEmployments(employeeId);
     return new Map(
-      demo().employees.map((e) => [e.id, { employee_id: e.id, ...clocksForVersions(all.filter((v) => v.employeeId === e.id), asOf, rules) }])
+      demo()
+        .employees.filter((e) => !employeeId || e.id === employeeId)
+        .map((e) => [e.id, { employee_id: e.id, ...clocksForVersions(all.filter((v) => v.employeeId === e.id), asOf, rules) }])
     );
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.rpc("employment_clocks", { p_org: await currentOrgId(), p_as_of: asOf });
+  const { data, error } = await supabase.rpc("employment_clocks", { p_org: await currentOrgId(), p_as_of: asOf, p_employee: employeeId ?? null });
   if (error) fail("Kunde inte räkna LAS-klockorna", error);
   return new Map((data as EmployeeClockRow[]).map((r) => [r.employee_id, r]));
 }

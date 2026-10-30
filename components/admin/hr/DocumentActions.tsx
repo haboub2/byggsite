@@ -19,8 +19,8 @@ export function GenerateContractButton({ employeeId, employmentId, label = "Skap
   );
 }
 
-/** "Markera som signerad" with the day both signed; e-signature comes later. */
-export function SignDocumentForm({ documentId, today }: { documentId: string; today: string }) {
+/** "Markera som signerad" with the day both signed, from the employment's start (a paper contract from before the register) to today; e-signature comes later. */
+export function SignDocumentForm({ documentId, today, min }: { documentId: string; today: string; min: string }) {
   const [state, action, pending] = useActionState<DocumentActionState, FormData>(signDocumentAction, {});
   return (
     <form action={action} className="hr-inline">
@@ -28,7 +28,7 @@ export function SignDocumentForm({ documentId, today }: { documentId: string; to
       <label className="sr-only" htmlFor={`signed-${documentId}`}>
         Signerat
       </label>
-      <input id={`signed-${documentId}`} type="date" name="signedOn" defaultValue={today} max={today} className="hr-date" />
+      <input id={`signed-${documentId}`} type="date" name="signedOn" defaultValue={today} min={min} max={today} className="hr-date" />
       <button type="submit" className="btn btn-ghost hr-btn-small" disabled={pending}>
         {pending ? "Sparar…" : "Markera som signerad"}
       </button>
