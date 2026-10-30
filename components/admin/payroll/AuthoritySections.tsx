@@ -3,12 +3,15 @@ import { formatWhen } from "@/lib/admin-format";
 import { formatOre } from "@/lib/core/money";
 import { monthLabel } from "@/lib/core/payroll/format";
 import { AGI_BOX_LABEL, AGI_AMOUNT_BOXES, agiFileName, type AgiBox, type AgiTick } from "@/lib/core/payroll/agi";
-import { AGI_FORMAT, FORA_FORMAT } from "@/lib/core/rules/agi-format";
+import { AGI_FORMAT, COLLECTUM_FORMAT, FORA_FORMAT } from "@/lib/core/rules/agi-format";
+import { collectumDueDate } from "@/lib/core/payroll/collectum";
 import { agiDueFor, type PayrollSettings } from "@/lib/core/payroll/settings";
 import { foraDueDate } from "@/lib/core/payroll/fora";
 import {
   AGI_STATUS_LABEL,
   agiPayslips,
+  collectumLines,
+  collectumPremiums,
   foraLines,
   listAgiDeclarations,
   listAgiDeclarationSummaries,
@@ -24,8 +27,10 @@ import {
   addRepaymentAction,
   closeYearAction,
   markAgiFiledAction,
+  markCollectumFiledAction,
   markForaFiledAction,
   storeAgiAction,
+  storeCollectumAction,
   storeForaAction,
   storeVaxaAction,
 } from "@/app/admin/authorities-actions";
@@ -428,6 +433,126 @@ export async function ForaSection({ period, months, settings, canApprove, keep }
       )}
       <p className="hr-muted">
         Foras egen filuppladdning är en JSON-fil enligt en specifikation som bara lönesystemens leverantörer får; filen här är en lista med det den manuella inmatningen frågar efter ({FORA_FORMAT.columns.join(", ")}). Lön som hör till andra månader (bonus, ackord, sparad semester vid slutet) delas inte upp.
+      </p>
+    </div>
+  );
+}
+
+/* ---------- Collectum ---------- */
+
+export async function CollectumSection({ period, months, settings, canApprove, keep }: { period: string; months: readonly string[]; settings: PayrollSettings; canApprove: boolean; keep: Record<string, string> }) {
+  let data;
+  try {
+    const [lines, reports] = await Promise.all([collectumLines(period), listPensionReports()]);
+    data = { lines, reports: reports.filter((r) => r.period === period && r.scheme === "collectum"), premiums: await collectumPremiums(period, lines) };
+  } catch (err) {
+    return (
+      <div className="hr-card" id="collectum">
+        <h2 className="hr-h2">Collectum (ITP1)</h2>
+        <Unavailable what="Collectum-underlaget" error={err} />
+      </div>
+    );
+  }
+  const { lines, reports, premiums } = data;
+  const total = lines.reduce((s, l) => s + l.payOre, 0);
+  const customerNo = settings.pension.collectumCustomerNo;
+  const sum = (f: (p: (typeof premiums)[number]) => number) => premiums.reduce((s, p) => s + f(p), 0);
+  return (
+    <div className="hr-card" id="collectum">
+      <div className="hr-card-head">
+        <h2 className="hr-h2">Collectum (ITP1)</h2>
+        <MonthPicker name="collectum" value={period} months={months} keep={keep} />
+      </div>
+      <p className="hr-muted">
+        Tjänstemännens pensionsmedförande lön utbetald i {monthLabel(period)} (lön, sjuklön, semesterlön, OB, övertid och bonus; inte förmåner, bilersättning, traktamente, utlägg eller styrelsearvode). Rapporteras i Collectums internetkontor före avstämningen
+        kl. 22 den <strong>{collectumDueDate(period)}</strong> för att komma med på nästa faktura; varje månad, även när lönen är oförändrad.
+        {customerNo ? ` Kundnummer ${customerNo}.` : ""}
+      </p>
+      {!customerNo && (
+        <p className="hr-badge" data-tone="alert">
+          Collectums kundnummer saknas: fyll i det i <Link href="/admin/installningar/lon#pension">Inställningar › Lön</Link>.
+        </p>
+      )}
+      {lines.length === 0 ? (
+        <p className="hr-muted">Ingen med ITP1 fick lön utbetald i {monthLabel(period)} i en stängd körning.</p>
+      ) : (
+        <table className="org-table">
+          <thead>
+            <tr>
+              <th>Tjänsteman</th>
+              <th className="tg-num">Pensionsmedförande lön</th>
+              <th className="tg-num">Premie 4,5 % / 30 %</th>
+              <th className="tg-num">Periodiserat</th>
+              <th className="tg-num">Särskild löneskatt</th>
+            </tr>
+          </thead>
+          <tbody>
+            {premiums.map((p) => (
+              <tr key={p.employeeId}>
+                <td>{p.name}</td>
+                <td className="tg-num">{kr(p.payOre)}</td>
+                <td className="tg-num">{kr(p.expectedPremiumOre)}</td>
+                <td className="tg-num">
+                  {kr(p.accruedPremiumOre)}
+                  {!p.ok && (
+                    <span className="hr-badge" data-tone="warn">
+                      skiljer
+                    </span>
+                  )}
+                </td>
+                <td className="tg-num">{kr(p.specialPayrollTaxOre)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th>Summa</th>
+              <th className="tg-num">{kr(total)}</th>
+              <th className="tg-num">{kr(sum((p) => p.expectedPremiumOre))}</th>
+              <th className="tg-num">{kr(sum((p) => p.accruedPremiumOre))}</th>
+              <th className="tg-num">{kr(sum((p) => p.specialPayrollTaxOre))}</th>
+            </tr>
+          </tfoot>
+        </table>
+      )}
+      {canApprove && lines.length > 0 && (
+        <form action={storeCollectumAction} className="hr-inline">
+          <input type="hidden" name="period" value={period} />
+          <button className="btn btn-primary hr-btn-small" type="submit" disabled={!customerNo}>
+            {reports.length ? `Skapa version ${reports[0].version + 1}` : "Skapa Collectum-underlaget"}
+          </button>
+        </form>
+      )}
+      {reports.length > 0 && (
+        <ul className="hr-history">
+          {reports.map((r) => (
+            <li key={r.id}>
+              Version {r.version}: {kr(r.totalOre)}, {AGI_STATUS_LABEL[r.status].toLowerCase()}
+              {r.filedAt ? ` ${formatWhen(r.filedAt)}` : ""}{" "}
+              {canApprove && (
+                <span className="hr-inline">
+                  <a className="btn btn-ghost hr-btn-small" href={`/admin/rapporter/fora/${r.id}`}>
+                    Ladda ner
+                  </a>
+                  {r.status === "draft" && (
+                    <form action={markCollectumFiledAction}>
+                      <input type="hidden" name="id" value={r.id} />
+                      <button className="btn btn-ghost hr-btn-small" type="submit">
+                        Markera som rapporterad
+                      </button>
+                    </form>
+                  )}
+                </span>
+              )}
+              <small>SHA-256 {r.sha256.slice(0, 12)}… · skapad {formatWhen(r.createdAt)}</small>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="hr-muted">
+        Premien är ålderspensionen (4,5 % upp till 7,5 inkomstbasbelopp per år, 30 % över); ITP-sjukpension och premiebefrielse tillkommer på Collectums faktura och periodiseras med avtalsförsäkringarna. Särskild löneskatt 24,26 % betalas med bolagets
+        inkomstdeklaration, inte i arbetsgivardeklarationen; körningen periodiserar den på 7533 mot 2514. Collectums filformat (lönesystemets ITP-modul) är inte publicerat; filen här är en lista med det internetkontoret frågar efter (
+        {COLLECTUM_FORMAT.columns.join(", ")}).
       </p>
     </div>
   );

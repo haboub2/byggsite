@@ -17,7 +17,8 @@ import { isAgiPeriod } from "@/lib/core/payroll/agi";
 import { listAgiDeclarationSummaries, type AgiDeclarationSummary } from "@/lib/core/payroll/authorities-store";
 import { markAgiPaidAction } from "@/app/admin/authorities-actions";
 import { Flash } from "@/components/admin/time/parts";
-import { AgiSection, ForaSection, VaxaSection, YearEndSection } from "@/components/admin/payroll/AuthoritySections";
+import { AgiSection, CollectumSection, ForaSection, VaxaSection, YearEndSection } from "@/components/admin/payroll/AuthoritySections";
+import { OwnerPlannerSection } from "@/components/admin/payroll/OwnerPlanner";
 
 export const metadata: Metadata = { title: "Lönerapporter" };
 
@@ -26,12 +27,12 @@ const kr = (ore: number | null | undefined) => (ore === null || ore === undefine
 /**
  * Rapporter (docs/hr-lon.md, sections 8 and 11): the AGI per month with
  * its versions and the diff before a refile, löneskuld and the skattekonto
- * amount per run with the AGI date and a "betalt" mark, Fora, växa-stöd,
- * the year-end, semesterlöneskuld per person after the last run, labour
+ * amount per run with the AGI date and a "betalt" mark, Fora, Collectum,
+ * växa-stöd, the year-end, the owners' löneuttag planner, semesterlöneskuld per person after the last run, labour
  * cost per project and month from approved time, and every run's
  * reconciliation. For the accountant as well, without the buttons.
  */
-export default async function PayrollReportsPage({ searchParams }: { searchParams: Promise<{ ok?: string; fel?: string; agi?: string; fora?: string; vaxa?: string; ar?: string }> }) {
+export default async function PayrollReportsPage({ searchParams }: { searchParams: Promise<{ ok?: string; fel?: string; agi?: string; fora?: string; collectum?: string; vaxa?: string; ar?: string }> }) {
   const check = await requireRole("payroll");
   if (!check.ok) redirect("/admin/login");
   const sp = await searchParams;
@@ -52,7 +53,7 @@ export default async function PayrollReportsPage({ searchParams }: { searchParam
   const defaultMonth = runs.find((r) => r.status === "closed")?.agiPeriod ?? payMonths[0] ?? addDays(`${today.slice(0, 7)}-01`, -1).slice(0, 7);
   const pick = (v: string | undefined) => (v && isAgiPeriod(v) ? v : defaultMonth);
   const year = Number(sp.ar) >= 2020 && Number(sp.ar) <= 2100 ? Number(sp.ar) : Number(today.slice(5, 7)) <= 3 ? Number(today.slice(0, 4)) - 1 : Number(today.slice(0, 4));
-  const keep = Object.fromEntries(Object.entries({ agi: sp.agi, fora: sp.fora, vaxa: sp.vaxa, ar: sp.ar }).filter((e): e is [string, string] => !!e[1]));
+  const keep = Object.fromEntries(Object.entries({ agi: sp.agi, fora: sp.fora, collectum: sp.collectum, vaxa: sp.vaxa, ar: sp.ar }).filter((e): e is [string, string] => !!e[1]));
   const declared = (period: string) => declarations.find((d) => d.period === period && d.status !== "corrected");
   // Closed runs carry the reconciliation they were closed with; open ones are not reconciled yet.
   const recons = runs.filter((r) => r.status !== "draft").slice(0, 12);
@@ -240,8 +241,10 @@ export default async function PayrollReportsPage({ searchParams }: { searchParam
           </div>
 
           <ForaSection period={pick(sp.fora)} months={payMonths} settings={settings} canApprove={canApprove} keep={keep} />
+          <CollectumSection period={pick(sp.collectum)} months={payMonths} settings={settings} canApprove={canApprove} keep={keep} />
           <VaxaSection period={pick(sp.vaxa)} months={payMonths} canApprove={canApprove} keep={keep} />
           <YearEndSection year={year} today={today} canApprove={canApprove} keep={keep} />
+          <OwnerPlannerSection today={today} canApprove={canApprove} />
 
           <div className="hr-card" id="avstamning">
             <h2 className="hr-h2">Avstämning per körning</h2>
