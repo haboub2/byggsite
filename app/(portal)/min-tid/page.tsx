@@ -10,6 +10,7 @@ import { ABSENCE_EXTENTS, ABSENCE_KIND_LABEL, EXTENT_LABEL, SELF_REPORTED_KINDS,
 import { DEMO_PICK_COOKIE, TIME_KIND_LABEL, TIME_KINDS, isOpenClock, isoWeek, stockholmClock, weekDates, weekStart, type TimeEntry } from "@/lib/core/hr/time";
 import { listAbsences, listShifts, listTimeEntries, myEmployee, openOffer, timeProjects } from "@/lib/core/hr/time-store";
 import { listEmployeePayslips } from "@/lib/core/payroll/run-store";
+import { listCertificates, type EmployerCertificate } from "@/lib/core/payroll/authorities-store";
 import { formatOre } from "@/lib/core/money";
 import { monthLabel } from "@/lib/core/payroll/format";
 import { signOut } from "@/app/admin/actions";
@@ -89,13 +90,14 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
 
   const monday = weekStart(/^\d{4}-\d{2}-\d{2}$/.test(sp.vecka ?? "") ? (sp.vecka as string) : today);
   const sunday = addDays(monday, 6);
-  const [entries, projects, shifts, absences, documents, payslips] = await Promise.all([
+  const [entries, projects, shifts, absences, documents, payslips, certificates] = await Promise.all([
     listTimeEntries({ employeeId: me.id, from: addDays(monday < today ? monday : today, -7), to: sunday > today ? sunday : today }),
     timeProjects(),
     listShifts({ from: addDays(today, -1), to: addDays(today, 28) }),
     listAbsences({ employeeId: me.id, from: addDays(today, -60) }),
     listDocuments(me.id),
     listEmployeePayslips(me.id),
+    listCertificates(me.id).catch((): EmployerCertificate[] => []),
   ]);
   const active = projects.filter((p) => p.status === "active");
   const projectName = new Map(projects.map((p) => [p.id, p.title]));
@@ -452,6 +454,22 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
           </ul>
         )}
       </section>
+
+      {certificates.length > 0 && (
+        <section className="mt-card">
+          <h2>Mina arbetsgivarintyg</h2>
+          <ul className="mt-list">
+            {certificates.map((c) => (
+              <li key={c.id}>
+                <a href={`/min-tid/intyg/${c.id}`} target="_blank" rel="noopener">
+                  Arbetsgivarintyg {c.from} – {c.to}
+                </a>
+                <span className="mt-muted">gjort {c.createdAt.slice(0, 10)}, för a-kassan</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-card">
         <h2>Mina avtal</h2>

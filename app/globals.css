@@ -2367,3 +2367,5 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .lon-checks li[data-level="warn"] { background: #fbe6cf; color: #8a4a0b; }
 .lon-undecided { display: inline-block; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 999px; background: #fbe6cf; color: #8a4a0b; }
 .lon-decided { display: inline-block; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 999px; background: #d7eadf; color: #155a37; }
+.hr-h3 { font-size: 15px; font-weight: 600; margin: 6px 0 0; }
+.hr-card-head { flex-wrap: wrap; }

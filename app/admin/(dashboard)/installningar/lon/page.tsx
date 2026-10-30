@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/admin";
 import { formatWhen } from "@/lib/admin-format";
 import { listMembers } from "@/lib/core/org/members";
+import { listEmployees } from "@/lib/core/hr/store";
 import { getPayrollSettings, listPayItems, listTaxTableImports } from "@/lib/core/payroll/run-store";
 import { payItemsOn } from "@/lib/core/payroll/run";
 import { DECISION_DEFAULT, DECISION_LABEL, type PayrollConfirmed, type PayrollDecision } from "@/lib/core/payroll/settings";
@@ -58,7 +59,13 @@ export default async function PayrollSettingsPage({ searchParams }: { searchPara
   const check = await requireRole("admin");
   if (!check.ok) redirect("/admin/ekonomi");
   const sp = await searchParams;
-  const [{ settings, confirmed, updatedAt }, members, items, imports] = await Promise.all([getPayrollSettings(), listMembers().catch(() => []), listPayItems(), listTaxTableImports()]);
+  const [{ settings, confirmed, updatedAt }, members, items, imports, employees] = await Promise.all([
+    getPayrollSettings(),
+    listMembers().catch(() => []),
+    listPayItems(),
+    listTaxTableImports(),
+    listEmployees().catch(() => []),
+  ]);
   const approvers = members.filter((m) => m.role === "owner" || m.role === "admin");
   const register = payItemsOn(items, todayIso());
 
@@ -167,10 +174,55 @@ export default async function PayrollSettingsPage({ searchParams }: { searchPara
                 <input id="f-fora" name="foraCustomerNo" defaultValue={settings.pension.foraCustomerNo} />
               </div>
               <div className="efield">
+                <label htmlFor="f-fok">FOK-ID för arbetarna (Fora)</label>
+                <input id="f-fok" name="foraFokId" defaultValue={settings.pension.foraFokId} placeholder="FOK306834" />
+              </div>
+              <div className="efield">
                 <label htmlFor="f-coll">Kundnummer hos Collectum (ITP 1)</label>
                 <input id="f-coll" name="collectumCustomerNo" defaultValue={settings.pension.collectumCustomerNo} />
               </div>
             </div>
+            <p className="hr-muted">FOK-ID är den avtalskategori arbetarna är uppmärkta med på Foras Mina sidor (t.ex. FOK306834 för Byggavtalet); det står på varje rad i Fora-underlaget.</p>
+          </Decision>
+
+          <Decision confirmed={confirmed} id="agi">
+            <div className="tg-fields">
+              <div className="efield tg-wide">
+                <label htmlFor="f-large">Omsättning (beskattningsunderlag för moms)</label>
+                <select id="f-large" name="largeEmployer" defaultValue={settings.agi.largeEmployer ? "yes" : "no"} className="tg-select">
+                  <option value="no">Högst 40 miljoner kr: AGI och betalning den 12:e (17:e i januari och augusti)</option>
+                  <option value="yes">Över 40 miljoner kr: AGI den 26:e, betalningen ändå den 12:e (17:e i januari)</option>
+                </select>
+              </div>
+              <div className="efield">
+                <label htmlFor="f-cn">Kontaktperson i AGI-filen</label>
+                <input id="f-cn" name="contactName" defaultValue={settings.agi.contactName} placeholder="Företagets undertecknare" />
+              </div>
+              <div className="efield">
+                <label htmlFor="f-cp">Telefon</label>
+                <input id="f-cp" name="contactPhone" defaultValue={settings.agi.contactPhone} placeholder="Företagets telefon" />
+              </div>
+              <div className="efield">
+                <label htmlFor="f-ce">E-post</label>
+                <input id="f-ce" name="contactEmail" type="email" defaultValue={settings.agi.contactEmail} placeholder="Företagets e-post" />
+              </div>
+            </div>
+            <p className="hr-muted">Tomma fält tar företagets uppgifter (Inställningar › Företaget). Skatteverket ringer kontaktpersonen om något i filen behöver redas ut.</p>
+          </Decision>
+
+          <Decision confirmed={confirmed} id="vaxaStod">
+            <fieldset className="hr-check">
+              <legend className="hr-muted">De första anställda som ger växa-stöd (högst två; inte ägare, delägare eller närstående)</legend>
+              {employees.filter((e) => !e.isOwner && !e.isBoardMember).length === 0 && <p className="hr-muted">Ingen anställd att välja.</p>}
+              {employees
+                .filter((e) => !e.isOwner && !e.isBoardMember)
+                .map((e) => (
+                  <label key={e.id}>
+                    <input type="checkbox" name="vaxaEmployees" value={e.id} defaultChecked={settings.vaxaStod.employeeIds.includes(e.id)} /> {e.name}
+                  </label>
+                ))}
+            </fieldset>
+            <p className="hr-muted">Lönen betalar full avgift; Lönerapporter visar underlaget per månad att ansöka om i Skatteverkets e-tjänst, efter att månadens AGI är lämnad.</p>
           </Decision>
 
           <div className="hr-card">
