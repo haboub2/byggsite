@@ -1,9 +1,10 @@
 # HR and payroll ("Personal och lön") — plan
 
 Status: **plan, written 2026-10-30. Phase 0 (rule book, tax tables,
-calculators), phase 1 (people, contracts, LAS clocks, migration 0035) and
-phase 2 (time, schedules, absence, /min-tid, migration 0037) are built, see
-the *Läge* sections below; payroll and AGI are not.** Written in English
+calculators), phase 1 (people, contracts, LAS clocks, migration 0035),
+phase 2 (time, schedules, absence, /min-tid, migration 0037) and phase 3
+(the payroll run, migration 0039; the parallel run of rule 9 is still to
+do) are built, see the *Läge* sections below; AGI is not.** Written in English
 because that is how the request was made; Swedish legal terms are kept in
 Swedish because that is what Skatteverket, the law and the collective
 agreements call them. "You" is Ibrahim (decisions, accounts, agreements), "a
@@ -390,6 +391,213 @@ the week with "Skicka in veckan", time added afterwards, report absence and
   (`/admin/tid`, access `time`), Personal and Schema stay payroll-only.
   `/min-tid` is outside `/admin` with its own access `self` (employee, and
   owner/admin to try it).
+
+## Läge: phase 3 done (2026-10-30)
+
+The payroll run: pay items, tax tables in the database, runs, the
+checklist, compute, review, four-eyes approval, payslip PDFs in series L,
+the bank file, the journal entry, the reconciliation gate, corrections
+forward and the employee's payslips. Draft PR "HR fas 3: lönekörning,
+lönebesked, bokföring och bankfil (0039)". **0039 has not run against
+Supabase.** Apply it after 0036 and 0038 (both still pending), then run
+`supabase/tests/0039_payroll.sql` in the SQL editor. `0021_rls.sql` and
+`0033_registration.sql` now expect three number series (F, V, L).
+
+**Where things are**
+
+| What | File |
+|---|---|
+| Migration: accounts, series L, `pay_items`, `tax_tables` + `tax_table_imports`, `payroll_settings`, `pay_runs`, `payslips`, `payslip_lines`, `payroll_corrections`, `bank_files`, the functions, RLS, events | `supabase/migrations/0039_payroll.sql` |
+| SQL tests (B sees nothing, accountant computes but cannot approve, four eyes, frozen payslips, the employee's own payslip, staff nothing, gapless L, the tax import refusing a wrong vector, bank file sums, booking refused in a locked period, close refused when the sums disagree, corrections) | `supabase/tests/0039_payroll.sql` |
+| The run, pure: section 5 per person, the checklist of rule 4 | `lib/core/payroll/run.ts` (`computeRun`, `payItemsOn`) |
+| The three phase 0 payslips through the run, a karensavdrag over a month end, corrections, a property test of the four sums | `lib/core/payroll/run.test.ts` |
+| Journal entry: payslips per account, semesterlöneskuld and pension accruals, the reconciliation sums | `lib/core/payroll/ledger.ts` |
+| pain.001.001.03 salary file, tested against hand-written XML | `lib/core/payroll/bank-file.ts` |
+| Payroll decisions with defaults and "inte bekräftad", pay day, periods | `lib/core/payroll/settings.ts` |
+| Idag rows (run due, run to approve, skattekonto) | `lib/core/payroll/today.ts` |
+| The seeded pay items, kept equal to `pay-items.default.ts` by a test | `lib/core/payroll/pay-items-sql.ts` |
+| Store (RLS and the database's functions; memory in demo mode) | `lib/core/payroll/run-store.ts`; demo people `lib/core/payroll/demo-seed.ts` |
+| Server actions | `app/admin/payroll-actions.ts` |
+| Pages | `app/admin/(dashboard)/lon/` (runs, `[id]` the wizard, `[id]/bankfil`, `lonebesked/[payslipId]`), `rapporter/`, `installningar/lon/`, Person › Lön (`components/admin/payroll/PersonPayTab.tsx`), `/min-tid` "Mina lönebesked" and `app/(portal)/min-tid/lonebesked/[payslipId]` |
+| Payslip PDF | `lib/pdf/PayslipPdf.tsx`, `lib/pdf/render-payslip.tsx` |
+| Loading the tax tables | `npm run tax-tables:import -- 2026 --out fil.json`, then `npm run tax-tables:load -- fil.json` (service role, `supabase/load-tax-tables.ts`) |
+
+**What the database does**
+
+- `pay_items` is insert-only; a change is a new row (the version is set by
+  trigger) with `valid_from`. Every organisation is seeded with the
+  standard register (`payroll_seed_org`, also from `create_organization`
+  and on the first run), plus series `L` (running, from 1), the payroll
+  accounts and a `payroll_settings` row.
+- The tax tables (kronor) come in three service-role calls, because a year
+  is about 48 000 rows: `tax_tables_import_begin(record)` refuses fewer
+  than ten golden vectors or one that failed in the script (and removes an
+  earlier unfinished import of the same file), `tax_tables_import_rows`
+  takes the rows in parts of 2 000, and `tax_tables_import_finish` checks
+  every vector against the stored rows (`tax_table_lookup`): it sets
+  `completed_at`, or removes the import with its rows and says why. Only
+  finished imports are visible or used; a finished one never changes.
+  `tax_tables_import(record, rows)` does all three in one call.
+- `payroll_run_create(org, month, pay_date)`: one run per month; the time
+  period is the month or the month before (`payroll_settings.data
+  .variablePeriod`). `payroll_run_store_checks` saves the checklist.
+  `payroll_run_store_result` refuses unapproved time in the time period
+  (names and counts per person), a checklist with a blocking item, a
+  payslip whose net is not gross + tax-free − tax + net adjustments, whose
+  lines do not sum to the totals, whose tax table is not the run's import,
+  or whose pay item version is not in the register. It replaces the
+  computed payslips and records `computed_by` and a fingerprint of the
+  underlag (`payroll_inputs_hash`: the time rows of the time period, a
+  year of absence, all versions and tax rows, the people's birth date,
+  agreement and end, pending corrections, the semesterår).
+- `payroll_run_approve`: owner/admin, never `computed_by` (also a check
+  constraint), and only someone on `payroll_settings.data.approvers` when
+  that list is not empty; re-checks unapproved time, refuses a negative net
+  and refuses "Underlaget har ändrats efter beräkningen; räkna om." when
+  the fingerprint differs (a time row approved, an absence or tax row
+  added, anything removed). Then it locks the time period with
+  `time_lock_period` (unless a lock already covers it), so the frozen
+  payslips and the locked time are the same. Numbers the payslips in series L in name order and freezes them:
+  after approval only the PDF path and hash may be set, once
+  (`payslip_attach_pdf`, path `{org}/{person}/payslip-{id}.pdf` in bucket
+  `hr`); lines cannot change or be deleted.
+- `payroll_bank_file_store`: owner/admin; reads `NbOfTxs`, `CtrlSum` and
+  every `InstdAmt` from the XML with `xpath` and refuses a file that is not
+  the positive net pays. Frozen; the system never sends it.
+- `payroll_run_book(run, accruals)`: owner/admin, after the bank file. One
+  entry in series V on pay day (fiscal year by `fiscal_year_of`), the
+  payslip lines summed per account, the benefits' counter account, tax,
+  net and contributions on the accounts in `payroll_settings.data
+  .accounts`, plus the app's accruals, which must balance and may not
+  touch tax, net or the contribution liability. A locked bookkeeping
+  period is refused by `journal_entries_check_lock`.
+- `payroll_reconciliation(run)`: net pay from the payslips, from the lines
+  (sum − benefits − tax), from the entry's net account and from the bank
+  file's CtrlSum, plus tax and contributions against the entry; `ok` when
+  all agree. `payroll_run_close` refuses otherwise and stores the sums on
+  the run (`totals.reconciliation`), which the reports read.
+- `payroll_correction_add(payslip, lines, reason)`: owner/admin, only on a
+  closed run; retro lines with pay items from the register, the original
+  run's AGI period and `agi_refile = true` for phase 4. The next run picks
+  them up (`target_run_id`, which can move only while that run is not
+  approved). Never deleted.
+- RLS: owner/admin everything; the accountant reads everything except
+  bank files (clear account numbers) and creates and computes runs; an
+  employee reads their own approved payslips and lines (`is_self`), and
+  the PDF through the bucket's existing policy; staff and readonly
+  nothing. Run events are `aggregate_type = 'payroll'`, hidden from those
+  who do not read payroll by a restrictive policy and kept out of the
+  public API; payslip events (`payslip.approved`, `payslip.pdf_created`,
+  `payslip.corrected`) are the person's (`employee`).
+
+**The app.** Lönekörning: a new run for a month with the pay day from the
+settings (the 25th, moved back to a workday), the runs below. The run's
+page walks the steps: the checklist (blocking, warning, info), compute (or
+compute again), the review per person with the lines, tax method,
+contributions, semesterlöneskuld, pension premium and a diff per pay item
+against the last approved payslip, approve (disabled for the one who
+computed), the bank file and its download, the journal entry (a preview
+before booking), the reconciliation, close, and Rätta on each payslip of a
+closed run. Inställningar › Lön: each decision with "inte bekräftad" and
+its default until saved, the imported tax tables and the pay item
+register. Rapporter: semesterlöneskuld per person, labour cost per
+project and month (from approved time's project costs), löneskuld and the
+skattekonto amount per run with the AGI date, and every run's
+reconciliation. Person › Lön: payslips with the PDF and corrections. Idag:
+a run due (pay day minus five workdays with nothing computed), a computed
+run waiting for an approver, and the skattekonto payment three weeks
+ahead. `/min-tid`: "Mina lönebesked" with the PDF. Nav: Lön (payroll),
+Lönerapporter under Ekonomi, Inställningar: lön.
+
+**Verified**
+
+- `npm test` (all green; the three fixture payslips reproduce to the öre
+  through `computeRun` from employments, tax rows, time entries, absences
+  and a schedule, as rows), `npm run lint` (0 errors), `tsc` clean.
+- All migrations through 0039 on Postgres 17 with the shim; all 16 SQL
+  test files pass, `0039_payroll.sql` included.
+- In demo mode in the browser: the three fixture people seeded through the
+  forms' store functions, a November run (time from October) created,
+  checklist (an ATL rest warning and the unconfirmed decisions), computed
+  (Anna 39 520 → 31 231 kr, Bo 35 196 → 28 011 kr, as phase 0's
+  fixtures), approved as the owner after the demo "accountant" computed
+  (L1–L3, PDFs stored and served with their hash), the bank file refused
+  without a salary account, the account saved in Inställningar › Lön, the
+  file created (3 transfers, CtrlSum 62 742,00), booked (balanced),
+  reconciled four ways and closed; Rätta on Anna's
+  payslip carried into December as an engångsskatt line; Idag showed
+  December waiting for approval; after the review's fixes, December's
+  approval was refused until it was computed again, and approving it
+  locked November's time; `/min-tid` as Anna showed only her
+  payslip, Bo's PDF gave 404.
+
+**Not verified, or not done**
+
+- Nothing has run against Supabase: not 0039 itself, not supabase-js's
+  RPC calls with these jsonb arguments, not the upload and
+  `payslip_attach_pdf`, not `xpath` there (it is in standard Postgres),
+  not RLS through PostgREST, not the chunked tax table load (tested in
+  SQL with small parts only).
+- The bank file is not validated against a bank's validator or the XSD.
+  Swedbank's five-digit clearing numbers go whole into the BBAN but as
+  four digits into `MmbId`; confirm with the bank.
+- Roles in the browser: demo mode is always the owner, so four eyes in the
+  demo is simulated (the demo computes as "konsult@demo"). The real
+  accountant → owner hand-over is tested in SQL only.
+- **Rule 9, the parallel run, is yours**: two real months computed here
+  and compared line by line with Skatteverket's calculator and the current
+  method, and the accountant's review of the SIE and the account mapping.
+  Phase 3 is not done by the plan's definition until that has happened.
+- Not built: off-cycle runs (one run per month; a slutlön goes in the
+  month's run), editing the pay item register in the UI (a new version is
+  an insert, allowed by RLS), benefits and expenses (phase 5), AGI, Fora,
+  Collectum, arbetsgivarintyg, övertidsjournal, växa-stöd basis (phase 4),
+  ATF accrual and payout.
+
+**Where sections 3, 5, 7 and 11 turned out different**
+
+- Section 3: `pay_runs` has a second period (`time_period_start/end`) for
+  time and absence; there is no `reported` status or `agi_declaration_id`
+  yet (phase 4). `payroll_settings` is a table with `data` and a
+  `confirmed` map, not part of `org_settings`. `tax_tables` are in kronor
+  as Skatteverket publishes them. `payslip_lines` carries the counter
+  account. `bank_files` holds the XML in the database, readable only by
+  owner/admin, not in a bucket. `PayslipDocument` got an optional
+  `context` (time period, tax import, masked pnr, year to date, semester,
+  pension, corrections), still `schema: 1`.
+- Section 5: a mid-month change of salary uses the latest version for the
+  whole month (a warning says so). Sick pay is the history up to the end
+  of the time period minus the history before it, per pay item, so day
+  numbers, återinsjuknande, a karensavdrag that spans a month end and ten
+  in twelve months hold across runs. Övertid without clock times and
+  beredskap are not paid (warnings); restid is paid as timlön. Under
+  procentregeln semesterlön per day is the vacation percent of the
+  earning year's semesterlönegrundande pay on approved payslips here,
+  divided by the vacation days, so it is 0 until a year of payslips
+  exists (a warning); the earning year counts each line when it was
+  earned (månadslön in its month, everything else in the time period), so
+  March's OB paid in April belongs to the year ending 31 March.
+  Semesterersättning is paid monthly only for SÄVA
+  under procentregeln. A negative retro line reduces the lump-sum base but
+  gives no negative engångsskatt. Without an agreement, and for Byggavtalet
+  on månadslön, the deduction rules are Tjänstemannaavtalet's (a warning).
+- Section 7: the pension accrual (SAF-LO and ITP1 alike) is 7410 against
+  2950; Fora's insurance premiums (7570), särskild löneskatt (7533) and the
+  7511–7519 split are not accrued. The net (2820) is paid by the bank file
+  and booked by the bank reconciliation, not by the run. Semesterlöneskuld
+  under sammalöneregeln counts the days `balances.ts` gives, which saves
+  the maximum savable days automatically, plus the days earned so far; **the
+  first run books the whole liability as the change**, so the accountant
+  must book the opening balance (or reverse that part) before the first
+  real run.
+- Section 11: Inställningar › Lön is `/admin/installningar/lon`, owner and
+  admin only (the accountant sees the effects on the run, not the page).
+  OB and övertid tables stay in the rule book. Labour cost per project is
+  phase 2's cost from approved time (pay and avgift, no OB, övertid,
+  semester or pension yet).
+- Section 10: the payroll entry's lines (per account, not per person) are
+  visible to every member who reads the bookkeeping, as all of the ledger
+  is.
 
 ---
 

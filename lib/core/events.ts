@@ -72,6 +72,18 @@ export const EVENT_TYPES = [
   "shift.accepted",
   "shift.declined",
   "shift.withdrawn",
+  // Lönekörning (0039): körningen aggregate "payroll", lönebeskeden "employee".
+  "payroll.run_created",
+  "payroll.run_calculated",
+  "payroll.run_discarded",
+  "payroll.run_approved",
+  "payroll.bank_file_created",
+  "payroll.run_booked",
+  "payroll.run_closed",
+  "payroll.settings_updated",
+  "payslip.approved",
+  "payslip.pdf_created",
+  "payslip.corrected",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -92,7 +104,7 @@ export const WEBHOOK_EVENT_TYPES = [
 ] as const satisfies readonly EventType[];
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
-export type AggregateType = "customer" | "invoice" | "payment" | "rot_claim" | "export" | "api_key" | "organization" | "webhook" | "employee" | "time";
+export type AggregateType = "customer" | "invoice" | "payment" | "rot_claim" | "export" | "api_key" | "organization" | "webhook" | "employee" | "time" | "payroll";
 
 export type Actor =
   | { kind: "user"; id: string; name: string }
@@ -189,6 +201,17 @@ export const EVENT_LABEL: Record<EventType, { text: string; customer: boolean }>
   "shift.accepted": { text: "Pass accepterat", customer: false },
   "shift.declined": { text: "Pass avböjt", customer: false },
   "shift.withdrawn": { text: "Erbjudande återkallat", customer: false },
+  "payroll.run_created": { text: "Lönekörning skapad", customer: false },
+  "payroll.run_calculated": { text: "Lönen beräknad", customer: false },
+  "payroll.run_discarded": { text: "Lönekörning borttagen", customer: false },
+  "payroll.run_approved": { text: "Lönen godkänd", customer: false },
+  "payroll.bank_file_created": { text: "Lönefil skapad", customer: false },
+  "payroll.run_booked": { text: "Lönen bokförd", customer: false },
+  "payroll.run_closed": { text: "Lönekörning stängd", customer: false },
+  "payroll.settings_updated": { text: "Lönebeslut ändrade", customer: false },
+  "payslip.approved": { text: "Lönebesked godkänt", customer: false },
+  "payslip.pdf_created": { text: "Lönebeskedets PDF skapad", customer: false },
+  "payslip.corrected": { text: "Lönebesked rättat (retroaktivt i nästa körning)", customer: false },
 };
 
 /** The label for any stored event type, also one this version does not know. */

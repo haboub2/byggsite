@@ -10,6 +10,7 @@
     "db:seed": "tsx supabase/seed.ts",
     "db:import-cases": "tsx supabase/import-cases.ts",
     "tax-tables:import": "tsx supabase/import-tax-tables.ts",
+    "tax-tables:load": "tsx supabase/load-tax-tables.ts",
     "db:types": "supabase gen types typescript --local > lib/database.types.ts",
     "test": "tsx --test 'lib/**/*.test.ts'",
     "db:check": "tsx supabase/check-core.ts"

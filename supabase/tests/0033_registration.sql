@@ -110,7 +110,8 @@ begin
   select count(*) into n from organizations where id = v_org and name = 'Prov Registrering AB' and org_nr = '559000-3301';
   if n <> 1 then raise exception 'Organisationen har fel namn eller org.nr.'; end if;
   select count(*) into n from number_series where org_id = v_org;
-  if n <> 2 then raise exception 'Nummerserierna saknas (%).', n; end if;
+  -- F, V och L (lönebesked, 0039).
+  if n <> 3 then raise exception 'Nummerserierna saknas (%).', n; end if;
   select data->'company' into v_company from org_settings where org_id = v_org;
   if v_company->>'legalName' <> 'Prov Registrering AB' or v_company->>'email' <> 'ny@prov.se' or v_company->>'signer' <> 'Ny Person' then
     raise exception 'Inställningarna fick inte kontaktuppgifterna: %', v_company;

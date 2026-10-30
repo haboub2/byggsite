@@ -9,6 +9,9 @@ import { listDocuments, listEmployees } from "@/lib/core/hr/store";
 import { ABSENCE_EXTENTS, ABSENCE_KIND_LABEL, EXTENT_LABEL, SELF_REPORTED_KINDS, dayLabel } from "@/lib/core/hr/absence";
 import { DEMO_PICK_COOKIE, TIME_KIND_LABEL, TIME_KINDS, isOpenClock, isoWeek, stockholmClock, weekDates, weekStart, type TimeEntry } from "@/lib/core/hr/time";
 import { listAbsences, listShifts, listTimeEntries, myEmployee, openOffer, timeProjects } from "@/lib/core/hr/time-store";
+import { listEmployeePayslips } from "@/lib/core/payroll/run-store";
+import { formatOre } from "@/lib/core/money";
+import { monthLabel } from "@/lib/core/payroll/format";
 import { signOut } from "@/app/admin/actions";
 import {
   addOwnTimeAction,
@@ -31,7 +34,7 @@ const h = (n: number) => `${String(Math.round(n * 100) / 100).replace(".", ",")}
  * Min tid (docs/hr-lon.md, section 11): the employee's day on the phone.
  * One thing at a time: stamp in or out on a project, today's shift,
  * answer a call-in, the week to send in, report absence, the contract.
- * Payslips come with the payroll run (phase 3).
+ * Payslips, once a run is approved (phase 3).
  */
 export default async function MinTidPage({ searchParams }: { searchParams: Promise<{ ok?: string; fel?: string; vecka?: string }> }) {
   const check = await requireRole("self");
@@ -86,12 +89,13 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
 
   const monday = weekStart(/^\d{4}-\d{2}-\d{2}$/.test(sp.vecka ?? "") ? (sp.vecka as string) : today);
   const sunday = addDays(monday, 6);
-  const [entries, projects, shifts, absences, documents] = await Promise.all([
+  const [entries, projects, shifts, absences, documents, payslips] = await Promise.all([
     listTimeEntries({ employeeId: me.id, from: addDays(monday < today ? monday : today, -7), to: sunday > today ? sunday : today }),
     timeProjects(),
     listShifts({ from: addDays(today, -1), to: addDays(today, 28) }),
     listAbsences({ employeeId: me.id, from: addDays(today, -60) }),
     listDocuments(me.id),
+    listEmployeePayslips(me.id),
   ]);
   const active = projects.filter((p) => p.status === "active");
   const projectName = new Map(projects.map((p) => [p.id, p.title]));
@@ -425,6 +429,31 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
       )}
 
       <section className="mt-card">
+        <h2>Mina lönebesked</h2>
+        {payslips.length === 0 ? (
+          <p className="mt-muted">Inga lönebesked här än; de kommer när lönen är godkänd.</p>
+        ) : (
+          <ul className="mt-list">
+            {payslips.slice(0, 24).map((p) => (
+              <li key={p.id}>
+                {p.pdfPath ? (
+                  <a href={`/min-tid/lonebesked/${p.id}`} target="_blank" rel="noopener">
+                    {monthLabel(p.document.periodStart)}
+                  </a>
+                ) : (
+                  <span>{monthLabel(p.document.periodStart)}</span>
+                )}
+                <span className="mt-muted">
+                  {formatOre(p.netOre, { currency: true })} utbetalt {p.document.payDate}
+                  {p.pdfPath ? "" : " (PDF:en görs)"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-card">
         <h2>Mina avtal</h2>
         {documents.length === 0 ? (
           <p className="mt-muted">Inga avtal här än.</p>
@@ -440,7 +469,6 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
             ))}
           </ul>
         )}
-        <p className="mt-muted">Lönebesked kommer hit när lönekörningen finns.</p>
       </section>
 
       {isDemo() && (

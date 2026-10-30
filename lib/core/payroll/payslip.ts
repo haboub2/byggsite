@@ -103,6 +103,26 @@ export type PayslipBases = {
   sickPayCostOre: Ore;
 };
 
+/**
+ * What a payroll run adds around the calculators' document (run.ts): the
+ * periods, the tax table import, the person's figures that the payslip
+ * shows but does not compute from (year to date, semester), and the
+ * accruals the bookkeeping needs. Optional, so phase 0's documents parse.
+ */
+export type PayslipContext = {
+  /** The period time and absence were read from. */
+  timeFrom: IsoDate;
+  timeTo: IsoDate;
+  taxTableImportId: string | null;
+  pnrMasked: string;
+  group: "collective" | "salaried";
+  /** Including this payslip. */
+  yearToDate: { cashGrossOre: Ore; taxOre: Ore };
+  vacation: { rule: "procent" | "sammalon" | "none"; remainingDays: number | null; liabilityOre: Ore; liabilityChangeOre: Ore };
+  pension: { scheme: "saf-lo" | "itp1" | "none"; premiumOre: Ore };
+  correctionIds: string[];
+};
+
 export type PayslipDocument = {
   schema: 1;
   employeeId: string;
@@ -129,6 +149,7 @@ export type PayslipDocument = {
     employerContributionOre: Ore;
     sickPayCostOre: Ore;
   };
+  context?: PayslipContext;
 };
 
 export type PayslipInput = {
@@ -226,7 +247,7 @@ export function assemblePayslip(input: PayslipInput): PayslipDocument {
   };
 }
 
-export type JournalLine = { account: string; debitOre: Ore; creditOre: Ore; text: string };
+export type JournalLine = { account: string; debitOre: Ore; creditOre: Ore; text: string; /** The pay item's name, for a run's summed entry. */ item?: string };
 
 /**
  * The payslip's share of the run's journal entry (section 7): each line on
@@ -244,7 +265,9 @@ export function journalLines(
     out.push(amount > 0 ? { account, debitOre: amount, creditOre: 0, text } : { account, debitOre: 0, creditOre: -amount, text });
   };
   for (const l of doc.lines) {
+    const before = out.length;
     post(l.item.flags.account, l.amountOre, l.text);
+    if (out.length > before) out[out.length - 1].item = l.item.name;
     if (l.item.kind === "benefit") post(l.item.flags.counterAccount, -l.amountOre, `Motkonto ${l.text}`);
   }
   post(accounts.tax, -doc.totals.taxOre, "Personalskatt");

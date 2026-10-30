@@ -2351,3 +2351,19 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .mt-details > summary { cursor: pointer; font-weight: 600; padding: 6px 0; min-height: 40px; display: flex; align-items: center; }
 .mt-details[open] > summary { margin-bottom: 8px; }
 .mt-demo { justify-content: center; }
+
+/* ---------- Lönekörning (docs/hr-lon.md, fas 3) ---------- */
+.lon-steps { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--ink-3); }
+.lon-steps li { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+.lon-steps li span { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--line); color: var(--ink-2); font-size: 11px; font-weight: 600; }
+.lon-steps li[data-state="done"] { color: #155a37; }
+.lon-steps li[data-state="done"] span { background: #d7eadf; color: #155a37; }
+.lon-steps li[data-state="current"] { color: var(--ink); border-color: var(--ink); font-weight: 600; }
+.lon-steps li[data-state="current"] span { background: var(--ink); color: #fff; }
+.lon-checks { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.lon-checks li { padding: 7px 10px; border-radius: 6px; background: var(--bg-deep, #eee9df); }
+.lon-checks li strong { display: inline-block; min-width: 64px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+.lon-checks li[data-level="block"] { background: #f6d9d5; color: #8a1c14; }
+.lon-checks li[data-level="warn"] { background: #fbe6cf; color: #8a4a0b; }
+.lon-undecided { display: inline-block; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 999px; background: #fbe6cf; color: #8a4a0b; }
+.lon-decided { display: inline-block; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 999px; background: #d7eadf; color: #155a37; }
