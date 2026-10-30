@@ -11,7 +11,7 @@
 import { addDays, daysBetween, type IsoDate } from "../rules/index";
 import { employmentClocks, type Clocks, type EmploymentPeriod } from "../payroll/employment-clocks";
 import type { PayrollRuleSet } from "../rules/payroll";
-import type { EmploymentVersion } from "./schema";
+import { inForce, latestVersions, type EmploymentForm, type EmploymentVersion } from "./schema";
 
 /** las_clocks()'s row, with the database's column names. */
 export type ClockRow = {
@@ -96,26 +96,52 @@ export type ClockAlert = {
   daysUntil: number;
   /** "SÄVA 300 av 360 dagar" */
   label: string;
-  /** "blir tillsvidare 2027-01-01" */
+  /** "blir tillsvidare 2027-01-01 (om 63 dagar)" */
   detail: string;
   converted: boolean;
+  /** alert: act now (converts within 30 days, provanställning within 14, or passed while the person still holds the form); done: history. */
+  tone: "alert" | "done" | "info";
 };
+
+/** The forms a person holds today: the latest version of each contract in force. */
+export function heldForms(versions: readonly EmploymentVersion[], today: IsoDate): Set<EmploymentForm> {
+  return new Set(latestVersions(versions).filter((v) => inForce(v, today)).map((v) => v.form));
+}
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-/** What a clock row says, for the Personal list and Idag. */
-export function clockAlerts(row: ClockRow, today: IsoDate): ClockAlert[] {
+export const CLOCK_ALERT_DAYS = 30;
+export const PROBATION_ALERT_DAYS = 14;
+
+/**
+ * What a clock row says, for the Personal list, the person page and Idag.
+ * A clock that has passed its limit while the person still holds that form
+ * means the employment already is tillsvidare (LAS 5 a §): an alert, not
+ * history.
+ */
+export function clockAlerts(row: ClockRow, today: IsoDate, held: ReadonlySet<EmploymentForm> = new Set()): ClockAlert[] {
   const alerts: ClockAlert[] = [];
   const timed = (kind: "sava" | "vikariat", days: number, limit: number, on: string | null, converted: boolean, name: string) => {
     if (days === 0 && !on) return;
     const label = `${name} ${days} av ${limit} dagar`;
     if (converted) {
-      alerts.push({ kind, on: on ?? today, daysUntil: on ? daysBetween(today, on) : 0, label, detail: `har blivit tillsvidare${on ? ` (${on})` : ""}`, converted: true });
+      const holds = held.has(kind);
+      alerts.push({
+        kind,
+        on: on ?? today,
+        daysUntil: on ? daysBetween(today, on) : 0,
+        label,
+        detail: holds
+          ? `passerade gränsen ${on ?? ""}: anställningen gäller som tillsvidare (LAS 5 a §)`
+          : `passerade gränsen ${on ?? ""}`,
+        converted: true,
+        tone: holds ? "alert" : "done",
+      });
     } else if (on) {
       const until = daysBetween(today, on);
-      alerts.push({ kind, on, daysUntil: until, label, detail: `blir tillsvidare ${on} (om ${plural(until, "dag", "dagar")})`, converted: false });
+      alerts.push({ kind, on, daysUntil: until, label, detail: `blir tillsvidare ${on} (om ${plural(until, "dag", "dagar")})`, converted: false, tone: until <= CLOCK_ALERT_DAYS ? "alert" : "info" });
     } else {
-      alerts.push({ kind, on: addDays(today, 100_000), daysUntil: Infinity, label, detail: `${plural(limit - days, "dag", "dagar")} kvar till gränsen; bokade perioder når den inte`, converted: false });
+      alerts.push({ kind, on: addDays(today, 100_000), daysUntil: Infinity, label, detail: `${plural(limit - days, "dag", "dagar")} kvar till gränsen; bokade perioder når den inte`, converted: false, tone: "info" });
     }
   };
   timed("sava", row.sava_days, row.sava_limit, row.sava_converts_on, row.sava_converted, "SÄVA");
@@ -128,6 +154,7 @@ export function clockAlerts(row: ClockRow, today: IsoDate): ClockAlert[] {
       label: `Provanställning till ${row.probation_ends_on}`,
       detail: `besked senast ${row.probation_notice_by}, annars tillsvidare ${row.probation_converts_on}`,
       converted: false,
+      tone: row.probation_days_left <= PROBATION_ALERT_DAYS ? "alert" : "info",
     });
   }
   return alerts;

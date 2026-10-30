@@ -15,7 +15,10 @@ export function payLabel(v: EmploymentVersion): string {
 
 export function periodLabel(v: Pick<EmploymentVersion, "startsOn" | "endsOn" | "form" | "probationEndsOn">): string {
   if (v.form === "provanstallning") return `${v.startsOn} – ${v.probationEndsOn ?? "?"} (prov)`;
-  return `${v.startsOn} – ${v.endsOn ?? "tills vidare"}`;
+  if (v.endsOn) return `${v.startsOn} – ${v.endsOn}`;
+  if (v.form === "vikariat") return `${v.startsOn} – tills den ersatta återgår`;
+  if (v.form === "uppdrag") return `${v.startsOn} – tills stämman beslutar annat`;
+  return `${v.startsOn} – tills vidare`;
 }
 
 export type ContractState = "current" | "upcoming" | "ended";

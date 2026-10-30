@@ -123,6 +123,11 @@ test("clockAlerts: days to conversion, converted, provanställning", () => {
   assert.match(open[0].detail, /blir tillsvidare 2027-01-01 \(om 185 dagar\)/);
   const done = clockAlerts(clockRow(employmentClocks([{ form: "vikariat", startsOn: "2024-01-01", endsOn: "2026-05-31" }], "2026-10-30", rules)), "2026-10-30");
   assert.equal(done[0].converted, true);
+  assert.equal(done[0].tone, "done");
+  // Still on a vikariat: the employment already is tillsvidare.
+  const held = clockAlerts(clockRow(employmentClocks([{ form: "vikariat", startsOn: "2024-01-01", endsOn: null }], "2026-10-30", rules)), "2026-10-30", new Set(["vikariat"]));
+  assert.equal(held[0].tone, "alert");
+  assert.match(held[0].detail, /gäller som tillsvidare/);
   const prov = clockAlerts(clockRow(employmentClocks([{ form: "provanstallning", startsOn: "2026-01-15", endsOn: null }], "2026-06-01", rules)), "2026-06-01");
   assert.equal(prov[0].kind, "probation");
   assert.equal(prov[0].daysUntil, 43);

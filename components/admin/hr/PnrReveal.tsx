@@ -18,6 +18,7 @@ export function PnrReveal({ employeeId, masked, canReveal }: { employeeId: strin
           type="button"
           className="link-quiet"
           disabled={pending}
+          aria-label="Visa personnumret (visningen loggas)"
           title="Visningen loggas i personens historik."
           onClick={() =>
             start(async () => {

@@ -5,11 +5,10 @@ import { requireRole } from "@/lib/admin";
 import { hasAccess } from "@/lib/core/org/roles";
 import { todayIso } from "@/lib/quotes/schema";
 import { listDocuments, listEmployees, listEmployments, listTaxVersions, loadClocks } from "@/lib/core/hr/store";
-import { clockAlerts } from "@/lib/core/hr/clocks";
+import { CLOCK_ALERT_DAYS, clockAlerts, heldForms } from "@/lib/core/hr/clocks";
 import { missingData } from "@/lib/core/hr/missing";
 import { payLabel } from "@/lib/core/hr/format";
 import { AGREEMENT_LABEL, FORM_SHORT, PAY_FORM_LABEL, inForce, latestVersions } from "@/lib/core/hr/schema";
-import { CLOCK_WARN_DAYS } from "@/lib/core/hr/today";
 
 export const metadata: Metadata = { title: "Personal" };
 
@@ -31,12 +30,12 @@ export default async function PersonalPage() {
     const latest = latestVersions(mine);
     const current = latest.find((v) => inForce(v, today)) ?? latest.find((v) => v.startsOn > today) ?? null;
     const clock = clocks.get(e.id);
-    const alerts = clock ? clockAlerts(clock, today) : [];
+    const alerts = clock ? clockAlerts(clock, today, heldForms(mine, today)) : [];
     const badges = missingData({ employee: e, versions: mine, tax: tax.filter((t) => t.employeeId === e.id), documents: documents.filter((d) => d.employeeId === e.id), today });
     return { e, current, alerts, badges };
   });
   const active = rows.filter((r) => r.current && !r.e.endedAt).length;
-  const soon = rows.filter((r) => r.alerts.some((a) => !a.converted && a.daysUntil <= CLOCK_WARN_DAYS)).length;
+  const soon = rows.filter((r) => r.alerts.some((a) => a.tone === "alert")).length;
   const incomplete = rows.filter((r) => r.badges.some((b) => b.tone === "alert")).length;
 
   return (
@@ -64,9 +63,9 @@ export default async function PersonalPage() {
             <small>av {employees.length} i registret</small>
           </div>
           <div className={soon ? "kpi kpi--alert" : "kpi"}>
-            <span>LAS inom {CLOCK_WARN_DAYS} dagar</span>
+            <span>LAS att hantera</span>
             <strong>{soon}</strong>
-            <small>blir tillsvidare eller provanställning slutar</small>
+            <small>blir tillsvidare inom {CLOCK_ALERT_DAYS} dagar, har passerat gränsen eller provanställning slutar</small>
           </div>
           <div className={incomplete ? "kpi kpi--alert" : "kpi"}>
             <span>Saknar uppgifter</span>
@@ -119,7 +118,7 @@ export default async function PersonalPage() {
                       ) : (
                         <ul className="hr-clocks">
                           {alerts.map((a) => (
-                            <li key={a.kind} data-tone={a.converted ? "done" : a.daysUntil <= CLOCK_WARN_DAYS ? "alert" : undefined}>
+                            <li key={a.kind} data-tone={a.tone}>
                               <strong>{a.label}</strong> <span>{a.detail}</span>
                             </li>
                           ))}

@@ -6,11 +6,9 @@
  */
 
 import { addDays, daysBetween, type IsoDate } from "../rules/index";
-import type { ClockRow } from "./clocks";
+import { CLOCK_ALERT_DAYS, PROBATION_ALERT_DAYS, heldForms, type ClockRow } from "./clocks";
 import { FORM_SHORT, latestVersions, type Employee, type EmploymentVersion } from "./schema";
 
-export const CLOCK_WARN_DAYS = 30;
-export const PROBATION_WARN_DAYS = 14;
 export const CONTRACT_END_WARN_DAYS = 30;
 
 export type HrTodo = {
@@ -32,14 +30,31 @@ export function hrTodos(input: { employees: readonly Employee[]; versions: reado
   for (const e of employees) {
     if (e.endedAt) continue;
     const c = clocks.get(e.id);
+    const mine = versions.filter((x) => x.employeeId === e.id);
+    const held = heldForms(mine, today);
     if (c) {
       for (const [kind, name, days, limit, on, converted] of [
         ["sava", "SÄVA", c.sava_days, c.sava_limit, c.sava_converts_on, c.sava_converted],
         ["vikariat", "Vikariatet", c.vikariat_days, c.vikariat_limit, c.vikariat_converts_on, c.vikariat_converted],
       ] as const) {
-        if (!on || converted) continue;
+        if (converted) {
+          // Passed the limit while still on that form: already tillsvidare by law.
+          if (held.has(kind)) {
+            todos.push({
+              id: `clock-${kind}-${e.id}`,
+              kind: "clock",
+              employeeId: e.id,
+              tag: "LAS",
+              title: `${e.name}: ${kind === "sava" ? "SÄVA-tiden" : "vikariatstiden"} har passerat gränsen${on ? ` ${on}` : ""}`,
+              meta: `${days} av ${limit} dagar räknade. Anställningen gäller som tillsvidare (LAS 5 a §); registrera den som tillsvidare.`,
+              days: 0,
+            });
+          }
+          continue;
+        }
+        if (!on) continue;
         const until = daysBetween(today, on);
-        if (until < 0 || until > CLOCK_WARN_DAYS) continue;
+        if (until < 0 || until > CLOCK_ALERT_DAYS) continue;
         todos.push({
           id: `clock-${kind}-${e.id}`,
           kind: "clock",
@@ -50,7 +65,7 @@ export function hrTodos(input: { employees: readonly Employee[]; versions: reado
           days: until,
         });
       }
-      if (c.probation_ends_on && c.probation_notice_by && c.probation_days_left !== null && c.probation_days_left <= PROBATION_WARN_DAYS) {
+      if (c.probation_ends_on && c.probation_notice_by && c.probation_days_left !== null && c.probation_days_left <= PROBATION_ALERT_DAYS) {
         const noticeIn = daysBetween(today, c.probation_notice_by);
         todos.push({
           id: `probation-${e.id}`,
@@ -66,7 +81,7 @@ export function hrTodos(input: { employees: readonly Employee[]; versions: reado
         });
       }
     }
-    for (const v of latestVersions(versions.filter((x) => x.employeeId === e.id))) {
+    for (const v of latestVersions(mine)) {
       if (!v.endsOn || v.endsOn < today || v.endsOn > addDays(today, CONTRACT_END_WARN_DAYS)) continue;
       const until = daysBetween(today, v.endsOn);
       todos.push({

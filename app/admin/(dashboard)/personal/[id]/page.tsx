@@ -8,7 +8,7 @@ import { formatOre } from "@/lib/core/money";
 import { formatWhen } from "@/lib/admin-format";
 import { eventLabel } from "@/lib/core/events";
 import { getEmployee, listDocuments, listEmployeeEvents, listEmployments, listTaxVersions, loadClocks } from "@/lib/core/hr/store";
-import { clockAlerts } from "@/lib/core/hr/clocks";
+import { clockAlerts, heldForms } from "@/lib/core/hr/clocks";
 import { missingData } from "@/lib/core/hr/missing";
 import { newEmploymentDraft, versionDraft } from "@/lib/core/hr/draft";
 import { CONTRACT_STATE_LABEL, contractState, payLabel, periodLabel, validityLabel } from "@/lib/core/hr/format";
@@ -179,8 +179,8 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   );
 }
 
-function ClockCard({ clock, today }: { clock: Parameters<typeof clockAlerts>[0] | null; today: string }) {
-  const alerts = clock ? clockAlerts(clock, today) : [];
+function ClockCard({ clock, today, versions }: { clock: Parameters<typeof clockAlerts>[0] | null; today: string; versions: EmploymentVersion[] }) {
+  const alerts = clock ? clockAlerts(clock, today, heldForms(versions, today)) : [];
   return (
     <div className="hr-card">
       <h2 className="lead-h2">LAS-klockor</h2>
@@ -189,7 +189,7 @@ function ClockCard({ clock, today }: { clock: Parameters<typeof clockAlerts>[0] 
       ) : (
         <ul className="hr-clocks">
           {alerts.map((a) => (
-            <li key={a.kind} data-tone={a.converted ? "done" : a.daysUntil <= 30 ? "alert" : undefined}>
+            <li key={a.kind} data-tone={a.tone}>
               <strong>{a.label}</strong> <span>{a.detail}</span>
             </li>
           ))}
@@ -220,7 +220,7 @@ function EmploymentTab({
   const contracts = latestVersions(versions);
   return (
     <div className="hr-stack">
-      <ClockCard clock={clock} today={today} />
+      <ClockCard clock={clock} today={today} versions={versions} />
       {contracts.length === 0 && <div className="inbox-empty">Inget avtal än.</div>}
       {contracts.map((latest) => {
         const list = versions.filter((v) => v.contractId === latest.contractId).sort((a, b) => b.version - a.version);
