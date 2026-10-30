@@ -73,6 +73,7 @@ export default function AdminTopBar(p: AdminTopBarProps) {
     { href: "/admin/offerter", label: "Offerter", access: "write" },
     { href: "/admin/projekt", label: "Projekt", access: "write", count: p.counts.projects },
     { href: "/admin/fakturor", label: "Fakturor", access: "read", count: p.counts.invoices, alert: true },
+    { href: "/admin/personal", label: "Personal", access: "payroll" },
   ].filter((i) => has(p.access, i.access as Access)) as Item[];
 
   const money: Item[] = [

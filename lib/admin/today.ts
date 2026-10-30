@@ -11,6 +11,8 @@ import { eventLabel } from "../core/events";
 import { formatOre } from "../core/money";
 import { todayIso } from "../quotes/schema";
 import type { Access } from "../core/org/roles";
+import { listEmployees, listEmployments, loadClocks } from "../core/hr/store";
+import { hrTodos, type HrTodo } from "../core/hr/today";
 
 /**
  * Everything the "Idag" start page and the top bar's counters need, from the
@@ -19,7 +21,7 @@ import type { Access } from "../core/org/roles";
  * than taking the page down.
  */
 
-export type TodoKind = "lead" | "quote" | "phase" | "photo" | "change" | "invoice";
+export type TodoKind = "lead" | "quote" | "phase" | "photo" | "change" | "invoice" | "hr";
 
 export type Todo = {
   id: string;
@@ -70,15 +72,22 @@ const daysBetween = (fromIso: string, toIso: string) =>
 
 const kr = (n: number) => `${Math.round(n).toLocaleString("sv-SE").replace(/ /g, " ")} kr`;
 
+/** Personal rows (lib/core/hr/today.ts), for those who read payroll. */
+async function loadHrTodos(today: string): Promise<HrTodo[]> {
+  const [employees, versions, clocks] = await Promise.all([listEmployees(), listEmployments(), loadClocks(today)]);
+  return hrTodos({ employees, versions, clocks, today });
+}
+
 export async function loadToday(access: Access[], today = todayIso()): Promise<TodayData> {
   const canWrite = access.includes("write");
-  const [leads, sentQuotes, overduePhases, projects, overdueInvoices, events] = await Promise.all([
+  const [leads, sentQuotes, overduePhases, projects, overdueInvoices, events, hr] = await Promise.all([
     canWrite ? safe("leads", () => listLeads({ status: "new" }, { limit: 20 }), { leads: [], total: 0 }) : { leads: [], total: 0 },
     canWrite ? safe("quotes", () => listQuotes({ status: "sent" }), []) : [],
     safe("phases", () => listOverduePhases(today), []),
     safe("projects", () => listProjects(), []),
     safe("invoices", () => listInvoices({ tab: "overdue" }), []),
     safe("events", () => listRecentEvents(6), []),
+    access.includes("payroll") ? safe("personal", () => loadHrTodos(today), []) : [],
   ]);
 
   const active = projects.filter((p) => p.status === "active").slice(0, MAX_PROJECTS);
@@ -174,6 +183,20 @@ export async function loadToday(access: Access[], today = todayIso()): Promise<T
       action: "Skicka påminnelse",
       href: `/admin/fakturor/${inv.id}`,
       weight: 5,
+    });
+  }
+
+  for (const h of hr) {
+    todos.push({
+      id: `hr-${h.id}`,
+      kind: "hr",
+      tag: h.tag,
+      title: h.title,
+      meta: h.meta,
+      action: "Öppna personen",
+      href: `/admin/personal/${h.employeeId}`,
+      // Closest first; a notice due within days sits with the overdue invoices.
+      weight: h.days <= 7 ? 6 : 12 + Math.min(h.days, 30),
     });
   }
 
