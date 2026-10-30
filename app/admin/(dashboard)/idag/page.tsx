@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/admin";
-import { hasAccess, type Access } from "@/lib/core/org/roles";
+import { ACCESS_LEVELS, hasAccess } from "@/lib/core/org/roles";
 import { formatOre } from "@/lib/core/money";
 import { formatWhen } from "@/lib/admin-format";
 import { loadToday, type TodoKind } from "@/lib/admin/today";
@@ -24,7 +24,7 @@ const kr = (n: number) => `${Math.round(n).toLocaleString("sv-SE").replace(/ /g
 export default async function TodayPage() {
   const check = await requireRole("read");
   if (!check.ok) redirect("/admin/login");
-  const access = (["read", "write", "admin", "owner", "site"] as Access[]).filter((a) => hasAccess(check.role, a, check.site));
+  const access = ACCESS_LEVELS.filter((a) => hasAccess(check.role, a, check.site));
   const canWrite = access.includes("write");
   const d = await loadToday(access);
   const now = new Date();

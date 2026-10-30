@@ -152,7 +152,8 @@ export function eventResource(e: CoreEvent & { id: string }): z.infer<typeof eve
   return {
     id: e.id,
     type: e.type,
-    aggregateType: e.aggregateType,
+    // listEventsPage leaves personal events (aggregate "employee", 0035) out of the API.
+    aggregateType: e.aggregateType as z.infer<typeof eventResourceSchema>["aggregateType"],
     aggregateId: e.aggregateId,
     data: e.data,
     actor: { kind: e.actor.kind, name: e.actor.name },

@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { canOpenAdminPath, isOpenAdminPath, isRole, isSiteAdminPath, type Role } from "./lib/core/org/roles";
+import { adminLandingPath, canOpenAdminPath, isOpenAdminPath, isRole, isSiteAdminPath, type Role } from "./lib/core/org/roles";
 import {
   SESSION_TTL_MS,
   forwardHeaders,
@@ -20,7 +20,9 @@ type Cookie = { name: string; value: string; options?: CookieOptions };
  * Gate the two signed-in areas:
  *   /admin/*        — members of an organisation (memberships). Accountants and
  *                     read-only members only reach Ekonomi, fakturor, kunder and
- *                     ROT (lib/core/org/roles.ts); a signed-in user without a
+ *                     ROT (lib/core/org/roles.ts), Personal is for owners, admins
+ *                     and accountants, and an employee (0035) reaches no admin
+ *                     page and lands in the portal; a signed-in user without a
  *                     membership is sent to the portal, except to accept an
  *                     invitation, start an organisation or finish a
  *                     registration (/admin itself shows that choice). The website's
@@ -98,7 +100,7 @@ export async function proxy(request: NextRequest) {
     // (the layout); everything else goes to the portal, where customers belong.
     if (!current) return withCookies(pathname === "/admin" ? pass() : NextResponse.redirect(new URL("/mitt-projekt", request.url)));
     const site = isSiteAdminPath(pathname) && siteOrgId === current.orgId;
-    if (!canOpenAdminPath(current.role, pathname, site)) return withCookies(NextResponse.redirect(new URL("/admin/ekonomi", request.url)));
+    if (!canOpenAdminPath(current.role, pathname, site)) return withCookies(NextResponse.redirect(new URL(adminLandingPath(current.role), request.url)));
   }
 
   // Without the secret, or when the memberships could not be read, nothing is
