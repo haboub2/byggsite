@@ -124,9 +124,11 @@ export type AgiContributionRow = { category: ContributionCategory; ratePercent: 
 
 /**
  * The month's contributions as the AGI computes them (Skatteverket's
- * technical description 1.1.18.2): underlag summed per rate in whole
- * kronor, times the rate, "öretal bortfaller på varje procentsats
- * separat", then summed into ruta 487. The difference to
+ * technical description 1.1.18.2): each person's avgiftsunderlag is
+ * reported in whole kronor (öre dropped per person, per rate), the
+ * underlag is summed per rate, times the rate, "öretal bortfaller på varje
+ * procentsats separat", then summed into ruta 487. Pass one result per
+ * person (combine a person's payslips first). The difference to
  * the sum of the payslips' öre amounts is booked as a rounding difference.
  * For the young people's band the reduced and full parts are separate rows.
  */
@@ -137,7 +139,7 @@ export function agiContributions(rules: PayrollRuleSet, results: readonly Contri
     if (!baseOre) return;
     const key = `${category}:${ratePercent}`;
     const row = groups.get(key) ?? { category, ratePercent, baseOre: 0, amountOre: 0 };
-    row.baseOre += baseOre;
+    row.baseOre += truncateToKronor(baseOre);
     groups.set(key, row);
   };
   for (const r of results) {
@@ -147,10 +149,7 @@ export function agiContributions(rules: PayrollRuleSet, results: readonly Contri
       add("full", c.fullPercent, r.fullBaseOre);
     } else add(r.category, r.ratePercent, r.baseOre);
   }
-  return [...groups.values()].map((row) => {
-    const base = truncateToKronor(row.baseOre);
-    return { ...row, baseOre: base, amountOre: truncateToKronor(rateOf(base, row.ratePercent, "down")) };
-  });
+  return [...groups.values()].map((row) => ({ ...row, amountOre: truncateToKronor(rateOf(row.baseOre, row.ratePercent, "down")) }));
 }
 
 /** Total of the AGI rows, whole kronor. */

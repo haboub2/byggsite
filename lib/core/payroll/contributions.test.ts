@@ -66,17 +66,26 @@ test("AGI: underlag per rate in whole kronor, öre dropped per rate, then summed
     employerContributions(input({ birthYear: 1930, baseOre: 1_000_000 })),
   ];
   const rows = agiContributions(june, results);
-  // Full: 35 000,50 + 20 000,75 + 5 000 (young above cap) = 60 001,25 → 60 001 × 31,42 % = 18 852,31 → 18 852.
+  // Full: per person 35 000 + 20 000 + 5 000 (young above cap) = 60 000 × 31,42 % = 18 852.
   // Older: 15 000 × 10,21 % = 1 531,50 → 1 531. Young: 25 000 × 20,81 % = 5 202,50 → 5 202.
   assert.deepEqual(
     rows.map((r) => [r.category, r.ratePercent, r.baseOre, r.amountOre]),
     [
-      ["full", 31.42, 6_000_100, 1_885_200],
+      ["full", 31.42, 6_000_000, 1_885_200],
       ["older", 10.21, 1_500_000, 153_100],
       ["young", 20.81, 2_500_000, 520_200],
     ],
   );
   assert.equal(agiContributionTotal(rows), 2_558_500);
+});
+
+test("AGI: each person's underlag is whole kronor before the sum (ten people at 20 000,99 kr → 62 840 kr, not 62 842)", () => {
+  const ten = Array.from({ length: 10 }, () => employerContributions(input({ baseOre: 2_000_099 })));
+  const rows = agiContributions(june, ten);
+  assert.equal(rows[0].baseOre, 20_000_000);
+  assert.equal(agiContributionTotal(rows), 6_284_000);
+  // The payslips' own öre amounts sum higher; the difference is a rounding entry.
+  assert.equal(sumOre(ten.map((r) => r.amountOre)), 6_284_310); // 10 × 628 431
 });
 
 test("golden: Fora's SAF-LO example, 53 000 kr in a month → 2 609 kr; and what Fora charges in 2026", () => {
