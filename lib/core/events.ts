@@ -96,6 +96,13 @@ export const EVENT_TYPES = [
   "vaxa_stod.applied",
   "vacation.year_closed",
   "payroll.year_closed",
+  // Förmåner och utlägg (0042): personens, aggregate "employee".
+  "benefit.saved",
+  "benefit.ended",
+  "expense.submitted",
+  "expense.approved",
+  "expense.rejected",
+  "expense.paid",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -235,6 +242,12 @@ export const EVENT_LABEL: Record<EventType, { text: string; customer: boolean }>
   "vaxa_stod.applied": { text: "Växa-stöd ansökt", customer: false },
   "vacation.year_closed": { text: "Semesteråret stängt vid årsskiftet", customer: false },
   "payroll.year_closed": { text: "Årsskiftet gjort", customer: false },
+  "benefit.saved": { text: "Förmån sparad", customer: false },
+  "benefit.ended": { text: "Förmån avslutad", customer: false },
+  "expense.submitted": { text: "Utlägg inskickat", customer: false },
+  "expense.approved": { text: "Utlägg godkänt", customer: false },
+  "expense.rejected": { text: "Utlägg avslaget", customer: false },
+  "expense.paid": { text: "Utlägg betalt med lönen", customer: false },
 };
 
 /** The label for any stored event type, also one this version does not know. */

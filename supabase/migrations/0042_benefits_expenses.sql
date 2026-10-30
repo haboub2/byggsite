@@ -187,6 +187,7 @@ create table expense_claims (
   nights_without_lodging int not null default 0 check (nights_without_lodging >= 0),
   meals             jsonb not null default '{}'::jsonb check (jsonb_typeof(meals) = 'object'),
   long_stay         text not null default 'none' check (long_stay in ('none','after3months','after2years')),
+  far_from_home     boolean not null default true,  -- mer än 50 km från bostaden och den vanliga arbetsplatsen
   -- Appens uppdelning (förhandsvisning tills godkännandet, sedan den som gäller).
   tax_free_ore      bigint not null default 0 check (tax_free_ore >= 0),
   taxable_ore       bigint not null default 0 check (taxable_ore >= 0),
@@ -768,10 +769,10 @@ grant update (description, valid_from, valid_to, registration_number, car_model,
 -- Status, godkännande, lönebesked och kvitton ändras bara genom funktionerna.
 grant select, delete on expense_claims to authenticated;
 grant insert (id, org_id, employee_id, kind, date_from, date_to, description, amount_ore, vat_ore, distance_km, car_type, destination,
-              departure_time, return_time, nights, nights_without_lodging, meals, long_stay, tax_free_ore, taxable_ore, computation,
-              rule_version, note) on expense_claims to authenticated;
+              departure_time, return_time, nights, nights_without_lodging, meals, long_stay, far_from_home, tax_free_ore, taxable_ore,
+              computation, rule_version, note) on expense_claims to authenticated;
 grant update (kind, date_from, date_to, description, amount_ore, vat_ore, distance_km, car_type, destination, departure_time, return_time,
-              nights, nights_without_lodging, meals, long_stay, tax_free_ore, taxable_ore, computation, rule_version, note)
+              nights, nights_without_lodging, meals, long_stay, far_from_home, tax_free_ore, taxable_ore, computation, rule_version, note)
   on expense_claims to authenticated;
 grant select, insert on owner_planner_snapshots to authenticated;
 

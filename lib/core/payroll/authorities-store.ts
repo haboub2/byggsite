@@ -15,6 +15,7 @@ import { maskPnr } from "../hr/schema";
 import { getPayrollSettings, listEmployeePayslips, listRunPayslips, listRuns, type StoredPayslip } from "./run-store";
 import { agiBuild, agiRecords, agiXml, checkAgiXml, diffAgi, isAgiPeriod, type AgiBuild, type AgiDiffRow, type AgiRecord, type AgiRepayment } from "./agi";
 import { foraBasis, foraFile, parseForaFile, type ForaLine } from "./fora";
+import { collectumBasis, collectumFile, premiumCheck, type CollectumLine, type PremiumCheck } from "./collectum";
 import { vaxaStodBasis, type VaxaStodBasis } from "./vaxa-stod";
 import { semesterTransition, yearSummary, type SemesterTransitionRow, type YearSummaryRow } from "./year-end";
 import { certificateContent, type CertificateContent, type LeavingReason } from "./certificate";
@@ -423,6 +424,48 @@ export async function getPensionFile(id: string): Promise<{ file: string; report
   }
   if (sha256(file) !== report.sha256) throw new Error("Filen stämmer inte med den som frystes.");
   return { file, report };
+}
+
+/* ---------- Collectum ---------- */
+
+export async function collectumLines(period: string): Promise<CollectumLine[]> {
+  if (!isAgiPeriod(period)) throw new Error("Välj en månad.");
+  if (isDemo()) return collectumBasis(period, (await closedSlipsPaidIn(period)).map((s) => ({ payslipId: s.id, employeeId: s.employeeId, document: s.document })));
+  const supabase = await getDb();
+  const { data, error } = await supabase.rpc("collectum_basis", { p_org: await currentOrgId(), p_period: period });
+  if (error) fail("Kunde inte hämta Collectum-underlaget", error);
+  return data as CollectumLine[];
+}
+
+/** The month's ITP1 premium on the reported pay against what the runs accrued, with the särskild löneskatt. */
+export async function collectumPremiums(period: string, lines: readonly CollectumLine[]): Promise<PremiumCheck[]> {
+  const slips = await closedSlipsPaidIn(period);
+  const accrued = new Map<string, number>();
+  for (const s of slips) if (s.document.context?.pension.scheme === "itp1") accrued.set(s.employeeId, (accrued.get(s.employeeId) ?? 0) + s.pensionPremiumOre);
+  return premiumCheck(period, lines, accrued);
+}
+
+/** The month's Collectum file, frozen; personnummer revealed for the file (logged). */
+export async function storeCollectumReport(period: string): Promise<string> {
+  const [lines, { settings }, reports] = await Promise.all([collectumLines(period), getPayrollSettings(), listPensionReports()]);
+  if (!lines.length) throw new Error(`Ingen med ITP1 fick lön utbetald i ${period}.`);
+  const latest = reports.find((r) => r.period === period && r.scheme === "collectum");
+  if (latest && JSON.stringify(latest.lines.map((l) => [l.employeeId, l.payOre])) === JSON.stringify(lines.map((l) => [l.employeeId, l.payOre]))) throw new Error(`Ingenting har ändrats sedan version ${latest.version}.`);
+  const pnr = new Map<string, string>();
+  for (const l of lines) pnr.set(l.employeeId, (await revealPnr(l.employeeId, `Collectum-rapport ${period}`)) ?? "");
+  const file = collectumFile({ period, customerNo: settings.pension.collectumCustomerNo, lines, pnr: (id) => pnr.get(id) ?? "" });
+  const total = lines.reduce((s, l) => s + l.payOre, 0);
+  if (parseForaFile(file).totalOre !== total) throw new Error("Collectum-filen stämmer inte med underlaget.");
+  if (isDemo()) {
+    for (const r of demo().pension) if (r.period === period && r.scheme === "collectum" && r.status === "draft") r.status = "corrected";
+    const id = crypto.randomUUID();
+    demo().pension.push({ id, period, scheme: "collectum", version: (latest?.version ?? 0) + 1, status: "draft", sha256: sha256(file), lines, total_ore: total, filed_at: null, created_at: new Date().toISOString(), file });
+    return id;
+  }
+  const supabase = await getDb();
+  const { data, error } = await supabase.rpc("pension_report_store", { p_org: await currentOrgId(), p_period: period, p_scheme: "collectum", p_file: file, p_lines: lines });
+  if (error) fail("Kunde inte spara Collectum-rapporten", error);
+  return data as string;
 }
 
 /* ---------- växa-stöd ---------- */
