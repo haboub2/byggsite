@@ -10,7 +10,7 @@ import { todayIso } from "@/lib/quotes/schema";
  * people with the employment in force today. Personnummer are masked;
  * bank accounts, addresses and notes never leave through the API.
  */
-export const GET = apiGet("read", async ({ request }) => {
+export const GET = apiGet("payroll", async ({ request }) => {
   const query = parseOrThrow(employeeListQuerySchema, queryObject(request));
   const today = todayIso();
   const [employees, versions] = await Promise.all([listEmployees(), listEmployments()]);

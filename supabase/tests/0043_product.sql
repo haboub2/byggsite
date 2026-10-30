@@ -7,6 +7,7 @@
 --   A1  owner i A
 --   B1  owner i B (den andra organisationen, skapad efter A)
 --   B2  redovisningskonsult i B
+--   B3  admin i B (godkänner det ägaren räknat)
 --
 -- B skapas med create_organization och ska ha allt en lön behöver utan
 -- manuell SQL: löneartsregistret med 1830/1831, serien L, lönekontona och
@@ -14,13 +15,16 @@
 -- loggat); A:s register rörs inte. B ser inget av A; en API-nyckel för B
 -- syns inte för A, och det servern läser som B är bara B:s rader. B:s
 -- webhook får payslip.approved för B, inte A:s och inte interna händelser.
+-- Ett förval som tillämpas efter att en körning räknats stoppar
+-- godkännandet tills den räknats om.
 
 begin;
 
 insert into auth.users (id, email, aud, role) values
   ('00000000-0000-4000-8000-0000000043a1', 'a-agare@prov43.se', 'authenticated', 'authenticated'),
   ('00000000-0000-4000-8000-0000000043b1', 'b-agare@prov43.se', 'authenticated', 'authenticated'),
-  ('00000000-0000-4000-8000-0000000043b2', 'b-konsult@prov43.se', 'authenticated', 'authenticated');
+  ('00000000-0000-4000-8000-0000000043b2', 'b-konsult@prov43.se', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000043b3', 'b-admin@prov43.se', 'authenticated', 'authenticated');
 
 create temp table prov (k text primary key, v uuid) on commit drop;
 grant all on prov to authenticated, service_role;
@@ -56,6 +60,44 @@ as $$
 $$;
 grant execute on function pg_temp.bygg() to authenticated;
 
+-- Ett lönebesked i PayslipDocuments form (det databasen läser), som i 0042-provet.
+create function pg_temp.rad(p_code text, p_kind text, p_box text, p_account text, p_counter text, p_amount bigint, p_taxable boolean) returns jsonb
+  language sql
+as $$
+  select jsonb_build_object('code', p_code, 'text', p_code, 'amountOre', p_amount,
+    'item', jsonb_build_object('code', p_code, 'name', p_code, 'kind', p_kind, 'version', 1,
+      'flags', jsonb_build_object('account', p_account, 'counterAccount', p_counter, 'agiBox', p_box, 'taxable', p_taxable)))
+$$;
+grant execute on function pg_temp.rad(text, text, text, text, text, bigint, boolean) to authenticated;
+
+create function pg_temp.doc(p_emp uuid, p_name text, p_lines jsonb, p_tax bigint, p_contrib bigint) returns jsonb
+  language sql
+as $$
+  select jsonb_build_object(
+    'schema', 1, 'employeeId', p_emp, 'employeeName', p_name, 'birthYear', 1988,
+    'periodStart', '2026-11-01', 'periodEnd', '2026-11-30', 'payDate', '2026-11-25', 'ruleSetValidFrom', '2026-04-01', 'taxTableVersion', null,
+    'lines', p_lines,
+    'contributions', jsonb_build_object('category', 'full', 'baseOre', 0, 'ratePercent', 31.42, 'amountOre', p_contrib),
+    'context', jsonb_build_object('pension', jsonb_build_object('scheme', 'saf-lo', 'premiumOre', 0)),
+    'totals', jsonb_build_object(
+      'cashGrossOre', (select coalesce(sum((l->>'amountOre')::bigint), 0) from jsonb_array_elements(p_lines) l where (l->'item'->'flags'->>'taxable')::boolean),
+      'taxFreeReimbursementOre', 0, 'benefitOre', 0, 'taxOre', p_tax, 'netAdjustmentOre', 0,
+      'netOre', (select coalesce(sum((l->>'amountOre')::bigint), 0) from jsonb_array_elements(p_lines) l) - p_tax,
+      'employerContributionOre', p_contrib, 'sickPayCostOre', 0))
+$$;
+grant execute on function pg_temp.doc(uuid, text, jsonb, bigint, bigint) to authenticated;
+
+-- Novembers resultat i B: Bert, timlön 20 000 kr.
+create function pg_temp.resultat_b() returns jsonb
+  language sql
+as $$
+  select jsonb_build_object('ruleSetValidFrom', '2026-04-01', 'taxTableImportId', null, 'checks', '[]'::jsonb,
+    'payslips', jsonb_build_array(
+      jsonb_build_object('employeeId', (select v from prov where k = 'bert'), 'document', pg_temp.doc((select v from prov where k = 'bert'), 'Bert Berg',
+        jsonb_build_array(pg_temp.rad('1100', 'hourly', '011', '7010', '2820', 2000000, true)), 400000, 628400))))
+$$;
+grant execute on function pg_temp.resultat_b() to authenticated;
+
 -- ---------------------------------------------------------------- två organisationer
 
 set local role authenticated;
@@ -66,7 +108,8 @@ insert into prov values ('b', create_organization('Prov B AB', '559000-4302'));
 
 reset role;
 insert into memberships (org_id, user_id, role) values
-  ((select v from prov where k = 'b'), '00000000-0000-4000-8000-0000000043b2', 'accountant');
+  ((select v from prov where k = 'b'), '00000000-0000-4000-8000-0000000043b2', 'accountant'),
+  ((select v from prov where k = 'b'), '00000000-0000-4000-8000-0000000043b3', 'admin');
 
 -- B fick allt en lön behöver när organisationen skapades.
 do $$
@@ -180,8 +223,11 @@ end $$;
 -- ---------------------------------------------------------------- API-nyckel och webhook
 
 select pg_temp.som('b1');
-insert into api_keys (org_id, name, prefix, key_hash, scopes, created_by)
-  values ((select v from prov where k = 'b'), 'Lönesystemet', 'bf_test_PROV', repeat('b', 64), '{read}', 'b-agare@prov43.se');
+-- En faktureringsnyckel (read) och en lönenyckel (payroll): bara den senare når /employees, /payslips …
+-- (hasScope i lib/api/keys.ts; read och write ger aldrig payroll).
+insert into api_keys (org_id, name, prefix, key_hash, scopes, created_by) values
+  ((select v from prov where k = 'b'), 'Webbshopen', 'bf_test_PROV', repeat('b', 64), '{read}', 'b-agare@prov43.se'),
+  ((select v from prov where k = 'b'), 'Lönesystemet', 'bf_test_PROV', repeat('c', 64), '{payroll}', 'b-agare@prov43.se');
 with w as (
   insert into webhook_endpoints (org_id, url, events) values ((select v from prov where k = 'b'), 'https://example.se/lon-hook', '{}') returning id)
 insert into prov select 'hook', id from w;
@@ -200,7 +246,9 @@ set local role service_role;
 do $$
 declare a uuid := (select v from prov where k = 'a'); b uuid := (select v from prov where k = 'b');
 begin
-  if (select count(*) from api_keys where org_id = b and revoked_at is null) <> 1 then raise exception 'B:s nyckel finns inte'; end if;
+  if (select count(*) from api_keys where org_id = b and revoked_at is null) <> 2 then raise exception 'B:s nycklar finns inte'; end if;
+  if exists (select 1 from api_keys where org_id = b and name = 'Webbshopen' and 'payroll' = any(scopes)) then raise exception 'Faktureringsnyckeln har scope payroll'; end if;
+  if not exists (select 1 from api_keys where org_id = b and name = 'Lönesystemet' and scopes = '{payroll}') then raise exception 'Lönenyckeln saknar scope payroll'; end if;
   if (select count(*) from employees where org_id = b) <> 1 or (select count(*) from employees where org_id = a) <> 1 then
     raise exception 'Personalen per organisation stämmer inte';
   end if;
@@ -224,6 +272,38 @@ begin
   if (select count(*) from webhook_deliveries d join events e on e.id = d.event_id where d.endpoint_id = (select v from prov where k = 'hook') and e.org_id = b and e.type = 'payslip.approved') <> 1 then
     raise exception 'Leveransen är inte B:s payslip.approved';
   end if;
+end $$;
+
+-- ---------------------------------------------------------------- ett förval efter beräkningen stoppar godkännandet
+
+reset role;
+set local role authenticated;
+select pg_temp.som('b1');
+insert into prov values ('nov', payroll_run_create((select v from prov where k = 'b'), '2026-11-01', '2026-11-25'));
+select payroll_run_store_result((select v from prov where k = 'nov'), pg_temp.resultat_b());
+do $$
+begin
+  -- Timlönen slutar rapporteras till Fora: en ny version efter beräkningen.
+  if payroll_apply_preset((select v from prov where k = 'b'), 'none',
+       jsonb_build_array(pg_temp.art('1100', 'Timlön', 'hourly', true, true, false, '011', '7010', '2820', null)), '2026-11-01') <> 1 then
+    raise exception 'Förvalet gav ingen ny version av timlönen';
+  end if;
+end $$;
+select pg_temp.som('b3');
+do $$
+begin
+  perform payroll_run_approve((select v from prov where k = 'nov'));
+  raise exception 'Körningen godkändes fast registret ändrats efter beräkningen';
+exception when invalid_parameter_value then
+  if sqlerrm not like '%Underlaget har ändrats%' then raise exception 'Fel meddelande: %', sqlerrm; end if;
+end $$;
+select pg_temp.som('b1');
+select payroll_run_store_result((select v from prov where k = 'nov'), pg_temp.resultat_b());
+select pg_temp.som('b3');
+select payroll_run_approve((select v from prov where k = 'nov'));
+do $$
+begin
+  if (select status from pay_runs where id = (select v from prov where k = 'nov')) <> 'approved' then raise exception 'Körningen godkändes inte efter omräkningen'; end if;
 end $$;
 
 do $$ begin raise notice 'Prov 0043: alla gick igenom'; end $$;

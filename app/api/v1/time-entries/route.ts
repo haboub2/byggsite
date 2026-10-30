@@ -7,7 +7,7 @@ import { addTimeEntry, listTimeEntries } from "@/lib/core/hr/time-store";
 import { timeEntryInputSchema } from "@/lib/core/hr/time-schema";
 
 /** GET /api/v1/time-entries?from=&to=&employeeId=&projectId=&status=&limit= — time rows by work date. */
-export const GET = apiGet("read", async ({ request }) => {
+export const GET = apiGet("payroll", async ({ request }) => {
   const query = parseOrThrow(timeEntryListQuerySchema, queryObject(request));
   if (query.to < query.from) throw new ApiProblem("validation_error", "Anropet innehåller fel.", { to: "Sista dagen är före första." });
   const rows = (await listTimeEntries({ from: query.from, to: query.to, employeeId: query.employeeId, projectId: query.projectId })).filter((t) => !query.status || t.status === query.status);
@@ -19,7 +19,7 @@ export const GET = apiGet("read", async ({ request }) => {
  * "imported"): someone approves it in Tid before a payroll run can read it.
  * Idempotency-Key required.
  */
-export const POST = apiPost("write", async ({ body }) => {
+export const POST = apiPost(["payroll", "write"], async ({ body }) => {
   const input = parseOrThrow(timeEntryCreateSchema, body);
   const employee = await getEmployee(input.employeeId);
   if (!employee) throw new ApiProblem("not_found", "Personen finns inte.");

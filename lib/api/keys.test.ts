@@ -25,10 +25,17 @@ test("bearer token parsing", () => {
   assert.equal(bearerToken(null), null);
 });
 
-test("scopes: admin implies all, write implies read", () => {
+test("scopes: admin implies all, write implies read, payroll is implied by nothing else", () => {
   assert.equal(hasScope(["read"], "read"), true);
   assert.equal(hasScope(["read"], "write"), false);
   assert.equal(hasScope(["write"], "read"), true);
   assert.equal(hasScope(["admin"], "write"), true);
   assert.equal(hasScope([], "read"), false);
+  assert.equal(hasScope(["read", "write"], "payroll"), false, "an invoicing key sees no salaries");
+  assert.equal(hasScope(["payroll"], "payroll"), true);
+  assert.equal(hasScope(["payroll"], "read"), false);
+  assert.equal(hasScope(["admin"], "payroll"), true);
+  assert.equal(hasScope(["payroll"], ["payroll", "write"]), false, "creating time needs write too");
+  assert.equal(hasScope(["payroll", "write"], ["payroll", "write"]), true);
+  assert.equal(hasScope(["admin"], ["payroll", "write"]), true);
 });

@@ -81,7 +81,7 @@ export function openApiDocument(baseUrl: string) {
         `Anropsgränser per nyckel: ${DEFAULT_RATE_LIMITS.perMinute} anrop per minut och ${DEFAULT_RATE_LIMITS.perDay.toLocaleString("sv-SE")} per dygn (UTC) om inget annat är avtalat. Varje svar har X-RateLimit-Limit, X-RateLimit-Remaining och X-RateLimit-Reset (sekunder) för det fönster som ligger närmast sin gräns. Över gränsen: 429 med Retry-After (sekunder). Ett nekat anrop räknas inte.`,
         "Varje svar har X-Request-Id. Ange det när du kontaktar oss om ett anrop; organisationens admin ser samma id under Admin → API → Anrop.",
         "Personnummer (ROT och personal) är alltid maskerade i API:t, ÅÅÅÅMMDD-XXXX, också i fakturans dokument. Personalens bankkonton, adresser och anteckningar lämnar aldrig API:t.",
-        "Personal och lön (läs): /employees, /time-entries (också POST: ett utkast som godkänns i Tid), /absences, /payslips (med PDF för godkända), /pay-runs. Lönekörningen körs i admin, inte via API:t. Webhooks för payslip.approved, payroll.run_approved, payroll.run_closed, time.approved och expense.approved bär id och summor, aldrig dokument.",
+        "Personal och lön kräver scope payroll, som ingen fakturanyckel har (read och write ger det inte; admin ger allt): /employees, /time-entries (också POST med payroll och write: ett utkast som godkänns i Tid), /absences, /payslips (med PDF för godkända), /pay-runs. Lönekörningen körs i admin, inte via API:t. Webhooks för payslip.approved, payroll.run_approved, payroll.run_closed, time.approved och expense.approved bär id och summor, aldrig dokument.",
         "invoice.corrected kommer två gånger: på originalet (data.correction, data.correctionNumber) och på ändringsfakturan (data.original, data.corrects).",
         `invoice.sent och invoice.reminded har data.to (mottagarna som text) och, när fakturan mejlades, data.recipients med listorna to och cc. Kundens listor sätts med invoiceEmails och ccEmails och fryses in i fakturan (document.se.recipients) när den utfärdas.`,
       ].join("\n\n"),
@@ -197,7 +197,7 @@ export function openApiDocument(baseUrl: string) {
         get: {
           tags: ["Personal"],
           summary: "Lista personal",
-          description: "Personerna med anställningsversionen som gäller i dag. Personnummer maskerade; inga bankkonton, adresser eller anteckningar. Kräver scope read.",
+          description: "Personerna med anställningsversionen som gäller i dag. Personnummer maskerade; inga bankkonton, adresser eller anteckningar. Kräver scope payroll.",
           parameters: queryParams(employeeListQuerySchema),
           responses: { "200": ok("Personalen, sorterad på namn", "EmployeeList"), ...readErrors },
         },
@@ -209,14 +209,14 @@ export function openApiDocument(baseUrl: string) {
         get: {
           tags: ["Tid"],
           summary: "Lista tidsrader",
-          description: "Tidsrader per arbetsdatum (from och to krävs), för en person eller ett projekt. Kräver scope read.",
+          description: "Tidsrader per arbetsdatum (from och to krävs), för en person eller ett projekt. Kräver scope payroll.",
           parameters: queryParams(timeEntryListQuerySchema),
           responses: { "200": ok("Tidsraderna, äldst först", "TimeEntryList"), ...readErrors },
         },
         post: {
           tags: ["Tid"],
           summary: "Skapa ett tidsutkast",
-          description: "En tidsrad för en person som utkast (källa imported): den skickas in och godkänns i Tid innan en lönekörning kan läsa den. Start och slut med rast, eller bara timmar. Kräver scope write.",
+          description: "En tidsrad för en person som utkast (källa imported): den skickas in och godkänns i Tid innan en lönekörning kan läsa den. Start och slut med rast, eller bara timmar. Kräver scope payroll och write.",
           parameters: [idempotency],
           requestBody: { required: true, content: json("TimeEntryCreate") },
           responses: { "201": ok("Utkastet", "TimeEntry"), ...notFound, ...writeErrors },
@@ -226,7 +226,7 @@ export function openApiDocument(baseUrl: string) {
         get: {
           tags: ["Tid"],
           summary: "Lista frånvaro",
-          description: "Sjuk, VAB, semester, föräldraledighet, tjänstledighet, permission och kompledighet som överlappar perioden. Kräver scope read.",
+          description: "Sjuk, VAB, semester, föräldraledighet, tjänstledighet, permission och kompledighet som överlappar perioden. Kräver scope payroll.",
           parameters: queryParams(absenceListQuerySchema),
           responses: { "200": ok("Frånvaron, äldst först", "AbsenceList"), ...readErrors },
         },
@@ -235,7 +235,7 @@ export function openApiDocument(baseUrl: string) {
         get: {
           tags: ["Lön"],
           summary: "Lista lönebesked",
-          description: "Lönebesked per körning, person eller lönemånad: raderna med löneart, belopp, skatteflagga, AGI-ruta och konto, summorna, pension och semesterlöneskuld. status approved är fryst och har PDF. Utan runId eller period: de tolv senaste körningarna. Kräver scope read.",
+          description: "Lönebesked per körning, person eller lönemånad: raderna med löneart, belopp, skatteflagga, AGI-ruta och konto, summorna, pension och semesterlöneskuld. status approved är fryst och har PDF. Utan runId eller period: de tolv senaste körningarna. Kräver scope payroll.",
           parameters: queryParams(payslipListQuerySchema),
           responses: { "200": ok("Lönebeskeden, senaste lönedag först", "PayslipList"), ...readErrors },
         },
@@ -256,7 +256,7 @@ export function openApiDocument(baseUrl: string) {
         get: {
           tags: ["Lön"],
           summary: "Lista lönekörningar",
-          description: "Körningarna med period, lönedag, status och summor, senaste månad först. Bara läsning: körningen skapas, räknas, godkänns och stängs i admin. Kräver scope read.",
+          description: "Körningarna med period, lönedag, status och summor, senaste månad först. Bara läsning: körningen skapas, räknas, godkänns och stängs i admin. Kräver scope payroll.",
           parameters: queryParams(payRunListQuerySchema),
           responses: { "200": ok("Körningarna", "PayRunList"), ...readErrors },
         },
@@ -277,7 +277,7 @@ export function openApiDocument(baseUrl: string) {
     },
     components: {
       securitySchemes: {
-        apiKey: { type: "http", scheme: "bearer", description: "API-nyckel, bf_live_… eller bf_test_…" },
+        apiKey: { type: "http", scheme: "bearer", description: "API-nyckel, bf_live_… eller bf_test_…, med scope read, write, payroll och/eller admin (Admin → API)." },
       },
       headers: {
         RequestId: { description: "Anropets id, req_ + 24 hex. Finns i organisationens anropslogg.", schema: { type: "string" } },
@@ -297,7 +297,7 @@ export function openApiDocument(baseUrl: string) {
       },
       responses: {
         Unauthorized: { description: "Nyckeln saknas, är fel eller återkallad", content: json("Error") },
-        Forbidden: { description: "Nyckeln saknar scope", content: json("Error") },
+        Forbidden: { description: "Nyckeln saknar scope (payroll för personal och lön)", content: json("Error") },
         NotFound: { description: "Finns inte i nyckelns organisation", content: json("Error") },
         Conflict: { description: "Går inte i resursens nuvarande status, eller ett anrop med samma Idempotency-Key pågår", content: json("Error") },
         ValidationError: { description: "Fel i anropet; details har fält → meddelande", content: json("Error") },

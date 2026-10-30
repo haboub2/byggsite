@@ -137,6 +137,3 @@ export function presetRows(preset: PayItemPreset) {
     foraCategory: i.flags.foraCategory,
   }));
 }
-
-/** The preset the organisation's agreement decision implies (payroll_settings.data.agreement). */
-export const presetForAgreement = (agreement: PayItemPreset): PayItemPreset => agreement;

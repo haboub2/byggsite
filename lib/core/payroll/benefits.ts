@@ -258,6 +258,7 @@ export function benefitMonth(b: Benefit, date: IsoDate): BenefitMonth {
 export function fuelLines(b: Benefit, month: BenefitMonth, periodStart: IsoDate, periodEnd: IsoDate): PayLineInput[] {
   const f = month.fuel;
   if (!f) return [];
+  // A car benefit always has a registration number (the table requires it for kind bil).
   const reg = b.car?.registrationNumber ?? "";
   const line = (code: "1830" | "1831", text: string, amountOre: Ore, basisOre: Ore | null, ratePercent: number | null): PayLineInput => ({
     code,
@@ -273,8 +274,8 @@ export function fuelLines(b: Benefit, month: BenefitMonth, periodStart: IsoDate,
     source: { kind: "benefit", id: b.id },
   });
   const out: PayLineInput[] = [];
-  if (f.baseOre > 0) out.push(line("1830", `Drivmedelsförmån ${reg}`.trim(), f.baseOre, f.repaidOre ? f.marketValueOre : null, null));
-  if (f.upliftOre > 0) out.push(line("1831", `Drivmedelsförmån ${reg}, uppräkning ${String(f.factor).replace(".", ",")}`.replace("  ", " "), f.upliftOre, f.marketValueOre, Math.round((f.factor - 1) * 100)));
+  if (f.baseOre > 0) out.push(line("1830", `Drivmedelsförmån ${reg}`, f.baseOre, f.repaidOre ? f.marketValueOre : null, null));
+  if (f.upliftOre > 0) out.push(line("1831", `Drivmedelsförmån ${reg}, uppräkning ${String(f.factor).replace(".", ",")}`, f.upliftOre, f.marketValueOre, Math.round((f.factor - 1) * 100)));
   return out;
 }
 

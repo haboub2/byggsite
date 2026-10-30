@@ -328,6 +328,8 @@ async function demoInputsHash(run: PayRun): Promise<string> {
     corrections: corrections.filter((c) => c.targetRunId === null || c.targetRunId === run.id).map((c) => c.id),
     vacationYear: settings.vacationYear,
     benefits: demoBenefitInputs(),
+    // 0043: a preset applied after the computation changes the register, so the run must be computed again.
+    payItems: demo().payItems.map((i) => [i.code, i.version, i.validFrom]),
   };
   return createHash("sha256").update(JSON.stringify(state)).digest("hex");
 }

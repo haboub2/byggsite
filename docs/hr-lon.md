@@ -40,8 +40,10 @@ exists on the first admin page. Draft PR "HR fas 6: produkt (0043)".
 **0043 has not run against Supabase.** Apply it after 0042, then run
 `supabase/tests/0043_product.sql` in the SQL editor (and
 `0039_payroll.sql` and `0040_authorities.sql` again: they now expect 39
-pay items and a ruta 018 in the boxes). `0041_payroll_repair.sql` still
-must not be run again. The done-criterion of section 12, "a second org
+pay items and a ruta 018 in the boxes). 0043 replaces
+`payroll_inputs_hash()` again (the register is now in the fingerprint),
+so a run computed before 0043 must be computed again before approval, and
+`0041_payroll_repair.sql` still must not be run again. The done-criterion of section 12, "a second org
 runs a payroll without us", is yours to test: create an organisation
 under Admin › Ny organisation, open Lön › Kom igång med lön and follow it
 to a run.
@@ -50,7 +52,7 @@ to a run.
 
 | What | File |
 |---|---|
-| Migration: 1830/1831 in the register for every organisation, `payroll_seed_org` adding missing items, `payroll_apply_preset`, `benefits.fuel_employee_payment_ore`, ruta 018 in `agi_build_sums`/`agi_store`/`agi_diff`, `is_webhook_event` with the payroll events | `supabase/migrations/0043_product.sql` |
+| Migration: 1830/1831 in the register for every organisation, `payroll_seed_org` adding missing items, `payroll_apply_preset`, `benefits.fuel_employee_payment_ore`, ruta 018 in `agi_build_sums`/`agi_store`/`agi_diff`, `is_webhook_event` with the payroll events, `payroll_inputs_hash` with the register | `supabase/migrations/0043_product.sql` |
 | SQL tests: B seeded on creation, the preset's versions and event, A untouched and unable to touch B, the accountant cannot apply, RLS on register, settings, people, API keys and webhooks, the fuel column, 018 in the build, deliveries only for B's `payslip.approved` | `supabase/tests/0043_product.sql` |
 | Presets `none`, `byggavtalet`, `tjanstemannaavtalet`, `both` from `DEFAULT_PAY_ITEMS`; the diff a preset would insert; the rows the SQL function takes | `lib/core/payroll/pay-item-presets.ts` (`presetPayItems`, `presetChanges`, `presetRows`) |
 | 1830 Drivmedelsförmån and 1831 the 1,2 uplift (box 018); the SQL block now lives in 0043 (`PAY_ITEMS_MIGRATION`) | `lib/core/payroll/pay-items.default.ts`, `pay-items-sql.ts` |
@@ -59,7 +61,7 @@ to a run.
 | The checklist, pure, and its loader | `lib/core/payroll/onboarding.ts`, `onboarding-store.ts` |
 | Pages: Lön › Kom igång med lön; Inställningar › Lön with the preset on the agreement decision and "Tillämpa förvalet" on the register; the Lön page's banner links the checklist | `app/admin/(dashboard)/lon/kom-igang/page.tsx`, `installningar/lon/page.tsx`, `lon/page.tsx`, `components/admin/AdminTopBar.tsx` |
 | Store: `applyPayItemPreset`, `previewPayItemPreset`; the demo register with versions; organisation filter on `getRun`, `getPayslip`, `listRunPayslips`, `listEmployeePayslips`, `getPayslips` | `lib/core/payroll/run-store.ts`, `app/admin/payroll-actions.ts` |
-| API: schemas, mappers (masked personnummer, no bank, address, notes, user id, no full document), routes, OpenAPI | `lib/api/schemas.ts`, `lib/api/hr-resources.ts`, `lib/api/openapi.ts`, `app/api/v1/{employees,time-entries,absences,payslips,pay-runs}` |
+| API: scope `payroll` (keys, frame, the admin's key form), schemas, mappers (masked personnummer, no bank, address, notes, user id, no full document), routes, OpenAPI | `lib/api/keys.ts`, `lib/api/frame.ts`, `app/admin/api-actions.ts`, `components/admin/api/ApiForms.tsx`, `lib/api/schemas.ts`, `lib/api/hr-resources.ts`, `lib/api/openapi.ts`, `app/api/v1/{employees,time-entries,absences,payslips,pay-runs}` |
 | Webhook events `payslip.approved`, `payroll.run_approved`, `payroll.run_closed`, `time.approved`, `expense.approved`; parity test with 0043 | `lib/core/events.ts`, `lib/api/webhooks.test.ts` |
 | Skatteverket: the two APIs, Skatteverket's requirements, what exists, what must change, the application drafted | `docs/skatteverket-api.md` |
 | Demo: four people, a month of approved time, a car with fuel, two claims, the month run to closed with its AGI; seeded once per process from `requireRole` in demo mode | `lib/core/payroll/demo-seed.ts`, `lib/admin.ts` |
@@ -90,6 +92,12 @@ to a run.
   fuel without the 1,2 factor. `agi_build_hash()` gets a new key, so a
   month declared before 0043 looks changed next to a new build; none has
   been filed for real.
+- `payroll_inputs_hash()` (replaced, 0042's text plus the organisation's
+  pay items: id, code, version, valid_from): a preset or a hand-made
+  version after the computation makes the approval say "Underlaget har
+  ändrats efter beräkningen; räkna om", so no run is approved with flags
+  other than the ones it was computed with. Demo mode's hash does the
+  same.
 - `is_webhook_event()` (replaced) adds the five payroll events; the
   trigger on `events` is 0021's. The events carry ids and sums
   (`payslip.approved`: payslipId, runId, number, period, netOre;
@@ -111,13 +119,17 @@ market value for private driving per month and what the employee pays
 for it; the card shows the drivmedelsförmån's tax and avgift bases;
 the run pays 1830 (value less repayment, with avgifter) and 1831 (the
 rest up to 1,2 × value, tax only), both in ruta 018, and warns when the
-company pays fuel but the value is 0. The API (`/api/v1/openapi.json`):
-`/employees` (list, get; personnummer masked, no bank account, address
-or notes), `/time-entries` (list by date range, person, project, status;
-POST a draft with source `imported`, Idempotency-Key required),
-`/absences`, `/payslips` (list by run, person or period; get; `/pdf` for
-approved ones, 409 before approval), `/pay-runs` (list, get). Read runs
-as the key's organisation through the same stores; `getRun`,
+company pays fuel but the value is 0. The API (`/api/v1/openapi.json`)
+gets a scope **`payroll`** that no invoicing key has: `read` and `write`
+do not imply it, `admin` does, and the key form under Admin › API offers
+"Läsa personal och lön", "Personal och lön, läsa och skriva tid" and
+"Allt". The HR routes require it: `/employees` (list, get; personnummer
+masked, no bank account, address or notes), `/time-entries` (list by date
+range, person, project, status; POST a draft with source `imported`,
+scopes `payroll` and `write`, Idempotency-Key required), `/absences`,
+`/payslips` (list by run, person or period; get; `/pdf` for approved
+ones, 409 before approval), `/pay-runs` (list, get). Read runs as the
+key's organisation through the same stores; `getRun`,
 `getPayslip` and the payslip reads now put the organisation on the
 query as well, so a key of B cannot read A's run or payslip by id.
 Demo mode: the example organisation is seeded on the first admin
@@ -128,7 +140,9 @@ turns it off.
 
 **Verified**
 
-- `npm test` (675), `npm run lint` (0 errors), `tsc` clean.
+- `npm test` (676), `npm run lint` (0 errors), `tsc` clean;
+  `hasScope` covers that read and write never give payroll and that a
+  list of scopes needs every one; `includeEnded=false` is false.
 - All migrations through 0043 on Postgres 17 with the shim; all 19 SQL
   test files pass, `0043_product.sql` included: B created with
   `create_organization` has 39 pay items (1830/1831 with 018), series L,
@@ -140,7 +154,10 @@ turns it off.
   B's register, settings, people, API key or webhook; the fuel columns;
   018 in the build; `is_webhook_event` for the five payroll events and
   not for internal ones; B's endpoint gets exactly B's `payslip.approved`,
-  not A's and not `payroll.run_calculated`.
+  not A's and not `payroll.run_calculated`; B's invoicing key has no
+  `payroll` scope and its payroll key has; a preset applied after a run
+  was computed makes the approval refuse "Underlaget har ändrats" until
+  the run is computed again, after which it is approved.
 - Golden test: Skatteverket's drivmedel example (1 200 kr → 1 440 kr
   taxed, 1 200 kr avgifter, 018 = 1 440 kr; repaid 1 200 kr → 240 kr
   taxed and no avgifter; repaid 1 440 kr → nothing) through `computeRun`,
@@ -196,6 +213,9 @@ turns it off.
 
 **Where sections 3, 11 and 12 turned out different**
 
+- Section 10: the API gets its own scope `payroll` next to read, write
+  and admin, since an API key is not a member with a role; the table's
+  split (owner, admin, accountant read payroll) is the key form's.
 - Section 3: no new tables. Presets are not stored as presets; the
   register's versions are the record, and `payroll_settings.data` says
   which preset was applied last. `benefits` got the fuel repayment column

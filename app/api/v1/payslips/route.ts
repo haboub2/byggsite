@@ -9,7 +9,7 @@ import { listRunPayslips, listRuns } from "@/lib/core/payroll/run-store";
  * frozen approved ones and the computed drafts (status says which),
  * newest pay date first. Without runId or period: the twelve latest runs.
  */
-export const GET = apiGet("read", async ({ request }) => {
+export const GET = apiGet("payroll", async ({ request }) => {
   const query = parseOrThrow(payslipListQuerySchema, queryObject(request));
   let runs = await listRuns();
   if (query.runId) runs = runs.filter((r) => r.id === query.runId);

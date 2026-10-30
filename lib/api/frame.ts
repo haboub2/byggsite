@@ -1,4 +1,4 @@
-import { bearerToken, hasScope, isApiKeyFormat, type ApiScope } from "./keys";
+import { bearerToken, hasScope, isApiKeyFormat, scopeText, type ApiScope } from "./keys";
 import { apiError } from "./respond";
 import { rateLimitHeaders, type RateDecision } from "./rate-limit";
 import { newRequestId, requestLogEntry, type ApiRequestLog } from "./request-log";
@@ -39,7 +39,7 @@ export function withHeaders(response: Response, extra: Record<string, string>): 
 
 export async function runApiFrame(
   request: Request,
-  scope: ApiScope,
+  scope: ApiScope | readonly ApiScope[],
   deps: FrameDeps,
   handler: (principal: ApiPrincipal) => Promise<Response>
 ): Promise<Response> {
@@ -67,7 +67,7 @@ export async function runApiFrame(
             retryAfter: Math.max(1, decision.retryAfter),
           });
         } else if (!hasScope(key.scopes, scope)) {
-          response = apiError("forbidden", `Nyckeln saknar behörigheten "${scope}".`);
+          response = apiError("forbidden", `Nyckeln saknar behörigheten "${scopeText(scope)}".`);
         } else {
           response = await handler({ orgId: key.orgId, keyId: key.id, scopes: key.scopes, name: key.name });
         }

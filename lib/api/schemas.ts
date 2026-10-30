@@ -235,7 +235,11 @@ export const employeeResourceSchema = z.object({
 
 export const employeeListQuerySchema = z.object({
   q: z.string().trim().max(100).optional().describe("Namn eller e-post."),
-  includeEnded: z.coerce.boolean().default(false).describe("Ta med personer som lämnat."),
+  includeEnded: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true")
+    .describe("Ta med personer som lämnat (true eller false)."),
   limit: z.coerce.number().int().min(1).max(500).default(100),
 });
 

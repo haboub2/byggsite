@@ -2,8 +2,10 @@
 -- organisation, förval av lönearter per kollektivavtal, drivmedelsförmån i
 -- ruta 018, lönens händelser till webhooks). Läggs på efter 0042, som inte
 -- ändras; funktioner som byts ut här (payroll_seed_org, agi_build_sums,
--- agi_store, agi_diff, is_webhook_event) skrivs om med create or replace.
--- OBS: 0041_payroll_repair.sql får fortfarande inte köras igen (se 0042).
+-- agi_store, agi_diff, is_webhook_event, payroll_inputs_hash) skrivs om med
+-- create or replace. OBS: 0041_payroll_repair.sql får fortfarande inte köras
+-- igen: den skriver payroll_inputs_hash() med 0039:s text (utan 0042:s
+-- utlägg och förmåner och utan 0043:s lönearter).
 --
 -- 1. benefits: det den anställde betalar för drivmedlet (private_fuel_ore,
 --    marknadsvärdet för privat körning per månad, finns sedan 0042 men lästes
@@ -32,6 +34,9 @@
 --    WEBHOOK_EVENT_TYPES i lib/core/events.ts; lib/api/webhooks.test.ts
 --    håller dem lika). Händelsernas data är id och summor, aldrig dokument
 --    eller personnummer.
+-- 6. payroll_inputs_hash: 0042:s text plus löneartsregistret, så att ett
+--    förval (eller en handgjord version) efter beräkningen stoppar
+--    godkännandet tills körningen räknats om med de nya flaggorna.
 --
 -- Inga nya tabeller, ingen ny RLS: pay_items och payroll_settings har 0039:s
 -- policyer, och funktionen här är security definer med can_payroll_approve.
@@ -483,5 +488,39 @@ as $$
     'payslip.approved', 'payroll.run_approved', 'payroll.run_closed', 'time.approved', 'expense.approved'
   ])
 $$;
+
+-- =====================================================================
+-- 6. Underlagets fingeravtryck (0042:s plus löneartsregistret)
+-- =====================================================================
+
+create or replace function public.payroll_inputs_hash(p_run uuid) returns text
+  language sql stable security definer set search_path = public
+as $$
+  select md5(concat_ws('|',
+    (select string_agg(concat_ws(',', t.id, case t.status when 'locked' then 'approved' else t.status end, t.hours, t.start_time,
+                                 t.end_time, t.break_minutes, t.kind, t.corrects_id), ';' order by t.id)
+       from public.time_entries t
+      where t.org_id = r.org_id and t.work_date between r.time_period_start and r.time_period_end),
+    (select string_agg(concat_ws(',', a.id, a.kind, a.from_date, a.to_date, a.extent, a.approved_at is not null), ';' order by a.id)
+       from public.absences a
+      where a.org_id = r.org_id and a.from_date <= r.time_period_end
+        and (a.to_date is null or a.to_date >= (r.time_period_start - interval '1 year')::date)),
+    (select string_agg(concat_ws(',', v.id, v.schedule_id), ';' order by v.id) from public.employments v where v.org_id = r.org_id),
+    (select string_agg(x.id::text, ';' order by x.id) from public.employee_tax x where x.org_id = r.org_id),
+    (select string_agg(concat_ws(',', e.id, e.birth_date, e.agreement, e.ended_at), ';' order by e.id) from public.employees e where e.org_id = r.org_id),
+    (select string_agg(c.id::text, ';' order by c.id) from public.payroll_corrections c
+      where c.org_id = r.org_id and (c.target_run_id is null or c.target_run_id = r.id)),
+    (select s.data->>'vacationYear' from public.payroll_settings s where s.org_id = r.org_id),
+    -- 0042: godkända obetalda utlägg och förmånerna.
+    (select string_agg(concat_ws(',', c.id, c.tax_free_ore, c.taxable_ore), ';' order by c.id) from public.expense_claims c
+      where c.org_id = r.org_id and c.status = 'approved'),
+    (select string_agg(concat_ws(',', b.id, b.valid_from, b.valid_to, b.updated_at), ';' order by b.id) from public.benefits b
+      where b.org_id = r.org_id),
+    -- 0043: löneartsregistret, så att ett förval som tillämpas efter beräkningen ("räkna om") stoppar godkännandet.
+    (select string_agg(concat_ws(',', p.id, p.code, p.version, p.valid_from), ';' order by p.id) from public.pay_items p
+      where p.org_id = r.org_id)))
+  from public.pay_runs r where r.id = p_run
+$$;
+revoke all on function public.payroll_inputs_hash(uuid) from public, anon, authenticated;
 
 commit;

@@ -7,8 +7,8 @@ import { MemoryRequestLog } from "./request-log";
  * The API in demo mode (no database, `npm run dev` without Supabase): keys,
  * rate counters and the request log live in memory, like the rest of the
  * demo stores. Any well-formed key works and is registered on first use
- * with read and write; keys made on the admin page are registered with what
- * was chosen there. The tests use the same state, with their own limits.
+ * with read, write and payroll; keys made on the admin page are registered
+ * with what was chosen there. The tests use the same state, with their own limits.
  */
 
 export type DemoApiKey = ApiKeyRecord & { prefix: string; limits: RateLimits; createdAt: string; lastUsedAt: string | null };
@@ -37,7 +37,7 @@ export function registerDemoApiKey(
     id: idFromHash(hash),
     orgId: input.orgId,
     name: input.name ?? "Demo-nyckel",
-    scopes: input.scopes ?? ["read", "write"],
+    scopes: input.scopes ?? ["read", "write", "payroll"],
     revokedAt: null,
     prefix: token.slice(0, 12),
     limits: { ...DEFAULT_RATE_LIMITS, ...input.limits },

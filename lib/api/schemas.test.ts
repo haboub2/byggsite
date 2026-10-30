@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { customerCreateSchema, invoiceCreateSchema, paymentCreateSchema, invoiceListQuerySchema } from "./schemas";
+import { customerCreateSchema, employeeListQuerySchema, invoiceCreateSchema, paymentCreateSchema, invoiceListQuerySchema } from "./schemas";
 import { zodToJsonSchema } from "./zod-json-schema";
 import { openApiDocument } from "./openapi";
 import { issuesToDetailsPure } from "./validation";
@@ -159,6 +159,14 @@ test("the ROT claim schema only accepts masked personal numbers", () => {
   assert.ok(pattern.test("19850412-XXXX"));
   assert.ok(!pattern.test("19850412-1234"));
   assert.ok(!pattern.test("850412-1234"));
+});
+
+test("employee list query: includeEnded is a real boolean on the wire, limit coerced", () => {
+  assert.equal(employeeListQuerySchema.parse({}).includeEnded, false);
+  assert.equal(employeeListQuerySchema.parse({ includeEnded: "false" }).includeEnded, false, '"false" in a query string is false');
+  assert.equal(employeeListQuerySchema.parse({ includeEnded: "true" }).includeEnded, true);
+  assert.equal(employeeListQuerySchema.safeParse({ includeEnded: "ja" }).success, false);
+  assert.equal(employeeListQuerySchema.parse({ limit: "5" }).limit, 5);
 });
 
 test("openapi: the HR resources are published with their tags, and the employee never has a bank account", () => {

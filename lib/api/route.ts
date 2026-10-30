@@ -58,8 +58,8 @@ function toResponse(err: unknown): Response {
   return apiError("internal", "Något gick fel. Försök igen.");
 }
 
-/** A reading route. */
-export function apiGet(scope: ApiScope, handler: (ctx: ApiContext) => Promise<Response>) {
+/** A reading route. The HR routes (phase 6) take "payroll", which no invoicing key has. */
+export function apiGet(scope: ApiScope | readonly ApiScope[], handler: (ctx: ApiContext) => Promise<Response>) {
   return async (request: Request, route: HandlerRoute): Promise<Response> =>
     runApiFrame(request, scope, apiFrameDeps(), async (principal) => {
       const actor: Actor = { kind: "api_key", id: principal.keyId, name: principal.name };
@@ -131,7 +131,7 @@ function idempotencyStore(): IdempotencyStore {
  * written first so two concurrent calls with the same key cannot both run.
  * Server errors are not stored, so the client can retry them.
  */
-export function apiPost(scope: ApiScope, handler: (ctx: ApiContext & { body: unknown }) => Promise<Response>) {
+export function apiPost(scope: ApiScope | readonly ApiScope[], handler: (ctx: ApiContext & { body: unknown }) => Promise<Response>) {
   return async (request: Request, route: HandlerRoute): Promise<Response> =>
     runApiFrame(request, scope, apiFrameDeps(), async (principal) => {
       const actor: Actor = { kind: "api_key", id: principal.keyId, name: principal.name };
