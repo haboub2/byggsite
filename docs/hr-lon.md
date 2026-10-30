@@ -4,9 +4,10 @@ Status: **plan, written 2026-10-30. Phase 0 (rule book, tax tables,
 calculators), phase 1 (people, contracts, LAS clocks, migration 0035),
 phase 2 (time, schedules, absence, /min-tid, migration 0037), phase 3
 (the payroll run, migration 0039; the parallel run of rule 9 is still to
-do) and phase 4 (AGI, skattekonto, Fora, intyg, växa-stöd, year-end,
+do), phase 4 (AGI, skattekonto, Fora, intyg, växa-stöd, year-end,
 migrations 0040 and 0041; no file has been through Skatteverket's or Fora's
-services yet) are built, see the *Läge* sections below.** Written in English
+services yet) and phase 5 (förmåner, utlägg, Collectum, the 3:12 planner,
+migration 0042) are built, see the *Läge* sections below.** Written in English
 because that is how the request was made; Swedish legal terms are kept in
 Swedish because that is what Skatteverket, the law and the collective
 agreements call them. "You" is Ibrahim (decisions, accounts, agreements), "a
@@ -417,7 +418,9 @@ the reviewed 0039 without dropping anything (existing imports get
 `completed_at = imported_at`). **Apply it on the hosted project after
 `0041_authorities_fixes.sql`.** Where the reviewed 0039 was applied (every
 new database, `supabase/tests/local/run.sh`) it changes nothing: a schema
-dump is the same with and without it. **Applied on the hosted project
+dump is the same with and without it. **Do not re-run it after 0042:** it rewrites
+`payroll_inputs_hash()` with 0039's text, which would drop 0042's
+expense claims and benefits from the run's fingerprint. **Applied on the hosted project
 2026-10-30**; `pay_runs.inputs_hash`, `tax_table_imports.completed_at`,
 `payroll_inputs_hash()` and `tax_tables_import_finish()` are there and the
 old `forbid_change` triggers are gone.
@@ -867,6 +870,236 @@ from day 15 with its deadline, and VAB/föräldraledighet started.
 - Section 11: Rapporter holds AGI, Fora, växa-stöd and the year-end; the
   arbetsgivarintyg is on Person › Lön. Idag's skattekonto row is phase 3's,
   now with the stored AGI's amount and gone when marked paid.
+
+## Läge: phase 5 done (2026-10-30)
+
+Owners, board, benefits and expenses: förmåner valued by the rule book and
+paid on the payslip, utlägg, milersättning and traktamente from /min-tid
+with a receipt photo, approved and paid through the next run, Collectum's
+monthly ITP1 report, särskild löneskatt and the avtalsförsäkringar accrued
+in the run's entry, and the owners' 3:12 planner. Draft PR "HR fas 5:
+förmåner, utlägg, 3:12-planering och Collectum (0042)". **0042 has not run
+against Supabase.** Apply it after 0041, then run
+`supabase/tests/0042_benefits.sql` in the SQL editor. 0042 replaces
+`payroll_inputs_hash()`, so a run computed before 0042 is applied must be
+computed again before it can be approved, and **`0041_payroll_repair.sql`
+must not be run again after 0042** (it would put back 0039's fingerprint
+without the claims and benefits).
+
+**Where things are**
+
+| What | File |
+|---|---|
+| Rule book for förmåner (bilförmån's three regimes, statslåneräntan, miljöbil, kost, bostad), traktamente's day and meal rules, särskild löneskatt, avtalsförsäkringar, with sources | `lib/core/rules/benefits.ts` (`benefitRulesAt`, `carRegimeFor`, `unverifiedBenefitRules`) |
+| Collectum's reporting as data (what, when, cutoff days, our file) | `lib/core/rules/agi-format.ts` (`COLLECTUM_FORMAT`) |
+| Bilförmån, kost, bostad, annan per month; the payslip line with its source | `lib/core/payroll/benefits.ts` |
+| Utlägg, milersättning, traktamente: tax-free and taxable split, the lines | `lib/core/payroll/expenses.ts` |
+| Collectum basis, premium check, särskild löneskatt, file, deadline | `lib/core/payroll/collectum.ts` |
+| 3:12 planner (pure) and its data from the payslips | `lib/core/payroll/owner-planner.ts`, `lib/core/payroll/planner-data.ts` |
+| Run step 3 (benefits, approved claims), accruals 7533/2514 and 7570/2940 | `lib/core/payroll/run.ts`, `lib/core/payroll/ledger.ts` (`insurancePremium`) |
+| Store (benefits, claims, receipts, planner snapshots; memory in demo mode) | `lib/core/payroll/benefits-store.ts`; Collectum in `authorities-store.ts` |
+| Migration and SQL tests | `supabase/migrations/0042_benefits_expenses.sql`, `supabase/tests/0042_benefits.sql` |
+| Fixtures through the run: board fee per quarter into the AGI, car + kost, milersättning + traktamente + utlägg | `lib/core/payroll/run.test.ts` ("phase 5: …") |
+| Server actions | `app/admin/benefit-actions.ts`, `app/admin/authorities-actions.ts` (Collectum, planner), `app/(portal)/min-tid/actions.ts` (claims) |
+| Pages | Person › Utlägg and Förmåner (`components/admin/payroll/PersonExpensesTab.tsx`, `PersonBenefitsTab.tsx`, receipts `personal/[id]/kvitto/[claimId]/[n]`), `/min-tid` "Mina utlägg" (upload `min-tid/utlagg/[claimId]/kvitto`, read `…/kvitto/[n]`), Rapporter › Collectum and Ägarnas löneuttag (`AuthoritySections.tsx`, `OwnerPlanner.tsx`), Inställningar › Lön "Utlägg och ersättningar", Idag |
+
+**Sources, checked 2026-10-30.** Bilförmån: Skatteverket's
+[bilförmånsberäkning](https://www.skatteverket.se/foretag/arbetsgivare/lonochersattning/formaner/bilforman/bilformansberakning.4.3016b5d91791bf5467919bd.html),
+[belopp och procent 2026](https://www.skatteverket.se/privat/skatter/beloppochprocent/2026.4.1522bf3f19aea8075ba21.html)
+(statslåneräntan 2,55 %, its example 300 000 + 22 000 kr, fordonsskatt
+4 050 kr → 72 045 kr a year, our golden test) and the law text in
+[prop. 2020/21:156](https://www.regeringen.se/contentassets/2a356165046f4ad99647e650b0740f62/justerad-berakning-av-bilforman-prop.-202021156.pdf)
+and Fi2021/03348 (miljöbil from 2022-07-01). Kostförmån 62 / 124 / 310 kr
+and bostadsförmån per m² (SKVFS 2025:11's areas) on Skatteverket's
+förmåner pages. Traktamente 300 / 150 / 150 kr, 70 % and 50 %, the
+reductions (270/210/105/60 at 300, 189/147/74/42 at 210, 135/105/53/30 at
+150) and milersättning 25 / 12 / 9,50 kr per mil on Skatteverket's
+traktamente pages; phase 0's amounts still match. Collectum: what is
+reported and when
+([lönerapportering](https://collectum.se/administration/sa-rapporterar-du-ratt/lonerapportering),
+[pensionsmedförande lön](https://collectum.se/administration/sa-rapporterar-du-ratt/pensionsmedforande-lon),
+[fakturakörningar](https://collectum.se/avtal-och-faktura/faktura-och-premier/fakturakorningar)),
+the 2026 premiums. Särskild löneskatt 24,26 % on Skatteverket's
+arbetsgivaravgifter page. 3:12: Skatteverket's "Ändrade regler i
+inkomstdeklarationen 2027" (grundbelopp 322 400 kr, deduction 644 800 kr,
+its 177 600 kr example, the 50 × own pay cap). The research notes with
+quotes are in the session notes folder (`hr-phase-5-research.md`).
+
+**What the database does**
+
+- `benefits`: per person and kind, the car's parameters, meals per month,
+  area and region, market value, the employee's payment, and the monthly
+  value and rule version the app computed (for display; the run computes
+  each month with the pay date's rules). Owner/admin write; payroll readers
+  read; the person reads their own. Once an approved payslip carries the
+  benefit (a line with `source.kind = 'benefit'`), the row is frozen
+  except `valid_to`, which cannot be set before the last paid month; a
+  change is a new row. Events `benefit.saved` / `benefit.ended`.
+- `expense_claims`: utlägg (amount, VAT), milersättning (km, car),
+  traktamente (destination, times, nights without paid lodging, meals per
+  day, three-months/two-years, more than 50 km). The person inserts and
+  edits their drafts (column grants: never status, approval, payslip or
+  receipts) and `expense_submit()`s (an utlägg needs a receipt).
+  `expense_approve(id, tax_free, taxable, computation, rule_version)` is
+  owner/admin, never the claimant's own login, and checks the split against
+  `expense_rules()` (the schabloner, kept equal to the rule book by
+  `expenses.test.ts`): an utlägg is its amount, tax-free; milersättning's
+  tax-free part at most km/10 × the schablon; traktamente's at most days ×
+  300 kr + nights × 150 kr, and 0 for a trip without an overnight stay or
+  within 50 km. `expense_reject()` needs a reason. Approved is
+  frozen by a trigger. Paid is set only by the trigger on `pay_runs` when
+  a run goes `calculated → approved`: each payslip line with
+  `source.kind = 'expense_claim'` must be the approved, unpaid claim of
+  that person with exactly its tax-free and taxable amounts (checked
+  already when the result is stored), and the claim becomes `paid` with
+  the payslip. 0039's functions are not edited.
+- Receipts: `expense_add_receipt()` lists the file with its SHA-256 on the
+  claim first; the new storage policy `hr_receipt_insert` lets the person
+  (or owner/admin) upload only a path the claim already lists,
+  `{org}/{person}/kvitto-{claim}-{n}.{jpg,png,webp,heic,pdf}`; the existing
+  read policy covers payroll readers and the person. When the upload
+  fails the app calls `expense_remove_receipt()`, which takes the entry
+  off only while no object exists for it; `expense_submit()` and
+  `expense_approve()` refuse a claim that lists a receipt with no object in
+  the bucket. The app refuses a file whose hash differs.
+- `benefit_paid_until()` (the last paid month, for the freeze) reads only
+  the benefit's own person's payslips and is not granted to any role; the
+  freeze trigger is security definer.
+- `payroll_inputs_hash()` also takes approved unpaid claims and the
+  benefits, so a claim approved or a benefit changed after the
+  computation stops the approval ("räkna om").
+- `collectum_basis(org, period)`: ITP1 people's pension-reportable lines
+  on approved payslips of closed runs paid in the month, whole kronor.
+  `pension_basis()` and `pension_report_store()` (replaced) take
+  `'collectum'`; the file's sixth column is the pay, as Fora's.
+- `owner_planner_snapshots`: insert-only, owners only (a trigger checks
+  `is_owner`), payroll readers read.
+- Accounts 2514 and 7533 are seeded (`seed_payroll_accounts` replaced).
+
+**The app.** Person › Förmåner: the benefits with this month's value and,
+for a car, every part of the formula (regime, price after miljöbil
+reduction or the old-car floor, PBB part, ränterelaterad with the rate,
+prisrelaterad, fordonsskatt, year, month); a form per kind; end or remove.
+Person › Utlägg: claims with receipts (served only when the hash matches),
+the split, approve or reject with a reason, paid and on which date.
+`/min-tid` "Mina utlägg": utlägg (amount, VAT, then "Lägg till kvitto"
+with the phone camera), milersättning, traktamente (meals as counts:
+breakfasts from the last day back, lunches and dinners from the first
+day), submit, delete a draft, status and the rejection reason. Rapporter:
+Collectum (pay per tjänsteman, premium 4,5 % / 30 % against what the runs
+accrued, särskild löneskatt, the file, "Markera som rapporterad") and
+Ägarnas löneuttag (per owner: this year's gränsbelopp from last year's
+pay, next year's from this year's so far plus the planned salary;
+ownership share and planned salary saved as a snapshot). Idag: claims
+waiting per person (for owner/admin) and Collectum two weeks before the
+cutoff until filed. Inställningar › Lön: "Utlägg och ersättningar" (the
+company's rates; empty pays the schablon) and the accounts 7533/2514 and
+7570/2940. The board contract and Person › Anställning state HFD 2017
+ref. 41.
+
+**Verified**
+
+- `npm test` (652), `npm run lint` (0 errors), `tsc` clean.
+- All migrations through 0042 on Postgres 17 with the shim; all 18 SQL
+  test files pass, `0042_benefits.sql` included: B sees nothing of A; the
+  employee inserts and sees only their own claims and cannot insert for
+  someone else; an utlägg without receipt is not submitted; the bucket
+  refuses an unlisted receipt and one in another person's folder; the
+  employee and the accountant cannot approve; tax-free above the schablon
+  is refused; approved is frozen (RLS, the column grants and, as table
+  owner, the trigger); a payslip with the wrong amount for a claim is
+  refused when stored; a claim approved after the computation stops the
+  approval until it is computed again; the run's approval marks the
+  carried claim paid and leaves the other approved one; the paid benefit
+  is frozen; Collectum's basis is the ITP1 person's salary only (not the
+  car, mileage or the SAF-LO person); the Collectum file with a wrong sum
+  is refused; särskild löneskatt booked on 7533; the planner refuses a
+  non-owner; staff see nothing.
+- Golden tests: Skatteverket's 2026 car (72 045 kr, 6 003 kr a month),
+  the reductions at 300/210/150 kr, Skatteverket's särskild löneskatt
+  example (200 000 kr → 48 520 kr), the 3:12 examples (322 400 kr,
+  177 600 kr, 161 200 kr each for 50/50).
+- In demo mode in the browser: phase 3's three people; Anna (ITP1) got
+  Skatteverket's car (6 003 kr/mån with every part shown) and 21 lunches
+  (2 604 kr) and was marked owner; the company's mileage rate set to
+  30 kr/mil; on `/min-tid` as Bo: milersättning 600 km (1 500 kr tax-free
+  + 300 kr taxable), traktamente Jönköping two days with one breakfast
+  (540 kr), utlägg 450 kr with a photographed receipt uploaded through
+  the route and served back (hash checked), all three submitted; Idag
+  showed "Bo Byggare: 3 utlägg väntar"; approved on Person › Utlägg; the
+  November run paid them (1910, 1911, 1900, 1920 for Bo; 1800, 1810 for
+  Anna), approval marked all three paid; the entry showed 7385 6 003,
+  7382 2 604, 7399 −8 607, 7321/7331/7332/7690, 7533 807,13 kr (24,26 %
+  of 3 327 kr premium) against 2514 and 7570 421,19 kr against 2940, and
+  balanced; closed and reconciled; AGI showed Anna 012 2 604 / 013 6 003,
+  Bo's 050 and 051 ticks, Cecilia's 023; Collectum listed Anna only
+  (39 520 kr, premium 1 778 kr, löneskatt 431 kr) and the file
+  `199005052387;Anna;Andersson;123456;2026-11;39520`; the planner showed
+  322 400 kr for 2026 and saved a snapshot with 45 000 kr planned.
+
+**Not verified, or not done**
+
+- Nothing has run against Supabase: not 0042, not the storage policy on
+  the real `storage.objects`, not supabase-js's RPC calls with these
+  arguments, not the multipart upload through the route against Supabase
+  Storage, not the column grants through PostgREST.
+- Drivmedelsförmån is not paid: it belongs in AGI ruta 018 with avgifter
+  on the value without the 1,2 factor, and the register has no pay item for
+  that box. A car with "företaget betalar drivmedel" gives a warning on the
+  run; type it in by hand (or add a 1830 pay item with box 018 in phase 6).
+- Unverified (flagged in the rule book, pinned in
+  `rules/benefits.test.ts`): whether SKV A 2017:23's rounding of the car
+  value down to hundreds still applies (Skatteverket's 2026 example does
+  not round; we do not), how Skatteverket rounds the monthly car value (we
+  drop the öre), that the 3 000 mil reduction includes the fordonsskatt,
+  the miljöbil reduction's end date (none found), extra equipment added
+  before the reduction; the kommun → area mapping for bostadsförmån (chosen
+  by hand); the meal reduction on a half day (we take the percentages of
+  150 kr); the avtalsförsäkringar percents (from the parties' 2026 tables,
+  not Fora's price list, which could not be read; ITP sjukpension and
+  premiebefrielse are Collectum's and verified); Collectum's cutoff as the
+  deadline for the month before, and its file format (not published: the
+  file mirrors the manual entry, typed in by hand). SFS 2025:1361 as the
+  3:12 law number was not opened.
+- Traktamente meals are entered as counts on `/min-tid` and spread over
+  the days (breakfasts from the end, lunches and dinners from the start);
+  the admin cannot edit a claim, only approve or reject it. Utrikes
+  traktamente is not supported. Utlägg are booked on 7690 with the VAT
+  inside; the accountant moves the cost and the input VAT.
+- The planner's löneunderlag is the cash pay on approved payslips here;
+  pay from subsidiaries, a närstående's pay for the cap, and saved
+  utdelningsutrymme are not in it. It changes nothing.
+- HFD 2017 ref. 41 is stated, not enforced: `project_costs` has a
+  supplier name but no organisation number to compare with a board
+  member's company.
+- Roles in the browser: demo mode is always the owner, so the four-eyes
+  rule on one's own claim, the employee's RLS and the accountant's
+  read-only view were tested in SQL only.
+
+**Where sections 3, 6, 7 and 11 turned out different**
+
+- Section 3: `benefits` stores parameters and a display value; the
+  payslip line is the frozen monthly value (the run recomputes with the
+  pay date's rules, so a new year's PBB and statslåneränta apply without
+  editing rows). Bostad and annan both use pay item 1820 (7389, ruta 012);
+  no separate bostad item. `expense_claims` carries the split and the rule
+  version from the approval, the receipts as a jsonb list with hashes, and
+  `far_from_home`. Payslip lines got an optional `source` (still
+  `schema: 1`).
+- Section 6: the planner takes the ownership percent as input (no share
+  book); the lönebaserat utrymme is (share × löneunderlag − 8 IBB) × 50 %,
+  as Skatteverket writes it, not 50 % of (löneunderlag − 8 IBB) × share.
+  A board fee invoiced from the member's company is not refused by the
+  system (no organisation number to check); the rule is on the contract
+  and the person page.
+- Section 7: särskild löneskatt is accrued on every tjänstepension premium
+  (SAF-LO and ITP1 alike), 7533 against 2514; it is paid with the company's
+  inkomstdeklaration, not the AGI. The avtalsförsäkringar are accrued on
+  7570 against 2940 from the rule book's percents. Fora's and Collectum's
+  invoices book the real cost.
+- Section 11: expenses are approved on the Person page (and Idag links
+  there), not on a separate list; the Collectum report is on Rapporter
+  next to Fora, and the planner too.
 
 ---
 

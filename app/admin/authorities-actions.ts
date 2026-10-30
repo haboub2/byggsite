@@ -17,10 +17,13 @@ import {
   markPensionFiled,
   storeAgi,
   storeCertificate,
+  storeCollectumReport,
   storeForaReport,
   storeVaxaClaims,
 } from "@/lib/core/payroll/authorities-store";
 import { certificateEmployer, renderCertificatePdf } from "@/lib/pdf/render-authorities";
+import { savePlannerSnapshot } from "@/lib/core/payroll/benefits-store";
+import { ownerPlans } from "@/lib/core/payroll/planner-data";
 
 /**
  * Lönerapporter's AGI, skattekonto, Fora, växa-stöd and årsskifte, and the
@@ -133,6 +136,22 @@ export async function markForaFiledAction(formData: FormData): Promise<void> {
   });
 }
 
+export async function storeCollectumAction(formData: FormData): Promise<void> {
+  await run(`${REPORTS}#collectum`, async () => {
+    await storeCollectumReport(period(formData));
+    return "Collectum-underlaget är skapat och fryst. Rapportera lönerna i Collectums internetkontor; markera det sedan som lämnat.";
+  });
+}
+
+export async function markCollectumFiledAction(formData: FormData): Promise<void> {
+  const id = uuid(formData, "id");
+  await run(`${REPORTS}#collectum`, async () => {
+    if (!id) throw new Error("Rapporten finns inte.");
+    await markPensionFiled(id);
+    return "Collectum-rapporten är markerad som lämnad.";
+  });
+}
+
 /* ---------- växa-stöd och årsskiftet ---------- */
 
 export async function storeVaxaAction(formData: FormData): Promise<void> {
@@ -168,5 +187,29 @@ export async function createCertificateAction(formData: FormData): Promise<void>
     const pdf = await renderCertificatePdf(content, logo);
     await storeCertificate(content, pdf);
     return "Arbetsgivarintyget är skapat och fryst. Personen ser det också på /min-tid.";
+  });
+}
+
+/* ---------- ägarnas löneuttag ---------- */
+
+/** Saves the planner's inputs and result for an owner and year (owner_planner_snapshots); informational only. */
+export async function saveOwnerPlanAction(formData: FormData): Promise<void> {
+  await run(`${REPORTS}#agare`, async () => {
+    const employeeId = uuid(formData, "employeeId");
+    const year = Number(text(formData, "year"));
+    if (!employeeId) throw new Error("Planeraren gäller ägare.");
+    const share = Number(text(formData, "ownershipPercent").replace(",", "."));
+    if (!(share > 0 && share <= 100)) throw new Error("Ägarandelen är en procent mellan 0 och 100.");
+    let plannedMonthlyOre: number;
+    try {
+      plannedMonthlyOre = parseKronor(text(formData, "plannedMonthly") || "0");
+    } catch {
+      throw new Error("Månadslönen skrivs i kronor.");
+    }
+    if (plannedMonthlyOre < 0) throw new Error("Månadslönen kan inte vara negativ.");
+    const plan = (await ownerPlans(todayIso(), { employeeId, ownershipPercent: share, plannedMonthlyOre })).find((p) => p.owner.id === employeeId);
+    if (!plan || plan.input.year !== year) throw new Error("Planeraren gäller ägare, för innevarande år.");
+    await savePlannerSnapshot({ employeeId, year, inputs: { ...plan.input, plannedMonthlyOre }, result: { ...plan.result }, ruleVersion: plan.result.ruleVersion });
+    return `Planeringen för ${plan.owner.name} är sparad.`;
   });
 }

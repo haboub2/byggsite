@@ -23,6 +23,7 @@ import { accrualLines, payslipJournal, reconciliationSums } from "./ledger";
 import { salaryFile, salaryFileTotalOre } from "./bank-file";
 import { parsePayrollSettings, payrollSettingsSchema, runPeriods, type PayrollConfirmed, type PayrollDecision, type PayrollSettings } from "./settings";
 import type { JournalLine, PayItem, PayLineInput, PayslipDocument } from "./payslip";
+import { approvedUnpaidClaims, demoBenefitInputs, demoPayClaims, listBenefits } from "./benefits-store";
 
 /**
  * Payroll runs, payslips, bank files and the run's bookkeeping
@@ -311,6 +312,7 @@ async function demoInputsHash(run: PayRun): Promise<string> {
     people: people.map((e) => [e.id, e.birthDate, e.agreement, e.endedAt]),
     corrections: corrections.filter((c) => c.targetRunId === null || c.targetRunId === run.id).map((c) => c.id),
     vacationYear: settings.vacationYear,
+    benefits: demoBenefitInputs(),
   };
   return createHash("sha256").update(JSON.stringify(state)).digest("hex");
 }
@@ -649,7 +651,7 @@ export async function loadRunInput(run: PayRun, today: IsoDate): Promise<RunInpu
   const histFrom = addMonths(run.timeFrom, -3);
   const absFrom = addMonths(run.timeFrom, -12);
   const year = Number(run.payDate.slice(0, 4));
-  const [{ settings, confirmed }, employees, versions, tax, entries, absences, schedules, shifts, clocks, items, periodLocks, timeLocks, earlier, corrections] = await Promise.all([
+  const [{ settings, confirmed }, employees, versions, tax, entries, absences, schedules, shifts, clocks, items, periodLocks, timeLocks, earlier, corrections, benefits, claims] = await Promise.all([
     getPayrollSettings(),
     listEmployees(),
     listEmployments(),
@@ -664,6 +666,8 @@ export async function loadRunInput(run: PayRun, today: IsoDate): Promise<RunInpu
     listTimeLocks(),
     listApprovedPayslips({ from: `${year - 2}-01-01`, to: run.payDate }),
     listCorrections(),
+    listBenefits(),
+    approvedUnpaidClaims(),
   ]);
   const rules = payrollRulesAt(run.payDate);
   const vacationModel = settings.vacationYear === "calendar" ? "01-01" : "04-01";
@@ -705,6 +709,8 @@ export async function loadRunInput(run: PayRun, today: IsoDate): Promise<RunInpu
       },
       corrections: corrections.filter((c) => c.employeeId === e.id && (c.targetRunId === null || c.targetRunId === run.id)).map((c) => ({ id: c.id, lines: c.lines, reason: c.reason })),
       clock: clocks.get(e.id) ?? null,
+      benefits: benefits.filter((b) => b.employeeId === e.id),
+      expenseClaims: claims.filter((c) => c.employeeId === e.id),
     });
   }
   const tables = tax.filter((t) => t.kind === "table" && t.tableNo !== null).map((t) => t.tableNo as number);
@@ -791,6 +797,7 @@ export async function calculateRun(runId: string, today: IsoDate, opts: { store:
     r.checks = result.checks;
     r.checks_at = new Date().toISOString();
     if (opts.store && !blocked) {
+      demoPayClaims(result.payslips.map((p) => ({ id: "", employeeId: p.employeeId, document: p.document })), false);
       demo().payslips = demo().payslips.filter((p) => p.run_id !== runId);
       for (const c of demo().corrections) if (c.target_run_id === runId) c.target_run_id = null;
       for (const p of result.payslips) {
@@ -879,8 +886,11 @@ export async function approveRun(runId: string, actorUserId: string | null, rend
     if (slips.some((p) => p.net_ore < 0)) throw new Error("Ett lönebesked har negativ nettolön; lägg avdraget som en fordran i stället.");
     if (r.inputs_hash !== (await demoInputsHash(runFromRow(r)))) throw new Error("Underlaget har ändrats efter beräkningen; räkna om.");
     if (!(await listTimeLocks()).some((l) => l.from <= r.time_period_start && l.to >= r.time_period_end)) await lockPeriod(r.time_period_start, r.time_period_end, `Lönekörning ${r.period_start.slice(0, 7)}`);
+    const asSlips = slips.map((p) => ({ id: p.id, employeeId: p.employee_id, document: p.document }));
+    demoPayClaims(asSlips, false);
     const now = new Date().toISOString();
     for (const p of slips) Object.assign(p, { number: demo().nextL++, approved_at: now });
+    demoPayClaims(asSlips, true);
     Object.assign(r, { status: "approved", approved_by: actorUserId ?? "demo", approved_by_name: "demo@localhost", approved_at: now });
   } else {
     const supabase = await getDb();

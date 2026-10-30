@@ -25,3 +25,13 @@ test("Fora two weeks before the last day of the month after; Försäkringskassan
   assert.match(fk[0].title, /Erik: anmäl sjukfallet/);
   assert.match(fk[0].meta, /senast 2026-10-21 \(i morgon\)/);
 });
+
+test("phase 5: Collectum two weeks before its cutoff until filed, and claims waiting for approval per person", () => {
+  const c = authorityTodos({ ...base, collectumPeriods: ["2026-11"], filedCollectum: new Set(), today: "2026-11-30" });
+  assert.deepEqual(c.map((r) => [r.kind, r.meta.slice(0, 40)]), [["collectum", "Före avstämningen kl. 22 den 2026-12-14 "]]);
+  assert.equal(authorityTodos({ ...base, collectumPeriods: ["2026-11"], filedCollectum: new Set(), today: "2026-11-29" }).length, 0);
+  assert.equal(authorityTodos({ ...base, collectumPeriods: ["2026-11"], filedCollectum: new Set(["2026-11"]), today: "2026-12-10" }).length, 0);
+  const [w] = authorityTodos({ ...base, names: new Map([["e1", "Erik"]]), waitingClaims: [{ employeeId: "e1", count: 2, oldest: "2026-11-02" }], today: "2026-11-05" });
+  assert.equal(w.title, "Erik: 2 utlägg väntar på godkännande");
+  assert.equal(w.href, "/admin/personal/e1?flik=utlagg");
+});

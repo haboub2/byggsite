@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/admin";
 import { hasAccess } from "@/lib/core/org/roles";
 import { getPensionFile } from "@/lib/core/payroll/authorities-store";
 
-/** The frozen Fora list for Mina sidor; owner and admin only (it has the personnummer). */
+/** The frozen Fora or Collectum list (pension_reports); owner and admin only (it has the personnummer). */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const check = await requireRole("payroll");
   if (!check.ok || !hasAccess(check.role, "admin")) return new Response("Saknar behörighet.", { status: 403 });
@@ -17,7 +17,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   return new Response(f.file, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="Fora-${f.report.period.replace("-", "")}-v${f.report.version}.csv"`,
+      "Content-Disposition": `attachment; filename="${f.report.scheme === "collectum" ? "Collectum" : "Fora"}-${f.report.period.replace("-", "")}-v${f.report.version}.csv"`,
       "Cache-Control": "private, no-store",
     },
   });

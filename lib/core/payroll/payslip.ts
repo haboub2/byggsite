@@ -79,7 +79,11 @@ export type PayLineInput = {
   amountOre: Ore;
   from?: IsoDate;
   to?: IsoDate;
+  /** What the line pays (phase 5): an approved expense claim (paid once, checked by the database) or a benefit. */
+  source?: LineSource;
 };
+
+export type LineSource = { kind: "expense_claim" | "benefit"; id: string };
 
 export type PayslipLine = PayLineInput & {
   item: { code: string; name: string; kind: PayItemKind; version: number; flags: PayItemFlags };

@@ -20,6 +20,7 @@ import { getPayrollSettings, listRunPayslips, listRuns } from "../core/payroll/r
 import { payrollTodos, type AgiPayment, type PayrollTodo } from "../core/payroll/today";
 import { listAgiDeclarationSummaries, listPensionReports } from "../core/payroll/authorities-store";
 import { authorityTodos, type AuthorityTodo } from "../core/payroll/authorities-today";
+import { listClaims } from "../core/payroll/benefits-store";
 import { fkReminders } from "../core/payroll/fk";
 import { addDays } from "../core/rules/index";
 
@@ -137,19 +138,37 @@ async function loadPayrollTodos(access: Access[], today: string, data: Promise<P
  * Fora due and not filed, for the last three pay months, and
  * Försäkringskassan's reminders from the absences.
  */
-async function loadAuthorityTodos(today: string, data: Promise<PayrollData>): Promise<AuthorityTodo[]> {
-  const [{ runs, settings, employees, declarations }, reports, absences] = await Promise.all([data, listPensionReports(), listAbsences({ from: addDays(today, -120), to: today })]);
+async function loadAuthorityTodos(access: Access[], today: string, data: Promise<PayrollData>): Promise<AuthorityTodo[]> {
+  const [{ runs, settings, employees, declarations }, reports, absences, submitted] = await Promise.all([
+    data,
+    listPensionReports(),
+    listAbsences({ from: addDays(today, -120), to: today }),
+    access.includes("admin") ? listClaims({ status: "submitted" }).catch(() => []) : [],
+  ]);
   const recent = runs.filter((r) => r.approvedAt && r.payDate >= addDays(today, -95));
   const foraPeriods: string[] = [];
+  const collectumPeriods: string[] = [];
   for (const r of recent.filter((x) => x.status === "closed")) {
     const slips = await listRunPayslips(r.id);
     if (slips.some((s) => s.document.context?.pension.scheme === "saf-lo")) foraPeriods.push(r.agiPeriod);
+    if (slips.some((s) => s.document.context?.pension.scheme === "itp1")) collectumPeriods.push(r.agiPeriod);
+  }
+  const waiting = new Map<string, { employeeId: string; count: number; oldest: string }>();
+  for (const c of submitted) {
+    const w = waiting.get(c.employeeId) ?? { employeeId: c.employeeId, count: 0, oldest: (c.submittedAt ?? c.createdAt).slice(0, 10) };
+    w.count += 1;
+    const at = (c.submittedAt ?? c.createdAt).slice(0, 10);
+    if (at < w.oldest) w.oldest = at;
+    waiting.set(c.employeeId, w);
   }
   return authorityTodos({
     agiPeriods: [...new Set(recent.map((r) => r.agiPeriod))],
     filedAgi: new Set(declarations.filter((d) => d.status !== "draft" && d.filedAt).map((d) => d.period)),
     foraPeriods: [...new Set(foraPeriods)],
     filedFora: new Set(reports.filter((r) => r.scheme === "fora" && r.filedAt).map((r) => r.period)),
+    collectumPeriods: [...new Set(collectumPeriods)],
+    filedCollectum: new Set(reports.filter((r) => r.scheme === "collectum" && r.filedAt).map((r) => r.period)),
+    waitingClaims: [...waiting.values()],
     fk: fkReminders(absences, today),
     names: new Map(employees.map((e) => [e.id, e.name])),
     settings,
@@ -172,7 +191,7 @@ export async function loadToday(access: Access[], today = todayIso()): Promise<T
     access.includes("payroll") ? safe("personal", () => loadHrTodos(today), []) : [],
     access.includes("time") && (access.includes("payroll") || access.includes("write")) ? safe("tid", () => loadTimeTodos(access, today), []) : [],
     payrollData ? safe("lön", () => loadPayrollTodos(access, today, payrollData), []) : [],
-    payrollData ? safe("myndigheter", () => loadAuthorityTodos(today, payrollData), []) : [],
+    payrollData ? safe("myndigheter", () => loadAuthorityTodos(access, today, payrollData), []) : [],
   ]);
 
   const active = projects.filter((p) => p.status === "active").slice(0, MAX_PROJECTS);
@@ -303,7 +322,7 @@ export async function loadToday(access: Access[], today = todayIso()): Promise<T
   }
 
   for (const a of authorities) {
-    todos.push({ id: `authority-${a.id}`, kind: "payroll", tag: a.tag, title: a.title, meta: a.meta, action: a.kind === "fk" ? "Öppna frånvaron" : "Öppna rapporten", href: a.href, weight: a.weight + 2 });
+    todos.push({ id: `authority-${a.id}`, kind: "payroll", tag: a.tag, title: a.title, meta: a.meta, action: a.kind === "fk" ? "Öppna frånvaron" : a.kind === "expense" ? "Öppna utläggen" : "Öppna rapporten", href: a.href, weight: a.weight + 2 });
   }
 
   todos.sort((a, b) => a.weight - b.weight);

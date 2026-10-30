@@ -237,6 +237,28 @@ const DECISION_FIELDS: Record<PayrollDecision, (formData: FormData) => Partial<P
   pension: (f) => ({ pension: { foraCustomerNo: text(f, "foraCustomerNo"), foraFokId: text(f, "foraFokId"), collectumCustomerNo: text(f, "collectumCustomerNo") } }),
   agi: (f) => ({ agi: { largeEmployer: text(f, "largeEmployer") === "yes", contactName: text(f, "contactName"), contactPhone: text(f, "contactPhone"), contactEmail: text(f, "contactEmail") } }),
   vaxaStod: (f) => ({ vaxaStod: { employeeIds: f.getAll("vaxaEmployees").map(String).filter((v) => /^[0-9a-f-]{36}$/.test(v)) } }),
+  expenses: (f) => {
+    // Kronor in the form; empty pays the schablon.
+    const kr = (key: string): number | null => {
+      const v = text(f, key);
+      if (!v) return null;
+      try {
+        return parseKronor(v);
+      } catch {
+        throw new Error("Beloppen skrivs i kronor, t.ex. 25 eller 9,50.");
+      }
+    };
+    return {
+      expenses: {
+        ownCarPerMilOre: kr("ownCarPerMil") ?? 2_500,
+        companyCarPerMilOre: kr("companyCarPerMil"),
+        companyElectricCarPerMilOre: kr("companyElectricCarPerMil"),
+        perDiemFullDayOre: kr("perDiemFullDay"),
+        perDiemHalfDayOre: kr("perDiemHalfDay"),
+        perDiemNightOre: kr("perDiemNight"),
+      },
+    };
+  },
 };
 
 export async function savePayrollSettingsAction(formData: FormData): Promise<void> {

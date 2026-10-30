@@ -16,8 +16,13 @@
  *      semester taken → semestertillägg (sammalöneregeln) or semesterlön
  *      (procentregeln); semesterersättning per month for SÄVA; VAB,
  *      föräldraledighet and tjänstledighet as deductions on månadslön.
- *   3. Fixed items: arvode (`uppdrag`) when its period ends in the month,
- *      corrections from earlier runs as retro lines.
+ *   3. Fixed and variable items: arvode (`uppdrag`) when its period ends
+ *      in the month, corrections from earlier runs as retro lines, each
+ *      benefit that applies some day of the salary month at its value for
+ *      the pay date (benefits.ts, codes 1800/1810/1820), and every approved
+ *      expense claim not yet paid dated in or before the salary month
+ *      (expenses.ts, codes 1900/1901/1910/1911/1920). Benefit and claim
+ *      lines carry their `source`; the database pays a claim once.
  *   4–7. `assemblePayslip`: bases, tax (`preliminaryTax` with the imported
  *      table and the person's `employee_tax`), arbetsgivaravgifter by birth
  *      year (`employerContributions`, the young people's cap, the 1 000 kr
@@ -39,6 +44,8 @@ import { clockAlerts, heldForms, type ClockRow } from "../hr/clocks";
 import { inForce, taxOn, type Employee, type EmploymentVersion, type TaxVersion } from "../hr/schema";
 import { atlWarnings, currentEntries, netHours, toWorkBlocks, type TimeEntry } from "../hr/time";
 import { pensionPremium } from "./contributions";
+import { benefitActive, benefitLine, benefitMonth, type Benefit } from "./benefits";
+import { claimLines, type ApprovedClaim } from "./expenses";
 import { addMonths } from "./employment-clocks";
 import { assemblePayslip, payItemByCode, reconcile, type PayItem, type PayLineInput, type PayslipDocument } from "./payslip";
 import { averageWeeklyHoursFromHistory, monthlyToHourlyOre, scheduledHours, sickPay, weeklyHours, type SickPayResult, type WorkSchedule } from "./sick-pay";
@@ -77,6 +84,10 @@ export type RunPerson = {
   /** Pending corrections from earlier runs (payroll_corrections). */
   corrections: readonly { id: string; lines: readonly PayLineInput[]; reason: string }[];
   clock?: ClockRow | null;
+  /** The person's benefits (benefits table); those that apply in the salary month are paid. */
+  benefits?: readonly Benefit[];
+  /** Approved expense claims not yet paid (expense_claims, status approved). */
+  expenseClaims?: readonly ApprovedClaim[];
 };
 
 export type RunInput = {
@@ -351,7 +362,9 @@ function computePerson(input: RunInput, p: RunPerson): PersonOutcome {
   const feeTiming = fee.version ? feeDue(fee.version.feePeriod, periodStart) : null;
   const paysFee = !!fee.version && !!feeTiming?.due;
   const pending = p.corrections;
-  if (!monthly.version && !hourly.version && !paysFee && !pending.length) return { payslip: null, checks: [] };
+  const benefits = (p.benefits ?? []).filter((b) => benefitActive(b, periodStart, periodEnd));
+  const claims = (p.expenseClaims ?? []).filter((c) => c.dateFrom <= periodEnd);
+  if (!monthly.version && !hourly.version && !paysFee && !pending.length && !benefits.length && !claims.length) return { payslip: null, checks: [] };
   if (monthly.count > 1 || hourly.count > 1) check("version-change", "warn", "lönen ändras under perioden; den senaste versionen räknas för hela perioden.");
 
   // Checks that stop the person's payslip.
@@ -504,6 +517,19 @@ function computePerson(input: RunInput, p: RunPerson): PersonOutcome {
     lines.push({ code: "1600", text, quantity: 1, unit: "st", unitPriceOre: amount, basisOre: null, ratePercent: null, amountOre: amount, from: feeTiming.from, to: periodEnd });
   }
   for (const c of pending) lines.push(...c.lines.map((l) => ({ ...l, text: l.text || `Rättelse: ${c.reason}` })));
+  for (const b of benefits) {
+    let month;
+    try {
+      month = benefitMonth(b, payDate);
+    } catch (err) {
+      check("benefit", "block", err instanceof Error ? err.message : "förmånen kunde inte värderas.");
+      return { payslip: null, checks };
+    }
+    for (const w of month.warnings) check("benefit", "warn", w);
+    const line = benefitLine(b, month, periodStart, periodEnd);
+    if (line) lines.push(line);
+  }
+  for (const c of claims) lines.push(...claimLines(c));
 
   // Semesterersättning per month for SÄVA on timlön (procentregeln, paid out as earned).
   const items = input.payItems;

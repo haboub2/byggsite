@@ -32,7 +32,17 @@ import {
   type EmploymentVersion,
 } from "./schema";
 
-export const CONTRACT_TEMPLATE_VERSION = "2026-10-30";
+/**
+ * HFD 2017 ref. 41: a board member's fee is income from tjänst to the
+ * member personally, and is normally not invoiced from the member's own
+ * company. The supplier costs (project_costs) carry no organisation number
+ * to check against, so the rule is stated on the board contract and on the
+ * person page instead of being enforced (docs/hr-lon.md, section 6).
+ */
+export const BOARD_FEE_INVOICE_RULE =
+  "Enligt Högsta förvaltningsdomstolens dom HFD 2017 ref. 41 är styrelsearvode inkomst av tjänst för ledamoten personligen; ledamotens eget bolag kan i normalfallet inte fakturera arvodet. Bolaget betalar därför inte en faktura för arvodet från ledamotens bolag, utan arvodet går genom lönen med skatteavdrag och arbetsgivaravgifter.";
+
+export const CONTRACT_TEMPLATE_VERSION = "2026-10-30.2";
 
 export type ContractEmployer = {
   name: string;
@@ -265,7 +275,8 @@ function boardContract(input: ContractInput): ContractContent {
       rows: payRows(e),
       paragraphs: [
         "Arvodet är beslutat av bolagsstämman och ändras bara genom ett nytt stämmobeslut.",
-        "Arvodet är inkomst av tjänst. Bolaget gör skatteavdrag (30 procent när bolaget inte är ledamotens huvudarbetsgivare, annars enligt skattetabell eller Skatteverkets beslut om jämkning) och betalar arbetsgivaravgifter, och redovisar arvodet för ledamoten i arbetsgivardeklarationen. Arvodet betalas till ledamoten personligen och kan normalt inte faktureras från ledamotens eget bolag.",
+        "Arvodet är inkomst av tjänst. Bolaget gör skatteavdrag (30 procent när bolaget inte är ledamotens huvudarbetsgivare, annars enligt skattetabell eller Skatteverkets beslut om jämkning) och betalar arbetsgivaravgifter, och redovisar arvodet för ledamoten i arbetsgivardeklarationen. Arvodet betalas till ledamoten personligen.",
+        BOARD_FEE_INVOICE_RULE,
       ],
     },
     {

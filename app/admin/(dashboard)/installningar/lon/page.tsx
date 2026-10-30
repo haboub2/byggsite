@@ -27,7 +27,13 @@ const ACCOUNT_LABEL: Record<string, string> = {
   vacationContributionLiability: "Avgifter på semesterlöneskuld, skuld",
   pensionCost: "Tjänstepension, kostnad",
   pensionLiability: "Tjänstepension, upplupen",
+  specialPayrollTaxCost: "Särskild löneskatt på pension, kostnad",
+  specialPayrollTaxLiability: "Särskild löneskatt på pension, beräknad skuld",
+  insuranceCost: "Avtalsförsäkringar (Fora, Collectum), kostnad",
+  insuranceLiability: "Avtalsförsäkringar, upplupna",
 };
+
+const krOrEmpty = (ore: number | null) => (ore === null ? "" : String(ore / 100).replace(".", ","));
 
 /** One decision: its fields, whether it is confirmed, and the default it runs with until it is. */
 function Decision({ id, confirmed, children }: { id: PayrollDecision; confirmed: PayrollConfirmed; children: ReactNode }) {
@@ -183,6 +189,38 @@ export default async function PayrollSettingsPage({ searchParams }: { searchPara
               </div>
             </div>
             <p className="hr-muted">FOK-ID är den avtalskategori arbetarna är uppmärkta med på Foras Mina sidor (t.ex. FOK306834 för Byggavtalet); det står på varje rad i Fora-underlaget.</p>
+          </Decision>
+
+          <Decision confirmed={confirmed} id="expenses">
+            <div className="tg-fields">
+              <div className="efield">
+                <label htmlFor="f-mil">Milersättning med egen bil, kr per mil</label>
+                <input id="f-mil" name="ownCarPerMil" inputMode="decimal" defaultValue={krOrEmpty(settings.expenses.ownCarPerMilOre)} />
+              </div>
+              <div className="efield">
+                <label htmlFor="f-milf">Med förmånsbil, kr per mil (tomt: 12 kr)</label>
+                <input id="f-milf" name="companyCarPerMil" inputMode="decimal" defaultValue={krOrEmpty(settings.expenses.companyCarPerMilOre)} />
+              </div>
+              <div className="efield">
+                <label htmlFor="f-mile">Med förmånsbil el, kr per mil (tomt: 9,50 kr)</label>
+                <input id="f-mile" name="companyElectricCarPerMil" inputMode="decimal" defaultValue={krOrEmpty(settings.expenses.companyElectricCarPerMilOre)} />
+              </div>
+              <div className="efield">
+                <label htmlFor="f-td">Traktamente hel dag, kr (tomt: 300 kr)</label>
+                <input id="f-td" name="perDiemFullDay" inputMode="decimal" defaultValue={krOrEmpty(settings.expenses.perDiemFullDayOre)} />
+              </div>
+              <div className="efield">
+                <label htmlFor="f-th">Halv dag, kr (tomt: 150 kr)</label>
+                <input id="f-th" name="perDiemHalfDay" inputMode="decimal" defaultValue={krOrEmpty(settings.expenses.perDiemHalfDayOre)} />
+              </div>
+              <div className="efield">
+                <label htmlFor="f-tn">Natt, kr (tomt: 150 kr)</label>
+                <input id="f-tn" name="perDiemNight" inputMode="decimal" defaultValue={krOrEmpty(settings.expenses.perDiemNightOre)} />
+              </div>
+            </div>
+            <p className="hr-muted">
+              Det företaget betalar. Skatteverkets schabloner är skattefria (milersättning 25 kr per mil med egen bil); det som betalas över dem blir skattepliktig lön med arbetsgivaravgifter. Ett utlägg räknas när det godkänns, med beslutet som gäller då.
+            </p>
           </Decision>
 
           <Decision confirmed={confirmed} id="agi">
