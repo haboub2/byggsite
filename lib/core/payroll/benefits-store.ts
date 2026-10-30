@@ -166,6 +166,8 @@ type BenefitRow = {
   vehicle_tax_ore: number;
   business_mil_per_year: number;
   fuel_paid_by_employer: boolean;
+  private_fuel_ore: number;
+  fuel_employee_payment_ore: number;
   meals: MealsPerMonth;
   housing_area_m2: number | string | null;
   housing_region: HousingRegion | null;
@@ -177,7 +179,7 @@ type BenefitRow = {
   created_at: string;
 };
 const BENEFIT_COLUMNS =
-  "id, employee_id, kind, description, valid_from, valid_to, registration_number, car_model, first_registered_on, model_year, fuel, new_car_price_ore, extra_equipment_ore, vehicle_tax_ore, business_mil_per_year, fuel_paid_by_employer, meals, housing_area_m2, housing_region, market_value_ore, employee_payment_ore, monthly_value_ore, rule_version, computation, created_at";
+  "id, employee_id, kind, description, valid_from, valid_to, registration_number, car_model, first_registered_on, model_year, fuel, new_car_price_ore, extra_equipment_ore, vehicle_tax_ore, business_mil_per_year, fuel_paid_by_employer, private_fuel_ore, fuel_employee_payment_ore, meals, housing_area_m2, housing_region, market_value_ore, employee_payment_ore, monthly_value_ore, rule_version, computation, created_at";
 const benefitFromRow = (r: BenefitRow): StoredBenefit => ({
   id: r.id,
   employeeId: r.employee_id,
@@ -198,6 +200,8 @@ const benefitFromRow = (r: BenefitRow): StoredBenefit => ({
           vehicleTaxOre: Number(r.vehicle_tax_ore),
           businessMilPerYear: r.business_mil_per_year,
           fuelPaidByEmployer: r.fuel_paid_by_employer,
+          privateFuelOre: Number(r.private_fuel_ore ?? 0),
+          fuelEmployeePaymentOre: Number(r.fuel_employee_payment_ore ?? 0),
         }
       : null,
   meals: r.meals ?? {},
@@ -225,6 +229,8 @@ const benefitToRow = (b: Benefit, value: { monthlyValueOre: number; ruleVersion:
   vehicle_tax_ore: b.car?.vehicleTaxOre ?? 0,
   business_mil_per_year: b.car?.businessMilPerYear ?? 0,
   fuel_paid_by_employer: b.car?.fuelPaidByEmployer ?? false,
+  private_fuel_ore: b.car?.privateFuelOre ?? 0,
+  fuel_employee_payment_ore: b.car?.fuelEmployeePaymentOre ?? 0,
   meals: b.meals,
   housing_area_m2: b.housing?.areaM2 ?? null,
   housing_region: b.housing?.region ?? null,
@@ -267,7 +273,7 @@ export function demoPayClaims(slips: readonly { id: string; employeeId: string; 
 
 /** What demo mode's run fingerprint takes from here (as payroll_inputs_hash in 0042). */
 export function demoBenefitInputs(): unknown {
-  return [demo().claims.filter((c) => c.status === "approved").map((c) => [c.id, c.tax_free_ore, c.taxable_ore]), demo().benefits.map((b) => [b.id, b.valid_from, b.valid_to, b.monthly_value_ore])];
+  return [demo().claims.filter((c) => c.status === "approved").map((c) => [c.id, c.tax_free_ore, c.taxable_ore]), demo().benefits.map((b) => [b.id, b.valid_from, b.valid_to, b.monthly_value_ore, b.private_fuel_ore, b.fuel_employee_payment_ore])];
 }
 
 /* ---------- benefits ---------- */

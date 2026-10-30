@@ -8,7 +8,8 @@ import { hasAccess } from "@/lib/core/org/roles";
 import { todayIso } from "@/lib/quotes/schema";
 import { parseKronor } from "@/lib/core/money";
 import { stockholmClock } from "@/lib/core/hr/time";
-import { addCorrection, approveRun, bookRun, calculateRun, closeRun, createBankFile, createRun, discardRun, getPayslip, getRun, savePayrollDecision, storePayslipPdf } from "@/lib/core/payroll/run-store";
+import { addCorrection, applyPayItemPreset, approveRun, bookRun, calculateRun, closeRun, createBankFile, createRun, discardRun, getPayslip, getRun, savePayrollDecision, storePayslipPdf } from "@/lib/core/payroll/run-store";
+import { PAY_ITEM_PRESETS, PRESET_LABEL, type PayItemPreset } from "@/lib/core/payroll/pay-item-presets";
 import { seedDemoPayroll } from "@/lib/core/payroll/demo-seed";
 import { PAYROLL_DECISIONS, payrollSettingsSchema, type PayrollDecision, type PayrollSettings } from "@/lib/core/payroll/settings";
 import { payslipEmployer, renderPayslipPdf } from "@/lib/pdf/render-payslip";
@@ -262,7 +263,8 @@ const DECISION_FIELDS: Record<PayrollDecision, (formData: FormData) => Partial<P
 };
 
 export async function savePayrollSettingsAction(formData: FormData): Promise<void> {
-  const to = "/admin/installningar/lon";
+  const back = text(formData, "back");
+  const to = /^\/admin\/[a-z0-9/-]*$/.test(back) ? back : "/admin/installningar/lon";
   if (!(await approver())) redirect(withMessage(to, "fel", "Bara ägare och administratörer ändrar lönebesluten."));
   const decision = text(formData, "decision") as PayrollDecision;
   if (!PAYROLL_DECISIONS.includes(decision)) redirect(withMessage(to, "fel", "Okänt beslut."));
@@ -271,7 +273,24 @@ export async function savePayrollSettingsAction(formData: FormData): Promise<voi
     const parsed = payrollSettingsSchema.partial().safeParse(patch);
     if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Några fält behöver rättas.");
     await savePayrollDecision(decision, patch);
+    // The agreement decides the register's preset (phase 6): applied with the decision, as new versions from today.
+    if (decision === "agreement" && patch.agreement) {
+      const n = await applyPayItemPreset(patch.agreement, todayIso());
+      return n ? `Beslutet är sparat. Löneartsregistret följer nu ${PRESET_LABEL[patch.agreement]}: ${n} lönearter fick en ny version från i dag.` : `Beslutet är sparat. Löneartsregistret följer redan ${PRESET_LABEL[patch.agreement]}.`;
+    }
     return "Beslutet är sparat och bekräftat.";
+  });
+}
+
+/** Inställningar › Lön: apply a preset to the register again (after a hand-made version, say), without touching the agreement decision. */
+export async function applyPayItemPresetAction(formData: FormData): Promise<void> {
+  const to = "/admin/installningar/lon#register";
+  if (!(await approver())) redirect(withMessage(to, "fel", "Bara ägare och administratörer ändrar löneartsregistret."));
+  const preset = text(formData, "preset") as PayItemPreset;
+  if (!PAY_ITEM_PRESETS.includes(preset)) redirect(withMessage(to, "fel", "Okänt förval."));
+  await run(to, async () => {
+    const n = await applyPayItemPreset(preset, todayIso());
+    return n ? `${n} lönearter fick en ny version från i dag (${PRESET_LABEL[preset]}).` : `Registret följer redan ${PRESET_LABEL[preset]}; inget ändrades.`;
   });
 }
 
@@ -280,7 +299,7 @@ export async function savePayrollSettingsAction(formData: FormData): Promise<voi
 export async function seedDemoPayrollAction(formData: FormData): Promise<void> {
   if (!isDemo() || !(await approver())) redirect(withMessage("/admin/lon", "fel", "Bara i demoläget."));
   await run("/admin/lon", async () => {
-    await seedDemoPayroll(text(formData, "month"), todayIso());
-    return "Anna, Bo och Cecilia är tillagda med en månads godkänd tid och frånvaro. Skapa körningen.";
+    const done = await seedDemoPayroll(text(formData, "month"), todayIso());
+    return `Anna, Bo, Cecilia och David är tillagda med en månads godkänd tid, frånvaro, en bilförmån och två utlägg. ${done}`;
   });
 }

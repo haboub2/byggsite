@@ -55,7 +55,7 @@ test("golden: Skatteverket's example 15 gives 487 = 18 881 kr and 497 = 28 140 k
     ["older", 10.21, 2_535_000, 258_800],
   ]);
   const p = new Map(b.people.map((x) => [x.employeeId, x]));
-  assert.deepEqual(p.get("p1")?.boxes, { "001": 930_000, "011": 2_850_000, "012": 100_000, "013": 250_000, "023": 0, "131": 0 });
+  assert.deepEqual(p.get("p1")?.boxes, { "001": 930_000, "011": 2_850_000, "012": 100_000, "013": 250_000, "018": 0, "023": 0, "131": 0 });
   assert.equal(p.get("p2")?.ticks["050"], true, "skattefri milersättning ticks 050 (Bilersättning)");
   assert.equal(p.get("p3")?.ticks["051"], true, "skattefritt traktamente ticks 051");
   assert.deepEqual(p.get("p3")?.contributions, [], "born 1936: no avgifter");
@@ -161,7 +161,7 @@ test("under 1 000 kr a year: the pay goes in 131 without avgifter; a board fee i
   const s = slip("x", "Styrelse", 1970, "2026-11-25", [["1600", 80_000]], 24_000);
   (s.document.contributions as { category: ContributionCategory }).category = "below-annual-threshold";
   const b = agiBuild("2026-11", [s]);
-  assert.deepEqual(b.people[0].boxes, { "001": 24_000, "011": 0, "012": 0, "013": 0, "023": 80_000, "131": 80_000 });
+  assert.deepEqual(b.people[0].boxes, { "001": 24_000, "011": 0, "012": 0, "013": 0, "018": 0, "023": 80_000, "131": 80_000 });
   assert.equal(b.totals.contributionsOre, 0);
   const fee = agiBuild("2026-11", [slip("y", "Ledamot", 1970, "2026-11-25", [["1600", 1_000_000]], 300_000)]).people[0];
   assert.deepEqual([fee.boxes["011"], fee.boxes["023"]], [1_000_000, 1_000_000]);

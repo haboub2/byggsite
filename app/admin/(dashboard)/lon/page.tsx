@@ -53,7 +53,15 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
         {open.length > 0 && (
           <p className="admin-flash" role="status">
             {open.length} lönebeslut är inte bekräftade och körs med standardvärdet.{" "}
-            {canApprove ? <Link href="/admin/installningar/lon">Inställningar › Lön</Link> : "Ägaren bekräftar dem under Inställningar › Lön."}
+            <Link href="/admin/lon/kom-igang">Kom igång med lön</Link>
+            {canApprove ? (
+              <>
+                {" "}
+                · <Link href="/admin/installningar/lon">Inställningar › Lön</Link>
+              </>
+            ) : (
+              " · Ägaren bekräftar dem under Inställningar › Lön."
+            )}
           </p>
         )}
 
@@ -150,7 +158,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
             {isDemo() && canApprove && employees.length === 0 && (
               <div className="hr-card">
                 <h2 className="hr-h2">Demoläget</h2>
-                <p className="hr-muted">Lägg in fas 0:s tre personer (månadslön med semester, timlön med OB, övertid och sjukdom, styrelsearvode) med en månads godkänd tid, och kör lönen för {monthLabel(`${suggested}-01`)}.</p>
+                <p className="hr-muted">Lägg in exempelorganisationen (månadslön med semester och bilförmån, timlön med OB, övertid, sjukdom och utlägg, styrelsearvode, en SÄVA) med en månads godkänd tid, och kör {monthLabel(`${suggested}-01`)} till stängd med arbetsgivardeklaration.</p>
                 <form action={seedDemoPayrollAction}>
                   <input type="hidden" name="month" value={suggested} />
                   <button className="btn btn-ghost hr-btn-small" type="submit">

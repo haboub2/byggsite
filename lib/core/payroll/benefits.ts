@@ -23,9 +23,13 @@
  *   Annat   Its market value per month.
  *
  * Every value is less what the employee pays for the benefit from the net
- * pay. Drivmedelsförmån (1,2 × the market value, AGI ruta 018, avgifter on
- * the value without the factor) is not paid by the run: the register has
- * no pay item for ruta 018 yet; the run warns.
+ * pay. Drivmedelsförmån (61 kap. 10 §: the market value of the fuel the
+ * employee drove privately, × 1,2 for the tax; Skatteverket's avgifter on
+ * the value without the factor, AGI ruta 018) is two lines since phase 6:
+ * 1830 with the value less the employee's repayment (tax and avgifter) and
+ * 1831 with the rest up to 1,2 × value less the repayment (tax only).
+ * Skatteverket's example: 3 600 kr × 100/300 = 1 200 kr → 1 440 kr taxed,
+ * 1 200 kr avgifter; repaid 1 200 kr → 240 kr; repaid 1 440 kr → 0.
  */
 
 import { type Ore } from "../money";
@@ -54,6 +58,10 @@ export type CarInput = {
   /** Expected mil in tjänsten in the calendar year. */
   businessMilPerYear: number;
   fuelPaidByEmployer: boolean;
+  /** The market value per month of the fuel the employee drives privately on (61 kap. 10 §); 0 until the owner has worked it out. */
+  privateFuelOre: Ore;
+  /** What the employee pays back for that fuel per month (net deduction or own payment); lowers the fuel value first. */
+  fuelEmployeePaymentOre: Ore;
 };
 
 /** Meals per month for kostförmån. */
@@ -150,6 +158,19 @@ export function carBenefit(car: CarInput, date: IsoDate, rules: BenefitRuleSet =
   };
 }
 
+/** Drivmedelsförmån for a month: the value with avgifter (1830) and the uplift without (1831). */
+export type FuelBenefit = {
+  marketValueOre: Ore;
+  repaidOre: Ore;
+  factor: number;
+  /** Taxable in all: max(0, factor × value − repaid). */
+  taxableOre: Ore;
+  /** Underlag for avgifter and the 1830 line: max(0, value − repaid). */
+  baseOre: Ore;
+  /** The 1831 line: taxable − base. */
+  upliftOre: Ore;
+};
+
 export type BenefitMonth = {
   /** The month's taxable value after the employee's payment. */
   valueOre: Ore;
@@ -160,7 +181,19 @@ export type BenefitMonth = {
   ruleVersion: string;
   computation: Record<string, unknown>;
   warnings: string[];
+  /** Bil with fuel the employer pays: the drivmedelsförmån next to the car's value. */
+  fuel?: FuelBenefit;
 };
+
+/** The month's drivmedelsförmån under the rules of the pay date (null without fuel paid by the employer). */
+export function fuelBenefit(car: Pick<CarInput, "fuelPaidByEmployer" | "privateFuelOre" | "fuelEmployeePaymentOre">, rules: BenefitRuleSet): FuelBenefit | null {
+  if (!car.fuelPaidByEmployer || car.privateFuelOre <= 0) return null;
+  const factor = rules.car.fuelFactor;
+  const repaid = Math.max(0, car.fuelEmployeePaymentOre);
+  const taxableOre = Math.max(0, Math.round(car.privateFuelOre * factor) - repaid);
+  const baseOre = Math.max(0, car.privateFuelOre - repaid);
+  return { marketValueOre: car.privateFuelOre, repaidOre: repaid, factor, taxableOre, baseOre, upliftOre: taxableOre - baseOre };
+}
 
 /** Whether a benefit applies some day of [from, to]; any day counts the whole month (61 kap. 9 §). */
 export const benefitActive = (b: Pick<Benefit, "validFrom" | "validTo">, from: IsoDate, to: IsoDate) => b.validFrom <= to && (b.validTo === null || b.validTo >= from);
@@ -174,7 +207,8 @@ export function benefitMonth(b: Benefit, date: IsoDate): BenefitMonth {
   if (b.kind === "bil") {
     if (!b.car) throw new Error("Bilförmånen saknar bilens uppgifter.");
     const c = carBenefit(b.car, date, rules);
-    if (b.car.fuelPaidByEmployer) warnings.push("drivmedel som arbetsgivaren betalar för privat körning (ruta 018) betalas inte av körningen; lägg in det för hand.");
+    const fuel = fuelBenefit(b.car, rules);
+    if (b.car.fuelPaidByEmployer && !fuel) warnings.push("företaget betalar drivmedel men drivmedlets marknadsvärde för privat körning per månad är 0; ange det på förmånen, annars redovisas ingen drivmedelsförmån (ruta 018).");
     if (c.oldCarFloorApplied) warnings.push(`bilen är sex år eller äldre: nybilspriset räknas som lägst ${rules.car.oldCarMinPbb} prisbasbelopp.`);
     return {
       valueOre: less(c.monthOre),
@@ -182,8 +216,9 @@ export function benefitMonth(b: Benefit, date: IsoDate): BenefitMonth {
       code: "1800",
       text: `Bilförmån ${b.car.registrationNumber}${b.car.model ? ` ${b.car.model}` : ""}`,
       ruleVersion,
-      computation: { ...c },
+      computation: { ...c, ...(fuel ? { fuel } : {}) },
       warnings,
+      ...(fuel ? { fuel } : {}),
     };
   }
   if (b.kind === "kost") {
@@ -217,6 +252,31 @@ export function benefitMonth(b: Benefit, date: IsoDate): BenefitMonth {
     };
   }
   return { valueOre: less(b.marketValueOre), grossOre: b.marketValueOre, code: "1820", text: b.description || "Övrig förmån", ruleVersion, computation: { marketValueOre: b.marketValueOre }, warnings };
+}
+
+/** The drivmedelsförmån lines: 1830 (value less repayment, avgifter) and 1831 (the uplift, tax only); each only when above 0. */
+export function fuelLines(b: Benefit, month: BenefitMonth, periodStart: IsoDate, periodEnd: IsoDate): PayLineInput[] {
+  const f = month.fuel;
+  if (!f) return [];
+  // A car benefit always has a registration number (the table requires it for kind bil).
+  const reg = b.car?.registrationNumber ?? "";
+  const line = (code: "1830" | "1831", text: string, amountOre: Ore, basisOre: Ore | null, ratePercent: number | null): PayLineInput => ({
+    code,
+    text,
+    quantity: 1,
+    unit: "mån",
+    unitPriceOre: amountOre,
+    basisOre,
+    ratePercent,
+    amountOre,
+    from: periodStart,
+    to: periodEnd,
+    source: { kind: "benefit", id: b.id },
+  });
+  const out: PayLineInput[] = [];
+  if (f.baseOre > 0) out.push(line("1830", `Drivmedelsförmån ${reg}`, f.baseOre, f.repaidOre ? f.marketValueOre : null, null));
+  if (f.upliftOre > 0) out.push(line("1831", `Drivmedelsförmån ${reg}, uppräkning ${String(f.factor).replace(".", ",")}`, f.upliftOre, f.marketValueOre, Math.round((f.factor - 1) * 100)));
+  return out;
 }
 
 /** The payslip line for a benefit in a pay month (none when its value is 0). */

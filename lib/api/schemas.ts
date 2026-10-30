@@ -5,6 +5,9 @@ import { INVOICE_LIST_TABS, INVOICE_STATUSES } from "../core/invoices/store-type
 import { DUE_RULES } from "../core/plans/schema";
 import { ROT_CATEGORIES } from "../core/rot/claim-xml";
 import { EVENT_TYPES, type AggregateType } from "../core/events";
+import { AGREEMENTS, EMPLOYMENT_FORMS, PAY_FORMS, PENSION_SCHEMES, VACATION_RULES } from "../core/hr/schema";
+import { TIME_KINDS, TIME_STATUSES } from "../core/hr/time";
+import { ABSENCE_KINDS } from "../core/hr/absence";
 
 /**
  * The /api/v1 contract as zod: what requests are validated with and what
@@ -191,6 +194,203 @@ export const rotClaimResourceSchema = z.object({
 export const rotClaimListQuerySchema = z.object({
   status: z.enum(ROT_CLAIM_STATUSES).optional(),
   limit: z.coerce.number().int().min(1).max(500).default(100),
+});
+
+/* ---------- employees (phase 6) ---------- */
+
+export const employeeResourceSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  email: z.string(),
+  phone: z.string(),
+  /** Alltid maskerat, ÅÅÅÅMMDD-XXXX; tomt när inget personnummer finns. Hela numret lämnar aldrig API:t. */
+  personalNumber: z.string().regex(/^(\d{8}-XXXX)?$/).describe("Alltid maskerat, ÅÅÅÅMMDD-XXXX. Hela numret lämnar aldrig API:t."),
+  birthDate: isoDate.nullable(),
+  agreement: z.enum(AGREEMENTS).describe("Personens kollektivavtal: byggavtalet, tjanstemannaavtalet eller none."),
+  isOwner: z.boolean(),
+  isBoardMember: z.boolean(),
+  startedOn: isoDate.nullable().describe("Första anställningens första dag."),
+  endedOn: isoDate.nullable().describe("Dagen personen lämnade, null medan personen är kvar."),
+  employment: z
+    .object({
+      form: z.enum(EMPLOYMENT_FORMS),
+      payForm: z.enum(PAY_FORMS),
+      title: z.string(),
+      monthlySalaryOre: ore.nullable(),
+      hourlyRateOre: ore.nullable(),
+      feeOre: ore.nullable(),
+      workingTimePercent: z.number(),
+      startsOn: isoDate,
+      endsOn: isoDate.nullable(),
+      vacationRule: z.enum(VACATION_RULES),
+      vacationDays: z.number().int(),
+      pensionScheme: z.enum(PENSION_SCHEMES),
+      validFrom: isoDate,
+    })
+    .nullable()
+    .describe("Anställningsversionen som gäller i dag, null utan anställning."),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const employeeListQuerySchema = z.object({
+  q: z.string().trim().max(100).optional().describe("Namn eller e-post."),
+  includeEnded: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true")
+    .describe("Ta med personer som lämnat (true eller false)."),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});
+
+/* ---------- time entries and absences (phase 6) ---------- */
+
+export const timeEntryResourceSchema = z.object({
+  id: z.string().uuid(),
+  employeeId: z.string().uuid(),
+  date: isoDate,
+  start: z.string().nullable().describe("TT:MM, null för en rad med bara timmar."),
+  end: z.string().nullable(),
+  breakMinutes: z.number().int(),
+  hours: z.number().describe("Negativt bara på en rättelse som vänder en godkänd rad."),
+  kind: z.enum(TIME_KINDS),
+  projectId: z.string().uuid().nullable(),
+  note: z.string(),
+  status: z.enum(TIME_STATUSES),
+  correctsId: z.string().uuid().nullable(),
+  submittedAt: z.string().nullable(),
+  approvedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const timeEntryListQuerySchema = z.object({
+  from: isoDate.describe("Första dag (arbetsdatum)."),
+  to: isoDate.describe("Sista dag."),
+  employeeId: z.string().uuid().optional(),
+  projectId: z.string().uuid().optional(),
+  status: z.enum(TIME_STATUSES).optional(),
+  limit: z.coerce.number().int().min(1).max(2000).default(500),
+});
+
+const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Tiden skrivs TT:MM.");
+
+export const timeEntryCreateSchema = z
+  .object({
+    employeeId: z.string().uuid(),
+    date: isoDate,
+    start: clock.optional().describe("Med start och slut räknas timmarna; annars anges hours."),
+    end: clock.optional(),
+    breakMinutes: z.number().int().min(0).max(600).default(0),
+    hours: z.number().min(0.25).max(24).optional().describe("Timmar när start och slut inte anges."),
+    kind: z.enum(TIME_KINDS).default("work"),
+    projectId: z.string().uuid().nullable().default(null),
+    note: z.string().trim().max(500).default(""),
+  })
+  .refine((v) => (v.start !== undefined) === (v.end !== undefined), { message: "Ange både start och slut, eller bara hours.", path: ["end"] })
+  .refine((v) => v.start !== undefined || v.hours !== undefined, { message: "Ange start och slut, eller hours.", path: ["hours"] });
+export type TimeEntryCreate = z.infer<typeof timeEntryCreateSchema>;
+
+export const absenceResourceSchema = z.object({
+  id: z.string().uuid(),
+  employeeId: z.string().uuid(),
+  kind: z.enum(ABSENCE_KINDS),
+  from: isoDate,
+  to: isoDate.nullable().describe("Null: sjuk och inte tillbaka än."),
+  extent: z.number().describe("1, 0.75, 0.5 eller 0.25 av dagen."),
+  certificateReceivedOn: isoDate.nullable(),
+  sickPeriodId: z.string().uuid().nullable().describe("Sjukfallet raden hör till (återinsjuknande inom fem dagar fortsätter samma)."),
+  approvedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const absenceListQuerySchema = z.object({
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+  employeeId: z.string().uuid().optional(),
+  kind: z.enum(ABSENCE_KINDS).optional(),
+  limit: z.coerce.number().int().min(1).max(2000).default(500),
+});
+
+/* ---------- payslips and pay runs (phase 6) ---------- */
+
+export const PAY_RUN_STATUSES = ["draft", "calculated", "approved", "paid", "booked", "closed"] as const;
+
+export const payRunResourceSchema = z.object({
+  id: z.string().uuid(),
+  period: z.string().regex(/^\d{4}-\d{2}$/).describe("Lönemånaden, ÅÅÅÅ-MM."),
+  periodStart: isoDate,
+  periodEnd: isoDate,
+  timeFrom: isoDate.describe("Perioden tid och frånvaro hämtas från."),
+  timeTo: isoDate,
+  payDate: isoDate,
+  agiPeriod: z.string().describe("Månaden arbetsgivardeklarationen gäller (lönedagens månad)."),
+  status: z.enum(PAY_RUN_STATUSES),
+  payslipCount: z.number().int().nullable(),
+  grossOre: ore.nullable().describe("Summa kontant bruttolön."),
+  taxOre: ore.nullable(),
+  netOre: ore.nullable(),
+  employerContributionOre: ore.nullable(),
+  computedAt: z.string().nullable(),
+  approvedAt: z.string().nullable(),
+  bookedAt: z.string().nullable(),
+  closedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const payRunListQuerySchema = z.object({
+  status: z.enum(PAY_RUN_STATUSES).optional(),
+  year: z.coerce.number().int().min(2000).max(2100).optional().describe("Körningar med lönemånad i året."),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});
+
+export const payslipLineResourceSchema = z.object({
+  code: z.string().describe("Lönearten."),
+  name: z.string(),
+  kind: z.string(),
+  text: z.string(),
+  quantity: z.number().nullable(),
+  unit: z.string().nullable(),
+  unitPriceOre: ore.nullable(),
+  amountOre: ore,
+  taxable: z.boolean(),
+  agiBox: z.string().nullable(),
+  account: z.string(),
+  from: isoDate.nullable(),
+  to: isoDate.nullable(),
+});
+
+export const payslipResourceSchema = z.object({
+  id: z.string().uuid(),
+  runId: z.string().uuid(),
+  employeeId: z.string().uuid(),
+  employeeName: z.string(),
+  number: z.number().int().nullable().describe("Numret i serien L när lönebeskedet är godkänt."),
+  period: z.string().regex(/^\d{4}-\d{2}$/),
+  payDate: isoDate,
+  status: z.enum(["calculated", "approved"]).describe("Bara godkända lönebesked är frysta och har PDF."),
+  cashGrossOre: ore,
+  benefitOre: ore,
+  taxFreeReimbursementOre: ore,
+  taxOre: ore,
+  netAdjustmentOre: ore,
+  netOre: ore,
+  employerContributionOre: ore,
+  contributionRatePercent: z.number(),
+  contributionBaseOre: ore,
+  pensionScheme: z.enum(["saf-lo", "itp1", "none"]).nullable(),
+  pensionPremiumOre: ore,
+  vacationLiabilityOre: ore,
+  lines: z.array(payslipLineResourceSchema),
+  hasPdf: z.boolean(),
+  approvedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const payslipListQuerySchema = z.object({
+  runId: z.string().uuid().optional(),
+  employeeId: z.string().uuid().optional(),
+  period: z.string().regex(/^\d{4}-\d{2}$/).optional().describe("Lönemånaden."),
+  limit: z.coerce.number().int().min(1).max(2000).default(200),
 });
 
 /* ---------- events ---------- */

@@ -108,6 +108,7 @@ export default function AdminTopBar(p: AdminTopBarProps) {
     { href: "/admin/intresse", label: "Intresse för faktureringen", access: "site" },
     { href: "/admin/installningar", label: "Inställningar", access: "admin" },
     { href: "/admin/installningar/lon", label: "Inställningar: lön", access: "admin" },
+    { href: "/admin/lon/kom-igang", label: "Kom igång med lön", access: "payroll" },
     { href: "/admin/organisation", label: "Organisation och roller", access: "read" },
     { href: "/admin/api", label: "API", access: "admin" },
   ].filter((i) => has(p.access, i.access as Access)) as Item[];

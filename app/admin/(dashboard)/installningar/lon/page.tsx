@@ -11,7 +11,8 @@ import { payItemsOn } from "@/lib/core/payroll/run";
 import { DECISION_DEFAULT, DECISION_LABEL, type PayrollConfirmed, type PayrollDecision } from "@/lib/core/payroll/settings";
 import { todayIso } from "@/lib/quotes/schema";
 import { Flash } from "@/components/admin/time/parts";
-import { savePayrollSettingsAction } from "@/app/admin/payroll-actions";
+import { applyPayItemPresetAction, savePayrollSettingsAction } from "@/app/admin/payroll-actions";
+import { PAY_ITEM_PRESETS, PRESET_DESCRIPTION, PRESET_LABEL, presetChanges } from "@/lib/core/payroll/pay-item-presets";
 
 export const metadata: Metadata = { title: "Inställningar: lön" };
 
@@ -73,7 +74,9 @@ export default async function PayrollSettingsPage({ searchParams }: { searchPara
     listEmployees().catch(() => []),
   ]);
   const approvers = members.filter((m) => m.role === "owner" || m.role === "admin");
-  const register = payItemsOn(items, todayIso());
+  const today = todayIso();
+  const register = payItemsOn(items, today);
+  const pendingPreset = settings.payItemPreset !== settings.agreement ? presetChanges(items, settings.agreement, today) : [];
 
   return (
     <section className="sec sec--tight">
@@ -128,7 +131,16 @@ export default async function PayrollSettingsPage({ searchParams }: { searchPara
                 <option value="both">Båda</option>
               </select>
             </div>
-            <p className="hr-muted">Varje persons avtal står på personen; det här beslutet är organisationens och styr Fora och Collectum.</p>
+            <p className="hr-muted">
+              Varje persons avtal står på personen; det här beslutet är organisationens och styr Fora och Collectum. När det sparas får löneartsregistret förvalet för avtalet (nya versioner från i dag): {PRESET_DESCRIPTION[settings.agreement]}
+            </p>
+            {settings.payItemPreset && (
+              <p className="hr-muted">
+                Registret följer förvalet {PRESET_LABEL[settings.payItemPreset]}
+                {settings.payItemPresetAppliedAt ? `, tillämpat ${formatWhen(settings.payItemPresetAppliedAt)}` : ""}.
+                {pendingPreset.length > 0 && ` Beslutet säger ${PRESET_LABEL[settings.agreement]}; spara det igen så får ${pendingPreset.length} lönearter en ny version.`}
+              </p>
+            )}
           </Decision>
 
           <Decision confirmed={confirmed} id="approvers">
@@ -263,7 +275,7 @@ export default async function PayrollSettingsPage({ searchParams }: { searchPara
             <p className="hr-muted">Lönen betalar full avgift; Lönerapporter visar underlaget per månad att ansöka om i Skatteverkets e-tjänst, efter att månadens AGI är lämnad.</p>
           </Decision>
 
-          <div className="hr-card">
+          <div className="hr-card" id="tables">
             <h2 className="hr-h2">Skattetabeller</h2>
             {imports.length === 0 ? (
               <p>Inga skattetabeller är importerade. Kör <code>npm run tax-tables:import -- 2026 --out tabeller.json</code> och sedan <code>npm run tax-tables:load -- tabeller.json</code> (service role).</p>
@@ -299,9 +311,27 @@ export default async function PayrollSettingsPage({ searchParams }: { searchPara
             )}
           </div>
 
-          <div className="hr-card">
+          <div className="hr-card" id="register">
             <h2 className="hr-h2">Löneartsregistret</h2>
-            <p className="hr-muted">Flaggorna styr skatt, avgifter, semester, pension, AGI-ruta och konto. En ändring blir en ny version från ett datum; ett godkänt lönebesked behåller versionen det räknades med.</p>
+            <p className="hr-muted">
+              Flaggorna styr skatt, avgifter, semester, pension, AGI-ruta och konto. En ändring blir en ny version från ett datum; ett godkänt lönebesked behåller versionen det räknades med. Förvalen per kollektivavtal
+              sätter Fora- och Collectum-flaggorna och lägger till Byggavtalets helglön och arbetstidsförkortning; ett förval tar aldrig bort en löneart.
+            </p>
+            <form action={applyPayItemPresetAction} className="hr-inline">
+              <label>
+                Förval{" "}
+                <select name="preset" defaultValue={settings.agreement} className="tg-select">
+                  {PAY_ITEM_PRESETS.map((p) => (
+                    <option key={p} value={p}>
+                      {PRESET_LABEL[p]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button className="btn btn-ghost hr-btn-small" type="submit">
+                Tillämpa förvalet
+              </button>
+            </form>
             <div className="hr-table-wrap">
               <table className="org-table">
                 <thead>

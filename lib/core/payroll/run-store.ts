@@ -16,6 +16,7 @@ import { blockHours } from "../hr/time";
 import { inForce, versionsOn } from "../hr/schema";
 import { addMonths } from "./employment-clocks";
 import { DEFAULT_PAY_ITEMS } from "./pay-items.default";
+import { presetChanges, presetRows, type PayItemPreset, type PresetChange } from "./pay-item-presets";
 import { indexTaxTable, parseTaxTableCsv, checkGoldenVectors, type TaxTableIndex, type TaxTableRow, type GoldenFile } from "./tax-tables";
 import goldenJson from "./tax-tables.golden.json";
 import { computeRun, earningYearHistory, payItemsOn, type RunCheck, type RunInput, type RunPerson, type RunResult } from "./run";
@@ -270,6 +271,8 @@ type DemoPayroll = {
   settings: unknown;
   confirmed: PayrollConfirmed;
   settingsUpdatedAt: string | null;
+  /** The register with its versions (the default register seeded on 2026-01-01, then what presets added). */
+  payItems: (PayItem & { validFrom: IsoDate })[];
   runs: RunRow[];
   payslips: PayslipRow[];
   corrections: CorrectionRow[];
@@ -280,7 +283,19 @@ type DemoPayroll = {
 };
 const g = globalThis as unknown as { __binaafyPayroll?: DemoPayroll };
 const demo = (): DemoPayroll =>
-  (g.__binaafyPayroll ??= { settings: {}, confirmed: {}, settingsUpdatedAt: null, runs: [], payslips: [], corrections: [], bankFiles: [], journals: {}, nextL: 1, nextV: 1 });
+  (g.__binaafyPayroll ??= {
+    settings: {},
+    confirmed: {},
+    settingsUpdatedAt: null,
+    payItems: DEFAULT_PAY_ITEMS.map((i) => ({ ...i, validFrom: "2026-01-01" })),
+    runs: [],
+    payslips: [],
+    corrections: [],
+    bankFiles: [],
+    journals: {},
+    nextL: 1,
+    nextV: 1,
+  });
 /** Demo mode is always the owner; the demo computes as the accountant so the four-eyes rule can be walked through. */
 export const DEMO_COMPUTER = { id: "00000000-0000-4000-8000-00000000dem1", name: "konsult@demo (redovisningskonsulten)" };
 const demoRun = (id: string) => {
@@ -313,6 +328,8 @@ async function demoInputsHash(run: PayRun): Promise<string> {
     corrections: corrections.filter((c) => c.targetRunId === null || c.targetRunId === run.id).map((c) => c.id),
     vacationYear: settings.vacationYear,
     benefits: demoBenefitInputs(),
+    // 0043: a preset applied after the computation changes the register, so the run must be computed again.
+    payItems: demo().payItems.map((i) => [i.code, i.version, i.validFrom]),
   };
   return createHash("sha256").update(JSON.stringify(state)).digest("hex");
 }
@@ -366,7 +383,7 @@ type PayItemRow = {
 
 /** Every version of every pay item, as payItemsOn() takes them. */
 export async function listPayItems(): Promise<(PayItem & { validFrom: IsoDate })[]> {
-  if (isDemo()) return DEFAULT_PAY_ITEMS.map((i) => ({ ...i, validFrom: "2026-01-01" }));
+  if (isDemo()) return demo().payItems.map((i) => ({ ...i, flags: { ...i.flags } }));
   const supabase = await getDb();
   let q = supabase.from("pay_items").select("code, name, kind, version, valid_from, taxable, tax_mode, subject_to_employer_contribution, vacation_pay_basis, pension_reportable, agi_box, account, counter_account, fora_category");
   const org = await readOrgId();
@@ -391,6 +408,36 @@ export async function listPayItems(): Promise<(PayItem & { validFrom: IsoDate })
       foraCategory: r.fora_category,
     },
   }));
+}
+
+/** What applying a preset on `date` would insert (pay-item-presets.ts), read with the caller's rights. */
+export async function previewPayItemPreset(preset: PayItemPreset, date: IsoDate): Promise<PresetChange[]> {
+  return presetChanges(await listPayItems(), preset, date);
+}
+
+/**
+ * Applies a preset to the register (docs/hr-lon.md, phase 6): a new version
+ * from `validFrom` for every code whose version differs or is missing,
+ * nothing else (payroll_apply_preset, owner/admin). Records which preset
+ * the register follows in payroll_settings.data and logs
+ * payroll.preset_applied. Returns how many versions were inserted.
+ */
+export async function applyPayItemPreset(preset: PayItemPreset, validFrom: IsoDate): Promise<number> {
+  if (isDemo()) {
+    const changes = presetChanges(demo().payItems, preset, validFrom);
+    for (const c of changes) {
+      const version = Math.max(0, ...demo().payItems.filter((i) => i.code === c.code).map((i) => i.version)) + 1;
+      demo().payItems.push({ ...c.to, version, validFrom });
+    }
+    const current = parsePayrollSettings(demo().settings);
+    demo().settings = { ...current, payItemPreset: preset, payItemPresetAppliedAt: new Date().toISOString() };
+    demo().settingsUpdatedAt = new Date().toISOString();
+    return changes.length;
+  }
+  const supabase = await getDb();
+  const { data, error } = await supabase.rpc("payroll_apply_preset", { p_org: await currentOrgId(), p_preset: preset, p_items: presetRows(preset), p_valid_from: validFrom });
+  if (error) fail("Kunde inte tillämpa förvalet", error);
+  return Number(data ?? 0);
 }
 
 let demoTables: { info: TaxTableImportInfo; rows: TaxTableRow[] } | null = null;
@@ -489,7 +536,11 @@ export async function getRun(id: string): Promise<PayRun | null> {
     return r ? runFromRow(r) : null;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("pay_runs").select("*").eq("id", id).maybeSingle();
+  // The API reads as the service role: the key's organisation is always on the query (RLS does it for a session).
+  let q = supabase.from("pay_runs").select("*").eq("id", id);
+  const org = await readOrgId();
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.maybeSingle();
   if (error) fail("Kunde inte hämta lönekörningen", error);
   return data ? runFromRow(data as RunRow) : null;
 }
@@ -497,7 +548,10 @@ export async function getRun(id: string): Promise<PayRun | null> {
 export async function listRunPayslips(runId: string): Promise<StoredPayslip[]> {
   if (isDemo()) return demo().payslips.filter((p) => p.run_id === runId).map(payslipFromRow).sort((a, b) => a.document.employeeName.localeCompare(b.document.employeeName, "sv"));
   const supabase = await getDb();
-  const { data, error } = await supabase.from("payslips").select(PAYSLIP_COLUMNS).eq("run_id", runId).limit(2000);
+  let q = supabase.from("payslips").select(PAYSLIP_COLUMNS).eq("run_id", runId);
+  const org = await readOrgId();
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.limit(2000);
   if (error) fail("Kunde inte hämta lönebeskeden", error);
   return (data as PayslipRow[]).map(payslipFromRow).sort((a, b) => a.document.employeeName.localeCompare(b.document.employeeName, "sv"));
 }
@@ -506,7 +560,10 @@ export async function listRunPayslips(runId: string): Promise<StoredPayslip[]> {
 export async function listEmployeePayslips(employeeId: string): Promise<StoredPayslip[]> {
   if (isDemo()) return demo().payslips.filter((p) => p.employee_id === employeeId && p.approved_at).map(payslipFromRow).sort((a, b) => b.document.payDate.localeCompare(a.document.payDate));
   const supabase = await getDb();
-  const { data, error } = await supabase.from("payslips").select(PAYSLIP_COLUMNS).eq("employee_id", employeeId).not("approved_at", "is", null).limit(500);
+  let q = supabase.from("payslips").select(PAYSLIP_COLUMNS).eq("employee_id", employeeId).not("approved_at", "is", null);
+  const org = await readOrgId();
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.limit(500);
   if (error) fail("Kunde inte hämta lönebeskeden", error);
   return (data as PayslipRow[]).map(payslipFromRow).sort((a, b) => b.document.payDate.localeCompare(a.document.payDate));
 }
@@ -517,7 +574,10 @@ export async function getPayslip(id: string): Promise<StoredPayslip | null> {
     return p ? payslipFromRow(p) : null;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("payslips").select(PAYSLIP_COLUMNS).eq("id", id).maybeSingle();
+  let q = supabase.from("payslips").select(PAYSLIP_COLUMNS).eq("id", id);
+  const org = await readOrgId();
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.maybeSingle();
   if (error) fail("Kunde inte hämta lönebeskedet", error);
   return data ? payslipFromRow(data as PayslipRow) : null;
 }
@@ -566,7 +626,10 @@ export async function getPayslips(ids: readonly string[]): Promise<StoredPayslip
   if (!ids.length) return [];
   if (isDemo()) return demo().payslips.filter((p) => ids.includes(p.id)).map(payslipFromRow);
   const supabase = await getDb();
-  const { data, error } = await supabase.from("payslips").select(PAYSLIP_COLUMNS).in("id", [...ids]);
+  let q = supabase.from("payslips").select(PAYSLIP_COLUMNS).in("id", [...ids]);
+  const org = await readOrgId();
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q;
   if (error) fail("Kunde inte hämta lönebeskeden", error);
   return (data as PayslipRow[]).map(payslipFromRow);
 }

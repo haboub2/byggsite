@@ -6,8 +6,10 @@ phase 2 (time, schedules, absence, /min-tid, migration 0037), phase 3
 (the payroll run, migration 0039; the parallel run of rule 9 is still to
 do), phase 4 (AGI, skattekonto, Fora, intyg, växa-stöd, year-end,
 migrations 0040 and 0041; no file has been through Skatteverket's or Fora's
-services yet) and phase 5 (förmåner, utlägg, Collectum, the 3:12 planner,
-migration 0042) are built, see the *Läge* sections below.** Written in English
+services yet), phase 5 (förmåner, utlägg, Collectum, the 3:12 planner,
+migration 0042) and phase 6 (onboarding of a second organisation, pay item
+presets, the HR API with webhooks, the Skatteverket application prepared,
+demo data, migration 0043) are built, see the *Läge* sections below.** Written in English
 because that is how the request was made; Swedish legal terms are kept in
 Swedish because that is what Skatteverket, the law and the collective
 agreements call them. "You" is Ibrahim (decisions, accounts, agreements), "a
@@ -25,6 +27,210 @@ means: the number on the payslip, in the bookkeeping, in the AGI file and in
 the bank file is the same number, computed from rules that carry the date
 they were checked, from time that someone approved, and every change leaves
 a trace. Every section below is written against that.
+
+## Läge: phase 6 done (2026-10-30)
+
+Product: a second organisation gets everything a payroll needs when it is
+created, with a "Kom igång med lön" checklist that reads the data; pay
+item presets per collective agreement, versioned and logged;
+drivmedelsförmån paid by the run and reported in ruta 018; the HR
+resources in the public API with payroll webhooks; the Skatteverket
+vendor application prepared as a document; and a demo organisation that
+exists on the first admin page. Draft PR "HR fas 6: produkt (0043)".
+**0043 has not run against Supabase.** Apply it after 0042, then run
+`supabase/tests/0043_product.sql` in the SQL editor (and
+`0039_payroll.sql` and `0040_authorities.sql` again: they now expect 39
+pay items and a ruta 018 in the boxes). 0043 replaces
+`payroll_inputs_hash()` again (the register is now in the fingerprint),
+so a run computed before 0043 must be computed again before approval, and
+`0041_payroll_repair.sql` still must not be run again. The done-criterion of section 12, "a second org
+runs a payroll without us", is yours to test: create an organisation
+under Admin › Ny organisation, open Lön › Kom igång med lön and follow it
+to a run.
+
+**Where things are**
+
+| What | File |
+|---|---|
+| Migration: 1830/1831 in the register for every organisation, `payroll_seed_org` adding missing items, `payroll_apply_preset`, `benefits.fuel_employee_payment_ore`, ruta 018 in `agi_build_sums`/`agi_store`/`agi_diff`, `is_webhook_event` with the payroll events, `payroll_inputs_hash` with the register | `supabase/migrations/0043_product.sql` |
+| SQL tests: B seeded on creation, the preset's versions and event, A untouched and unable to touch B, the accountant cannot apply, RLS on register, settings, people, API keys and webhooks, the fuel column, 018 in the build, deliveries only for B's `payslip.approved` | `supabase/tests/0043_product.sql` |
+| Presets `none`, `byggavtalet`, `tjanstemannaavtalet`, `both` from `DEFAULT_PAY_ITEMS`; the diff a preset would insert; the rows the SQL function takes | `lib/core/payroll/pay-item-presets.ts` (`presetPayItems`, `presetChanges`, `presetRows`) |
+| 1830 Drivmedelsförmån and 1831 the 1,2 uplift (box 018); the SQL block now lives in 0043 (`PAY_ITEMS_MIGRATION`) | `lib/core/payroll/pay-items.default.ts`, `pay-items-sql.ts` |
+| Fuel on the car benefit: `privateFuelOre`, `fuelEmployeePaymentOre`, `fuelBenefit()`, `fuelLines()`; the run pushes the lines | `lib/core/payroll/benefits.ts`, `run.ts`, `benefits-store.ts`, `app/admin/benefit-actions.ts`, `components/admin/payroll/PersonBenefitsTab.tsx` |
+| AGI box 018 (`DrivmVidBilformanUlagAG`) in the builder, writer, reader and format | `lib/core/payroll/agi.ts`, `lib/core/rules/agi-format.ts` |
+| The checklist, pure, and its loader | `lib/core/payroll/onboarding.ts`, `onboarding-store.ts` |
+| Pages: Lön › Kom igång med lön; Inställningar › Lön with the preset on the agreement decision and "Tillämpa förvalet" on the register; the Lön page's banner links the checklist | `app/admin/(dashboard)/lon/kom-igang/page.tsx`, `installningar/lon/page.tsx`, `lon/page.tsx`, `components/admin/AdminTopBar.tsx` |
+| Store: `applyPayItemPreset`, `previewPayItemPreset`; the demo register with versions; organisation filter on `getRun`, `getPayslip`, `listRunPayslips`, `listEmployeePayslips`, `getPayslips` | `lib/core/payroll/run-store.ts`, `app/admin/payroll-actions.ts` |
+| API: scope `payroll` (keys, frame, the admin's key form), schemas, mappers (masked personnummer, no bank, address, notes, user id, no full document), routes, OpenAPI | `lib/api/keys.ts`, `lib/api/frame.ts`, `app/admin/api-actions.ts`, `components/admin/api/ApiForms.tsx`, `lib/api/schemas.ts`, `lib/api/hr-resources.ts`, `lib/api/openapi.ts`, `app/api/v1/{employees,time-entries,absences,payslips,pay-runs}` |
+| Webhook events `payslip.approved`, `payroll.run_approved`, `payroll.run_closed`, `time.approved`, `expense.approved`; parity test with 0043 | `lib/core/events.ts`, `lib/api/webhooks.test.ts` |
+| Skatteverket: the two APIs, Skatteverket's requirements, what exists, what must change, the application drafted | `docs/skatteverket-api.md` |
+| Demo: four people, a month of approved time, a car with fuel, two claims, the month run to closed with its AGI; seeded once per process from `requireRole` in demo mode | `lib/core/payroll/demo-seed.ts`, `lib/admin.ts` |
+
+**What the database does**
+
+- `payroll_seed_org(org)` (replaced): series L, the accounts, every pay
+  item of the standard register the organisation lacks (not only when the
+  register is empty), and the settings row; run for every organisation in
+  0043, so existing ones got 1830 and 1831 with `valid_from 2026-01-01`.
+  `create_organization()` and `payroll_run_create()` call it as before.
+- `payroll_apply_preset(org, preset, items, valid_from)`, owner/admin:
+  for each item of the preset (the app's `presetRows()`), the version in
+  force on `valid_from` is compared on name, kind and every flag; a code
+  that is missing or differs gets a new version from `valid_from` (the
+  version number by 0039's trigger). Nothing is edited or removed; items
+  the organisation has beyond the preset stay. Writes
+  `payroll_settings.data.payItemPreset` and `payItemPresetAppliedAt`, logs
+  `payroll.preset_applied` (preset, versions, codes) as a `payroll` event,
+  returns the count. Refuses an unknown preset (22023) and anyone who is
+  not owner or admin of that organisation (42501).
+- `benefits.fuel_employee_payment_ore` (new, `private_fuel_ore` existed
+  since 0042 but was not read); both in the update grant.
+- `agi_build_sums`, `agi_store` and `agi_diff` are 0040's text with ruta
+  018 summed per person from `payslip_lines.agi_box`, in the month's
+  boxes, checked in the file and diffed between versions. The avgifter
+  come from the payslips' contribution base as before, which holds the
+  fuel without the 1,2 factor. `agi_build_hash()` gets a new key, so a
+  month declared before 0043 looks changed next to a new build; none has
+  been filed for real.
+- `payroll_inputs_hash()` (replaced, 0042's text plus the organisation's
+  pay items: id, code, version, valid_from): a preset or a hand-made
+  version after the computation makes the approval say "Underlaget har
+  ändrats efter beräkningen; räkna om", so no run is approved with flags
+  other than the ones it was computed with. Demo mode's hash does the
+  same.
+- `is_webhook_event()` (replaced) adds the five payroll events; the
+  trigger on `events` is 0021's. The events carry ids and sums
+  (`payslip.approved`: payslipId, runId, number, period, netOre;
+  `time.approved`: entries, hours, from, to, entryIds; `expense.approved`:
+  claimId, kind, taxFreeOre, taxableOre), never a document or a
+  personnummer.
+
+**The app.** Lön › Kom igång med lön: twelve steps read from the data
+(register seeded; agreement confirmed and the register following its
+preset; period; pay day; semesterår; two people who can approve or an
+accountant; a bank account; accounts; Fora/Collectum; the AGI with the
+organisationsnummer and contact; the year's tax tables; every active
+person with contract, tax row and bank account), progress, the next step
+highlighted, and the first run below. Inställningar › Lön: saving the
+agreement applies its preset as new versions from today and says how
+many; the register card shows the preset in force and lets owner/admin
+apply any preset again. Person › Förmåner: the car form takes the fuel's
+market value for private driving per month and what the employee pays
+for it; the card shows the drivmedelsförmån's tax and avgift bases;
+the run pays 1830 (value less repayment, with avgifter) and 1831 (the
+rest up to 1,2 × value, tax only), both in ruta 018, and warns when the
+company pays fuel but the value is 0. The API (`/api/v1/openapi.json`)
+gets a scope **`payroll`** that no invoicing key has: `read` and `write`
+do not imply it, `admin` does, and the key form under Admin › API offers
+"Läsa personal och lön", "Personal och lön, läsa och skriva tid" and
+"Allt". The HR routes require it: `/employees` (list, get; personnummer
+masked, no bank account, address or notes), `/time-entries` (list by date
+range, person, project, status; POST a draft with source `imported`,
+scopes `payroll` and `write`, Idempotency-Key required), `/absences`,
+`/payslips` (list by run, person or period; get; `/pdf` for approved
+ones, 409 before approval), `/pay-runs` (list, get). Read runs as the
+key's organisation through the same stores; `getRun`,
+`getPayslip` and the payslip reads now put the organisation on the
+query as well, so a key of B cannot read A's run or payslip by id.
+Demo mode: the example organisation is seeded on the first admin
+request (people, September time approved, Anna's car with 1 200 kr of
+fuel, Bo's approved milersättning and a traktamente waiting, October
+run closed, AGI v1 for 2026-10 stored); `BINAAFY_DEMO_HR_SEED=off`
+turns it off.
+
+**Verified**
+
+- `npm test` (676), `npm run lint` (0 errors), `tsc` clean;
+  `hasScope` covers that read and write never give payroll and that a
+  list of scopes needs every one; `includeEnded=false` is false.
+- All migrations through 0043 on Postgres 17 with the shim; all 19 SQL
+  test files pass, `0043_product.sql` included: B created with
+  `create_organization` has 39 pay items (1830/1831 with 018), series L,
+  the accounts and the settings row; Byggavtalet's preset gives two
+  versions (1010 without Collectum, 1120 Helglön; 1100 unchanged), the
+  event and the setting, and nothing the second time; an unknown preset
+  is refused; A's register is untouched and A's owner cannot apply a
+  preset on B; the accountant reads but cannot apply; A sees none of
+  B's register, settings, people, API key or webhook; the fuel columns;
+  018 in the build; `is_webhook_event` for the five payroll events and
+  not for internal ones; B's endpoint gets exactly B's `payslip.approved`,
+  not A's and not `payroll.run_calculated`; B's invoicing key has no
+  `payroll` scope and its payroll key has; a preset applied after a run
+  was computed makes the approval refuse "Underlaget har ändrats" until
+  the run is computed again, after which it is approved.
+- Golden test: Skatteverket's drivmedel example (1 200 kr → 1 440 kr
+  taxed, 1 200 kr avgifter, 018 = 1 440 kr; repaid 1 200 kr → 240 kr
+  taxed and no avgifter; repaid 1 440 kr → nothing) through `computeRun`,
+  the journal (7385/7399) and `agiBuild`.
+- In demo mode in the browser: the seed ran on the first admin page
+  (four people, October closed with four payslips, AGI v1 with Anna's 013
+  6 003 kr and 018 1 440 kr, 487 30 603 kr, 497 20 697 kr); Kom igång med
+  lön showed 10 of 12 (approvers and Fora/Collectum open); the register
+  showed the preset "Byggavtalet och Tjänstemannaavtalet" (41 items);
+  Person › Förmåner showed the fuel line. API with a demo key: employees
+  (masked personnummer, the version in force), pay-runs (closed, sums),
+  payslips (lines with 1830/1831, contribution base 46 723 kr for Anna),
+  absences, time-entries; POST time-entries gave 201 and a draft, the
+  same Idempotency-Key replayed with `Idempotent-Replayed: true`, a body
+  with start but no end gave 422 with the field; the payslip PDF came
+  back as application/pdf (85 kB); the OpenAPI document lists the nine
+  paths and seventeen webhook event types.
+
+**Not verified, or not done**
+
+- Nothing has run against Supabase: not 0043, not `payroll_apply_preset`
+  through supabase-js, not the API routes against RLS-backed data (the
+  routes read as the service role with the organisation on each query, as
+  the invoice API does). The done-criterion (a second organisation runs
+  a payroll without us) needs a real second organisation and is not met
+  by the SQL test alone.
+- Ruta 018 against Skatteverket: the file validates against the XSD;
+  whether Skatteverket's own avgifter computation takes 018 at the value
+  without the 1,2 factor (as its page says) and so matches our 487 is
+  unverified until a file with 018 has been through the test service.
+- The presets' content beyond the flags is thin: Byggavtalet's helglön
+  (1120) and arbetstidsförkortning in money (1250) are items, but the
+  run does not compute helglön or ATF (typed in as a line by hand);
+  the OB/övertid tables and the semester percent stay in the rule book
+  keyed on each person's agreement, so a preset changes Fora/Collectum
+  reporting and the two items, nothing else.
+- The payslip resource returns the lines and sums, not the frozen
+  document; the AGI, bank files, corrections, benefits and claims are not
+  in the API. Time entries can be created but not submitted or approved
+  through the API (that is the approver's step in Tid).
+- Webhooks deliver `payslip.approved` with aggregate `employee`; the
+  `/events` API still hides `employee`, `time` and `payroll` events, so
+  an integrator sees them through webhooks only.
+- The demo seed renders four PDFs with react-pdf on the first request
+  (a few seconds); the layout and the page render in parallel in Next,
+  so the seed moved into `requireRole`, which every page awaits first.
+  Not tested: two concurrent first requests (the promise is shared per
+  process, so the second waits).
+- `docs/skatteverket-api.md` is from Skatteverket's documents of
+  2018–2024 and its connection pages; the forms' exact fields are not
+  published, and the Utvecklarportal may have changed since. Nothing has
+  been sent.
+
+**Where sections 3, 11 and 12 turned out different**
+
+- Section 10: the API gets its own scope `payroll` next to read, write
+  and admin, since an API key is not a member with a role; the table's
+  split (owner, admin, accountant read payroll) is the key form's.
+- Section 3: no new tables. Presets are not stored as presets; the
+  register's versions are the record, and `payroll_settings.data` says
+  which preset was applied last. `benefits` got the fuel repayment column
+  instead of a fuel table.
+- Section 11: "Kom igång med lön" is its own page under Lön (and in the
+  nav's settings list), not part of Inställningar › Lön; it reads the
+  same decisions. The register's preset is chosen with the agreement
+  decision, as section 12's first bullet implies, rather than a separate
+  setting.
+- Section 12: the Skatteverket application is a document to send, not a
+  registration done; the demo data is seeded automatically in demo mode
+  rather than through a button only (the button remains on Lön when the
+  register is empty).
+
+---
 
 ## Läge: phase 0 done (2026-10-30)
 

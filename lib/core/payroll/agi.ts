@@ -16,7 +16,9 @@
  * Nothing is recomputed from time or contracts.
  *
  * Per person: 011 cash pay (or 131 when the year's pay stays under the
- * 1 000 kr limit, so no avgifter), 012 and 013 benefits, 023 the board fee
+ * 1 000 kr limit, so no avgifter), 012 and 013 benefits, 018 drivmedel vid
+ * bilförmån (1,2 × the market value; the avgifter come from the payslips'
+ * base, which holds the value without the factor), 023 the board fee
  * inside 011, 001 tax, 050 and 051 ticked when a tax-free bilersättning or
  * traktamente was paid; each amount in whole kronor with the öre dropped.
  * Avgifter: the person's avgiftsunderlag per rate, öre dropped, summed per
@@ -34,7 +36,7 @@ import { agiContributions, agiContributionTotal, type AgiContributionRow, type C
 import type { PayslipDocument } from "./payslip";
 import { monthLabel } from "./format";
 
-export const AGI_AMOUNT_BOXES = ["001", "011", "012", "013", "023", "131"] as const;
+export const AGI_AMOUNT_BOXES = ["001", "011", "012", "013", "018", "023", "131"] as const;
 export type AgiBox = (typeof AGI_AMOUNT_BOXES)[number];
 export const AGI_TICK_BOXES = ["050", "051"] as const;
 export type AgiTick = (typeof AGI_TICK_BOXES)[number];
@@ -44,6 +46,7 @@ export const AGI_BOX_LABEL: Record<AgiBox | AgiTick, string> = {
   "011": "Kontant bruttolön",
   "012": "Övriga förmåner",
   "013": "Bilförmån",
+  "018": "Drivmedel vid bilförmån",
   "023": "Varav styrelsearvode",
   "131": "Ersättning utan avgifter",
   "050": "Bilersättning",
@@ -76,7 +79,7 @@ export type AgiTotals = { taxOre: Ore; contributionsOre: Ore; boxes: Record<AgiB
 
 export type AgiBuild = { period: string; runIds: string[]; people: AgiPerson[]; totals: AgiTotals; problems: string[] };
 
-const zeroBoxes = (): Record<AgiBox, Ore> => ({ "001": 0, "011": 0, "012": 0, "013": 0, "023": 0, "131": 0 });
+const zeroBoxes = (): Record<AgiBox, Ore> => ({ "001": 0, "011": 0, "012": 0, "013": 0, "018": 0, "023": 0, "131": 0 });
 
 export const isAgiPeriod = (p: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(p);
 
@@ -126,7 +129,7 @@ export function agiBuild(period: string, slips: readonly AgiSlip[], repayments: 
       raw["001"] += d.totals.taxOre;
       for (const l of d.lines) {
         const box = l.item.flags.agiBox;
-        if (box === "011" || box === "012" || box === "013" || box === "131") raw[box] += l.amountOre;
+        if (box === "011" || box === "012" || box === "013" || box === "018" || box === "131") raw[box] += l.amountOre;
         if ((box === "050" || box === "051") && l.amountOre > 0) ticks[box] = true;
         if (l.item.kind === "fee") raw["023"] += l.amountOre;
       }
@@ -284,7 +287,7 @@ function blankett(employer: string, period: string, body: string): string {
   ].join("\n");
 }
 
-const BOX_FIELD: Record<Exclude<AgiBox, "001">, keyof typeof AGI_FORMAT.fields> = { "011": "cashPay", "012": "benefits", "013": "carBenefit", "023": "boardFee", "131": "notContributionBase" };
+const BOX_FIELD: Record<Exclude<AgiBox, "001">, keyof typeof AGI_FORMAT.fields> = { "011": "cashPay", "012": "benefits", "013": "carBenefit", "018": "fuelBenefit", "023": "boardFee", "131": "notContributionBase" };
 
 /**
  * The file for one month: the HU with 487 and 497, then one IU per
@@ -324,7 +327,7 @@ export function agiXml(input: AgiFileInput): string {
     if (r.removed) lines.push(field("removal", AGI_FORMAT.tickValue, i));
     else {
       if (r.boxes["011"] > 0 || r.boxes["131"] === 0) lines.push(field("cashPay", kronor(r.boxes["011"]), i));
-      for (const b of ["012", "013", "023", "131"] as const) if (r.boxes[b] !== 0) lines.push(field(BOX_FIELD[b], kronor(r.boxes[b]), i));
+      for (const b of ["012", "013", "018", "023", "131"] as const) if (r.boxes[b] !== 0) lines.push(field(BOX_FIELD[b], kronor(r.boxes[b]), i));
       if (r.ticks["050"]) lines.push(field("mileage", AGI_FORMAT.tickValue, i));
       if (r.ticks["051"]) lines.push(field("perDiem", AGI_FORMAT.tickValue, i));
       lines.push(field("tax", kronor(r.boxes["001"]), i));

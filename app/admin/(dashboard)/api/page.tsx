@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/admin";
 import { apiUsageLastDay, listApiKeys, listApiRequests, listDeliveries, listWebhooks, type ApiKeyRow } from "@/lib/api/admin-store";
 import { API_LOG_RETENTION_DAYS } from "@/lib/api/request-log";
 import { WEBHOOK_EVENT_TYPES } from "@/lib/core/events";
+import { SCOPE_LABEL, type ApiScope } from "@/lib/api/keys";
 import { formatDateTime } from "@/lib/admin-format";
 import { revokeApiKeyAction, removeWebhookAction } from "@/app/admin/api-actions";
 import { CreateKeyForm, CreateWebhookForm } from "@/components/admin/api/ApiForms";
@@ -83,7 +84,7 @@ async function KeysTab({ keys }: { keys: ApiKeyRow[] }) {
                 <td>
                   <code>{k.prefix}…</code>
                 </td>
-                <td>{k.scopes.includes("write") || k.scopes.includes("admin") ? "Läsa och skriva" : "Läsa"}</td>
+                <td>{k.scopes.includes("admin") ? SCOPE_LABEL.admin : k.scopes.map((s) => SCOPE_LABEL[s as ApiScope] ?? s).join(", ")}</td>
                 <td>{k.revokedAt ? `Återkallad ${formatDateTime(k.revokedAt)}` : k.lastUsedAt ? formatDateTime(k.lastUsedAt) : "Aldrig"}</td>
                 <td>
                   {!k.revokedAt && (

@@ -145,6 +145,8 @@ function benefitFrom(formData: FormData, employeeId: string): Benefit {
         vehicleTaxOre: kronor(formData, "vehicleTax", "Fordonsskatten"),
         businessMilPerYear: Math.round(mil),
         fuelPaidByEmployer: text(formData, "fuelPaidByEmployer") === "on",
+        privateFuelOre: kronor(formData, "privateFuel", "Drivmedel för privat körning per månad"),
+        fuelEmployeePaymentOre: kronor(formData, "fuelEmployeePayment", "Den anställdes betalning för drivmedlet"),
       },
     };
   }

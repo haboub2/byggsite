@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { customerCreateSchema, invoiceCreateSchema, paymentCreateSchema, invoiceListQuerySchema } from "./schemas";
+import { customerCreateSchema, employeeListQuerySchema, invoiceCreateSchema, paymentCreateSchema, invoiceListQuerySchema } from "./schemas";
 import { zodToJsonSchema } from "./zod-json-schema";
 import { openApiDocument } from "./openapi";
 import { issuesToDetailsPure } from "./validation";
@@ -159,4 +159,23 @@ test("the ROT claim schema only accepts masked personal numbers", () => {
   assert.ok(pattern.test("19850412-XXXX"));
   assert.ok(!pattern.test("19850412-1234"));
   assert.ok(!pattern.test("850412-1234"));
+});
+
+test("employee list query: includeEnded is a real boolean on the wire, limit coerced", () => {
+  assert.equal(employeeListQuerySchema.parse({}).includeEnded, false);
+  assert.equal(employeeListQuerySchema.parse({ includeEnded: "false" }).includeEnded, false, '"false" in a query string is false');
+  assert.equal(employeeListQuerySchema.parse({ includeEnded: "true" }).includeEnded, true);
+  assert.equal(employeeListQuerySchema.safeParse({ includeEnded: "ja" }).success, false);
+  assert.equal(employeeListQuerySchema.parse({ limit: "5" }).limit, 5);
+});
+
+test("openapi: the HR resources are published with their tags, and the employee never has a bank account", () => {
+  const doc = openApiDocument("https://example.se") as unknown as { paths: Record<string, Record<string, { tags: string[] }>>; components: { schemas: Record<string, { properties: Record<string, unknown>; required?: string[] }> } };
+  for (const p of ["/employees", "/employees/{id}", "/time-entries", "/absences", "/payslips", "/payslips/{id}", "/payslips/{id}/pdf", "/pay-runs", "/pay-runs/{id}"]) assert.ok(doc.paths[p], p);
+  assert.ok(doc.paths["/time-entries"].post);
+  assert.equal(doc.paths["/payslips"].get.tags[0], "Lön");
+  const employee = doc.components.schemas.Employee;
+  assert.ok(employee.properties.personalNumber);
+  for (const k of ["bankAccount", "bankClearing", "street", "notes", "userId"]) assert.ok(!(k in employee.properties), k);
+  assert.ok(doc.components.schemas.Payslip.required?.includes("lines"));
 });

@@ -10,8 +10,15 @@ import { createHash, randomBytes } from "node:crypto";
  */
 
 export type ApiKeyEnv = "live" | "test";
-export const API_SCOPES = ["read", "write", "admin"] as const;
+/**
+ * read: kunder, fakturor, betalningar, planer, ROT, händelser. write: skapa
+ * och ändra dem. payroll: personal, tid, frånvaro, lönebesked och
+ * körningar (fas 6), aldrig underförstått av read eller write, så en
+ * faktureringsnyckel ser ingen lön. admin: allt.
+ */
+export const API_SCOPES = ["read", "write", "payroll", "admin"] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
+export const SCOPE_LABEL: Record<ApiScope, string> = { read: "Läsa", write: "Läsa och skriva", payroll: "Personal och lön", admin: "Allt" };
 
 const ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const KEY_RE = /^bf_(live|test)_[0-9A-Za-z]{32}$/;
@@ -46,9 +53,16 @@ export function bearerToken(header: string | null): string | null {
   return m ? m[1] : null;
 }
 
-/** True when the key's scopes cover what the route needs. "admin" implies everything, "write" implies "read". */
-export function hasScope(granted: readonly string[], needed: ApiScope): boolean {
+/**
+ * True when the key's scopes cover what the route needs (one scope, or
+ * every scope of a list). "admin" implies everything, "write" implies
+ * "read"; "payroll" is implied by nothing but "admin".
+ */
+export function hasScope(granted: readonly string[], needed: ApiScope | readonly ApiScope[]): boolean {
+  const wanted = Array.isArray(needed) ? (needed as readonly ApiScope[]) : [needed as ApiScope];
   if (granted.includes("admin")) return true;
-  if (needed === "read") return granted.includes("read") || granted.includes("write");
-  return granted.includes(needed);
+  return wanted.every((n) => (n === "read" ? granted.includes("read") || granted.includes("write") : granted.includes(n)));
 }
+
+/** "read", or "payroll och write", for messages. */
+export const scopeText = (needed: ApiScope | readonly ApiScope[]): string => (Array.isArray(needed) ? (needed as readonly ApiScope[]).join(" och ") : String(needed));

@@ -36,8 +36,11 @@ export function CreateKeyForm() {
           Behörighet
         </label>
         <select id="key-access" name="access" defaultValue="read">
-          <option value="read">Läsa</option>
-          <option value="write">Läsa och skriva</option>
+          <option value="read">Läsa (fakturering)</option>
+          <option value="write">Läsa och skriva (fakturering)</option>
+          <option value="payroll">Läsa personal och lön</option>
+          <option value="payroll-write">Personal och lön, läsa och skriva tid</option>
+          <option value="all">Allt (fakturering och lön, läsa och skriva)</option>
         </select>
         <button type="submit" className="btn btn-primary" disabled={pending}>
           {pending ? "Skapar…" : "Skapa nyckel"}

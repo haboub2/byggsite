@@ -17,7 +17,9 @@ export async function createApiKeyAction(_prev: ApiAdminState, formData: FormDat
   const check = await requireRole("admin");
   if (!check.ok) return { error: "Bara ägare och administratörer hanterar API-nycklar." };
   const access = String(formData.get("access") ?? "read");
-  const scopes: ApiScope[] = access === "write" ? ["read", "write"] : ["read"];
+  // "payroll" is never implied by read or write: an invoicing key sees no salaries (lib/api/keys.ts).
+  const SCOPES: Record<string, ApiScope[]> = { read: ["read"], write: ["read", "write"], payroll: ["payroll"], "payroll-write": ["payroll", "write"], all: ["read", "write", "payroll"] };
+  const scopes: ApiScope[] = SCOPES[access] ?? ["read"];
   try {
     const { token } = await createApiKey(String(formData.get("name") ?? ""), scopes, actorOf(check.email));
     revalidatePath(PAGE);

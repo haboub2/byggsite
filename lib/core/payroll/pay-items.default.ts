@@ -14,7 +14,7 @@ import type { PayItem, PayItemFlags } from "./payslip";
  * AGI fältkoder (individuppgift), checked 2026-10-30 against Skatteverket's
  * "Så fyller du i arbetsgivardeklarationen" and the technical description
  * 1.1.18.2: 011 kontant bruttolön, 012 övriga skattepliktiga förmåner,
- * 013 bilförmån, 131 kontant ersättning som inte är underlag för
+ * 013 bilförmån, 018 drivmedel vid bilförmån, 131 kontant ersättning som inte är underlag för
  * avgifter (the 1 000 kr rule), 050 bilersättning and 051 traktamente are
  * checkboxes for tax-free amounts, 023 is "varav styrelsearvode" (also
  * inside 011), 001 avdragen skatt. Huvuduppgift: 487 avgifter, 497 skatt.
@@ -25,6 +25,8 @@ export const AGI_BOXES = {
   cashPay: "011",
   benefits: "012",
   carBenefit: "013",
+  /** Drivmedel vid bilförmån: 1,2 × marknadsvärdet (61 kap. 10 § IL); avgifter on the value without the factor. */
+  fuelBenefit: "018",
   boardFeeOfWhich: "023",
   notContributionBase: "131",
   mileageFlag: "050",
@@ -111,6 +113,13 @@ export const DEFAULT_PAY_ITEMS: readonly PayItem[] = [
   item("1800", "Bilförmån", "benefit", { ...pay("7385", { vacationPayBasis: false, pensionReportable: false, agiBox: AGI_BOXES.carBenefit }), counterAccount: "7399", foraCategory: null }),
   item("1810", "Kostförmån", "benefit", { ...pay("7382", { vacationPayBasis: false, pensionReportable: false, agiBox: AGI_BOXES.benefits }), counterAccount: "7399", foraCategory: null }),
   item("1820", "Övrig förmån", "benefit", { ...pay("7389", { vacationPayBasis: false, pensionReportable: false, agiBox: AGI_BOXES.benefits }), counterAccount: "7399", foraCategory: null }),
+  // Drivmedelsförmån (phase 6): the market value of the private fuel is
+  // underlag for both tax and avgifter (1830); the 20 % uplift of 61 kap.
+  // 10 § is taxed but carries no avgifter (1831). Both go in ruta 018, so
+  // the box holds 1,2 × the market value as Skatteverket asks, and the
+  // payslip's contribution base holds the value without the factor.
+  item("1830", "Drivmedelsförmån", "benefit", { ...pay("7385", { vacationPayBasis: false, pensionReportable: false, agiBox: AGI_BOXES.fuelBenefit }), counterAccount: "7399", foraCategory: null }),
+  item("1831", "Drivmedelsförmån, uppräkning 1,2", "benefit", { ...pay("7385", { vacationPayBasis: false, pensionReportable: false, subjectToEmployerContribution: false, agiBox: AGI_BOXES.fuelBenefit }), counterAccount: "7399", foraCategory: null }),
   // Expenses
   item("1900", "Traktamente skattefritt", "per_diem", taxFree("7321", AGI_BOXES.perDiemFlag)),
   item("1901", "Traktamente skattepliktigt", "per_diem", pay("7322", { vacationPayBasis: false, pensionReportable: false, foraCategory: null })),

@@ -19,7 +19,7 @@
  *   3. Fixed and variable items: arvode (`uppdrag`) when its period ends
  *      in the month, corrections from earlier runs as retro lines, each
  *      benefit that applies some day of the salary month at its value for
- *      the pay date (benefits.ts, codes 1800/1810/1820), and every approved
+ *      the pay date (benefits.ts, codes 1800/1810/1820, drivmedel 1830/1831), and every approved
  *      expense claim not yet paid dated in or before the salary month
  *      (expenses.ts, codes 1900/1901/1910/1911/1920). Benefit and claim
  *      lines carry their `source`; the database pays a claim once.
@@ -44,7 +44,7 @@ import { clockAlerts, heldForms, type ClockRow } from "../hr/clocks";
 import { inForce, taxOn, type Employee, type EmploymentVersion, type TaxVersion } from "../hr/schema";
 import { atlWarnings, currentEntries, netHours, toWorkBlocks, type TimeEntry } from "../hr/time";
 import { pensionPremium } from "./contributions";
-import { benefitActive, benefitLine, benefitMonth, type Benefit } from "./benefits";
+import { benefitActive, benefitLine, benefitMonth, fuelLines, type Benefit } from "./benefits";
 import { claimLines, type ApprovedClaim } from "./expenses";
 import { addMonths } from "./employment-clocks";
 import { assemblePayslip, payItemByCode, reconcile, type PayItem, type PayLineInput, type PayslipDocument } from "./payslip";
@@ -528,6 +528,7 @@ function computePerson(input: RunInput, p: RunPerson): PersonOutcome {
     for (const w of month.warnings) check("benefit", "warn", w);
     const line = benefitLine(b, month, periodStart, periodEnd);
     if (line) lines.push(line);
+    lines.push(...fuelLines(b, month, periodStart, periodEnd));
   }
   for (const c of claims) lines.push(...claimLines(c));
 
