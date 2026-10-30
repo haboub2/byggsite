@@ -130,7 +130,7 @@ export function payItemsOn(rows: readonly (PayItem & { validFrom: IsoDate })[], 
     const b = best.get(r.code);
     if (!b || r.version > b.version) best.set(r.code, r);
   }
-  return [...best.values()].map(({ validFrom: _, ...item }) => item).sort((a, b) => a.code.localeCompare(b.code));
+  return [...best.values()].map((r) => ({ code: r.code, name: r.name, kind: r.kind, version: r.version, flags: r.flags })).sort((a, b) => a.code.localeCompare(b.code));
 }
 
 /* ---------- codes and agreements ---------- */
@@ -529,6 +529,7 @@ function computePerson(input: RunInput, p: RunPerson): PersonOutcome {
 
   // 9. Semesterlöneskuld and the tjänstepension accrual.
   let liability = 0;
+  let remainingDays: number | null = null;
   if (vacationRule === "sammalon" && monthly.version) {
     const model = vacationModelFor(input.settings);
     const versions = p.versions.filter((x) => x.vacationRule !== "none");
@@ -539,6 +540,7 @@ function computePerson(input: RunInput, p: RunPerson): PersonOutcome {
       model.earning === "previous-year" && current
         ? paidDaysEarned({ rules, yearFrom: years.earningYear.from, yearTo: years.earningYear.to, employedFrom: firstStart(versions), employedTo: periodEnd, nonQualifyingDays: 0, daysPerYear: monthly.version.vacationDays }).paidDays
         : 0;
+    remainingDays = current?.remainingDays ?? null;
     const days = Math.max(0, (current?.remainingDays ?? 0) + earningSoFar);
     liability = lineAmount(monthlyVacationDayValue(monthlySalaryOre, agreement.vacationDayValuePercent, agreement.vacationDailySupplementPercent), days);
   } else if (vacationRule === "procent" && hourly.version && hourly.version.form !== "sava") {
@@ -556,6 +558,17 @@ function computePerson(input: RunInput, p: RunPerson): PersonOutcome {
     if (v?.endsOn && v.endsOn >= periodStart && daysBetween(periodEnd, v.endsOn) <= 30) check("contract-ending", "warn", `avtalet slutar ${v.endsOn}${v.vacationRule !== "none" ? "; semesterersättning för sparade dagar betalas i slutlönen" : ""}.`);
   }
 
+  document.context = {
+    timeFrom,
+    timeTo,
+    taxTableImportId: document.taxTableVersion ? (input.taxTable?.importId ?? null) : null,
+    pnrMasked: e.pnrMasked,
+    group,
+    yearToDate: { cashGrossOre: p.history.yearToDateCashGrossOre + document.totals.cashGrossOre, taxOre: p.history.yearToDateTaxOre + document.totals.taxOre },
+    vacation: { rule: vacationRule, remainingDays, liabilityOre: liability, liabilityChangeOre: liability - p.history.vacationLiabilityOre },
+    pension: { scheme: pensionScheme, premiumOre: premium?.totalOre ?? 0 },
+    correctionIds: pending.map((c) => c.id),
+  };
   return {
     payslip: {
       employeeId: e.id,

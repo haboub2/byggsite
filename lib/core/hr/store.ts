@@ -425,6 +425,20 @@ export async function revealPnr(id: string, reason: string): Promise<string | nu
   return (data as string | null) ?? null;
 }
 
+/** The bank account in clear (digits), for owner/admin making the salary file; the database logs it. */
+export async function revealBankAccount(id: string, reason: string): Promise<string | null> {
+  if (isDemo()) {
+    const r = demo().employees.find((e) => e.id === id);
+    if (!r) throw new Error("Personen finns inte.");
+    if (r.bank_account) demoLog(id, "employee.bank_revealed", { reason });
+    return r.bank_account || null;
+  }
+  const supabase = await getDb();
+  const { data, error } = await supabase.rpc("hr_employee_bank_account", { p_employee: id, p_reason: reason });
+  if (error) fail("Kunde inte läsa kontonumret", error);
+  return (data as string | null) ?? null;
+}
+
 /* ---------- employments ---------- */
 
 /** Every version of every contract, for one person or the whole organisation, oldest first. */

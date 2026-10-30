@@ -103,6 +103,26 @@ export type PayslipBases = {
   sickPayCostOre: Ore;
 };
 
+/**
+ * What a payroll run adds around the calculators' document (run.ts): the
+ * periods, the tax table import, the person's figures that the payslip
+ * shows but does not compute from (year to date, semester), and the
+ * accruals the bookkeeping needs. Optional, so phase 0's documents parse.
+ */
+export type PayslipContext = {
+  /** The period time and absence were read from. */
+  timeFrom: IsoDate;
+  timeTo: IsoDate;
+  taxTableImportId: string | null;
+  pnrMasked: string;
+  group: "collective" | "salaried";
+  /** Including this payslip. */
+  yearToDate: { cashGrossOre: Ore; taxOre: Ore };
+  vacation: { rule: "procent" | "sammalon" | "none"; remainingDays: number | null; liabilityOre: Ore; liabilityChangeOre: Ore };
+  pension: { scheme: "saf-lo" | "itp1" | "none"; premiumOre: Ore };
+  correctionIds: string[];
+};
+
 export type PayslipDocument = {
   schema: 1;
   employeeId: string;
@@ -129,6 +149,7 @@ export type PayslipDocument = {
     employerContributionOre: Ore;
     sickPayCostOre: Ore;
   };
+  context?: PayslipContext;
 };
 
 export type PayslipInput = {
