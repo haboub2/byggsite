@@ -160,3 +160,14 @@ test("the ROT claim schema only accepts masked personal numbers", () => {
   assert.ok(!pattern.test("19850412-1234"));
   assert.ok(!pattern.test("850412-1234"));
 });
+
+test("openapi: the HR resources are published with their tags, and the employee never has a bank account", () => {
+  const doc = openApiDocument("https://example.se") as unknown as { paths: Record<string, Record<string, { tags: string[] }>>; components: { schemas: Record<string, { properties: Record<string, unknown>; required?: string[] }> } };
+  for (const p of ["/employees", "/employees/{id}", "/time-entries", "/absences", "/payslips", "/payslips/{id}", "/payslips/{id}/pdf", "/pay-runs", "/pay-runs/{id}"]) assert.ok(doc.paths[p], p);
+  assert.ok(doc.paths["/time-entries"].post);
+  assert.equal(doc.paths["/payslips"].get.tags[0], "Lön");
+  const employee = doc.components.schemas.Employee;
+  assert.ok(employee.properties.personalNumber);
+  for (const k of ["bankAccount", "bankClearing", "street", "notes", "userId"]) assert.ok(!(k in employee.properties), k);
+  assert.ok(doc.components.schemas.Payslip.required?.includes("lines"));
+});

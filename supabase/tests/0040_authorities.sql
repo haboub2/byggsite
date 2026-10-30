@@ -214,7 +214,7 @@ begin
     raise exception 'Satsraderna blev fel: %', b->'totals'->'contributionRows';
   end if;
   -- Erik: 32 000,50 kr blir 32 000 kr (ören bort).
-  if e->'boxes' <> '{"001":645000,"011":3200000,"012":0,"013":0,"023":0,"131":0}'::jsonb then raise exception 'Eriks rutor: %', e->'boxes'; end if;
+  if e->'boxes' <> '{"001":645000,"011":3200000,"012":0,"013":0,"018":0,"023":0,"131":0}'::jsonb then raise exception 'Eriks rutor: %', e->'boxes'; end if;
   if f->'boxes'->>'013' <> '150000' or not (f->'ticks'->>'050')::boolean or f->'contributions' <>
      '[{"category":"young","ratePercent":20.81,"baseOre":2500000},{"category":"full","ratePercent":31.42,"baseOre":650000}]'::jsonb then
     raise exception 'Fatimas rader: %', f;

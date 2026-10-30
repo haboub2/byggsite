@@ -382,7 +382,7 @@ test("phase 5: the board's quarterly fee runs through the run and the AGI (011 a
   assert.equal(doc.lines[0].text, "Styrelsearvode kv 2 2026");
   const agi = agiBuild("2026-06", [{ payslipId: "l1", runId: "r6", employeeId: "board-1", document: doc }]);
   assert.deepEqual(agi.problems, []);
-  assert.deepEqual(agi.people[0].boxes, { "001": 450_000, "011": 1_500_000, "012": 0, "013": 0, "023": 1_500_000, "131": 0 });
+  assert.deepEqual(agi.people[0].boxes, { "001": 450_000, "011": 1_500_000, "012": 0, "013": 0, "018": 0, "023": 1_500_000, "131": 0 });
   assert.equal(agi.totals.contributionsOre, 471_300); // 31,42 % × 15 000
   assert.equal(doc.context?.pension.scheme, "none");
 });
@@ -392,7 +392,7 @@ test("phase 5: bilförmån (Skatteverket's 2026 car) and 21 lunches on a payslip
   eva.versions = [version({ employeeId: "eva", form: "tillsvidare", payForm: "monthly", monthlySalaryOre: 4_000_000, startsOn: "2024-01-01", pensionScheme: "itp1" })];
   const benefit = (b: Partial<Benefit>): Benefit => ({ id: "x", employeeId: "eva", kind: "bil", description: "", validFrom: "2026-01-01", validTo: null, car: null, meals: {}, housing: null, marketValueOre: 0, employeePaymentOre: 0, ...b });
   eva.benefits = [
-    benefit({ id: "bil-1", car: { registrationNumber: "ABC123", model: "Volvo V60", firstRegisteredOn: "2024-03-01", modelYear: 2024, fuel: "diesel", newCarPriceOre: 30_000_000, extraEquipmentOre: 2_200_000, vehicleTaxOre: 405_000, businessMilPerYear: 0, fuelPaidByEmployer: false } }),
+    benefit({ id: "bil-1", car: { registrationNumber: "ABC123", model: "Volvo V60", firstRegisteredOn: "2024-03-01", modelYear: 2024, fuel: "diesel", newCarPriceOre: 30_000_000, extraEquipmentOre: 2_200_000, vehicleTaxOre: 405_000, businessMilPerYear: 0, fuelPaidByEmployer: false, privateFuelOre: 0, fuelEmployeePaymentOre: 0 } }),
     benefit({ id: "kost-1", kind: "kost", description: "lunch", meals: { lunchOrDinner: 21 } }),
     benefit({ id: "gammal", kind: "annan", description: "Slutad", marketValueOre: 10_000, validTo: "2026-10-31" }),
   ];
@@ -427,6 +427,67 @@ test("phase 5: bilförmån (Skatteverket's 2026 car) and 21 lunches on a payslip
   assert.equal(acc["2514"], -43_668);
   assert.equal(acc["7570"], 26_600); // 0,665 % × 40 000
   assert.equal(runJournal([slip], accounts).debitOre, runJournal([slip], accounts).creditOre);
+});
+
+test("phase 6: drivmedelsförmån, Skatteverket's example: 1 200 kr fuel → 1 440 kr taxed, 1 200 kr avgifter, ruta 018; repaid 1 200 kr → 240 kr; repaid 1 440 kr → nothing", () => {
+  const make = (privateFuelOre: number, fuelEmployeePaymentOre: number) => {
+    const eva = person({ id: "eva", name: "Eva Ek", birthDate: "1984-04-04", agreement: "tjanstemannaavtalet" });
+    eva.versions = [version({ employeeId: "eva", form: "tillsvidare", payForm: "monthly", monthlySalaryOre: 4_000_000, startsOn: "2024-01-01", pensionScheme: "itp1" })];
+    eva.benefits = [
+      {
+        id: "bil-1",
+        employeeId: "eva",
+        kind: "bil",
+        description: "",
+        validFrom: "2026-01-01",
+        validTo: null,
+        meals: {},
+        housing: null,
+        marketValueOre: 0,
+        employeePaymentOre: 0,
+        car: { registrationNumber: "ABC123", model: "Volvo V60", firstRegisteredOn: "2024-03-01", modelYear: 2024, fuel: "diesel", newCarPriceOre: 30_000_000, extraEquipmentOre: 2_200_000, vehicleTaxOre: 405_000, businessMilPerYear: 0, fuelPaidByEmployer: true, privateFuelOre, fuelEmployeePaymentOre },
+      },
+    ];
+    return computeRun(runFor("2026-11", {}, [eva]));
+  };
+  // Fuel paid by the employer but no value entered: a warning, no fuel lines.
+  const none = make(0, 0);
+  assert.ok(none.checks.some((c) => c.level === "warn" && /drivmedel/.test(c.text)));
+  assert.deepEqual(none.payslips[0].document.lines.map((l) => l.code), ["1010", "1800"]);
+
+  const run = make(120_000, 0);
+  assert.equal(run.checks.filter((c) => c.level === "block").length, 0, JSON.stringify(run.checks));
+  const doc = run.payslips[0].document;
+  assert.deepEqual(doc.lines.map((l) => [l.code, l.amountOre, l.source?.id ?? null]), [
+    ["1010", 4_000_000, null],
+    ["1800", 600_300, "bil-1"],
+    ["1830", 120_000, "bil-1"],
+    ["1831", 24_000, "bil-1"],
+  ]);
+  // Taxed on 1,2 × 1 200 kr, avgifter on 1 200 kr; the uplift is no cash and no pension pay.
+  assert.equal(doc.bases.tableTaxableOre, 4_000_000 + 600_300 + 144_000);
+  assert.equal(doc.contributions.baseOre, 4_000_000 + 600_300 + 120_000);
+  assert.equal(doc.totals.benefitOre, 600_300 + 144_000);
+  assert.equal(doc.totals.netOre, 4_000_000 - doc.totals.taxOre);
+  assert.equal(doc.bases.pensionBasisOre, 4_000_000);
+  const by: Record<string, number> = {};
+  for (const j of journalLines(doc)) by[j.account] = (by[j.account] ?? 0) + j.debitOre - j.creditOre;
+  assert.equal(by["7385"], 600_300 + 144_000);
+  assert.equal(by["7399"], -(600_300 + 144_000));
+  const agi = agiBuild("2026-11", [{ payslipId: "l1", runId: "r", employeeId: "eva", document: doc }]);
+  assert.equal(agi.people[0].boxes["013"], 600_300);
+  assert.equal(agi.people[0].boxes["018"], 144_000);
+  assert.equal(agi.people[0].contributionBaseOre, 4_720_300);
+  assert.equal(agi.totals.contributionsOre, Math.floor((4_720_300 * 31.42) / 100 / 100) * 100);
+
+  // Repaid 1 200 kr: 1 440 − 1 200 = 240 kr taxed, nothing in the avgifter base (Skatteverket's example).
+  const repaid = make(120_000, 120_000).payslips[0].document;
+  assert.deepEqual(repaid.lines.filter((l) => l.code.startsWith("183")).map((l) => [l.code, l.amountOre]), [["1831", 24_000]]);
+  assert.equal(repaid.contributions.baseOre, 4_600_300);
+  assert.equal(agiBuild("2026-11", [{ payslipId: "l1", runId: "r", employeeId: "eva", document: repaid }]).people[0].boxes["018"], 24_000);
+  // Repaid the whole 1 440 kr: no fuel lines at all.
+  const all = make(120_000, 144_000).payslips[0].document;
+  assert.deepEqual(all.lines.map((l) => l.code), ["1010", "1800"]);
 });
 
 test("phase 5: milersättning 60 mil with the own car and a two-day traktamente are paid tax-free and taxable, with AGI ticks 050 and 051", () => {

@@ -46,6 +46,8 @@ export const AGI_FORMAT = {
     cashPay: { code: "011", element: "KontantErsattningUlagAG" },
     benefits: { code: "012", element: "SkatteplOvrigaFormanerUlagAG" },
     carBenefit: { code: "013", element: "SkatteplBilformanUlagAG" },
+    /** Drivmedel vid bilförmån, 1,2 × marknadsvärdet (phase 6; element DrivmVidBilformanUlagAG in the component XSD). */
+    fuelBenefit: { code: "018", element: "DrivmVidBilformanUlagAG" },
     boardFee: { code: "023", element: "AndelStyrelsearvode" },
     mileage: { code: "050", element: "Bilersattning" },
     perDiem: { code: "051", element: "Traktamente" },

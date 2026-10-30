@@ -103,10 +103,17 @@ export const EVENT_TYPES = [
   "expense.approved",
   "expense.rejected",
   "expense.paid",
+  // Produkt (0043): löneartsregistret fick ett förval, aggregate "payroll".
+  "payroll.preset_applied",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
-/** Events an integrator can subscribe to. Internal ones (opened, updated) stay internal. */
+/**
+ * Events an integrator can subscribe to. Internal ones (opened, updated)
+ * stay internal. The payroll ones (phase 6) carry ids and sums, never a
+ * document or a personnummer; is_webhook_event() in 0043 holds the same
+ * list (webhooks.test.ts keeps them equal).
+ */
 export const WEBHOOK_EVENT_TYPES = [
   "invoice.issued",
   "invoice.sent",
@@ -120,6 +127,11 @@ export const WEBHOOK_EVENT_TYPES = [
   "rot_claim.sent",
   "rot_claim.paid",
   "rot_claim.rejected",
+  "payslip.approved",
+  "payroll.run_approved",
+  "payroll.run_closed",
+  "time.approved",
+  "expense.approved",
 ] as const satisfies readonly EventType[];
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
@@ -248,6 +260,7 @@ export const EVENT_LABEL: Record<EventType, { text: string; customer: boolean }>
   "expense.approved": { text: "Utlägg godkänt", customer: false },
   "expense.rejected": { text: "Utlägg avslaget", customer: false },
   "expense.paid": { text: "Utlägg betalt med lönen", customer: false },
+  "payroll.preset_applied": { text: "Löneartsregistret fick ett förval", customer: false },
 };
 
 /** The label for any stored event type, also one this version does not know. */

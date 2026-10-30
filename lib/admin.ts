@@ -4,6 +4,8 @@ import { isDemo } from "./leads";
 import { currentMembership } from "./core/org/current";
 import { getRequestSession } from "./core/org/session";
 import { hasAccess, type Access, type Role } from "./core/org/roles";
+import { ensureDemoHr } from "./core/payroll/demo-seed";
+import { todayIso } from "./quotes/schema";
 
 export type AdminCheck =
   | {
@@ -48,7 +50,11 @@ export async function requireRole(access: Access): Promise<AdminCheck> {
  * so this normally makes no round trip at all.
  */
 const whoIsAsking = cache(async (): Promise<AdminCheck> => {
-  if (isDemo()) return { ok: true, email: "demo@localhost", demo: true, userId: null, role: "owner", orgId: "demo", orgName: "Demo AB", site: true };
+  if (isDemo()) {
+    // The example organisation (people, time, a closed run, its AGI) exists before any admin page or action reads (phase 6).
+    await ensureDemoHr(todayIso());
+    return { ok: true, email: "demo@localhost", demo: true, userId: null, role: "owner", orgId: "demo", orgName: "Demo AB", site: true };
+  }
 
   const session = await getRequestSession();
   if (!session) return { ok: false, reason: "signed-out" };

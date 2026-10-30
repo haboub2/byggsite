@@ -87,6 +87,11 @@ export async function PersonBenefitsTab({ employeeId, today, canWrite }: { emplo
             </div>
             {error && <p className="hr-badge" data-tone="alert">{error}</p>}
             {preview && b.kind === "bil" && <CarParameters c={preview.computation as unknown as CarBenefitResult} />}
+            {preview?.fuel && (
+              <p className="hr-muted">
+                Drivmedelsförmån: marknadsvärde {kr(preview.fuel.marketValueOre)}{preview.fuel.repaidOre ? `, återbetalt ${kr(preview.fuel.repaidOre)}` : ""} → {kr(preview.fuel.taxableOre)} i skatteunderlaget (ruta 018), {kr(preview.fuel.baseOre)} i avgiftsunderlaget.
+              </p>
+            )}
             {preview && b.employeePaymentOre > 0 && (
               <p className="hr-muted">
                 Värde {kr(preview.grossOre)} minus det personen betalar, {kr(b.employeePaymentOre)} per månad.
@@ -95,7 +100,7 @@ export async function PersonBenefitsTab({ employeeId, today, canWrite }: { emplo
             {preview && preview.warnings.map((w) => <p key={w} className="hr-badge" data-tone="warn">{w}</p>)}
             <p className="hr-muted">
               <small>
-                Sparat värde {kr(b.monthlyValueOre)}/mån med reglerna från {b.ruleVersion}; körningen räknar varje månad med lönedagens regler. Förmånsvärdet bokförs mot 7399 och redovisas i ruta {b.kind === "bil" ? "013" : "012"}.
+                Sparat värde {kr(b.monthlyValueOre)}/mån med reglerna från {b.ruleVersion}; körningen räknar varje månad med lönedagens regler. Förmånsvärdet bokförs mot 7399 och redovisas i ruta {b.kind === "bil" ? "013 (drivmedel i 018)" : "012"}.
               </small>
             </p>
             {canWrite && !ended && (
@@ -191,6 +196,17 @@ export async function PersonBenefitsTab({ employeeId, today, canWrite }: { emplo
                   <input type="checkbox" name="fuelPaidByEmployer" /> Företaget betalar drivmedel för privat körning
                 </label>
               </div>
+              <div className="hr-inline">
+                <label>
+                  Drivmedel för privat körning, marknadsvärde kr per månad <input className="efield-input" name="privateFuel" inputMode="decimal" style={{ width: 120 }} />
+                </label>
+                <label>
+                  Den anställde betalar för drivmedlet, kr per månad <input className="efield-input" name="fuelEmployeePayment" inputMode="decimal" style={{ width: 120 }} />
+                </label>
+              </div>
+              <p className="hr-muted">
+                Drivmedelsförmånen (61 kap. 10 §) är drivmedlets marknadsvärde för den privata körningen gånger 1,2 i skatteunderlaget; arbetsgivaravgifterna räknas på värdet utan uppräkning. Lönebeskedet får raderna 1830 (värdet) och 1831 (uppräkningen), båda i ruta 018. Räkna ut värdet ur körjournalen: totalt drivmedel × privata km / totala km.
+              </p>
               <p className="hr-muted">
                 Nybilspriset ur Skatteverkets nybilsprislista; miljöbilsnedsättning (el och vätgas 350 000 kr, laddhybrid 140 000 kr, gas 100 000 kr, högst halva priset) räknas för bilar skattepliktiga från 1 juli 2022. Värdet per månad visas när förmånen är sparad.
               </p>

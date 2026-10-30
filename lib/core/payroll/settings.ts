@@ -63,6 +63,9 @@ export const payrollSettingsSchema = z.object({
   /** "law": 1 April–31 March, earned the year before. "calendar": the calendar year, earned the year before. */
   vacationYear: z.enum(["law", "calendar"]).default("law"),
   agreement: z.enum(["none", "byggavtalet", "tjanstemannaavtalet", "both"]).default("none"),
+  /** The pay item preset last applied to the register (payroll_apply_preset, 0043); null until one is. */
+  payItemPreset: z.enum(["none", "byggavtalet", "tjanstemannaavtalet", "both"]).nullable().default(null),
+  payItemPresetAppliedAt: z.string().nullable().default(null),
   /** Who may approve (user ids); empty: any owner or admin other than the one who computed. */
   approvers: z.array(z.string().uuid()).default([]),
   bank: payrollBankSchema.default({}),

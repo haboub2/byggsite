@@ -149,7 +149,8 @@ insert into memberships (org_id, user_id, role) values
 
 do $$
 begin
-  if (select count(*) from pay_items where org_id = (select v from prov where k = 'a')) <> 37 then
+  -- 37 lönearter i 0039, 39 sedan 0043 (1830 och 1831 drivmedelsförmån).
+  if (select count(*) from pay_items where org_id = (select v from prov where k = 'a')) <> 39 then
     raise exception 'Löneartsregistret såddes inte: % arter', (select count(*) from pay_items where org_id = (select v from prov where k = 'a'));
   end if;
   if not exists (select 1 from number_series where org_id = (select v from prov where k = 'a') and series = 'L') then

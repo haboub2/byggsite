@@ -1,10 +1,16 @@
 /**
- * The standard löneartsregister as the SQL values that 0039_payroll.sql
- * seeds every organisation with (payroll_seed_org). The migration holds a
- * copy between the BEGIN/END markers; pay-items-sql.test.ts fails if it
+ * The standard löneartsregister as the SQL values the migration seeds
+ * every organisation with (payroll_seed_org; 0039 first, replaced by 0043
+ * when 1830/1831 drivmedelsförmån were added). The current migration holds
+ * a copy between the BEGIN/END markers; pay-items-sql.test.ts fails if it
  * drifts from DEFAULT_PAY_ITEMS. Regenerate the block with
  * `npx tsx -e 'console.log(require("./lib/core/payroll/pay-items-sql.ts").payItemsSqlValues())'`.
+ * An applied migration is never edited: a new item means a new migration
+ * with the whole block and a new PAY_ITEMS_MIGRATION here.
  */
+
+/** The migration whose block is the current register. */
+export const PAY_ITEMS_MIGRATION = "0043_product.sql";
 
 import { DEFAULT_PAY_ITEMS } from "./pay-items.default";
 
