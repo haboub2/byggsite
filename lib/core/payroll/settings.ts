@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { addDays, type IsoDate } from "../rules/index";
+import { agiDueDate, payrollRulesAt, type AgiDue } from "../rules/payroll";
 import { isWorkday, previousWorkday, shiftWorkdays } from "../../workdays";
 import type { VacationYearModel } from "./vacation";
 
@@ -63,13 +64,31 @@ export const payrollSettingsSchema = z.object({
   pension: z
     .object({
       foraCustomerNo: z.string().trim().max(20).default(""),
+      /** The FOK-ID each arbetare is marked with on Fora's Mina sidor (FOK and six digits, e.g. FOK306834 for Byggavtalet). */
+      foraFokId: z
+        .string()
+        .trim()
+        .transform((v) => v.toUpperCase())
+        .refine((v) => v === "" || /^FOK\d{6}$/.test(v), "FOK-ID skrivs FOK och sex siffror, t.ex. FOK306834.")
+        .default(""),
       collectumCustomerNo: z.string().trim().max(20).default(""),
     })
     .default({}),
+  /** Arbetsgivardeklarationen: turnover above 40 MSEK moves the declaration day (not the payment); the file's contact person. */
+  agi: z
+    .object({
+      largeEmployer: z.boolean().default(false),
+      contactName: z.string().trim().max(80).default(""),
+      contactPhone: z.string().trim().max(20).default(""),
+      contactEmail: z.union([z.literal(""), z.string().trim().email("Ange en giltig e-postadress.")]).default(""),
+    })
+    .default({}),
+  /** Växa-stöd: the first employees the owner says qualify (at most two). */
+  vaxaStod: z.object({ employeeIds: z.array(z.string().uuid()).max(2, "Växa-stöd gäller högst två anställda.").default([]) }).default({}),
 });
 export type PayrollSettings = z.infer<typeof payrollSettingsSchema>;
 
-export const PAYROLL_DECISIONS = ["period", "payDay", "vacationYear", "agreement", "approvers", "bank", "accounts", "pension"] as const;
+export const PAYROLL_DECISIONS = ["period", "payDay", "vacationYear", "agreement", "approvers", "bank", "accounts", "pension", "agi", "vaxaStod"] as const;
 export type PayrollDecision = (typeof PAYROLL_DECISIONS)[number];
 export type PayrollConfirmed = Partial<Record<PayrollDecision, string>>;
 
@@ -82,6 +101,8 @@ export const DECISION_LABEL: Record<PayrollDecision, string> = {
   bank: "Bankkonto för lönefilen",
   accounts: "Kontering",
   pension: "Fora och Collectum",
+  agi: "Arbetsgivardeklarationen",
+  vaxaStod: "Växa-stöd",
 };
 
 /** What the default is and why, shown until the decision is saved. */
@@ -94,6 +115,8 @@ export const DECISION_DEFAULT: Record<PayrollDecision, string> = {
   bank: "Inget konto: bankfilen kan inte skapas förrän kontot är ifyllt.",
   accounts: "BAS 2026 enligt docs/hr-lon.md avsnitt 7 (redovisningskonsulten bör granska).",
   pension: "Inga kundnummer: premierna periodiseras men ingen rapport görs.",
+  agi: "Omsättning högst 40 miljoner kr: AGI och betalning den 12:e (17:e i januari och augusti). Kontaktperson: företagets undertecknare, telefon och e-post.",
+  vaxaStod: "Ingen vald: inget underlag för växa-stöd.",
 };
 
 export function parsePayrollSettings(data: unknown): PayrollSettings {
@@ -129,6 +152,12 @@ export function runPeriods(month: string, settings: Pick<PayrollSettings, "varia
   if (settings.variablePeriod === "same") return { periodStart, periodEnd, timeFrom: periodStart, timeTo: periodEnd };
   const prev = addDays(periodStart, -1).slice(0, 7);
   return { periodStart, periodEnd, timeFrom: `${prev}-01`, timeTo: monthEnd(prev) };
+}
+
+/** The AGI's declaration and payment days for a pay month, with the turnover decision. */
+export function agiDueFor(period: string, settings: Pick<PayrollSettings, "agi">): AgiDue {
+  const turnoverOre = settings.agi.largeEmployer ? payrollRulesAt(`${period}-01`).agi.largeTurnoverOre + 1 : 0;
+  return agiDueDate(period, { turnoverOre });
 }
 
 /** Idag: a run is due from this day (five workdays before pay day). */

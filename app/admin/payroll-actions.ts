@@ -234,7 +234,9 @@ const DECISION_FIELDS: Record<PayrollDecision, (formData: FormData) => Partial<P
   approvers: (f) => ({ approvers: f.getAll("approvers").map(String).filter((v) => /^[0-9a-f-]{36}$/.test(v)) }),
   bank: (f) => ({ bank: { iban: text(f, "iban"), bic: text(f, "bic"), customerId: text(f, "customerId") } }),
   accounts: (f) => ({ accounts: Object.fromEntries(Object.keys(payrollSettingsSchema.shape.accounts.removeDefault().shape).map((k) => [k, text(f, k)])) as PayrollSettings["accounts"] }),
-  pension: (f) => ({ pension: { foraCustomerNo: text(f, "foraCustomerNo"), collectumCustomerNo: text(f, "collectumCustomerNo") } }),
+  pension: (f) => ({ pension: { foraCustomerNo: text(f, "foraCustomerNo"), foraFokId: text(f, "foraFokId"), collectumCustomerNo: text(f, "collectumCustomerNo") } }),
+  agi: (f) => ({ agi: { largeEmployer: text(f, "largeEmployer") === "yes", contactName: text(f, "contactName"), contactPhone: text(f, "contactPhone"), contactEmail: text(f, "contactEmail") } }),
+  vaxaStod: (f) => ({ vaxaStod: { employeeIds: f.getAll("vaxaEmployees").map(String).filter((v) => /^[0-9a-f-]{36}$/.test(v)) } }),
 };
 
 export async function savePayrollSettingsAction(formData: FormData): Promise<void> {

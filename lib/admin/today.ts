@@ -16,8 +16,11 @@ import { hrTodos, type HrTodo } from "../core/hr/today";
 import { countWaitingEntries, listAbsences, listShifts, listWaitingEntries, openOffer, timePeople } from "../core/hr/time-store";
 import { certificatesDue } from "../core/hr/absence";
 import { timeTodos, type TimeTodo } from "../core/hr/time-today";
-import { getPayrollSettings, listRuns } from "../core/payroll/run-store";
-import { payrollTodos, type PayrollTodo } from "../core/payroll/today";
+import { getPayrollSettings, listRunPayslips, listRuns } from "../core/payroll/run-store";
+import { payrollTodos, type AgiPayment, type PayrollTodo } from "../core/payroll/today";
+import { listAgiDeclarations, listPensionReports } from "../core/payroll/authorities-store";
+import { authorityTodos, type AuthorityTodo } from "../core/payroll/authorities-today";
+import { fkReminders } from "../core/payroll/fk";
 import { addDays } from "../core/rules/index";
 
 /**
@@ -109,15 +112,49 @@ async function loadTimeTodos(access: Access[], today: string): Promise<TimeTodo[
   });
 }
 
-/** Payroll rows (lib/core/payroll/today.ts): a run due, a run to approve, the skattekonto payment. */
+/** Payroll rows (lib/core/payroll/today.ts): a run due, a run to approve, the skattekonto payment (the stored AGI's amount once there is one). */
 async function loadPayrollTodos(access: Access[], today: string): Promise<PayrollTodo[]> {
-  const [runs, { settings }, employees] = await Promise.all([listRuns(), getPayrollSettings(), listEmployees()]);
-  return payrollTodos({ runs, settings, today, canApprove: access.includes("admin"), hasPeople: employees.some((e) => !e.endedAt) });
+  const [runs, { settings }, employees, declarations] = await Promise.all([listRuns(), getPayrollSettings(), listEmployees(), listAgiDeclarations().catch(() => [])]);
+  const agi = new Map<string, AgiPayment>();
+  for (const d of declarations) if (!agi.has(d.period) && d.status !== "corrected") agi.set(d.period, { amountOre: d.taxOre + d.contributionsOre, version: d.version, paid: !!d.paidAt });
+  return payrollTodos({ runs, settings, today, canApprove: access.includes("admin"), hasPeople: employees.some((e) => !e.endedAt), agi });
+}
+
+/**
+ * The authorities' rows (lib/core/payroll/authorities-today.ts): the AGI and
+ * Fora due and not filed, for the last three pay months, and
+ * Försäkringskassan's reminders from the absences.
+ */
+async function loadAuthorityTodos(today: string): Promise<AuthorityTodo[]> {
+  const [runs, { settings }, employees, declarations, reports, absences] = await Promise.all([
+    listRuns(),
+    getPayrollSettings(),
+    listEmployees(),
+    listAgiDeclarations(),
+    listPensionReports(),
+    listAbsences({ from: addDays(today, -120), to: today }),
+  ]);
+  const recent = runs.filter((r) => r.approvedAt && r.payDate >= addDays(today, -95));
+  const foraPeriods: string[] = [];
+  for (const r of recent.filter((x) => x.status === "closed")) {
+    const slips = await listRunPayslips(r.id);
+    if (slips.some((s) => s.document.context?.pension.scheme === "saf-lo")) foraPeriods.push(r.agiPeriod);
+  }
+  return authorityTodos({
+    agiPeriods: [...new Set(recent.map((r) => r.agiPeriod))],
+    filedAgi: new Set(declarations.filter((d) => d.status !== "draft" && d.filedAt).map((d) => d.period)),
+    foraPeriods: [...new Set(foraPeriods)],
+    filedFora: new Set(reports.filter((r) => r.scheme === "fora" && r.filedAt).map((r) => r.period)),
+    fk: fkReminders(absences, today),
+    names: new Map(employees.map((e) => [e.id, e.name])),
+    settings,
+    today,
+  });
 }
 
 export async function loadToday(access: Access[], today = todayIso()): Promise<TodayData> {
   const canWrite = access.includes("write");
-  const [leads, sentQuotes, overduePhases, projects, overdueInvoices, events, hr, time, payroll] = await Promise.all([
+  const [leads, sentQuotes, overduePhases, projects, overdueInvoices, events, hr, time, payroll, authorities] = await Promise.all([
     canWrite ? safe("leads", () => listLeads({ status: "new" }, { limit: 20 }), { leads: [], total: 0 }) : { leads: [], total: 0 },
     canWrite ? safe("quotes", () => listQuotes({ status: "sent" }), []) : [],
     safe("phases", () => listOverduePhases(today), []),
@@ -127,6 +164,7 @@ export async function loadToday(access: Access[], today = todayIso()): Promise<T
     access.includes("payroll") ? safe("personal", () => loadHrTodos(today), []) : [],
     access.includes("time") && (access.includes("payroll") || access.includes("write")) ? safe("tid", () => loadTimeTodos(access, today), []) : [],
     access.includes("payroll") ? safe("lön", () => loadPayrollTodos(access, today), []) : [],
+    access.includes("payroll") ? safe("myndigheter", () => loadAuthorityTodos(today), []) : [],
   ]);
 
   const active = projects.filter((p) => p.status === "active").slice(0, MAX_PROJECTS);
@@ -254,6 +292,10 @@ export async function loadToday(access: Access[], today = todayIso()): Promise<T
 
   for (const p of payroll) {
     todos.push({ id: `payroll-${p.id}`, kind: "payroll", tag: p.tag, title: p.title, meta: p.meta, action: p.kind === "tax-account" ? "Öppna rapporten" : "Öppna lönekörningen", href: p.href, weight: p.weight + 2 });
+  }
+
+  for (const a of authorities) {
+    todos.push({ id: `authority-${a.id}`, kind: "payroll", tag: a.tag, title: a.title, meta: a.meta, action: a.kind === "fk" ? "Öppna frånvaron" : "Öppna rapporten", href: a.href, weight: a.weight + 2 });
   }
 
   todos.sort((a, b) => a.weight - b.weight);

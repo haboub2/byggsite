@@ -188,7 +188,19 @@ type DemoTime = {
   locks: LockRow[];
   schedules: ScheduleRow[];
   leaders: Record<string, string | null>;
-  balances: { employee_id: string; year_start_month_day: string; earning_model: VacationYearModel["earning"]; vacation_year_start: string; earned_days: number; paid_days: number; saved_days: number; updated_at: string }[];
+  balances: {
+    employee_id: string;
+    year_start_month_day: string;
+    earning_model: VacationYearModel["earning"];
+    vacation_year_start: string;
+    earned_days: number;
+    paid_days: number;
+    saved_days: number;
+    saved_in_days?: number;
+    expired_days?: number;
+    closed_at?: string | null;
+    updated_at: string;
+  }[];
 };
 const g = globalThis as unknown as {
   __binaafyTime?: DemoTime;
@@ -915,23 +927,49 @@ export async function withdrawShift(shiftId: string): Promise<void> {
 
 /* ---------- semester balances ---------- */
 
-export type StoredBalance = { vacationYearStart: IsoDate; model: VacationYearModel; earnedDays: number; paidDays: number; savedDays: number; updatedAt: string };
+export type StoredBalance = {
+  vacationYearStart: IsoDate;
+  model: VacationYearModel;
+  earnedDays: number;
+  paidDays: number;
+  savedDays: number;
+  /** Saved days brought in, and saved days that expired, as the year-end wrote them (0040). */
+  savedInDays: number;
+  expiredDays: number;
+  /** Set when the year-end closed the semesterår; a closed year never changes. */
+  closedAt: string | null;
+  updatedAt: string;
+};
 
 export async function listLeaveBalances(employeeId: string): Promise<StoredBalance[]> {
-  type Row = { year_start_month_day: string; earning_model: VacationYearModel["earning"]; vacation_year_start: string; earned_days: number | string; paid_days: number | string; saved_days: number | string; updated_at: string };
+  type Row = {
+    year_start_month_day: string;
+    earning_model: VacationYearModel["earning"];
+    vacation_year_start: string;
+    earned_days: number | string;
+    paid_days: number | string;
+    saved_days: number | string;
+    saved_in_days?: number | string;
+    expired_days?: number | string;
+    closed_at?: string | null;
+    updated_at: string;
+  };
   const map = (r: Row): StoredBalance => ({
     vacationYearStart: r.vacation_year_start,
     model: { startMonthDay: r.year_start_month_day, earning: r.earning_model },
     earnedDays: Number(r.earned_days),
     paidDays: Number(r.paid_days),
     savedDays: Number(r.saved_days),
+    savedInDays: Number(r.saved_in_days ?? 0),
+    expiredDays: Number(r.expired_days ?? 0),
+    closedAt: r.closed_at ?? null,
     updatedAt: r.updated_at,
   });
   if (isDemo()) return demo().balances.filter((b) => b.employee_id === employeeId).map(map).sort((a, b) => a.vacationYearStart.localeCompare(b.vacationYearStart));
   const supabase = await getDb();
   const { data, error } = await supabase
     .from("leave_balances")
-    .select("year_start_month_day, earning_model, vacation_year_start, earned_days, paid_days, saved_days, updated_at")
+    .select("year_start_month_day, earning_model, vacation_year_start, earned_days, paid_days, saved_days, saved_in_days, expired_days, closed_at, updated_at")
     .eq("employee_id", employeeId)
     .order("vacation_year_start");
   if (error) fail("Kunde inte hämta semestersaldona", error);
@@ -940,7 +978,9 @@ export async function listLeaveBalances(employeeId: string): Promise<StoredBalan
 
 /** Store the computed balances: one row per semesterår, with the model they were computed with. */
 export async function saveLeaveBalances(employeeId: string, model: VacationYearModel, rows: readonly VacationBalance[]): Promise<void> {
-  const out = rows.map((r) => ({
+  // A semesterår the year-end closed (0040) is not written again.
+  const closed = new Set((await listLeaveBalances(employeeId)).filter((b) => b.closedAt).map((b) => b.vacationYearStart));
+  const out = rows.filter((r) => !closed.has(r.yearFrom)).map((r) => ({
     employee_id: employeeId,
     year_start_month_day: model.startMonthDay,
     earning_model: model.earning,
@@ -951,7 +991,7 @@ export async function saveLeaveBalances(employeeId: string, model: VacationYearM
   }));
   if (isDemo()) {
     const now = new Date().toISOString();
-    demo().balances = [...demo().balances.filter((b) => b.employee_id !== employeeId), ...out.map((r) => ({ ...r, updated_at: now }))];
+    demo().balances = [...demo().balances.filter((b) => b.employee_id !== employeeId || closed.has(b.vacation_year_start)), ...out.map((r) => ({ ...r, updated_at: now }))];
     return;
   }
   if (!out.length) return;
@@ -959,4 +999,24 @@ export async function saveLeaveBalances(employeeId: string, model: VacationYearM
   const org = await currentOrgId();
   const { error } = await supabase.from("leave_balances").upsert(out.map((r) => ({ ...r, org_id: org })), { onConflict: "employee_id,vacation_year_start" });
   if (error) fail("Kunde inte spara semestersaldona", error);
+}
+
+/**
+ * Demo mode's year_close() for one person (0040): the closed semesterår
+ * with its saved and expired days, frozen, and the new one opened with its
+ * earned days and the saved days brought in.
+ */
+export async function closeLeaveYearDemo(
+  employeeId: string,
+  model: VacationYearModel,
+  row: { closing: { yearFrom: IsoDate; earnedDays: number; takenDays: number; savedDays: number; savedInDays: number }; opening: { yearFrom: IsoDate; earnedDays: number; savedInDays: number } | null; expiredDays: number },
+): Promise<void> {
+  if (!isDemo()) throw new Error("Bara i demoläget; databasen gör det i year_close().");
+  const now = new Date().toISOString();
+  const keep = demo().balances.filter((b) => !(b.employee_id === employeeId && (b.vacation_year_start === row.closing.yearFrom || b.vacation_year_start === row.opening?.yearFrom)));
+  const opened = demo().balances.find((b) => b.employee_id === employeeId && b.vacation_year_start === row.opening?.yearFrom);
+  const base = { employee_id: employeeId, year_start_month_day: model.startMonthDay, earning_model: model.earning, updated_at: now };
+  keep.push({ ...base, vacation_year_start: row.closing.yearFrom, earned_days: row.closing.earnedDays, paid_days: row.closing.takenDays, saved_days: row.closing.savedDays, saved_in_days: row.closing.savedInDays, expired_days: row.expiredDays, closed_at: now });
+  if (row.opening) keep.push({ ...base, vacation_year_start: row.opening.yearFrom, earned_days: row.opening.earnedDays, paid_days: opened?.paid_days ?? 0, saved_days: 0, saved_in_days: row.opening.savedInDays, closed_at: null });
+  demo().balances = keep;
 }

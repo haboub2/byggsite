@@ -84,6 +84,18 @@ export const EVENT_TYPES = [
   "payslip.approved",
   "payslip.pdf_created",
   "payslip.corrected",
+  // Myndigheterna (0040): deklarationer och rapporter aggregate "payroll", det personliga "employee".
+  "agi.created",
+  "agi.filed",
+  "agi.paid",
+  "agi.unpaid",
+  "agi.repayment_added",
+  "pension.report_created",
+  "pension.report_filed",
+  "employee.certificate_created",
+  "vaxa_stod.applied",
+  "vacation.year_closed",
+  "payroll.year_closed",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -212,6 +224,17 @@ export const EVENT_LABEL: Record<EventType, { text: string; customer: boolean }>
   "payslip.approved": { text: "Lönebesked godkänt", customer: false },
   "payslip.pdf_created": { text: "Lönebeskedets PDF skapad", customer: false },
   "payslip.corrected": { text: "Lönebesked rättat (retroaktivt i nästa körning)", customer: false },
+  "agi.created": { text: "Arbetsgivardeklaration skapad", customer: false },
+  "agi.filed": { text: "Arbetsgivardeklaration lämnad", customer: false },
+  "agi.paid": { text: "Skattekontot betalt", customer: false },
+  "agi.unpaid": { text: "Skattekontot markerat obetalt", customer: false },
+  "agi.repayment_added": { text: "Återbetald lön registrerad (AGI omprövas)", customer: false },
+  "pension.report_created": { text: "Pensionsrapport skapad", customer: false },
+  "pension.report_filed": { text: "Pensionsrapport lämnad", customer: false },
+  "employee.certificate_created": { text: "Arbetsgivarintyg skapat", customer: false },
+  "vaxa_stod.applied": { text: "Växa-stöd ansökt", customer: false },
+  "vacation.year_closed": { text: "Semesteråret stängt vid årsskiftet", customer: false },
+  "payroll.year_closed": { text: "Årsskiftet gjort", customer: false },
 };
 
 /** The label for any stored event type, also one this version does not know. */

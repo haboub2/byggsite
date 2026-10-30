@@ -25,3 +25,12 @@ test("a computed run waits for an approver; the skattekonto payment shows three 
   assert.match(tax[0].title, /27 560 kr/);
   assert.match(tax[0].meta, /2026-12-14/);
 });
+
+test("the skattekonto row takes the stored AGI's amount and goes away when it is marked paid", () => {
+  const closed = { id: "r", periodStart: "2026-11-01", payDate: "2026-11-25", agiPeriod: "2026-11", status: "closed", totals: { taxOre: 1_185_000, employerContributionOre: 1_571_000 } };
+  const args = { runs: [closed], settings: { payDay: 25 }, today: "2026-12-01", canApprove: true, hasPeople: false };
+  const declared = payrollTodos({ ...args, agi: new Map([["2026-11", { amountOre: 2_755_900, version: 2, paid: false }]]) });
+  assert.match(declared[0].title, /27 559 kr/);
+  assert.match(declared[0].meta, /version 2/);
+  assert.equal(payrollTodos({ ...args, agi: new Map([["2026-11", { amountOre: 2_755_900, version: 2, paid: true }]]) }).length, 0);
+});
