@@ -358,6 +358,9 @@ function restWarnings(employeeId: string, list: readonly TimeEntry[]): AtlWarnin
 
 /* ---------- the clock in Sweden ---------- */
 
+/** Demo mode only: the cookie that says whom /min-tid shows (there is no login). */
+export const DEMO_PICK_COOKIE = "min_tid_som";
+
 /** "HH:MM" in Swedish time for an instant, for clocking in and out on the server. */
 export function stockholmClock(now = new Date()): string {
   return new Intl.DateTimeFormat("sv-SE", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/Stockholm" }).format(now);
