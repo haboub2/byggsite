@@ -579,7 +579,8 @@ begin
     '[{"code":"1710","text":"Retroaktiv lön november","quantity":null,"unit":null,"unitPriceOre":null,"basisOre":null,"ratePercent":null,"amountOre":120000}]',
     'Lönehöjningen från 1 november kom inte med');
   insert into prov values ('rattelse', v_id);
-  if (select agi_period from payroll_corrections where id = v_id) <> '2026-11' or not (select agi_refile from payroll_corrections where id = v_id) then
+  -- agi_refile används inte sedan 0041 (rättelsen redovisas den månad den betalas).
+  if (select agi_period from payroll_corrections where id = v_id) <> '2026-11' then
     raise exception 'Rättelsen pekar inte på novembers AGI';
   end if;
 end $$;

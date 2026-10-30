@@ -2,13 +2,15 @@
  * The payroll rows on Idag (docs/hr-lon.md, section 11): a run that is due
  * (five workdays before pay day with nothing computed), a computed run
  * waiting for approval, and the skattekonto payment for a run's AGI
- * period. Pure; lib/admin/today.ts reads the runs and the settings.
+ * period: the stored declaration's amount (whole kronor per rate, as
+ * Skatteverket computes) once there is one, gone when it is marked paid.
+ * Pure; lib/admin/today.ts reads the runs and the settings.
  */
 
 import { addDays, daysBetween, type IsoDate } from "../rules/index";
 import { agiDueDate } from "../rules/payroll";
 import { monthLabel } from "./format";
-import { payDateFor, runDueFrom, type PayrollSettings } from "./settings";
+import { agiDueFor, payDateFor, runDueFrom, type PayrollSettings } from "./settings";
 
 export type PayrollTodo = { id: string; kind: "run-due" | "approve" | "tax-account"; tag: string; title: string; meta: string; href: string; weight: number };
 
@@ -16,7 +18,17 @@ type RunLike = { id: string; periodStart: IsoDate; payDate: IsoDate; agiPeriod: 
 
 const kr = (ore: number) => `${Math.round(ore / 100).toLocaleString("sv-SE").replace(/\s/g, " ")} kr`;
 
-export function payrollTodos(input: { runs: readonly RunLike[]; settings: Pick<PayrollSettings, "payDay">; today: IsoDate; canApprove: boolean; hasPeople: boolean }): PayrollTodo[] {
+/** The latest stored AGI per period: what to pay, and whether the owner has marked it paid. */
+export type AgiPayment = { amountOre: number; version: number; paid: boolean };
+
+export function payrollTodos(input: {
+  runs: readonly RunLike[];
+  settings: Pick<PayrollSettings, "payDay"> & Partial<Pick<PayrollSettings, "agi">>;
+  today: IsoDate;
+  canApprove: boolean;
+  hasPeople: boolean;
+  agi?: ReadonlyMap<string, AgiPayment>;
+}): PayrollTodo[] {
   const { today } = input;
   const out: PayrollTodo[] = [];
   if (input.hasPeople) {
@@ -42,16 +54,18 @@ export function payrollTodos(input: { runs: readonly RunLike[]; settings: Pick<P
       out.push({ id: `approve-${r.id}`, kind: "approve", tag: "Lön", title: `Lönen för ${monthLabel(r.periodStart)} väntar på godkännande`, meta: `Lönedag ${r.payDate}; den som räknade godkänner inte`, href: `/admin/lon/${r.id}`, weight: 2 });
     }
     if (r.status === "draft" || r.status === "calculated") continue;
-    const due = agiDueDate(r.agiPeriod);
+    const due = input.settings.agi ? agiDueFor(r.agiPeriod, { agi: input.settings.agi }) : agiDueDate(r.agiPeriod);
     const days = daysBetween(today, due.payBy);
     if (days < 0 || days > 21) continue;
-    const amount = (r.totals.taxOre ?? 0) + (r.totals.employerContributionOre ?? 0);
+    const declared = input.agi?.get(r.agiPeriod);
+    if (declared?.paid) continue;
+    const amount = declared ? declared.amountOre : (r.totals.taxOre ?? 0) + (r.totals.employerContributionOre ?? 0);
     out.push({
       id: `tax-${r.id}`,
       kind: "tax-account",
       tag: "Skattekonto",
       title: `Betala ${kr(amount)} till skattekontot (AGI ${r.agiPeriod})`,
-      meta: `Skatteavdrag och arbetsgivaravgifter senast ${due.payBy}; AGI lämnas samma dag`,
+      meta: `Skatteavdrag och arbetsgivaravgifter senast ${due.payBy}${declared ? `, enligt AGI version ${declared.version}` : ", ungefär (AGI är inte skapad)"}; ${due.declareBy === due.payBy ? "AGI lämnas samma dag" : `AGI senast ${due.declareBy}`}`,
       href: "/admin/rapporter#skattekonto",
       weight: days <= 3 ? 1 : 8,
     });

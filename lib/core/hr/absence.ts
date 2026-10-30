@@ -10,7 +10,7 @@
  * the part of each day the person was sick.
  */
 
-import { addDays, daysBetween, type IsoDate } from "../rules/index";
+import { eachDay, daysBetween, type IsoDate } from "../rules/index";
 import { PAYROLL_RULE_SETS, payrollRulesAt, type PayrollRuleSet } from "../rules/payroll";
 import { addMonths } from "../payroll/employment-clocks";
 import { scheduledHours, sickPay, type SickPayResult, type SickPeriod, type WorkSchedule } from "../payroll/sick-pay";
@@ -76,11 +76,6 @@ export function scheduleFromRules(rules: readonly ScheduleRule[]): Extract<WorkS
   return { kind: "weekly", hours, holidaysOff: true };
 }
 
-/** Calendar days in [from, to]. */
-function* days(from: IsoDate, to: IsoDate): Generator<IsoDate> {
-  for (let d = from; d <= to; d = addDays(d, 1)) yield d;
-}
-
 /** A spell's last day for counting: its end, or `asOf` while it goes on. */
 export const lastDay = (a: Pick<Absence, "from" | "to">, asOf: IsoDate): IsoDate => a.to ?? (asOf > a.from ? asOf : a.from);
 
@@ -121,7 +116,7 @@ export function linkSickPeriods(spells: readonly Pick<Absence, "id" | "from" | "
  */
 export function sickHours(schedule: WorkSchedule, spells: readonly Pick<Absence, "from" | "to" | "extent">[], asOf: IsoDate): Extract<WorkSchedule, { kind: "shifts" }> {
   const hours: Record<IsoDate, number> = {};
-  for (const s of spells) for (const d of days(s.from, lastDay(s, asOf))) hours[d] = Math.round(scheduledHours(schedule, d) * s.extent * 100) / 100;
+  for (const s of spells) for (const d of eachDay(s.from, lastDay(s, asOf))) hours[d] = Math.round(scheduledHours(schedule, d) * s.extent * 100) / 100;
   return { kind: "shifts", hours };
 }
 
@@ -201,7 +196,7 @@ export function certificatesDue(absences: readonly Absence[], asOf: IsoDate): Ce
       let n = 0;
       let dueFrom: IsoDate | null = null;
       for (const s of spells) {
-        for (const d of days(s.from, lastDay(s, asOf))) {
+        for (const d of eachDay(s.from, lastDay(s, asOf))) {
           if (d > asOf) break;
           if (++n === rules.certificateFromDay) dueFrom = d;
         }
@@ -224,7 +219,7 @@ export function absenceWorkdays(a: Pick<Absence, "from" | "to" | "extent">, rang
   const end = lastDay(a, asOf);
   const to = end < range.to ? end : range.to;
   let n = 0;
-  for (const d of days(from, to)) if (schedule ? scheduledHours(schedule, d) > 0 : isWorkday(d)) n += 1;
+  for (const d of eachDay(from, to)) if (schedule ? scheduledHours(schedule, d) > 0 : isWorkday(d)) n += 1;
   return Math.round(n * a.extent * 100) / 100;
 }
 

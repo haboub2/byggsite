@@ -118,7 +118,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
           {tab === "skatt" && <TaxTab employeeId={id} rows={tax} current={current} today={today} canWrite={canWrite} />}
           {tab === "tid" && <PersonTimeTab employeeId={id} month={/^\d{4}-\d{2}$/.test(manad ?? "") ? (manad as string) : today.slice(0, 7)} today={today} canWrite={canWrite} />}
           {tab === "franvaro" && <PersonAbsenceTab employeeId={id} today={today} canWrite={canWrite} />}
-          {tab === "lon" && <PersonPayTab employeeId={id} />}
+          {tab === "lon" && <PersonPayTab employeeId={id} canApprove={canWrite} />}
           {placeholder && "phase" in placeholder && (
             <div className="inbox-empty">
               <p>{placeholder.phase}</p>

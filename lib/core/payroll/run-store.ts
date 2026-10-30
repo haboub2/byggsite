@@ -119,7 +119,6 @@ export type Correction = {
   agiPeriod: string;
   lines: PayLineInput[];
   reason: string;
-  agiRefile: boolean;
   targetRunId: string | null;
   createdAt: string;
 };
@@ -242,7 +241,6 @@ type CorrectionRow = {
   agi_period: string;
   lines: PayLineInput[];
   reason: string;
-  agi_refile: boolean;
   target_run_id: string | null;
   created_at: string;
 };
@@ -254,7 +252,6 @@ const correctionFromRow = (r: CorrectionRow): Correction => ({
   agiPeriod: r.agi_period,
   lines: r.lines,
   reason: r.reason,
-  agiRefile: r.agi_refile,
   targetRunId: r.target_run_id,
   createdAt: r.created_at,
 });
@@ -1030,7 +1027,7 @@ export async function addCorrection(payslipId: string, lines: PayLineInput[], re
     const r = demoRun(p.run_id);
     if (r.status !== "closed") throw new Error("Rätta efter att körningen är stängd; innan dess räknas den om.");
     const id = crypto.randomUUID();
-    demo().corrections.push({ id, employee_id: p.employee_id, original_payslip_id: p.id, original_run_id: p.run_id, agi_period: r.agi_period, lines, reason, agi_refile: true, target_run_id: null, created_at: new Date().toISOString() });
+    demo().corrections.push({ id, employee_id: p.employee_id, original_payslip_id: p.id, original_run_id: p.run_id, agi_period: r.agi_period, lines, reason, target_run_id: null, created_at: new Date().toISOString() });
     return id;
   }
   const supabase = await getDb();

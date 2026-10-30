@@ -4,38 +4,56 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/admin";
 import { formatOre } from "@/lib/core/money";
 import { addDays } from "@/lib/core/rules/index";
-import { agiDueDate } from "@/lib/core/rules/payroll";
 import { todayIso } from "@/lib/quotes/schema";
 import { listEmployees } from "@/lib/core/hr/store";
 import { timeProjects } from "@/lib/core/hr/time-store";
 import { listLabourCosts } from "@/lib/core/projects/costs";
+import { hasAccess } from "@/lib/core/org/roles";
 import { getPayrollSettings, latestPayslipPerPerson, listRuns, RUN_STATUS_LABEL } from "@/lib/core/payroll/run-store";
 import { contributionOnLiability } from "@/lib/core/payroll/ledger";
 import { monthLabel } from "@/lib/core/payroll/format";
+import { agiDueFor } from "@/lib/core/payroll/settings";
+import { isAgiPeriod } from "@/lib/core/payroll/agi";
+import { listAgiDeclarationSummaries, type AgiDeclarationSummary } from "@/lib/core/payroll/authorities-store";
+import { markAgiPaidAction } from "@/app/admin/authorities-actions";
+import { Flash } from "@/components/admin/time/parts";
+import { AgiSection, ForaSection, VaxaSection, YearEndSection } from "@/components/admin/payroll/AuthoritySections";
 
 export const metadata: Metadata = { title: "Lönerapporter" };
 
 const kr = (ore: number | null | undefined) => (ore === null || ore === undefined ? "–" : formatOre(ore, { decimals: 0, currency: true }));
 
 /**
- * Rapporter (docs/hr-lon.md, sections 8 and 11): semesterlöneskuld per
- * person after the last run, labour cost per project and month from
- * approved time, löneskuld and the skattekonto amount per run with the AGI
- * date, and every run's reconciliation. For the accountant as well.
+ * Rapporter (docs/hr-lon.md, sections 8 and 11): the AGI per month with
+ * its versions and the diff before a refile, löneskuld and the skattekonto
+ * amount per run with the AGI date and a "betalt" mark, Fora, växa-stöd,
+ * the year-end, semesterlöneskuld per person after the last run, labour
+ * cost per project and month from approved time, and every run's
+ * reconciliation. For the accountant as well, without the buttons.
  */
-export default async function PayrollReportsPage() {
+export default async function PayrollReportsPage({ searchParams }: { searchParams: Promise<{ ok?: string; fel?: string; agi?: string; fora?: string; vaxa?: string; ar?: string }> }) {
   const check = await requireRole("payroll");
   if (!check.ok) redirect("/admin/login");
+  const sp = await searchParams;
+  const canApprove = hasAccess(check.role, "admin");
   const today = todayIso();
   const from = addDays(today, -365);
-  const [runs, latest, employees, costs, projects, { settings }] = await Promise.all([
+  const [runs, latest, employees, costs, projects, { settings }, declarations] = await Promise.all([
     listRuns(),
     latestPayslipPerPerson({ from: addDays(today, -800), to: addDays(today, 60) }),
     listEmployees(),
     listLabourCosts({ from, to: today }).catch(() => []),
     timeProjects().catch(() => []),
     getPayrollSettings(),
+    listAgiDeclarationSummaries().catch((): AgiDeclarationSummary[] => []),
   ]);
+  // The months the reports offer: every pay month with an approved run; the latest closed one first.
+  const payMonths = [...new Set(runs.filter((r) => r.approvedAt).map((r) => r.agiPeriod))].sort().reverse();
+  const defaultMonth = runs.find((r) => r.status === "closed")?.agiPeriod ?? payMonths[0] ?? addDays(`${today.slice(0, 7)}-01`, -1).slice(0, 7);
+  const pick = (v: string | undefined) => (v && isAgiPeriod(v) ? v : defaultMonth);
+  const year = Number(sp.ar) >= 2020 && Number(sp.ar) <= 2100 ? Number(sp.ar) : Number(today.slice(5, 7)) <= 3 ? Number(today.slice(0, 4)) - 1 : Number(today.slice(0, 4));
+  const keep = Object.fromEntries(Object.entries({ agi: sp.agi, fora: sp.fora, vaxa: sp.vaxa, ar: sp.ar }).filter((e): e is [string, string] => !!e[1]));
+  const declared = (period: string) => declarations.find((d) => d.period === period && d.status !== "corrected");
   // Closed runs carry the reconciliation they were closed with; open ones are not reconciled yet.
   const recons = runs.filter((r) => r.status !== "draft").slice(0, 12);
 
@@ -62,11 +80,14 @@ export default async function PayrollReportsPage() {
           <div>
             <span className="eyebrow">Lön</span>
             <h1>Lönerapporter</h1>
-            <p className="admin-intro">Semesterlöneskuld, lönekostnad per projekt, löneskuld och skattekonto, och avstämningen per körning. AGI-filen, Fora och Collectum kommer i fas 4.</p>
+            <p className="admin-intro">Arbetsgivardeklarationen, skattekontot, Fora, växa-stöd och årsskiftet; semesterlöneskuld, lönekostnad per projekt och avstämningen per körning. Filerna skickas aldrig härifrån: du laddar upp dem hos Skatteverket och Fora.</p>
           </div>
         </div>
+        <Flash ok={sp.ok} error={sp.fel} />
 
         <div className="hr-stack hr-gap">
+          <AgiSection period={pick(sp.agi)} months={payMonths} settings={settings} canApprove={canApprove} keep={keep} />
+
           <div className="hr-card" id="semesterloneskuld">
             <h2 className="hr-h2">Semesterlöneskuld per person</h2>
             {liabilities.length === 0 ? (
@@ -160,13 +181,15 @@ export default async function PayrollReportsPage() {
                       <th className="tg-num">Arbetsgivaravgifter</th>
                       <th className="tg-num">Till skattekontot</th>
                       <th>AGI och betalning senast</th>
+                      <th>Betalt</th>
                     </tr>
                   </thead>
                   <tbody>
                     {runs
                       .filter((r) => r.approvedAt)
                       .map((r) => {
-                        const due = agiDueDate(r.agiPeriod);
+                        const due = agiDueFor(r.agiPeriod, settings);
+                        const d = declared(r.agiPeriod);
                         return (
                           <tr key={r.id}>
                             <td>
@@ -177,12 +200,34 @@ export default async function PayrollReportsPage() {
                             <td className="tg-num">{kr(r.totals.taxOre)}</td>
                             <td className="tg-num">{kr(r.totals.employerContributionOre)}</td>
                             <td className="tg-num">
-                              <strong>{kr((r.totals.taxOre ?? 0) + (r.totals.employerContributionOre ?? 0))}</strong>
+                              <strong>{kr(d ? d.taxOre + d.contributionsOre : (r.totals.taxOre ?? 0) + (r.totals.employerContributionOre ?? 0))}</strong>
+                              <small className="hr-muted">{d ? ` AGI v${d.version}` : " ungefär"}</small>
                             </td>
                             <td>
                               {due.declareBy}
-                              {due.payBy !== due.declareBy ? ` / ${due.payBy}` : ""}
-                              {due.payBy < today && r.status !== "closed" ? " (passerat)" : ""}
+                              {due.payBy !== due.declareBy ? ` / betala ${due.payBy}` : ""}
+                              {due.payBy < today && !d?.paidAt ? " (passerat)" : ""}
+                            </td>
+                            <td>
+                              {d && d.status !== "filed" && !d.paidAt ? (
+                                <span className="hr-muted">lämna AGI v{d.version} först</span>
+                              ) : d ? (
+                                canApprove ? (
+                                  <form action={markAgiPaidAction}>
+                                    <input type="hidden" name="id" value={d.id} />
+                                    <input type="hidden" name="paid" value={d.paidAt ? "no" : "yes"} />
+                                    <button className="btn btn-ghost hr-btn-small" type="submit" aria-pressed={!!d.paidAt}>
+                                      {d.paidAt ? "☑ Betalt" : "☐ Markera betalt"}
+                                    </button>
+                                  </form>
+                                ) : d.paidAt ? (
+                                  "Ja"
+                                ) : (
+                                  "Nej"
+                                )
+                              ) : (
+                                <span className="hr-muted">skapa AGI först</span>
+                              )}
                             </td>
                           </tr>
                         );
@@ -191,8 +236,12 @@ export default async function PayrollReportsPage() {
                 </table>
               </div>
             )}
-            <p className="hr-muted">Löneskulden ({settings.accounts.net}) är nettolönen tills banken har betalat lönefilen. Arbetsgivaravgifterna i AGI räknas i hela kronor per person; beloppet här är lönebeskedens öresbelopp.</p>
+            <p className="hr-muted">Löneskulden ({settings.accounts.net}) är nettolönen tills banken har betalat lönefilen. Till skattekontot: den senaste AGI-versionens 487 + 497 (hela kronor per person och sats, som Skatteverket räknar); innan AGI är skapad lönebeskedens öresbelopp. {settings.agi.largeEmployer ? "Omsättning över 40 miljoner kr: AGI den 26:e, betalningen den 12:e." : ""}</p>
           </div>
+
+          <ForaSection period={pick(sp.fora)} months={payMonths} settings={settings} canApprove={canApprove} keep={keep} />
+          <VaxaSection period={pick(sp.vaxa)} months={payMonths} canApprove={canApprove} keep={keep} />
+          <YearEndSection year={year} today={today} canApprove={canApprove} keep={keep} />
 
           <div className="hr-card" id="avstamning">
             <h2 className="hr-h2">Avstämning per körning</h2>

@@ -2,9 +2,11 @@
 
 Status: **plan, written 2026-10-30. Phase 0 (rule book, tax tables,
 calculators), phase 1 (people, contracts, LAS clocks, migration 0035),
-phase 2 (time, schedules, absence, /min-tid, migration 0037) and phase 3
+phase 2 (time, schedules, absence, /min-tid, migration 0037), phase 3
 (the payroll run, migration 0039; the parallel run of rule 9 is still to
-do) are built, see the *Läge* sections below; AGI is not.** Written in English
+do) and phase 4 (AGI, skattekonto, Fora, intyg, växa-stöd, year-end,
+migrations 0040 and 0041; no file has been through Skatteverket's or Fora's
+services yet) are built, see the *Läge* sections below.** Written in English
 because that is how the request was made; Swedish legal terms are kept in
 Swedish because that is what Skatteverket, the law and the collective
 agreements call them. "You" is Ibrahim (decisions, accounts, agreements), "a
@@ -598,6 +600,256 @@ Lönerapporter under Ekonomi, Inställningar: lön.
 - Section 10: the payroll entry's lines (per account, not per person) are
   visible to every member who reads the bookkeeping, as all of the ledger
   is.
+
+## Läge: phase 4 done (2026-10-30)
+
+The authorities: the arbetsgivardeklaration per month in frozen versions
+with the diff before a refile, the skattekonto amount and a "betalt" mark,
+Fora's monthly pay, the arbetsgivarintyg, the växa-stöd basis,
+Försäkringskassan's reminders and the year-end (semester transition and a
+year summary per person). Draft PR "HR fas 4: arbetsgivardeklaration,
+skattekonto, Fora, intyg och årsskifte (0040)". 0040 is applied to the
+Supabase project (2026-10-30, after 0039) and
+`supabase/tests/0040_authorities.sql` passed there. The review's fixes are
+in `0041_authorities_fixes.sql`, **which must be applied after 0040 and has
+not run against Supabase**; then run `supabase/tests/0040_authorities.sql`
+again (it now covers 0041, and `0039_payroll.sql` no longer checks the
+unused `agi_refile`).
+Nothing is ever sent: the owner uploads the AGI file in Skatteverket's
+e-service and signs with BankID, and reports to Fora on Mina sidor.
+**Acceptance by Skatteverket's e-service for a real month is your test**
+(the done-criterion of phase 4 in section 12); try the file in
+Skatteverket's test service first.
+
+**Where things are**
+
+| What | File |
+|---|---|
+| The AGI file's format as data with its sources: schema 1.1, field codes, tick boxes, removal, which month a correction belongs in; Fora's deadline, what pay counts, and the file | `lib/core/rules/agi-format.ts` (`AGI_FORMAT`, `FORA_FORMAT`, `unverifiedFormatRules`) |
+| Försäkringskassan's 7 days, Fora's deadline, the intyg's 12 months | `lib/core/rules/authorities.ts` (`AUTHORITY_RULES`, `unverifiedAuthorityRules`) |
+| Skatteverket's XSDs (downloaded 2026-10-30, SHA-256 in `AGI_FORMAT.schemaFiles`) | `lib/core/payroll/fixtures/agi/` |
+| The month's HU/IU from frozen payslips and repayments, the records with specifikationsnummer, the XML writer, a reader, the check of a written file, the diff | `lib/core/payroll/agi.ts` |
+| Fora's pay per arbetare and the file | `lib/core/payroll/fora.ts` |
+| Arbetsgivarintyg content (SO 11) | `lib/core/payroll/certificate.ts`; PDF `lib/pdf/EmployerCertificatePdf.tsx` |
+| Växa-stöd basis and eligibility | `lib/core/payroll/vaxa-stod.ts` |
+| Semester transition and year summary | `lib/core/payroll/year-end.ts`; PDF `lib/pdf/YearSummaryPdf.tsx` |
+| Försäkringskassan reminders | `lib/core/payroll/fk.ts` |
+| Idag rows (AGI due, Fora due, FK); the skattekonto row now takes the stored AGI and disappears when marked paid | `lib/core/payroll/authorities-today.ts`, `lib/core/payroll/today.ts`, `lib/admin/today.ts` |
+| Migration: `agi_declarations`, `agi_repayments`, `pension_reports`, `employer_certificates`, `vaxa_stod_claims`, `year_closings`, three columns on `leave_balances`, the functions, RLS, events | `supabase/migrations/0040_authorities.sql` |
+| Review fixes: an open run stops the AGI, växa-stöd's cap and month from the employment start, paid only when filed, `agi_refile` unused | `supabase/migrations/0041_authorities_fixes.sql` |
+| SQL tests | `supabase/tests/0040_authorities.sql` |
+| The SQL's rules and the SQL test's month against the rule book and `agiBuild()` | `lib/core/payroll/authorities-parity.test.ts`, `agi.test.ts` |
+| Store (RLS and the database's functions; memory in demo mode) | `lib/core/payroll/authorities-store.ts` |
+| Server actions | `app/admin/authorities-actions.ts` |
+| Pages | `app/admin/(dashboard)/rapporter/` (sections in `components/admin/payroll/AuthoritySections.tsx`; downloads `agi/[id]`, `fora/[id]`, `arsbesked/[year]`), Person › Lön (`PersonPayTab.tsx`, `personal/[id]/intyg/[certId]`), `/min-tid` "Mina arbetsgivarintyg" (`min-tid/intyg/[certId]`), Inställningar › Lön (decisions `agi`, `vaxaStod`, FOK-ID) |
+
+**The AGI format, as read on 2026-10-30.** Skatteverket's technical
+description 1.1.18.2 with its appendices (field list, structure, controls,
+summation and calculation rules; 1.1.18.1), the XSDs
+`arbetsgivardeklaration_1.1.xsd` and `_component_1.1.xsd` (version 1.1,
+created 2025-06-26) and the 19 example files, all downloaded from
+skatteverket.se; the URLs and the date are in `AGI_FORMAT`. The root is
+`<Skatteverket omrade="Arbetsgivardeklaration">`; each HU and IU is its own
+`Blankett`; fields carry `faltkod` with three digits. Boxes used: 201, 006,
+487 `SummaArbAvgSlf`, 497 `SummaSkatteavdr` (HU); 215
+`BetalningsmottagarId`, 570 `Specifikationsnummer`, 205 `Borttag`, 001
+`AvdrPrelSkatt` (always written, control S_183), 011
+`KontantErsattningUlagAG`, 012, 013, 023 `AndelStyrelsearvode`, 131
+`KontantErsattningEjUlagSA`, and 050 `Bilersattning` / 051 `Traktamente`
+as tick boxes (IU). Amounts are whole kronor and never negative.
+Skatteverket computes the avgifter itself from the IUs and the birth date
+(the young people's 25 000 kr cap and the older rate included; there is no
+field per rate) and compares 487 and 497 with its own sums.
+
+**What the database does**
+
+- `agi_build(org, period)`, readable by the accountant: a run with pay day
+  in the month that is approved, paid or booked but not closed is a
+  problem ("Körningen för … är inte stängd"), so the file cannot be made
+  without it (0041; 0040's sums are now `agi_build_sums()`). The sums are
+  the closed runs with pay day in the month, from `payslip_lines.agi_box` and the frozen
+  documents (category, avgiftsunderlag, tax), minus repayments for the
+  month. Per person: boxes in whole kronor (öre dropped), 023 = lines of
+  kind `fee`, 131 instead of 011 under the 1 000 kr rule, ticks for 050
+  and 051. Avgifter as `agiContributions()`: each person's underlag per
+  rate with the öre dropped, summed per rate, times the rate, öre dropped
+  per rate; the young people's split recomputed from the underlag and the
+  25 000 kr cap (`agi_rules()`). The SQL test's month and Skatteverket's
+  example file 15 (487 = 18 881 kr) are tests on the TypeScript side;
+  the same month gives the same sums in SQL (`0040_authorities.sql`) and
+  in `agiBuild()` (`agi.test.ts`).
+- `agi_store(org, period, xml, records)`, owner/admin: refuses a month
+  with a negative box, an unchanged month ("Ingenting har ändrats sedan
+  version n"), records whose boxes or ticks are not the build's,
+  specifikationsnummer that are not unique or not the same as in the
+  previous version, a removal for someone who was not in it, and a file
+  whose HU (period, 487, 497) or any IU (each box, the ticks, the
+  removals; read with `xpath`) differs. Stores the next version with the
+  file, its SHA-256, the totals and the records; earlier unfiled drafts
+  become `corrected`. The file and the sums never change (trigger); only
+  the status, filed and paid.
+- `agi_mark_filed(id)` (the latest draft; earlier filed versions become
+  `corrected`), `agi_mark_paid(id, paid)` (only a filed version, 0041), `agi_diff(id)` (per person and
+  box against the version before), `agi_xml(id)` (owner/admin: the file
+  has the personnummer; the `xml` column is not granted to anyone).
+- `agi_repayment_add(payslip, amount, reason, repaid_on)`, owner/admin:
+  salary the employee paid back for a payslip in a closed run, at most its
+  011 (the form lists each payslip, so someone with two in a month repays
+  against each); it lowers 011 and the avgifter for that month (`agi.repayment_added`).
+- `pension_basis(org, period, 'fora')` and `pension_report_store` (lines
+  and the file's total must be the basis), `pension_report_mark_filed`,
+  `pension_report_file` (owner/admin).
+- `employer_certificates`: insert by owner/admin with the path
+  `{org}/{person}/{id}.pdf` (check constraint), frozen, logged
+  (`employee.certificate_created`); the person reads their own, and the
+  PDF through the `hr` bucket's existing policy.
+- `vaxa_stod_basis(org, period)` and `vaxa_stod_claim_store` (the month's
+  AGI must be filed, at most two people, only the full avgift category;
+  0041: the cap, 35 000 kr or 25 000 kr for employment begun before
+  2024-05-01, and the month 1–24 are derived from the start of the
+  person's employment in SQL, `vaxa_employment_start()` as
+  `employmentStart()` in `vaxa-stod.ts`, and the refund recomputed).
+- `year_summary(org, year)` and `year_close(org, year, rows)`: the
+  semesterår ending in the year (31 March by law, 31 December by calendar
+  year, from `payroll_settings`) must have ended; each person's closing
+  row is checked against 18 § (saved at most earned − 20 and at most the
+  untaken, none when saved days were taken), written with saved, saved-in
+  and expired days and `closed_at`; the new year's row gets its earned and
+  saved-in days; the summary is stored; once per year (unique). A closed
+  `leave_balances` row never changes (trigger), and "Spara saldona" on
+  Frånvaro skips closed years.
+- RLS: payroll readers read every table (but not the file columns);
+  owner/admin write through the functions; an employee reads only their
+  own intyg; staff and readonly nothing. Declaration and report events are
+  `payroll`, the person's (repayment, intyg, växa-stöd, semester closed)
+  `employee`.
+
+**The app.** Lönerapporter: AGI per month (people with spec.nr, masked
+personnummer and every box, 487 with each rate's sum, 497; the diff
+against the latest version before a new one; "Skapa version n"; the
+versions with download, "Markera som lämnad" and who changed; the
+repayment form), the skattekonto table with the stored AGI's amount (the
+payslips' öre amount until there is one) and a "betalt" mark, Fora (pay per
+arbetare, the file, "Markera som rapporterad"), växa-stöd (per person: month
+of the employment, underlag, cap, refund, or why not; "Registrera att
+ansökan är gjord" once the AGI is filed), and the year-end (semester per
+person: earned, taken, saved, lapsed, expired, the new year; the year
+summary with an årsbesked PDF per person or all; "Gör årsskiftet").
+Person › Lön: the arbetsgivarintyg (last day, reason, other information →
+frozen PDF), repayments. `/min-tid`: "Mina arbetsgivarintyg". Inställningar
+› Lön: "Arbetsgivardeklarationen" (turnover above 40 MSEK moves the
+declaration day to the 26th, the payment stays; the file's contact person),
+"Växa-stöd" (the first employees, at most two), and the FOK-ID under Fora.
+Idag: the AGI ten days before the declaration day until filed, Fora two
+weeks before its deadline until reported, Försäkringskassan's sjukanmälan
+from day 15 with its deadline, and VAB/föräldraledighet started.
+
+**Verified**
+
+- `npm test` (631), `npm run lint` (0 errors), `tsc` clean. Every AGI
+  file the tests write validates against Skatteverket's XSD with
+  `xmllint` (the test skips the check, saying so, where `xmllint` is
+  missing). Example file 15 is a golden test: 487 = 18 881 kr, 497 =
+  28 140 kr.
+- All migrations through 0041 on Postgres 17 with the shim; all 17 SQL
+  test files pass, `0040_authorities.sql` included: B sees nothing of A;
+  the accountant builds but cannot store, mark filed or paid, or read the
+  file; a refile gets version 2 and `agi_diff` shows only the person who
+  changed (one box); the sums equal the closed run's; Fora, växa-stöd,
+  the year summary; `year_close` writes and locks the balances and
+  refuses a second time; the intyg is the person's own; and with 0041 an
+  approved but open run makes a problem that stops `agi_store`, a draft
+  cannot be marked paid, and a pre-May-2024 hire claimed with the 35 000 kr
+  cap (or past month 24) is refused.
+- In demo mode in the browser: phase 3's three people, November run
+  closed; AGI v1 (Anna, Bo, Cecilia; 011 79 716 kr, 487 25 046 kr where the
+  payslips' öre sum is 25 047 kr, 497 16 974 kr), downloaded and validated
+  with `xmllint` against the XSD, marked filed; Anna repaid 2 000 kr, the
+  diff showed her 011 39 520 → 37 520 kr only, v2 made (487 24 418 kr) and
+  filed, v1 became ersatt; skattekonto 41 392 kr "AGI v2" marked paid;
+  Fora for Bo (SAF-LO) 35 196 kr, file `198802022387;Bo;Byggare;FOK306834;
+  2026-11;35196`; växa-stöd for Bo (month 23, 7 423 kr) registered after
+  the AGI was filed; årsskiftet 2026 (semesterår 2025-04-01 – 2026-03-31)
+  done and refused again; årsbesked PDF with three pages; Bo's
+  arbetsgivarintyg made, shown on his `/min-tid`, 404 for Anna.
+
+**Not verified, or not done**
+
+- **No file has been validated by Skatteverket's or Fora's services.**
+  The AGI file validates against the published XSD, but the e-service runs
+  more controls (the Kontroller appendix) than the schema; upload it to the
+  [test service](https://sso.test.skatteverket.se/agd_tt/da_testtjanst_web/login.do?method=test)
+  first, then a real month. Fora's file is ours (see below).
+- 0041 has not run against Supabase. 0040 and its SQL test have (so `agi_store`'s
+  `xpath` reading of the test's file, the RLS and the column grants as
+  seen from SQL hold there). The app itself has not run against Supabase:
+  not supabase-js's RPC calls with these jsonb arguments, not the column
+  grants through PostgREST (the store selects only the granted columns),
+  not the intyg upload to the bucket.
+- Idag's AGI, Fora and Försäkringskassan rows were not seen in the browser:
+  on 30 October the November deadlines are too far off, and a sick spell
+  reaching day 15 would touch October, which the approved run locked. They
+  are covered by `authorities-today.test.ts` and `fk.test.ts`.
+- Fora: the upload Fora takes is a JSON file to a specification given to
+  payroll vendors only. The file here is a semicolon list of what the
+  manual entry asks for (flagged `unverified` in `FORA_FORMAT`); ask Fora
+  for the specification. Lön hänförlig till annan månad (bonus, ackord,
+  saved semester at the end) is not split out. A month without any pay
+  still needs one arbetare with 0 kr on Mina sidor; the app says so.
+- The arbetsgivarintyg is a PDF with SO 11's content, not the form itself
+  or arbetsgivarintyg.nu; it does not extend the twelve months back over
+  long absence, and "Komplettering" (variable pay per month) is the pay
+  column.
+- Växa-stöd: the conditions about the company (växa-företag, no earlier
+  employees), närstående and de minimis are not in the data; the owner
+  chooses the people and confirms in the e-service. The application's own
+  fields per employee are not published; the page gives month, underlag,
+  cap and expected refund.
+- HU replacement on a refile is implied by the technical description, not
+  stated (flagged `unverified`); a refile here sends the HU and every IU
+  again with the same specifikationsnummer.
+- Workplace address (245/246) is not written (optional; several sites a
+  month is the normal case in construction). People without personnummer
+  (Födelsetid 222 with name and address) are refused, not written.
+- Collectum (ITP1) is phase 5; `pension_basis` takes only `fora`.
+- Off-cycle runs still do not exist, so "several runs in a month" is
+  handled by the sums but untested with real data.
+
+**Where sections 3, 4, 8 and 11 turned out different**
+
+- Section 3: `agi_declarations` has versions per month (a refile is a new
+  row, never an edit), the file and its SHA-256, the totals and the
+  records; no box 499 (sjuklönekostnad has not been reported since
+  2024-07). `pay_runs` did not get `agi_declaration_id` or a `reported`
+  status: a month can have several versions and several runs, so the link
+  is `agi_declarations.run_ids`. `pension_reports` holds the file and the
+  lines per version. `employer_certificates` is its own table, not
+  `employment_documents` (the employee must read it, and it is not a
+  contract). `year_closings` and three columns on `leave_balances` are
+  new. `year_close` takes the app's semester transition as rows and checks
+  them, since earned days need the absences and the contracts.
+- Section 4 and phase 3's corrections: pay is reported in the month it is
+  paid, so phase 3's retro lines in a later run belong in that run's AGI,
+  not in the original month's (Skatteverket, "Rätta en
+  arbetsgivardeklaration"): retroaktiv lön and kvittning of overpaid
+  salary do not change the earlier month. Only salary the employee pays
+  back (återkrav) corrects the month it was paid: 011 and the avgifter go
+  down, 001 stays. That is the new `agi_repayments`, and what makes a
+  refile. `payroll_corrections.agi_refile` (set by 0039 for this phase) is
+  not used: the app no longer reads it, 0041 makes its default false with
+  a comment (the column stays, since 0039 is applied), and the Lön tab and
+  Rätta's message say a correction is reported in the month it is paid.
+- Section 4: Fora's deadline (last day of the month after the payout) is
+  now confirmed on fora.se; phase 0's rule book still flags it, since an
+  old rule set is not edited (`AUTHORITY_RULES.fora` has the checked
+  value). The 40 MSEK rule is a payroll decision ("Arbetsgivardeklarationen")
+  used by `agiDueFor()`.
+- Section 8: the skattekonto bank file is not made (the payment is typed
+  in the bank). Försäkringskassan gets no data from the app; the reminder
+  says what to report and by when.
+- Section 11: Rapporter holds AGI, Fora, växa-stöd and the year-end; the
+  arbetsgivarintyg is on Person › Lön. Idag's skattekonto row is phase 3's,
+  now with the stored AGI's amount and gone when marked paid.
 
 ---
 
