@@ -405,7 +405,13 @@ async function demoTaxTables() {
 export async function listTaxTableImports(): Promise<TaxTableImportInfo[]> {
   if (isDemo()) return [(await demoTaxTables()).info];
   const supabase = await getDb();
-  const { data, error } = await supabase.from("tax_table_imports").select("id, year, sha256, row_count, tables, imported_at, imported_by").order("imported_at", { ascending: false }).limit(20);
+  // Only finished imports (completed_at): one that stopped halfway is never used.
+  const { data, error } = await supabase
+    .from("tax_table_imports")
+    .select("id, year, sha256, row_count, tables, imported_at, imported_by")
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false })
+    .limit(20);
   if (error) fail("Kunde inte hämta skattetabellerna", error);
   return (data as { id: string; year: number; sha256: string; row_count: number; tables: number[]; imported_at: string; imported_by: string }[]).map((r) => ({
     id: r.id,

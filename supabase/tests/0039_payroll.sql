@@ -69,14 +69,51 @@ select jsonb_build_object('year', 2026, 'sha256', repeat('a', 64), 'fileRowCount
                  'incomeToOre', (30200 + 200 * k) * 100 + 99, 'taxOre', (6000 + 50 * k) * 100, 'percent', null))
           from generate_series(0, 9) k) as rows;
 
-insert into prov select 'tax', tax_tables_import((select record from prov_tax), (select rows from prov_tax));
+-- I tre steg som laddaren gör: början, raderna i två delar, slutet.
+do $$
+declare
+  v_id uuid := tax_tables_import_begin((select record from prov_tax));
+  v_res jsonb;
+begin
+  if tax_tables_import_rows(v_id, (select jsonb_path_query_array(rows, '$[0 to 4]') from prov_tax)) <> 5
+     or tax_tables_import_rows(v_id, (select jsonb_path_query_array(rows, '$[5 to 9]') from prov_tax)) <> 5 then
+    raise exception 'Delarna lades inte in';
+  end if;
+  if (select completed_at from tax_table_imports where id = v_id) is not null then raise exception 'Importen blev klar före finish'; end if;
+  v_res := tax_tables_import_finish(v_id);
+  if not (v_res->>'ok')::boolean or (select row_count from tax_table_imports where id = v_id) <> 10
+     or (select tables from tax_table_imports where id = v_id) <> array[33] then
+    raise exception 'Importen blev inte klar: %', v_res;
+  end if;
+  insert into prov values ('tax', v_id);
+  -- En klar import ändras inte, och raderna tas inte bort.
+  begin
+    delete from tax_tables where import_id = v_id;
+    raise exception 'Raderna i en klar import kunde tas bort';
+  exception when feature_not_supported then null;
+  end;
+end $$;
 
 do $$
+declare
+  v_id uuid;
+  v_res jsonb;
 begin
   if tax_table_lookup((select v from prov where k = 'tax'), 33, 1, 31_950) <> 6450 then
     raise exception 'Uppslaget i den importerade tabellen stämmer inte';
   end if;
-  -- En vektor som inte stämmer mot raderna stoppar importen.
+  -- En vektor som inte stämmer mot raderna: finish tar bort importen och säger varför.
+  v_id := tax_tables_import_begin(
+    jsonb_set(jsonb_set((select record from prov_tax), '{sha256}', to_jsonb(repeat('b', 64))), '{golden,0,vector,taxKr}', '6001'));
+  perform tax_tables_import_rows(v_id, (select rows from prov_tax));
+  v_res := tax_tables_import_finish(v_id);
+  if (v_res->>'ok')::boolean or v_res->'problems'->>0 not like 'tabell 33 kolumn 1 30100 kr ger 6000 kr, väntade 6001 kr' then
+    raise exception 'Finish godtog en fel vektor: %', v_res;
+  end if;
+  if exists (select 1 from tax_table_imports where id = v_id) or exists (select 1 from tax_tables where import_id = v_id) then
+    raise exception 'Den stoppade importen lämnade rader kvar';
+  end if;
+  -- I ett anrop är samma sak ett fel.
   begin
     perform tax_tables_import(
       jsonb_set(jsonb_set((select record from prov_tax), '{sha256}', to_jsonb(repeat('b', 64))), '{golden,0,vector,taxKr}', '6001'),
@@ -84,12 +121,16 @@ begin
     raise exception 'En fel kontrollvektor gick igenom';
   exception when invalid_parameter_value then null;
   end;
-  -- Färre än tio vektorer stoppar också.
+  -- Färre än tio vektorer stoppar redan i början.
   begin
-    perform tax_tables_import(jsonb_set((select record from prov_tax), '{golden}', '[]'), (select rows from prov_tax));
+    perform tax_tables_import_begin(jsonb_set((select record from prov_tax), '{golden}', '[]'));
     raise exception 'En import utan vektorer gick igenom';
   exception when invalid_parameter_value then null;
   end;
+  -- En avbruten import (ingen finish) syns inte för någon inloggad.
+  v_id := tax_tables_import_begin(jsonb_set((select record from prov_tax), '{sha256}', to_jsonb(repeat('c', 64))));
+  perform tax_tables_import_rows(v_id, (select rows from prov_tax));
+  insert into prov values ('tax_halv', v_id);
 end $$;
 
 -- ---------------------------------------------------------------- organisationerna
@@ -363,6 +404,10 @@ begin
     raise exception 'Erik ser inte bara sitt eget lönebesked';
   end if;
   if (select count(*) from payslip_lines) <> 1 then raise exception 'Erik ser andras rader'; end if;
+  if exists (select 1 from tax_table_imports where id = (select v from prov where k = 'tax_halv'))
+     or exists (select 1 from tax_tables where import_id = (select v from prov where k = 'tax_halv')) then
+    raise exception 'En halvfärdig import av skattetabeller syns';
+  end if;
   if (select count(*) from pay_runs) + (select count(*) from bank_files) + (select count(*) from payroll_corrections)
      + (select count(*) from pay_items) + (select count(*) from payroll_settings) <> 0 then
     raise exception 'Erik ser körningar, bankfiler, rättelser, lönearter eller beslut';

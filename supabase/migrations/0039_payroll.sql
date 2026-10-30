@@ -11,9 +11,9 @@
 --    versionerat (en ändring är en ny rad med valid_from), seedat ur
 --    pay-items.default.ts (blocket hålls lika av pay-items-sql.test.ts).
 -- 3. tax_tables och tax_table_imports: Skatteverkets månadstabeller, i
---    kronor. tax_tables_import() tar JSON:en från
---    `npm run tax-tables:import -- ÅÅÅÅ --out fil` och vägrar om en enda
---    kontrollvektor inte stämmer, också mot raderna som lagts in här.
+--    kronor. tax_tables_import_begin/_rows/_finish tar JSON:en från
+--    `npm run tax-tables:import -- ÅÅÅÅ --out fil` i delar och vägrar om en
+--    enda kontrollvektor inte stämmer, också mot raderna som lagts in här.
 -- 4. payroll_settings: lönebeslut per organisation (period, lönedag,
 --    semesterår, avtal, kontering, godkännare, bankkonto, Fora/Collectum)
 --    med confirmed: när varje beslut senast sparades. Ett beslut utan
@@ -136,22 +136,27 @@ create trigger pay_items_version before insert on pay_items
 -- =====================================================================
 
 -- Skatteverkets öppna data, ett år i taget. Gemensamma för alla
--- organisationer; vem som helst inloggad läser dem.
+-- organisationer; vem som helst inloggad läser dem. En import görs i tre
+-- steg (begin, rader i delar, finish) eftersom ett år är ungefär 48 000
+-- rader; den gäller först när finish har kontrollerat vektorerna mot de
+-- lagrade raderna och satt completed_at. En import utan completed_at
+-- används aldrig och kan tas bort.
 create table tax_table_imports (
   id               uuid primary key default gen_random_uuid(),
   year             int not null check (year between 2020 and 2100),
   sha256           text not null check (sha256 ~ '^[0-9a-f]{64}$'),
   file_row_count   int not null check (file_row_count > 0),
-  row_count        int not null check (row_count > 0),
-  tables           int[] not null,
+  row_count        int not null default 0 check (row_count >= 0),
+  tables           int[] not null default '{}',
   golden           jsonb not null,
-  golden_passed    boolean not null check (golden_passed),
+  golden_passed    boolean check (golden_passed),
   imported_by      text not null default coalesce(auth.jwt()->>'email', current_user),
   imported_at      timestamptz not null default now(),
-  unique (year, sha256)
+  completed_at     timestamptz,
+  unique (year, sha256),
+  check ((completed_at is null) = (golden_passed is null)),
+  check (completed_at is null or row_count > 0)
 );
-create trigger tax_table_imports_immutable before update or delete on tax_table_imports
-  for each row execute function forbid_change();
 
 create table tax_tables (
   import_id       uuid not null references tax_table_imports(id),
@@ -166,8 +171,39 @@ create table tax_tables (
   check ((tax_kr is null) <> (percent is null)),
   check (income_to_kr is null or income_to_kr >= income_from_kr)
 );
-create trigger tax_tables_immutable before update or delete on tax_tables
-  for each row execute function forbid_change();
+
+-- En klar import ändras aldrig; en oklar får bli klar en gång eller tas bort.
+create or replace function public.tax_table_imports_freeze() returns trigger
+  language plpgsql set search_path = public
+as $$
+begin
+  if old.completed_at is not null then
+    raise exception 'En klar import av skattetabeller ändras inte.' using errcode = '0A000';
+  end if;
+  if tg_op = 'DELETE' then return old; end if;
+  if (to_jsonb(new) - array['completed_at','golden_passed','row_count','tables'])
+     <> (to_jsonb(old) - array['completed_at','golden_passed','row_count','tables']) then
+    raise exception 'Importens uppgifter ändras inte.' using errcode = '0A000';
+  end if;
+  return new;
+end;
+$$;
+create trigger tax_table_imports_freeze before update or delete on tax_table_imports
+  for each row execute function tax_table_imports_freeze();
+
+create or replace function public.tax_tables_freeze() returns trigger
+  language plpgsql security definer set search_path = public
+as $$
+begin
+  if tg_op = 'UPDATE' or exists (select 1 from public.tax_table_imports i where i.id = old.import_id and i.completed_at is not null) then
+    raise exception 'Raderna i en klar import ändras inte.' using errcode = '0A000';
+  end if;
+  return old;
+end;
+$$;
+revoke all on function public.tax_tables_freeze() from public, anon, authenticated;
+create trigger tax_tables_freeze before update or delete on tax_tables
+  for each row execute function tax_tables_freeze();
 
 -- Skatten för en månadslön ur de lagrade raderna: bara uppslag, för
 -- kontrollvektorerna. Procentrader: procent av hela kronor, öretal bortfaller.
@@ -182,61 +218,128 @@ as $$
    limit 1
 $$;
 
--- Importen: posten och raderna som `--out` skriver (TaxTableRow i öre).
--- Vägrar om färre än tio vektorer finns, om en vektor inte stämde i
--- skriptet, eller om en vektor inte stämmer mot raderna som lagts in här.
-create or replace function public.tax_tables_import(p_record jsonb, p_rows jsonb) returns uuid
+-- 1. Posten som `--out` skriver (utan raderna). Vägrar färre än tio
+-- vektorer eller en vektor som inte stämde när filen lästes. En tidigare
+-- avbruten import av samma fil tas bort.
+create or replace function public.tax_tables_import_begin(p_record jsonb) returns uuid
   language plpgsql security definer set search_path = public
 as $$
 declare
   v_id uuid;
-  v_year int := (p_record->>'year')::int;
-  v_n int;
-  v_vec jsonb;
-  v_got int;
+  v_old uuid;
 begin
-  if jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) = 0 then
-    raise exception 'Importen har inga rader.' using errcode = '22023';
-  end if;
   if jsonb_typeof(p_record->'golden') <> 'array' or jsonb_array_length(p_record->'golden') < 10 then
     raise exception 'Minst tio kontrollvektorer krävs.' using errcode = '22023';
   end if;
   if exists (select 1 from jsonb_array_elements(p_record->'golden') g where coalesce((g->>'ok')::boolean, false) is not true) then
     raise exception 'Importen stoppad: en kontrollvektor stämde inte när filen lästes.' using errcode = '22023';
   end if;
-  if exists (select 1 from jsonb_array_elements(p_rows) r where (r->>'year')::int is distinct from v_year) then
+  select id into v_old from public.tax_table_imports
+   where year = (p_record->>'year')::int and sha256 = p_record->>'sha256' and completed_at is null;
+  if v_old is not null then
+    delete from public.tax_tables where import_id = v_old;
+    delete from public.tax_table_imports where id = v_old;
+  end if;
+  insert into public.tax_table_imports (year, sha256, file_row_count, golden)
+  values ((p_record->>'year')::int, p_record->>'sha256', (p_record->>'fileRowCount')::int, p_record->'golden')
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+-- 2. Rader (TaxTableRow i öre), i delar om några tusen.
+create or replace function public.tax_tables_import_rows(p_import uuid, p_rows jsonb) returns int
+  language plpgsql security definer set search_path = public
+as $$
+declare
+  i public.tax_table_imports;
+  v_n int;
+begin
+  select * into i from public.tax_table_imports where id = p_import for update;
+  if i.id is null or i.completed_at is not null then
+    raise exception 'Importen finns inte eller är redan klar.' using errcode = '22023';
+  end if;
+  if jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) = 0 then
+    raise exception 'Delen har inga rader.' using errcode = '22023';
+  end if;
+  if exists (select 1 from jsonb_array_elements(p_rows) r where (r->>'year')::int is distinct from i.year) then
     raise exception 'Raderna gäller ett annat år än importen.' using errcode = '22023';
   end if;
-
-  insert into public.tax_table_imports (year, sha256, file_row_count, row_count, tables, golden, golden_passed)
-  values (v_year, p_record->>'sha256', (p_record->>'fileRowCount')::int, jsonb_array_length(p_rows),
-          array(select distinct (r->>'tableNo')::int from jsonb_array_elements(p_rows) r order by 1),
-          p_record->'golden', true)
-  returning id into v_id;
-
   insert into public.tax_tables (import_id, year, table_no, column_no, income_from_kr, income_to_kr, tax_kr, percent)
-  select v_id, v_year, (r->>'tableNo')::int, (r->>'column')::int,
+  select p_import, i.year, (r->>'tableNo')::int, (r->>'column')::int,
          ((r->>'incomeFromOre')::bigint / 100)::int,
          case when r->>'incomeToOre' is null then null else ((r->>'incomeToOre')::bigint / 100)::int end,
          case when r->>'taxOre' is null then null else ((r->>'taxOre')::bigint / 100)::int end,
          (r->>'percent')::numeric
     from jsonb_array_elements(p_rows) r;
   get diagnostics v_n = row_count;
+  return v_n;
+end;
+$$;
 
-  for v_vec in select g->'vector' from jsonb_array_elements(p_record->'golden') g loop
-    v_got := public.tax_table_lookup(v_id, (v_vec->>'table')::int, (v_vec->>'column')::int, (v_vec->>'monthlyPayKr')::int);
+-- 3. Vektorerna mot de lagrade raderna. Stämmer alla blir importen klar;
+-- annars tas den bort med sina rader och svaret säger varför (ett fel här
+-- skulle rulla tillbaka borttagningen, så det är ett svar, inte ett fel).
+create or replace function public.tax_tables_import_finish(p_import uuid) returns jsonb
+  language plpgsql security definer set search_path = public
+as $$
+declare
+  i public.tax_table_imports;
+  v_vec jsonb;
+  v_got int;
+  v_problems text[] := '{}';
+  v_n int;
+begin
+  select * into i from public.tax_table_imports where id = p_import for update;
+  if i.id is null or i.completed_at is not null then
+    raise exception 'Importen finns inte eller är redan klar.' using errcode = '22023';
+  end if;
+  select count(*) into v_n from public.tax_tables where import_id = p_import;
+  if v_n = 0 then v_problems := v_problems || 'importen har inga rader'::text; end if;
+  for v_vec in select g->'vector' from jsonb_array_elements(i.golden) g loop
+    v_got := public.tax_table_lookup(p_import, (v_vec->>'table')::int, (v_vec->>'column')::int, (v_vec->>'monthlyPayKr')::int);
     if v_got is distinct from (v_vec->>'taxKr')::int then
-      raise exception 'Importen stoppad: tabell % kolumn % % kr ger % kr i databasen, väntade % kr.',
-        v_vec->>'table', v_vec->>'column', v_vec->>'monthlyPayKr', coalesce(v_got::text, 'inget'), v_vec->>'taxKr'
-        using errcode = '22023';
+      v_problems := v_problems || format('tabell %s kolumn %s %s kr ger %s kr, väntade %s kr', v_vec->>'table', v_vec->>'column',
+                                         v_vec->>'monthlyPayKr', coalesce(v_got::text, 'inget'), v_vec->>'taxKr');
     end if;
   end loop;
+  if cardinality(v_problems) > 0 then
+    delete from public.tax_tables where import_id = p_import;
+    delete from public.tax_table_imports where id = p_import;
+    return jsonb_build_object('ok', false, 'problems', to_jsonb(v_problems));
+  end if;
+  update public.tax_table_imports set row_count = v_n, golden_passed = true, completed_at = now(),
+         tables = array(select distinct table_no from public.tax_tables where import_id = p_import order by 1)
+   where id = p_import;
+  return jsonb_build_object('ok', true, 'id', p_import, 'rows', v_n);
+end;
+$$;
+
+-- Allt i ett anrop (små filer och proven): fel om en vektor inte stämmer.
+create or replace function public.tax_tables_import(p_record jsonb, p_rows jsonb) returns uuid
+  language plpgsql security definer set search_path = public
+as $$
+declare
+  v_id uuid := public.tax_tables_import_begin(p_record);
+  v_res jsonb;
+begin
+  perform public.tax_tables_import_rows(v_id, p_rows);
+  v_res := public.tax_tables_import_finish(v_id);
+  if not (v_res->>'ok')::boolean then
+    raise exception 'Importen stoppad: %.', (select string_agg(x, '; ') from jsonb_array_elements_text(v_res->'problems') x) using errcode = '22023';
+  end if;
   return v_id;
 end;
 $$;
 revoke all on function public.tax_table_lookup(uuid, int, int, int) from public, anon;
+revoke all on function public.tax_tables_import_begin(jsonb) from public, anon, authenticated;
+revoke all on function public.tax_tables_import_rows(uuid, jsonb) from public, anon, authenticated;
+revoke all on function public.tax_tables_import_finish(uuid) from public, anon, authenticated;
 revoke all on function public.tax_tables_import(jsonb, jsonb) from public, anon, authenticated;
 grant execute on function public.tax_table_lookup(uuid, int, int, int) to authenticated;
+grant execute on function public.tax_tables_import_begin(jsonb) to service_role;
+grant execute on function public.tax_tables_import_rows(uuid, jsonb) to service_role;
+grant execute on function public.tax_tables_import_finish(uuid) to service_role;
 grant execute on function public.tax_tables_import(jsonb, jsonb) to service_role;
 
 -- =====================================================================
@@ -785,7 +888,7 @@ begin
       raise exception 'Raderna för % summerar inte till lönebeskedets belopp.', v_doc->>'employeeName' using errcode = '23514';
     end if;
     if v_doc->>'taxTableVersion' is not null and not exists (
-         select 1 from public.tax_table_imports i where i.id = v_import and i.sha256 = v_doc->>'taxTableVersion') then
+         select 1 from public.tax_table_imports i where i.id = v_import and i.sha256 = v_doc->>'taxTableVersion' and i.completed_at is not null) then
       raise exception 'Skattetabellen för % är inte den importerade tabellen körningen anger.', v_doc->>'employeeName' using errcode = '22023';
     end if;
     if exists (select 1 from jsonb_array_elements(v_doc->'lines') l
@@ -1202,10 +1305,11 @@ create policy "pay_items_select" on pay_items
   for select to authenticated using (public.can_payroll_read(org_id));
 create policy "pay_items_insert" on pay_items
   for insert to authenticated with check (public.can_payroll_approve(org_id));
+-- Bara klara importer syns; en halvfärdig används aldrig.
 create policy "tax_table_imports_select" on tax_table_imports
-  for select to authenticated using (true);
+  for select to authenticated using (completed_at is not null);
 create policy "tax_tables_select" on tax_tables
-  for select to authenticated using (true);
+  for select to authenticated using (exists (select 1 from public.tax_table_imports i where i.id = import_id and i.completed_at is not null));
 create policy "payroll_settings_select" on payroll_settings
   for select to authenticated using (public.can_payroll_read(org_id));
 create policy "payroll_settings_insert" on payroll_settings
