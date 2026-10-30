@@ -16,6 +16,7 @@ const LINKS: NavLink[] = [
   { href: "/admin/kunder", label: "Kunder", access: "read" },
   { href: "/admin/rot", label: "ROT", access: "read" },
   { href: "/admin/projekt", label: "Byggprojekt", access: "write" },
+  { href: "/admin/personal", label: "Personal", access: "payroll" },
   { href: "/admin/installningar", label: "Inställningar", access: "admin" },
   { href: "/admin/organisation", label: "Organisation", access: "read" },
   { href: "/admin/api", label: "API", access: "admin" },

@@ -134,7 +134,13 @@ export function forwardHeaders(incoming: Headers, signed: string | null): Header
   return headers;
 }
 
-/** The membership the session works in: the cookie's choice among the user's own, else the first. */
+/**
+ * The membership the session works in: the cookie's choice among the user's
+ * own, else the first one that reaches admin. An employee membership (0035)
+ * reaches no admin page, so it is chosen only when the user has nothing
+ * else; otherwise a user who is employee in one organisation and owner in
+ * another would be sent to the portal without a way back.
+ */
 export function pickMembership(memberships: SessionMembership[], wanted: string | null | undefined): SessionMembership | null {
-  return memberships.find((m) => m.orgId === wanted) ?? memberships[0] ?? null;
+  return memberships.find((m) => m.orgId === wanted) ?? memberships.find((m) => m.role !== "employee") ?? memberships[0] ?? null;
 }

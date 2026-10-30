@@ -46,6 +46,16 @@ export const EVENT_TYPES = [
   "member.removed",
   "webhook.created",
   "webhook.removed",
+  // Personal (0035): written by the database's triggers and functions, aggregate "employee".
+  "employee.created",
+  "employee.updated",
+  "employee.pnr_revealed",
+  "employee.bank_revealed",
+  "employment.created",
+  "employment.versioned",
+  "employee_tax.versioned",
+  "employment_document.created",
+  "employment_document.signed",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -66,7 +76,7 @@ export const WEBHOOK_EVENT_TYPES = [
 ] as const satisfies readonly EventType[];
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
-export type AggregateType = "customer" | "invoice" | "payment" | "rot_claim" | "export" | "api_key" | "organization" | "webhook";
+export type AggregateType = "customer" | "invoice" | "payment" | "rot_claim" | "export" | "api_key" | "organization" | "webhook" | "employee";
 
 export type Actor =
   | { kind: "user"; id: string; name: string }
@@ -139,6 +149,15 @@ export const EVENT_LABEL: Record<EventType, { text: string; customer: boolean }>
   "member.removed": { text: "Medlem borttagen", customer: false },
   "webhook.created": { text: "Webhook registrerad", customer: false },
   "webhook.removed": { text: "Webhook borttagen", customer: false },
+  "employee.created": { text: "Person tillagd i personalregistret", customer: false },
+  "employee.updated": { text: "Personuppgifter ändrade", customer: false },
+  "employee.pnr_revealed": { text: "Personnummer visat", customer: false },
+  "employee.bank_revealed": { text: "Kontonummer visat", customer: false },
+  "employment.created": { text: "Anställning registrerad", customer: false },
+  "employment.versioned": { text: "Anställningen ändrad (ny version)", customer: false },
+  "employee_tax.versioned": { text: "Skatteuppgifter ändrade", customer: false },
+  "employment_document.created": { text: "Anställningsavtal skapat", customer: false },
+  "employment_document.signed": { text: "Anställningsavtal signerat", customer: false },
 };
 
 /** The label for any stored event type, also one this version does not know. */

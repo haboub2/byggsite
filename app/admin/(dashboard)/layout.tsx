@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/admin";
 import { listMyMemberships } from "@/lib/core/org/current";
-import { hasAccess, ROLE_LABEL, type Access } from "@/lib/core/org/roles";
+import { ACCESS_LEVELS, hasAccess, ROLE_LABEL } from "@/lib/core/org/roles";
 import { signOut } from "@/app/admin/actions";
 import AdminTopBar from "@/components/admin/AdminTopBar";
 import { loadNavCounts } from "@/lib/admin/today";
@@ -46,7 +46,7 @@ export default async function AdminDashboardLayout({
     );
   }
 
-  const access = (["read", "write", "admin", "owner", "site"] as Access[]).filter((a) => hasAccess(check.role, a, check.site));
+  const access = ACCESS_LEVELS.filter((a) => hasAccess(check.role, a, check.site));
 
   // requireRole and the memberships come from the proxy's check (no round
   // trip); the counters and the start guide's banner, for those who can work

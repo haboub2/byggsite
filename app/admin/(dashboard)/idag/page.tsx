@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/admin";
-import { hasAccess, type Access } from "@/lib/core/org/roles";
+import { ACCESS_LEVELS, hasAccess } from "@/lib/core/org/roles";
 import { formatOre } from "@/lib/core/money";
 import { formatWhen } from "@/lib/admin-format";
 import { loadToday, type TodoKind } from "@/lib/admin/today";
@@ -16,6 +16,7 @@ const TAG_TONE: Record<TodoKind, string> = {
   photo: "idag-tag--quiet",
   change: "idag-tag--cool",
   invoice: "idag-tag--alert",
+  hr: "idag-tag--warm",
 };
 
 const kr = (n: number) => `${Math.round(n).toLocaleString("sv-SE").replace(/ /g, " ")} kr`;
@@ -24,7 +25,7 @@ const kr = (n: number) => `${Math.round(n).toLocaleString("sv-SE").replace(/ /g
 export default async function TodayPage() {
   const check = await requireRole("read");
   if (!check.ok) redirect("/admin/login");
-  const access = (["read", "write", "admin", "owner", "site"] as Access[]).filter((a) => hasAccess(check.role, a, check.site));
+  const access = ACCESS_LEVELS.filter((a) => hasAccess(check.role, a, check.site));
   const canWrite = access.includes("write");
   const d = await loadToday(access);
   const now = new Date();
@@ -88,7 +89,7 @@ export default async function TodayPage() {
             <span>{d.todos.length === 0 ? "allt är gjort" : `${d.todos.length} saker`}</span>
           </div>
           {d.todos.length === 0 ? (
-            <p className="idag-empty">Inget väntar på dig just nu. Nya förfrågningar, försenade faser och förfallna fakturor dyker upp här.</p>
+            <p className="idag-empty">Inget väntar på dig just nu. Nya förfrågningar, försenade faser, förfallna fakturor och personal med LAS-klockor eller avtal som går ut dyker upp här.</p>
           ) : (
             <ul>
               {d.todos.map((t) => (

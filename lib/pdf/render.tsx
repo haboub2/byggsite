@@ -6,6 +6,7 @@ import type { QuoteProfile } from "../quotes/profile";
 import type { Quote } from "../quotes/schema";
 import { bannerSlot, coverSlot } from "../quotes/cover";
 import { BAND_BOX, COVER_BOX, loadPdfPhoto } from "./photos";
+import { fileSafe } from "./invoice-file-name";
 
 /** The quote as PDF bytes, with the seller, payment details and signer of
  *  the quote's organisation (lib/quotes/profile.ts) and the cover and banner
@@ -22,14 +23,6 @@ export async function renderQuotePdf(quote: Quote, profile?: QuoteProfile): Prom
     <QuotePdf quote={quote} company={company} settings={settings} logo={logo} photos={{ cover, banner, withCover: slot !== null }} />
   );
 }
-
-const fileSafe = (v: string, max: number) =>
-  v
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^A-Za-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, max);
 
 /** Offert-<nr>-<brand>-<customer>.pdf; brand is QuoteProfile.brand. */
 export function quoteFileName(quote: Quote, brand: string): string {

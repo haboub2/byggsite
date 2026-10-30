@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assignableRoles, canOpenAdminPath, hasAccess } from "./roles";
+import { adminLandingPath, assignableRoles, canOpenAdminPath, hasAccess } from "./roles";
 
 test("access levels", () => {
   assert.equal(hasAccess("accountant", "read"), true);
@@ -49,4 +49,31 @@ test("only owners make owners; staff assigns nothing", () => {
   assert.ok(assignableRoles("owner").includes("owner"));
   assert.ok(!assignableRoles("admin").includes("owner"));
   assert.deepEqual(assignableRoles("staff"), []);
+});
+
+test("payroll: owner, admin and accountant read Personal; staff and readonly do not", () => {
+  assert.equal(hasAccess("owner", "payroll"), true);
+  assert.equal(hasAccess("admin", "payroll"), true);
+  assert.equal(hasAccess("accountant", "payroll"), true);
+  assert.equal(hasAccess("staff", "payroll"), false);
+  assert.equal(hasAccess("readonly", "payroll"), false);
+  assert.equal(hasAccess("employee", "payroll"), false);
+  for (const p of ["/admin/personal", "/admin/personal/abc", "/admin/personal/abc/dokument/def"]) {
+    assert.equal(canOpenAdminPath("owner", p), true, p);
+    assert.equal(canOpenAdminPath("accountant", p), true, p);
+    assert.equal(canOpenAdminPath("staff", p), false, p);
+    assert.equal(canOpenAdminPath("readonly", p), false, p);
+  }
+  // Adding people is for owner and admin.
+  assert.equal(canOpenAdminPath("admin", "/admin/personal/ny"), true);
+  assert.equal(canOpenAdminPath("accountant", "/admin/personal/ny"), false);
+});
+
+test("employee: no admin page, lands in the portal; may be invited by owner and admin", () => {
+  for (const p of ["/admin", "/admin/idag", "/admin/ekonomi", "/admin/fakturor", "/admin/personal", "/admin/organisation"]) assert.equal(canOpenAdminPath("employee", p), false, p);
+  assert.equal(canOpenAdminPath("employee", "/admin/inbjudan/abc"), true);
+  assert.equal(hasAccess("employee", "read"), false);
+  assert.equal(adminLandingPath("employee"), "/mitt-projekt");
+  assert.equal(adminLandingPath("accountant"), "/admin/ekonomi");
+  assert.ok(assignableRoles("admin").includes("employee"));
 });
