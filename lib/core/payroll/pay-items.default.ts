@@ -62,7 +62,13 @@ const taxFree = (account: string, agiBox: string | null): PayItemFlags => ({
 
 const item = (code: string, name: string, kind: PayItem["kind"], flags: PayItemFlags): PayItem => ({ code, name, kind, version: 1, flags });
 
-/** Sjuklön and semesterlön are pay but not semesterlönegrundande themselves (the absence is, through the vacation calculator). */
+/**
+ * Sjuklön and semesterlön are pay but not semesterlönegrundande themselves:
+ * under procentregeln the vacation calculator adds what the person would
+ * have earned during semesterlönegrundande absence. So a line that removes
+ * pay for such absence (sjukavdrag on månadslön) must stay in the basis,
+ * or the same days would count twice.
+ */
 const notVacationBasis = { vacationPayBasis: false } as const;
 
 export const DEFAULT_PAY_ITEMS: readonly PayItem[] = [
@@ -84,8 +90,8 @@ export const DEFAULT_PAY_ITEMS: readonly PayItem[] = [
   item("1401", "Sjuklön tjänsteman", "sick_pay", pay("7281", notVacationBasis)),
   item("1410", "Karensavdrag", "sick_pay", pay("7081", notVacationBasis)),
   item("1411", "Karensavdrag tjänsteman", "sick_pay", pay("7281", notVacationBasis)),
-  item("1420", "Sjukavdrag", "sick_deduction", pay("7010", notVacationBasis)),
-  item("1421", "Sjukavdrag tjänsteman", "sick_deduction", pay("7210", notVacationBasis)),
+  item("1420", "Sjukavdrag", "sick_deduction", pay("7010")),
+  item("1421", "Sjukavdrag tjänsteman", "sick_deduction", pay("7210")),
   // Vacation
   item("1500", "Semesterlön", "vacation_pay", pay("7082", notVacationBasis)),
   item("1501", "Semesterlön tjänsteman", "vacation_pay", pay("7282", notVacationBasis)),
@@ -96,7 +102,9 @@ export const DEFAULT_PAY_ITEMS: readonly PayItem[] = [
   item("1530", "Semesteravdrag obetald semester", "vacation_deduction", pay("7210", notVacationBasis)),
   // Board (reported in 011 and as "varav" in 023 by the AGI file), bonus, retro
   item("1600", "Styrelsearvode", "fee", pay("7240", { vacationPayBasis: false, pensionReportable: false })),
-  item("1700", "Bonus", "gross_adjustment", pay("7210", { taxMode: "lump_sum", vacationPayBasis: false })),
+  // Bonus is semesterlönegrundande under 16 b § unless the agreement or the
+  // bonus terms say it already includes semesterlön; then the org sets the flag off.
+  item("1700", "Bonus", "gross_adjustment", pay("7210", { taxMode: "lump_sum" })),
   item("1710", "Retroaktiv lön", "retro", pay("7210", { taxMode: "lump_sum" })),
   item("1711", "Retroaktiv lön kollektiv", "retro", pay("7010", { taxMode: "lump_sum" })),
   // Benefits: taxable value, no cash (counter account 7399)

@@ -93,8 +93,10 @@ export type PayslipBases = {
   contributionBaseOre: Ore;
   vacationBasisOre: Ore;
   pensionBasisOre: Ore;
-  /** Cash before tax (everything except benefits and net adjustments). */
+  /** Bruttolön: cash pay before tax, without benefits, tax-free reimbursements and net adjustments. */
   cashGrossOre: Ore;
+  /** Tax-free per diem, mileage and utlägg: paid out with the net, not pay. */
+  taxFreeReimbursementOre: Ore;
   benefitOre: Ore;
   netAdjustmentOre: Ore;
   /** Sjuklön after karensavdrag (sjuklönekostnad, a report figure; no longer an AGI box). */
@@ -119,6 +121,7 @@ export type PayslipDocument = {
   contributions: ContributionResult;
   totals: {
     cashGrossOre: Ore;
+    taxFreeReimbursementOre: Ore;
     benefitOre: Ore;
     taxOre: Ore;
     netAdjustmentOre: Ore;
@@ -163,7 +166,8 @@ export function payslipBases(lines: readonly PayslipLine[]): PayslipBases {
     contributionBaseOre: sumWhere(lines, (l) => f(l).subjectToEmployerContribution),
     vacationBasisOre: sumWhere(lines, (l) => f(l).vacationPayBasis),
     pensionBasisOre: sumWhere(lines, (l) => f(l).pensionReportable),
-    cashGrossOre: sumWhere(lines, (l) => k(l) !== "benefit" && k(l) !== "net_adjustment"),
+    cashGrossOre: sumWhere(lines, (l) => f(l).taxable && k(l) !== "benefit" && k(l) !== "net_adjustment"),
+    taxFreeReimbursementOre: sumWhere(lines, (l) => !f(l).taxable && k(l) !== "benefit" && k(l) !== "net_adjustment"),
     benefitOre: sumWhere(lines, (l) => k(l) === "benefit"),
     netAdjustmentOre: sumWhere(lines, (l) => k(l) === "net_adjustment"),
     sickPayCostOre: sumWhere(lines, (l) => k(l) === "sick_pay"),
@@ -194,7 +198,7 @@ export function assemblePayslip(input: PayslipInput): PayslipDocument {
     baseOre: bases.contributionBaseOre,
     expectedAnnualPayOre: input.expectedAnnualPayOre,
   });
-  const netOre = bases.cashGrossOre - tax.totalOre + bases.netAdjustmentOre;
+  const netOre = bases.cashGrossOre + bases.taxFreeReimbursementOre - tax.totalOre + bases.netAdjustmentOre;
   return {
     schema: 1,
     employeeId: input.employee.id,
@@ -211,6 +215,7 @@ export function assemblePayslip(input: PayslipInput): PayslipDocument {
     contributions,
     totals: {
       cashGrossOre: bases.cashGrossOre,
+      taxFreeReimbursementOre: bases.taxFreeReimbursementOre,
       benefitOre: bases.benefitOre,
       taxOre: tax.totalOre,
       netAdjustmentOre: bases.netAdjustmentOre,
@@ -252,6 +257,7 @@ export function journalLines(
 export type Reconciliation = {
   /** The sums the run gate compares against the journal, the AGI and the bank file. */
   cashGrossOre: Ore;
+  taxFreeReimbursementOre: Ore;
   benefitOre: Ore;
   taxOre: Ore;
   netOre: Ore;
@@ -273,11 +279,12 @@ export function reconcile(doc: PayslipDocument): Reconciliation {
     if (recomputed[key] !== doc.bases[key]) problems.push(`Underlaget ${key} är ${doc.bases[key]} men raderna ger ${recomputed[key]}.`);
   }
   const lineSum = sumOre(doc.lines.map((l) => l.amountOre));
-  if (lineSum !== doc.totals.cashGrossOre + doc.totals.benefitOre + doc.totals.netAdjustmentOre) {
-    problems.push(`Raderna summerar till ${lineSum}, inte brutto + förmåner + nettoavdrag.`);
+  const t = doc.totals;
+  if (lineSum !== t.cashGrossOre + t.taxFreeReimbursementOre + t.benefitOre + t.netAdjustmentOre) {
+    problems.push(`Raderna summerar till ${lineSum}, inte brutto + skattefria ersättningar + förmåner + nettoavdrag.`);
   }
-  if (doc.totals.cashGrossOre - doc.totals.taxOre + doc.totals.netAdjustmentOre !== doc.totals.netOre) {
-    problems.push("Nettolönen är inte brutto − skatt + nettoavdrag.");
+  if (t.cashGrossOre + t.taxFreeReimbursementOre - t.taxOre + t.netAdjustmentOre !== t.netOre) {
+    problems.push("Nettolönen är inte brutto + skattefria ersättningar − skatt + nettoavdrag.");
   }
   if (doc.tax.tableOre + doc.tax.lumpSumOre !== doc.totals.taxOre) problems.push("Skatten är inte tabellskatt + engångsskatt.");
   if (doc.totals.taxOre % 100 !== 0) problems.push("Skatteavdraget är inte i hela kronor.");
@@ -288,6 +295,7 @@ export function reconcile(doc: PayslipDocument): Reconciliation {
   if (debit !== credit) problems.push(`Verifikationen balanserar inte: debet ${debit}, kredit ${credit}.`);
   return {
     cashGrossOre: doc.totals.cashGrossOre,
+    taxFreeReimbursementOre: doc.totals.taxFreeReimbursementOre,
     benefitOre: doc.totals.benefitOre,
     taxOre: doc.totals.taxOre,
     netOre: doc.totals.netOre,

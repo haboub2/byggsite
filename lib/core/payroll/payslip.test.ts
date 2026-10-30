@@ -6,7 +6,10 @@ import { sumOre } from "../money";
 import { payrollRulesAt } from "../rules/payroll";
 import { DEFAULT_PAY_ITEMS } from "./pay-items.default";
 import { assemblePayslip, journalLines, reconcile, type PayLineInput, type PayslipInput } from "./payslip";
+import { lineAmount } from "../money";
+import { monthlyToHourlyOre, sickPay } from "./sick-pay";
 import { indexTaxTable, parseTaxTableCsv } from "./tax-tables";
+import { percentRuleVacationPay } from "./vacation";
 
 const file = parseTaxTableCsv(readFileSync(join(__dirname, "fixtures", "skattetabell-manad-2026.sample.csv")));
 const taxTable = { version: file.sha256, rows: indexTaxTable(file.rows) };
@@ -47,11 +50,13 @@ test("benefits are taxed and carry avgifter but are not paid out; tax-free expen
   const doc = slip([line("1010", 3_000_000), line("1810", 200_000, "Kostförmån"), line("1910", 75_000), line("2000", -50_000)]);
   assert.equal(doc.bases.tableTaxableOre, 3_200_000);
   assert.equal(doc.bases.contributionBaseOre, 3_200_000);
-  assert.equal(doc.totals.cashGrossOre, 3_075_000);
+  // Bruttolön is the pay only; the 750 kr tax-free milersättning is paid out with the net.
+  assert.equal(doc.totals.cashGrossOre, 3_000_000);
+  assert.equal(doc.totals.taxFreeReimbursementOre, 75_000);
   assert.equal(doc.totals.benefitOre, 200_000);
   // Tabell 33 kolumn 1 at 32 000 kr: 6 381 kr.
   assert.equal(doc.totals.taxOre, 638_100);
-  assert.equal(doc.totals.netOre, 3_075_000 - 638_100 - 50_000);
+  assert.equal(doc.totals.netOre, 3_000_000 + 75_000 - 638_100 - 50_000);
   const r = reconcile(doc);
   assert.equal(r.ok, true, r.problems.join(" "));
   const j = journalLines(doc);
@@ -74,6 +79,30 @@ test("reconcile catches a tampered document", () => {
   assert.equal(reconcile(edited).ok, false);
 });
 
+test("procentregeln: a månadslön month with sjukavdrag plus the imputed sick pay has the same basis as a month without sickness", () => {
+  // 38 000 kr, 40 h a week, sick Monday–Friday 9–13 March: 40 h deducted at 219,23 kr.
+  const hourly = monthlyToHourlyOre(3_800_000, 40);
+  const sick = sickPay({
+    rules,
+    spells: [{ from: "2026-03-09", to: "2026-03-13" }],
+    schedule: { kind: "weekly", hours: [8, 8, 8, 8, 8, 0, 0], holidaysOff: true },
+    hourlyPayOre: hourly,
+    averageWeeklyHours: 40,
+    monthlySalary: true,
+    previousWaitingDeductions: [],
+    codes: { sickPay: "1401", waitingDeduction: "1411", sickDeduction: "1421" },
+  });
+  const healthy = slip([line("1010", 3_800_000)]);
+  const ill = slip([line("1010", 3_800_000), ...sick.lines]);
+  // The sick days are semesterlönegrundande: the vacation calculator adds what they would have paid.
+  const imputed = lineAmount(hourly, 40);
+  assert.equal(ill.bases.vacationBasisOre + imputed, healthy.bases.vacationBasisOre);
+  assert.equal(
+    percentRuleVacationPay(ill.bases.vacationBasisOre, imputed, 12, 25).totalOre,
+    percentRuleVacationPay(healthy.bases.vacationBasisOre, 0, 12, 25).totalOre,
+  );
+});
+
 test("an unknown pay item code is refused", () => {
   assert.throws(() => slip([line("9999", 100)]), /Lönearten 9999/);
 });
@@ -89,7 +118,7 @@ function mulberry32(seed: number) {
   };
 }
 
-test("property: for random payslips the lines sum to the totals, net = gross − tax + net adjustments, the journal balances", () => {
+test("property: for random payslips the lines sum to the totals, net = gross + tax-free − tax + net adjustments, the journal balances", () => {
   const random = mulberry32(20261030);
   const codes = DEFAULT_PAY_ITEMS.map((i) => i.code);
   for (let n = 0; n < 300; n++) {
@@ -112,7 +141,7 @@ test("property: for random payslips the lines sum to the totals, net = gross −
     });
     const r = reconcile(doc);
     assert.equal(r.ok, true, `case ${n}: ${r.problems.join(" ")}`);
-    assert.equal(sumOre(doc.lines.map((l) => l.amountOre)), doc.totals.cashGrossOre + doc.totals.benefitOre + doc.totals.netAdjustmentOre);
+    assert.equal(sumOre(doc.lines.map((l) => l.amountOre)), doc.totals.cashGrossOre + doc.totals.taxFreeReimbursementOre + doc.totals.benefitOre + doc.totals.netAdjustmentOre);
     assert.equal(r.journalDebitOre, r.journalCreditOre);
     assert.equal(doc.totals.taxOre % 100, 0);
   }
