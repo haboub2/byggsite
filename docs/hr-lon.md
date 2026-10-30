@@ -214,9 +214,9 @@ an employee reaches no admin page and lands in the portal.
 Time, schedules, call-ins, absence and the employee's own page. Draft PR
 "HR fas 2: tid, schema, frånvaro och /min-tid (0037)". 0037 is applied to
 the Supabase project (2026-10-30, after 0036) and its test passed there.
-The review's fixes are in `0038_time_fixes.sql`, **which must be applied
-after 0037 and has not run against Supabase**; then run
-`supabase/tests/0037_time.sql` again in the SQL editor (it now covers 0038).
+The review's fixes are in `0038_time_fixes.sql`, applied after 0037 on
+2026-10-30; `supabase/tests/0037_time.sql` (which covers both) passed in
+the SQL editor after it.
 
 **Where things are**
 
@@ -330,8 +330,8 @@ the week with "Skicka in veckan", time added afterwards, report absence and
 
 **Not verified, or not done**
 
-- 0038 has not run against Supabase. 0037 is applied and its test passed
-  there, but the app has not run against Supabase yet: not supabase-js's
+- 0037 and 0038 are applied and the SQL test passes on Supabase, but the
+  app has not run against Supabase yet: not supabase-js's
   RPC calls with these signatures (`uuid[]` and `jsonb` arguments), not
   RLS through PostgREST, not the `leave_balances` upsert. The demo-mode
   walk-through was done before 0038; the 0038 changes were tested in SQL
