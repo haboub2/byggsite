@@ -14,11 +14,16 @@ import { listCertificates, type EmployerCertificate } from "@/lib/core/payroll/a
 import { formatOre } from "@/lib/core/money";
 import { monthLabel } from "@/lib/core/payroll/format";
 import { signOut } from "@/app/admin/actions";
+import { CLAIM_STATUS_LABEL, listClaims, RECEIPT_ACCEPT, type ExpenseClaim } from "@/lib/core/payroll/benefits-store";
+import { CAR_TYPE_LABEL, EXPENSE_KIND_LABEL, LONG_STAY_LABEL } from "@/lib/core/payroll/expenses";
 import {
   addOwnTimeAction,
   answerShiftAction,
   backFromSickAction,
   clockInAction,
+  createOwnClaimAction,
+  deleteOwnClaimAction,
+  submitOwnClaimAction,
   clockOutAction,
   deleteOwnTimeAction,
   demoPickAction,
@@ -90,7 +95,7 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
 
   const monday = weekStart(/^\d{4}-\d{2}-\d{2}$/.test(sp.vecka ?? "") ? (sp.vecka as string) : today);
   const sunday = addDays(monday, 6);
-  const [entries, projects, shifts, absences, documents, payslips, certificates] = await Promise.all([
+  const [entries, projects, shifts, absences, documents, payslips, certificates, claims] = await Promise.all([
     listTimeEntries({ employeeId: me.id, from: addDays(monday < today ? monday : today, -7), to: sunday > today ? sunday : today }),
     timeProjects(),
     listShifts({ from: addDays(today, -1), to: addDays(today, 28) }),
@@ -98,6 +103,7 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
     listDocuments(me.id),
     listEmployeePayslips(me.id),
     listCertificates(me.id).catch((): EmployerCertificate[] => []),
+    listClaims({ employeeId: me.id }).catch((): ExpenseClaim[] => []),
   ]);
   const active = projects.filter((p) => p.status === "active");
   const projectName = new Map(projects.map((p) => [p.id, p.title]));
@@ -429,6 +435,183 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
           )}
         </section>
       )}
+
+      <section className="mt-card" id="utlagg">
+        <h2>Mina utlägg</h2>
+        {claims.length === 0 ? (
+          <p className="mt-muted">Inga utlägg än. Lämna kvitton, körda mil och tjänsteresor här; de betalas med lönen när de är godkända.</p>
+        ) : (
+          <ul className="mt-list">
+            {claims.slice(0, 20).map((c) => (
+              <li key={c.id}>
+                <span>
+                  <strong>{EXPENSE_KIND_LABEL[c.kind]}</strong> {c.dateFrom === c.dateTo ? c.dateFrom : `${c.dateFrom}–${c.dateTo}`} ·{" "}
+                  {c.kind === "utlagg" ? c.description : c.kind === "milersattning" ? `${String(c.distanceKm ?? 0).replace(".", ",")} km, ${CAR_TYPE_LABEL[c.carType ?? "egen"].toLowerCase()}` : c.destination}
+                </span>
+                <span className="mt-muted">
+                  {formatOre(c.taxFreeOre + c.taxableOre, { currency: true })}
+                  {c.taxableOre ? ` (varav ${formatOre(c.taxableOre, { currency: true })} skattepliktigt)` : ""} · {CLAIM_STATUS_LABEL[c.status].toLowerCase()}
+                  {c.status === "rejected" && c.rejectedReason ? `: ${c.rejectedReason}` : ""}
+                </span>
+                {c.receipts.map((r, i) => (
+                  <a key={r.path} href={`/min-tid/utlagg/${c.id}/kvitto/${i}`} target="_blank" rel="noopener" className="mt-muted">
+                    Kvitto {i + 1}
+                  </a>
+                ))}
+                {(c.status === "draft" || c.status === "submitted") && (
+                  <form action={`/min-tid/utlagg/${c.id}/kvitto`} method="post" encType="multipart/form-data" className="mt-row">
+                    <input className="mt-input" type="file" name="receipt" accept={RECEIPT_ACCEPT} capture="environment" required />
+                    <button className="btn btn-ghost" type="submit">
+                      Lägg till kvitto
+                    </button>
+                  </form>
+                )}
+                {c.status === "draft" && (
+                  <div className="mt-row">
+                    <form action={submitOwnClaimAction}>
+                      <input type="hidden" name="claimId" value={c.id} />
+                      <button className="btn btn-primary" type="submit">
+                        Skicka in
+                      </button>
+                    </form>
+                    <form action={deleteOwnClaimAction}>
+                      <input type="hidden" name="claimId" value={c.id} />
+                      <button className="link-quiet" type="submit">
+                        Ta bort
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        <details>
+          <summary>Nytt utlägg (kvitto)</summary>
+          <form action={createOwnClaimAction} className="mt-stack">
+            <input type="hidden" name="kind" value="utlagg" />
+            <label className="mt-label">
+              Datum på kvittot
+              <input className="mt-input" type="date" name="dateFrom" defaultValue={today} max={today} required />
+            </label>
+            <label className="mt-label">
+              Vad du köpte
+              <input className="mt-input" name="description" required />
+            </label>
+            <div className="mt-row">
+              <label className="mt-label">
+                Belopp (kr)
+                <input className="mt-input" name="amount" inputMode="decimal" required />
+              </label>
+              <label className="mt-label">
+                Varav moms (kr)
+                <input className="mt-input" name="vat" inputMode="decimal" />
+              </label>
+            </div>
+            <button className="btn btn-primary mt-big" type="submit">
+              Spara, lägg sedan till kvittot
+            </button>
+          </form>
+        </details>
+        <details>
+          <summary>Milersättning</summary>
+          <form action={createOwnClaimAction} className="mt-stack">
+            <input type="hidden" name="kind" value="milersattning" />
+            <label className="mt-label">
+              Datum
+              <input className="mt-input" type="date" name="dateFrom" defaultValue={today} max={today} required />
+            </label>
+            <div className="mt-row">
+              <label className="mt-label">
+                Kilometer i tjänsten
+                <input className="mt-input" name="distanceKm" inputMode="decimal" required />
+              </label>
+              <label className="mt-label">
+                Bil
+                <select className="mt-input" name="carType" defaultValue="egen">
+                  {Object.entries(CAR_TYPE_LABEL).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="mt-label">
+              Vart och varför
+              <input className="mt-input" name="description" placeholder="Göteborg–Borås, platsbesök" required />
+            </label>
+            <button className="btn btn-primary mt-big" type="submit">
+              Spara
+            </button>
+          </form>
+        </details>
+        <details>
+          <summary>Traktamente (tjänsteresa med övernattning)</summary>
+          <form action={createOwnClaimAction} className="mt-stack">
+            <input type="hidden" name="kind" value="traktamente" />
+            <label className="mt-label">
+              Resmål
+              <input className="mt-input" name="destination" required />
+            </label>
+            <div className="mt-row">
+              <label className="mt-label">
+                Avresa
+                <input className="mt-input" type="date" name="dateFrom" max={today} required />
+              </label>
+              <label className="mt-label">
+                Klockan
+                <input className="mt-input" type="time" name="departureTime" defaultValue="07:00" required />
+              </label>
+            </div>
+            <div className="mt-row">
+              <label className="mt-label">
+                Hemkomst
+                <input className="mt-input" type="date" name="dateTo" max={today} required />
+              </label>
+              <label className="mt-label">
+                Klockan
+                <input className="mt-input" type="time" name="returnTime" defaultValue="18:00" required />
+              </label>
+            </div>
+            <p className="mt-muted">Måltider du fått gratis under resan (hotellfrukost, lunch eller middag som någon annan betalat):</p>
+            <div className="mt-row">
+              <label className="mt-label">
+                Frukostar
+                <input className="mt-input" name="breakfasts" inputMode="numeric" defaultValue="0" />
+              </label>
+              <label className="mt-label">
+                Luncher
+                <input className="mt-input" name="lunches" inputMode="numeric" defaultValue="0" />
+              </label>
+              <label className="mt-label">
+                Middagar
+                <input className="mt-input" name="dinners" inputMode="numeric" defaultValue="0" />
+              </label>
+            </div>
+            <label className="mt-label">
+              Nätter utan betalt boende (t.ex. hos vänner)
+              <input className="mt-input" name="nightsWithoutLodging" inputMode="numeric" defaultValue="0" />
+            </label>
+            <label className="mt-label">
+              På samma ort
+              <select className="mt-input" name="longStay" defaultValue="none">
+                {Object.entries(LONG_STAY_LABEL).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mt-row">
+              <input type="checkbox" name="farFromHome" defaultChecked /> Mer än 50 km från både hemmet och den vanliga arbetsplatsen
+            </label>
+            <button className="btn btn-primary mt-big" type="submit">
+              Spara
+            </button>
+          </form>
+        </details>
+      </section>
 
       <section className="mt-card">
         <h2>Mina lönebesked</h2>

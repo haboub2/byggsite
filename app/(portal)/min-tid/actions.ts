@@ -24,6 +24,9 @@ import {
   submitEntries,
   updateAbsence,
 } from "@/lib/core/hr/time-store";
+import { parseKronor } from "@/lib/core/money";
+import { createClaim, deleteClaim, getClaim, submitClaim, type ClaimDraft } from "@/lib/core/payroll/benefits-store";
+import type { CarType, LongStay, MealsOnDay } from "@/lib/core/payroll/expenses";
 
 /**
  * /min-tid (docs/hr-lon.md, section 11): the employee's own day. Every
@@ -157,6 +160,140 @@ export async function answerShiftAction(formData: FormData): Promise<void> {
     const accept = text(formData, "answer") === "ja";
     await answerShift(text(formData, "shiftId"), accept, e.id);
     return accept ? "Passet är ditt." : "Tack för svaret.";
+  });
+}
+
+/* ---------- utlägg ---------- */
+
+const CAR_TYPES: CarType[] = ["egen", "formansbil", "formansbil_el"];
+const LONG_STAYS: LongStay[] = ["none", "after3months", "after2years"];
+const day = (v: string, what: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new Error(`${what}: välj ett datum.`);
+  return v;
+};
+const clock = (v: string, what: string) => {
+  if (!/^\d{1,2}:\d{2}$/.test(v)) throw new Error(`${what}: klockslag, t.ex. 07:30.`);
+  return v;
+};
+const whole = (formData: FormData, key: string, max: number) => {
+  const n = Number(text(formData, key) || "0");
+  if (!Number.isInteger(n) || n < 0 || n > max) throw new Error("Antalen är heltal.");
+  return n;
+};
+
+/**
+ * Meals given on the trip as counts: breakfasts from the last day back (the
+ * hotel's breakfast the morning after), lunches and dinners from the first
+ * day forward. The reduction per day is frukost 20 %, lunch and middag 35 %
+ * each of that day's amount, so only which day a meal fell on matters.
+ */
+function mealsByDay(from: string, to: string, counts: { breakfast: number; lunch: number; dinner: number }): Record<string, MealsOnDay> {
+  const days: string[] = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) days.push(d);
+  const out: Record<string, MealsOnDay> = {};
+  const put = (d: string, k: keyof MealsOnDay) => (out[d] = { ...out[d], [k]: true });
+  days.slice().reverse().slice(0, counts.breakfast).forEach((d) => put(d, "breakfast"));
+  days.slice(0, counts.lunch).forEach((d) => put(d, "lunch"));
+  days.slice(0, counts.dinner).forEach((d) => put(d, "dinner"));
+  return out;
+}
+
+/** A new claim as a draft; the receipt is added next, then it is sent in. */
+export async function createOwnClaimAction(formData: FormData): Promise<void> {
+  const e = await me();
+  await run(async () => {
+    const kind = text(formData, "kind");
+    const dateFrom = day(text(formData, "dateFrom"), "Datum");
+    const dateTo = text(formData, "dateTo") ? day(text(formData, "dateTo"), "Hemkomst") : dateFrom;
+    if (dateTo < dateFrom) throw new Error("Hemkomsten ligger före avresan.");
+    if (dateFrom > todayIso()) throw new Error("Utlägg lämnas i efterhand.");
+    const base: ClaimDraft = {
+      kind: "utlagg",
+      dateFrom,
+      dateTo,
+      description: text(formData, "description").slice(0, 400),
+      amountOre: null,
+      vatOre: 0,
+      distanceKm: null,
+      carType: null,
+      destination: "",
+      departureTime: null,
+      returnTime: null,
+      nights: 0,
+      nightsWithoutLodging: 0,
+      meals: {},
+      longStay: "none",
+      farFromHome: true,
+      note: "",
+    };
+    let draft: ClaimDraft;
+    if (kind === "utlagg") {
+      let amountOre: number;
+      let vatOre: number;
+      try {
+        amountOre = parseKronor(text(formData, "amount"));
+        vatOre = text(formData, "vat") ? parseKronor(text(formData, "vat")) : 0;
+      } catch {
+        throw new Error("Beloppen skrivs i kronor, t.ex. 450 eller 89,50.");
+      }
+      if (!base.description) throw new Error("Skriv vad du köpte.");
+      draft = { ...base, kind, dateTo: dateFrom, amountOre, vatOre };
+    } else if (kind === "milersattning") {
+      const km = Number(text(formData, "distanceKm").replace(",", "."));
+      if (!(km > 0 && km < 10_000)) throw new Error("Ange hur många kilometer du körde i tjänsten.");
+      const carType = text(formData, "carType") as CarType;
+      if (!CAR_TYPES.includes(carType)) throw new Error("Välj bil.");
+      if (!base.description) throw new Error("Skriv vart och varför du körde.");
+      draft = { ...base, kind, dateTo: dateFrom, distanceKm: Math.round(km * 10) / 10, carType };
+    } else if (kind === "traktamente") {
+      const destination = text(formData, "destination").slice(0, 200);
+      if (!destination) throw new Error("Ange resmålet.");
+      const longStay = (text(formData, "longStay") || "none") as LongStay;
+      if (!LONG_STAYS.includes(longStay)) throw new Error("Välj hur länge du varit på orten.");
+      const nights = Math.round((Date.parse(dateTo) - Date.parse(dateFrom)) / 86_400_000);
+      const without = whole(formData, "nightsWithoutLodging", 400);
+      if (without > nights) throw new Error(`Resan har ${nights} nätter.`);
+      draft = {
+        ...base,
+        kind,
+        destination,
+        departureTime: clock(text(formData, "departureTime"), "Avresa"),
+        returnTime: clock(text(formData, "returnTime"), "Hemkomst"),
+        nights,
+        nightsWithoutLodging: without,
+        meals: mealsByDay(dateFrom, dateTo, { breakfast: whole(formData, "breakfasts", 400), lunch: whole(formData, "lunches", 400), dinner: whole(formData, "dinners", 400) }),
+        longStay,
+        farFromHome: text(formData, "farFromHome") === "on",
+      };
+    } else throw new Error("Välj vad du vill få ersättning för.");
+    const { result } = await createClaim(e.id, draft);
+    const note = result.notes.length ? ` ${result.notes.join(" ")}` : "";
+    return kind === "utlagg" ? `Sparat som utkast. Lägg till ett foto av kvittot och skicka in.${note}` : `Sparat som utkast; skicka in det när det stämmer.${note}`;
+  });
+}
+
+async function ownClaim(id: string, employeeId: string) {
+  const c = /^[0-9a-f-]{36}$/.test(id) ? await getClaim(id) : null;
+  if (!c || c.employeeId !== employeeId) throw new Error("Utlägget finns inte.");
+  return c;
+}
+
+export async function submitOwnClaimAction(formData: FormData): Promise<void> {
+  const e = await me();
+  await run(async () => {
+    const c = await ownClaim(text(formData, "claimId"), e.id);
+    await submitClaim(c.id);
+    return "Inskickat för godkännande. Det betalas med lönen när det är godkänt.";
+  });
+}
+
+export async function deleteOwnClaimAction(formData: FormData): Promise<void> {
+  const e = await me();
+  await run(async () => {
+    const c = await ownClaim(text(formData, "claimId"), e.id);
+    if (c.status !== "draft") throw new Error("Bara ett utkast kan tas bort.");
+    await deleteClaim(c.id);
+    return "Utkastet är borttaget.";
   });
 }
 
