@@ -104,7 +104,7 @@ export async function PersonBenefitsTab({ employeeId, today, canWrite }: { emplo
                   <input type="hidden" name="employeeId" value={employeeId} />
                   <input type="hidden" name="benefitId" value={b.id} />
                   <label>
-                    Sista dag <input className="efield-input" type="date" name="validTo" defaultValue={today} required />
+                    Sista dag <input className="efield-input" type="date" name="validTo" defaultValue={b.validFrom > today ? b.validFrom : today} min={b.validFrom} required />
                   </label>
                   <button className="btn btn-ghost hr-btn-small" type="submit">
                     Avsluta

@@ -72,7 +72,8 @@ export type PlannerResult = {
 /** The room for one beskattningsår from the pay of the year before. `ibbOre` is that year's inkomstbasbelopp. */
 export function dividendRoom(rules: PayrollRuleSet, input: { year: number; ibbOre: Ore; ownershipPercent: number; ownPayOre: Ore; wageSumOre: Ore }): RoomResult {
   const c = rules.closeCompany;
-  const share = Math.max(0, Math.min(100, input.ownershipPercent));
+  // rateOf takes two decimals; a share is typed with at most two.
+  const share = Math.round(Math.max(0, Math.min(100, input.ownershipPercent)) * 100) / 100;
   const grundbeloppOre = rateOf(input.ibbOre * c.grundbeloppIbb, share);
   const wageSumDeductionOre = input.ibbOre * c.wageSumDeductionIbb;
   const wageBasedBeforeCapOre = rateOf(Math.max(0, rateOf(input.wageSumOre, share) - wageSumDeductionOre), c.wageBasedPercent);
@@ -102,7 +103,7 @@ export function ownerPlanner(input: PlannerInput): PlannerResult {
   if (!input.ownPayLastYearOre && thisYear.wageBasedBeforeCapOre > 0)
     notes.push("Utan egen lön förra året är taket för det lönebaserade utrymmet 0 kr; bara grundbeloppet gäller.");
   if (thisYear.capped) notes.push(`Det lönebaserade utrymmet stannar vid ${rules.closeCompany.capMultipleOfOwnSalary} gånger den egna lönen.`);
-  if (rateOf(input.wageSumLastYearOre, input.ownershipPercent) <= thisYear.wageSumDeductionOre) notes.push(`Lönesumman förra året var inte över ${rules.closeCompany.wageSumDeductionIbb} inkomstbasbelopp; inget lönebaserat utrymme.`);
+  if (thisYear.wageBasedBeforeCapOre === 0) notes.push(`Ägarens andel av lönesumman förra året var inte över ${rules.closeCompany.wageSumDeductionIbb} inkomstbasbelopp; inget lönebaserat utrymme.`);
   return { thisYear, nextYear, ownPayThisYearOre, wageSumThisYearOre, ruleVersion: rules.validFrom, notes };
 }
 
