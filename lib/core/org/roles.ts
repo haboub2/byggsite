@@ -4,8 +4,9 @@
  * can_write_org (owner, admin, staff) and can_admin_org (owner, admin).
  *
  *   read   accountant and readonly: Ekonomi, Bokföringen, fakturor, kunder, ROT
- *   payroll  owner, admin, accountant: Personal (people, contracts, tax data);
- *          not staff or readonly. The database checks the same with
+ *   payroll  owner, admin, accountant: Personal (people, contracts, tax data),
+ *          Lönekörning and Rapporter; not staff or readonly. The accountant
+ *          computes runs but never approves (0039). The database checks the same with
  *          can_payroll_read() (0035); writing people and contracts is
  *          can_payroll_approve(), owner and admin (access "admin" here).
  *   write  staff: everything that creates invoices, customers, payments
@@ -46,9 +47,9 @@ export const ROLE_HINT: Record<Role, string> = {
   owner: "Allt, även ägare och organisationen.",
   admin: "Allt utom ägare: inställningar, medlemmar, API-nycklar.",
   staff: "Fakturor, kunder, betalningar, projekt.",
-  accountant: "Läser ekonomi, fakturor, bokföring och personal, laddar ner SIE. Skriver inget.",
+  accountant: "Läser ekonomi, fakturor, bokföring och personal, laddar ner SIE, räknar löner. Godkänner inga löner.",
   readonly: "Läser ekonomi och fakturor.",
-  employee: "Sin egen tid, frånvaro, inringningar och avtal på Min tid (lönebesked kommer). Inga sidor i admin.",
+  employee: "Sin egen tid, frånvaro, inringningar, avtal och lönebesked på Min tid. Inga sidor i admin.",
 };
 
 const LEVEL: Record<Role, number> = { owner: 4, admin: 3, staff: 2, accountant: 1, readonly: 1, employee: 0 };
@@ -85,8 +86,8 @@ export function assignableRoles(role: Role): Role[] {
  * admin is for staff and up; the proxy sends readers to Ekonomi.
  */
 const READER_PATHS = ["/admin/idag", "/admin/sok", "/admin/ekonomi", "/admin/fakturor", "/admin/kunder", "/admin/rot", "/admin/organisation"];
-/** Personal and Schema: owner, admin and accountant ("payroll"); its pages that create (…/ny) only for owner and admin. */
-const PAYROLL_PATHS = ["/admin/personal", "/admin/schema"];
+/** Personal, Schema, Lönekörning and the payroll reports: owner, admin and accountant ("payroll"); pages that create (…/ny) only for owner and admin. */
+const PAYROLL_PATHS = ["/admin/personal", "/admin/schema", "/admin/lon", "/admin/rapporter"];
 /** Tid: owner, admin, staff and accountant ("time"). */
 const TIME_PATHS = ["/admin/tid"];
 /** The website's content and its interest registrations: only for "site" (owner/admin in the organisation that owns the site). */

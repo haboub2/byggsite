@@ -76,6 +76,7 @@ export default function AdminTopBar(p: AdminTopBarProps) {
     { href: "/admin/personal", label: "Personal", access: "payroll" },
     { href: "/admin/tid", label: "Tid", access: "time", count: p.counts.time },
     { href: "/admin/schema", label: "Schema", access: "payroll" },
+    { href: "/admin/lon", label: "Lön", access: "payroll" },
   ].filter((i) => has(p.access, i.access as Access)) as Item[];
 
   const money: Item[] = [
@@ -85,6 +86,7 @@ export default function AdminTopBar(p: AdminTopBarProps) {
     { href: "/admin/fakturor/aterkommande", label: "Återkommande fakturor", access: "write" },
     { href: "/admin/fakturor/bank", label: "Bankfil", access: "write" },
     { href: "/admin/ekonomi/export", label: "Export och bokföring", access: "read" },
+    { href: "/admin/rapporter", label: "Lönerapporter", access: "payroll" },
   ].filter((i) => has(p.access, i.access as Access)) as Item[];
 
   const create: Item[] = [
@@ -105,6 +107,7 @@ export default function AdminTopBar(p: AdminTopBarProps) {
     { href: "/admin/innehall/offert", label: "Offertuppgifter", access: "site" },
     { href: "/admin/intresse", label: "Intresse för faktureringen", access: "site" },
     { href: "/admin/installningar", label: "Inställningar", access: "admin" },
+    { href: "/admin/installningar/lon", label: "Inställningar: lön", access: "admin" },
     { href: "/admin/organisation", label: "Organisation och roller", access: "read" },
     { href: "/admin/api", label: "API", access: "admin" },
   ].filter((i) => has(p.access, i.access as Access)) as Item[];

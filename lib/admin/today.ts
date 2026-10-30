@@ -16,6 +16,8 @@ import { hrTodos, type HrTodo } from "../core/hr/today";
 import { countWaitingEntries, listAbsences, listShifts, listWaitingEntries, openOffer, timePeople } from "../core/hr/time-store";
 import { certificatesDue } from "../core/hr/absence";
 import { timeTodos, type TimeTodo } from "../core/hr/time-today";
+import { getPayrollSettings, listRuns } from "../core/payroll/run-store";
+import { payrollTodos, type PayrollTodo } from "../core/payroll/today";
 import { addDays } from "../core/rules/index";
 
 /**
@@ -25,7 +27,7 @@ import { addDays } from "../core/rules/index";
  * than taking the page down.
  */
 
-export type TodoKind = "lead" | "quote" | "phase" | "photo" | "change" | "invoice" | "hr" | "time";
+export type TodoKind = "lead" | "quote" | "phase" | "photo" | "change" | "invoice" | "hr" | "time" | "payroll";
 
 export type Todo = {
   id: string;
@@ -107,9 +109,15 @@ async function loadTimeTodos(access: Access[], today: string): Promise<TimeTodo[
   });
 }
 
+/** Payroll rows (lib/core/payroll/today.ts): a run due, a run to approve, the skattekonto payment. */
+async function loadPayrollTodos(access: Access[], today: string): Promise<PayrollTodo[]> {
+  const [runs, { settings }, employees] = await Promise.all([listRuns(), getPayrollSettings(), listEmployees()]);
+  return payrollTodos({ runs, settings, today, canApprove: access.includes("admin"), hasPeople: employees.some((e) => !e.endedAt) });
+}
+
 export async function loadToday(access: Access[], today = todayIso()): Promise<TodayData> {
   const canWrite = access.includes("write");
-  const [leads, sentQuotes, overduePhases, projects, overdueInvoices, events, hr, time] = await Promise.all([
+  const [leads, sentQuotes, overduePhases, projects, overdueInvoices, events, hr, time, payroll] = await Promise.all([
     canWrite ? safe("leads", () => listLeads({ status: "new" }, { limit: 20 }), { leads: [], total: 0 }) : { leads: [], total: 0 },
     canWrite ? safe("quotes", () => listQuotes({ status: "sent" }), []) : [],
     safe("phases", () => listOverduePhases(today), []),
@@ -118,6 +126,7 @@ export async function loadToday(access: Access[], today = todayIso()): Promise<T
     safe("events", () => listRecentEvents(6), []),
     access.includes("payroll") ? safe("personal", () => loadHrTodos(today), []) : [],
     access.includes("time") && (access.includes("payroll") || access.includes("write")) ? safe("tid", () => loadTimeTodos(access, today), []) : [],
+    access.includes("payroll") ? safe("lön", () => loadPayrollTodos(access, today), []) : [],
   ]);
 
   const active = projects.filter((p) => p.status === "active").slice(0, MAX_PROJECTS);
@@ -241,6 +250,10 @@ export async function loadToday(access: Access[], today = todayIso()): Promise<T
       href: t.href,
       weight: t.weight + 2,
     });
+  }
+
+  for (const p of payroll) {
+    todos.push({ id: `payroll-${p.id}`, kind: "payroll", tag: p.tag, title: p.title, meta: p.meta, action: p.kind === "tax-account" ? "Öppna rapporten" : "Öppna lönekörningen", href: p.href, weight: p.weight + 2 });
   }
 
   todos.sort((a, b) => a.weight - b.weight);

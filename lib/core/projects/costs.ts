@@ -145,3 +145,15 @@ export function demoAddTimeCost(row: Omit<Row, "id" | "created_at" | "supplier" 
 export function demoTimeCostRate(timeEntryId: string): number | null {
   return demo().find((r) => r.time_entry_id === timeEntryId)?.hourly_rate_ore ?? null;
 }
+
+/** Labour cost from approved time (rows with a time entry) in [from, to], every project: the payroll report per project and month. */
+export async function listLabourCosts(range: { from: string; to: string }): Promise<ProjectCost[]> {
+  if (isDemo()) return demo().filter((r) => r.time_entry_id && r.cost_date >= range.from && r.cost_date <= range.to).map(fromRow);
+  const supabase = await getDb();
+  const org = await readOrgId();
+  let q = supabase.from("project_costs").select("*").not("time_entry_id", "is", null).gte("cost_date", range.from).lte("cost_date", range.to);
+  if (org) q = q.eq("org_id", org);
+  const { data, error } = await q.limit(10_000);
+  if (error) throw new Error(`Kunde inte hämta lönekostnaderna: ${error.message}`);
+  return ((data ?? []) as Row[]).map(fromRow);
+}

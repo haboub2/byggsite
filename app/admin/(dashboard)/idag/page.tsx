@@ -18,6 +18,7 @@ const TAG_TONE: Record<TodoKind, string> = {
   invoice: "idag-tag--alert",
   hr: "idag-tag--warm",
   time: "idag-tag--cool",
+  payroll: "idag-tag--alert",
 };
 
 const kr = (n: number) => `${Math.round(n).toLocaleString("sv-SE").replace(/ /g, " ")} kr`;

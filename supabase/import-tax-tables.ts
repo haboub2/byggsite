@@ -4,9 +4,8 @@
  * prints the import record (SHA-256, row counts, vectors). docs/hr-lon.md,
  * section 9 rule 2: a file that fails a single vector is refused.
  *
- * Phase 0 has no database: the `tax_tables` table arrives with the HR
- * migration. Until then `--out` writes the verified rows as JSON, which is
- * what the migration's loader will read.
+ * `--out` writes the verified rows as JSON; `npm run tax-tables:load --
+ * fil.json` puts them in the database (tax_tables_import(), 0039).
  *
  * Usage:
  *   npm run tax-tables:import -- 2026
@@ -62,7 +61,7 @@ async function main() {
     writeFileSync(out, JSON.stringify({ ...record, importedAt: new Date().toISOString(), rows }));
     console.log(`Skrev ${out}`);
   } else {
-    console.log("Ingen databas i fas 0: ange --out <fil> för att spara raderna.");
+    console.log("Ange --out <fil> för att spara raderna, och ladda dem med npm run tax-tables:load -- <fil>.");
   }
 }
 

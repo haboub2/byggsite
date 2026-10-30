@@ -34,15 +34,16 @@ import { SecretsForm } from "@/components/admin/hr/SecretsForm";
 import { GenerateContractButton, SignDocumentForm } from "@/components/admin/hr/DocumentActions";
 import { PersonTimeTab } from "@/components/admin/hr/PersonTimeTab";
 import { PersonAbsenceTab } from "@/components/admin/hr/PersonAbsenceTab";
+import { PersonPayTab } from "@/components/admin/payroll/PersonPayTab";
 import { Flash } from "@/components/admin/time/parts";
 
 export const metadata: Metadata = { title: "Person" };
 
-/** The tabs of section 11; Lön, Utlägg and Förmåner say which phase fills them. */
+/** The tabs of section 11; Utlägg and Förmåner say which phase fills them. */
 const TABS = [
   { key: "anstallning", label: "Anställning" },
   { key: "skatt", label: "Skatt" },
-  { key: "lon", label: "Lön", phase: "Lönebesked kommer med lönekörningen i fas 3." },
+  { key: "lon", label: "Lön" },
   { key: "tid", label: "Tid" },
   { key: "franvaro", label: "Frånvaro" },
   { key: "utlagg", label: "Utlägg", phase: "Utlägg, milersättning och traktamente kommer i fas 5." },
@@ -117,6 +118,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
           {tab === "skatt" && <TaxTab employeeId={id} rows={tax} current={current} today={today} canWrite={canWrite} />}
           {tab === "tid" && <PersonTimeTab employeeId={id} month={/^\d{4}-\d{2}$/.test(manad ?? "") ? (manad as string) : today.slice(0, 7)} today={today} canWrite={canWrite} />}
           {tab === "franvaro" && <PersonAbsenceTab employeeId={id} today={today} canWrite={canWrite} />}
+          {tab === "lon" && <PersonPayTab employeeId={id} />}
           {placeholder && "phase" in placeholder && (
             <div className="inbox-empty">
               <p>{placeholder.phase}</p>
