@@ -605,7 +605,10 @@ export async function YearEndSection({ year, today, canApprove, keep }: { year: 
                 <tr key={r.employeeId}>
                   <td>{r.name}</td>
                   <td className="tg-num">{r.payslips}</td>
-                  <td className="tg-num">{kr(r.cashGrossOre)}</td>
+                  <td className="tg-num">
+                    {kr(r.cashGrossOre)}
+                    {r.repaidOre ? <small className="hr-muted"> varav {kr(r.repaidOre)} återbetalt</small> : null}
+                  </td>
                   <td className="tg-num">{kr(r.benefitOre)}</td>
                   <td className="tg-num">{kr(r.taxFreeReimbursementOre)}</td>
                   <td className="tg-num">{kr(r.taxOre)}</td>

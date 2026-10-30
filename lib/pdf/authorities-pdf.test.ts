@@ -48,7 +48,7 @@ test("an arbetsgivarintyg with twelve months renders to a one-page PDF", async (
 
 test("the årsbesked has one page per person", async () => {
   const { YearSummaryPdf, renderToBuffer } = await load();
-  const row = (name: string) => ({ employeeId: name, name, pnrMasked: "19920630-XXXX", payslips: 12, cashGrossOre: 42_000_000, benefitOre: 0, taxFreeReimbursementOre: 120_000, taxOre: 9_800_000, netOre: 32_320_000, employerContributionOre: 13_196_400, firstPayDate: "2026-01-23", lastPayDate: "2026-12-23" });
+  const row = (name: string) => ({ employeeId: name, name, pnrMasked: "19920630-XXXX", payslips: 12, cashGrossOre: 42_000_000, benefitOre: 0, taxFreeReimbursementOre: 120_000, taxOre: 9_800_000, netOre: 32_320_000, employerContributionOre: 13_196_400, repaidOre: name === "Bo" ? 200_000 : 0, firstPayDate: "2026-01-23", lastPayDate: "2026-12-23" });
   const pdf = await renderToBuffer(
     createElement(YearSummaryPdf, { year: 2026, rows: [row("Anna"), row("Bo")], employer: { name: "Binaafy AB", orgNr: "559123-4567", street: "Exempelgatan 1", postalCode: "411 01", city: "Göteborg" }, logo: null, madeOn: "2027-01-10" }) as Parameters<typeof renderToBuffer>[0]
   );

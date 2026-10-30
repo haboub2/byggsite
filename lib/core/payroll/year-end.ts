@@ -16,7 +16,8 @@
  * day in the year (kontrolluppgifter are gone since the AGI; this is the
  * employer's and the employee's own overview): cash gross, benefits,
  * tax-free reimbursements, tax, net and the arbetsgivaravgifter in öre as
- * the payslips carry them.
+ * the payslips carry them, and salary paid back for months of the year
+ * (återkrav), which the AGI reports as lower pay.
  */
 
 import { sumOre, type Ore } from "../money";
@@ -91,13 +92,15 @@ export type YearSummaryRow = {
   taxOre: Ore;
   netOre: Ore;
   employerContributionOre: Ore;
+  /** Salary paid back for months of the year; the AGI's cash pay is cashGrossOre − repaidOre. */
+  repaidOre: Ore;
   /** First and last pay day of the year. */
   firstPayDate: IsoDate;
   lastPayDate: IsoDate;
 };
 
-/** The year's approved payslips summed per person (pass only payslips of closed runs with pay day in the year). */
-export function yearSummary(slips: readonly YearSummarySlip[]): YearSummaryRow[] {
+/** The year's approved payslips summed per person (pass only payslips of closed runs with pay day in the year, and the year's repayments). */
+export function yearSummary(slips: readonly YearSummarySlip[], repayments: readonly { employeeId: string; amountOre: Ore }[] = []): YearSummaryRow[] {
   const by = new Map<string, YearSummarySlip[]>();
   for (const s of slips) by.set(s.employeeId, [...(by.get(s.employeeId) ?? []), s]);
   const rows: YearSummaryRow[] = [];
@@ -114,6 +117,7 @@ export function yearSummary(slips: readonly YearSummarySlip[]): YearSummaryRow[]
       taxOre: sum((s) => s.document.totals.taxOre),
       netOre: sum((s) => s.document.totals.netOre),
       employerContributionOre: sum((s) => s.employerContributionOre),
+      repaidOre: sumOre(repayments.filter((r) => r.employeeId === employeeId).map((r) => r.amountOre)),
       firstPayDate: days[0],
       lastPayDate: days[days.length - 1],
     });

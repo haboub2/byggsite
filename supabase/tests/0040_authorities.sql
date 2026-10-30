@@ -380,7 +380,7 @@ begin
 
   if (select s from jsonb_array_elements(year_summary((select v from prov where k = 'a'), 2026)) s where s->>'name' = 'Erik Eriksson')
      <> jsonb_build_object('employeeId', (select v from prov where k = 'erik'), 'name', 'Erik Eriksson', 'payslips', 1, 'cashGrossOre', 3200050,
-          'benefitOre', 0, 'taxFreeReimbursementOre', 0, 'taxOre', 645000, 'netOre', 2555050, 'employerContributionOre', 1005455,
+          'benefitOre', 0, 'taxFreeReimbursementOre', 0, 'taxOre', 645000, 'netOre', 2555050, 'employerContributionOre', 1005455, 'repaidOre', 600000,
           'firstPayDate', '2026-11-25', 'lastPayDate', '2026-11-25') then
     raise exception 'Årssammanställningen för Erik: %', year_summary((select v from prov where k = 'a'), 2026);
   end if;

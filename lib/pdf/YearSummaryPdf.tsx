@@ -61,6 +61,7 @@ export function YearSummaryPdf({ year, rows, employer, logo, madeOn }: YearSumma
             {(
               [
                 ["Bruttolön", r.cashGrossOre],
+                ...(r.repaidOre ? ([["Lön du betalat tillbaka (rättad i arbetsgivardeklarationen)", -r.repaidOre]] as const) : []),
                 ["Förmåner (skattepliktigt värde)", r.benefitOre],
                 ["Skattefria ersättningar (traktamente, milersättning, utlägg)", r.taxFreeReimbursementOre],
                 ["Avdragen preliminär skatt", -r.taxOre],

@@ -50,13 +50,16 @@ test("saved days older than five years expire at the transition", () => {
 test("the year summary sums each person's payslips", () => {
   const doc = (name: string, payDate: string, gross: number, tax: number, benefit = 0): PayslipDocument =>
     ({ employeeId: name, employeeName: name, payDate, totals: { cashGrossOre: gross, taxFreeReimbursementOre: 0, benefitOre: benefit, taxOre: tax, netAdjustmentOre: 0, netOre: gross - tax, employerContributionOre: 0, sickPayCostOre: 0 } }) as unknown as PayslipDocument;
-  const rows = yearSummary([
+  const rows = yearSummary(
+    [
     { employeeId: "bo", number: 2, document: doc("Bo", "2026-11-25", 3_519_600, 708_500), employerContributionOre: 1_105_858 },
     { employeeId: "anna", number: 1, document: doc("Anna", "2026-11-25", 3_952_000, 828_900, 150_000), employerContributionOre: 1_288_864 },
     { employeeId: "anna", number: 4, document: doc("Anna", "2026-12-23", 4_000_000, 850_000), employerContributionOre: 1_256_800 },
-  ]);
-  assert.deepEqual(rows.map((r) => [r.name, r.payslips, r.cashGrossOre, r.benefitOre, r.taxOre, r.netOre, r.employerContributionOre, r.firstPayDate, r.lastPayDate]), [
-    ["Anna", 2, 7_952_000, 150_000, 1_678_900, 6_273_100, 2_545_664, "2026-11-25", "2026-12-23"],
-    ["Bo", 1, 3_519_600, 0, 708_500, 2_811_100, 1_105_858, "2026-11-25", "2026-11-25"],
+    ],
+    [{ employeeId: "bo", amountOre: 200_000 }],
+  );
+  assert.deepEqual(rows.map((r) => [r.name, r.payslips, r.cashGrossOre, r.benefitOre, r.taxOre, r.netOre, r.employerContributionOre, r.repaidOre, r.firstPayDate, r.lastPayDate]), [
+    ["Anna", 2, 7_952_000, 150_000, 1_678_900, 6_273_100, 2_545_664, 0, "2026-11-25", "2026-12-23"],
+    ["Bo", 1, 3_519_600, 0, 708_500, 2_811_100, 1_105_858, 200_000, "2026-11-25", "2026-11-25"],
   ]);
 });

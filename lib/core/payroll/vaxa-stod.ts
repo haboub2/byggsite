@@ -86,7 +86,8 @@ export function vaxaStodBasis(period: string, people: readonly VaxaStodPerson[])
   const keep = rules.employerContributions.fullPercent - v.percentWithinCap;
   const rows: VaxaStodRow[] = [];
   for (const p of people) {
-    if (!p.chosen && !p.payslips.length) continue;
+    // Someone not chosen is listed only if they are employed (a board fee alone is not employment).
+    if (!p.chosen && (!p.payslips.length || !p.versions.some((v) => v.payForm !== "fee"))) continue;
     const reasons: string[] = [];
     const startedOn = employmentStart(p.versions, last);
     const current = p.versions.filter((x) => x.payForm !== "fee" && x.startsOn <= last && (x.endsOn === null || x.endsOn >= first) && x.validFrom <= last && (x.validTo === null || x.validTo >= first));

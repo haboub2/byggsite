@@ -794,7 +794,8 @@ create trigger year_closings_immutable before update or delete on year_closings
   for each row execute function forbid_change();
 
 -- Årssammanställningen per person: godkända lönebesked i stängda körningar
--- med lönedag under året (year-end.ts yearSummary).
+-- med lönedag under året, och lön som betalats tillbaka för årets månader
+-- (year-end.ts yearSummary).
 create or replace function public.year_summary(p_org uuid, p_year int) returns jsonb
   language plpgsql stable security definer set search_path = public
 as $$
@@ -806,6 +807,8 @@ begin
     select coalesce(jsonb_agg(jsonb_build_object(
              'employeeId', employee_id, 'name', name, 'payslips', n, 'cashGrossOre', gross, 'benefitOre', benefit,
              'taxFreeReimbursementOre', taxfree, 'taxOre', tax, 'netOre', net, 'employerContributionOre', contrib,
+             'repaidOre', coalesce((select sum(a.amount_ore) from public.agi_repayments a
+                                     where a.org_id = p_org and a.employee_id = x.employee_id and left(a.period, 4) = p_year::text), 0)::bigint,
              'firstPayDate', first_pay, 'lastPayDate', last_pay) order by name collate "C", employee_id), '[]'::jsonb)
       from (select p.employee_id, (array_agg(p.document->>'employeeName' order by r.pay_date desc))[1] as name, count(*) as n,
                    sum(p.gross_ore)::bigint as gross, sum((p.document->'totals'->>'benefitOre')::bigint)::bigint as benefit,

@@ -471,7 +471,11 @@ export async function summaryForYear(year: number): Promise<YearSummaryRow[]> {
   if (isDemo()) {
     const runs = (await listRuns()).filter((r) => r.status === "closed" && r.payDate.startsWith(`${year}-`));
     const slips = (await Promise.all(runs.map((r) => listRunPayslips(r.id)))).flat().filter((s) => s.approvedAt);
-    return yearSummary(slips.map((s) => ({ employeeId: s.employeeId, number: s.number, document: s.document, employerContributionOre: s.employerContributionOre })));
+    const repaid = (await listRepayments()).filter((r) => r.period.startsWith(`${year}-`));
+    return yearSummary(
+      slips.map((s) => ({ employeeId: s.employeeId, number: s.number, document: s.document, employerContributionOre: s.employerContributionOre })),
+      repaid,
+    );
   }
   const supabase = await getDb();
   const { data, error } = await supabase.rpc("year_summary", { p_org: await currentOrgId(), p_year: year });
