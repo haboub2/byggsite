@@ -841,6 +841,18 @@ in `0041_authorities_fixes.sql`, **which must be applied after 0040 and has
 not run against Supabase**; then run `supabase/tests/0040_authorities.sql`
 again (it now covers 0041, and `0039_payroll.sql` no longer checks the
 unused `agi_refile`).
+
+**The hosted project has 0040 from before its last fix (repair:
+`0044_year_summary_repair.sql`).** 0040 was applied to Supabase at 2e7f194
+(2026-10-30 18:23); f287210 (18:43) then added `repaidOre` (pay repaid
+during the year, `agi_repayments`) to `year_summary()`, the only change to
+0040 after it was applied. `supabase/tests/0040_authorities.sql` noticed on
+2026-10-31 ("Årssammanställningen för Erik" without `repaidOre`).
+`0044_year_summary_repair.sql` re-creates `year_summary()` with the
+reviewed text and changes nothing where the reviewed 0040 is applied.
+**Apply it after `0043_product.sql`**, then run `0040_authorities.sql`
+again. Same lesson as 0039: a migration is applied only in its final
+reviewed version.
 Nothing is ever sent: the owner uploads the AGI file in Skatteverket's
 e-service and signs with BankID, and reports to Fora on Mina sidor.
 **Acceptance by Skatteverket's e-service for a real month is your test**
