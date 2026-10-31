@@ -91,6 +91,7 @@ export const SIDES: Record<Side, SideConfig> = {
     heroSecondary: { label: "Se våra case", href: "/mjukvara/case" },
     cta: { label: "Skicka brief", href: "/mjukvara/brief" },
     nav: [
+      { label: "Köp hemsida", href: "/mjukvara/kop-hemsida" },
       { label: "Tjänster", href: "/mjukvara/tjanster" },
       { label: "Referenser", href: "/referenser" },
       { label: "Om oss", href: "/om-oss" },

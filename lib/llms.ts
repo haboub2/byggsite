@@ -43,6 +43,7 @@ export async function llmsTxt(): Promise<string> {
     "",
     `- [Software](${abs("/mjukvara")}): översikt.`,
     ...softwareAreas.map((a) => `- [${a.seo.title}](${abs(`/mjukvara/tjanster/${a.slug}`)}): ${a.seo.description}`),
+    `- [Köp hemsida](${abs("/mjukvara/kop-hemsida")}): tre hemsidepaket med fast pris från 9 900 kr exkl. moms, beställ direkt.`,
     `- [Skicka brief](${abs("/mjukvara/brief")}): svar inom två arbetsdagar.`,
     "",
     "## Guider",

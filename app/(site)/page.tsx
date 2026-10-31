@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Landing from "@/components/Landing";
 import JsonLd from "@/components/JsonLd";
 import { businessJsonLd, pageMetadata } from "@/lib/seo";
-import { ogImage } from "@/lib/images";
 import { getContent } from "@/lib/content/store";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -12,7 +11,6 @@ export async function generateMetadata(): Promise<Metadata> {
     absoluteTitle: true,
     description: `Byggfirma i Göteborg för renovering, badrum, kök, tillbyggnad och tak i södra och västra Sverige. Fast pris, ROT på fakturan och ${warranty.bygg.sentence}.`,
     path: "/",
-    image: ogImage("hero-bygg"),
   });
 }
 

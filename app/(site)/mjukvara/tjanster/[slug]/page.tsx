@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
 import ServiceTemplate from "@/components/ServiceTemplate";
 import Reveal from "@/components/Reveal";
@@ -102,6 +103,11 @@ export default async function SoftwareServicePage({
                 <span className="eyebrow">Typiskt upplägg</span>
                 <strong>{area.engagement.label}</strong>
                 <p>{area.engagement.body}</p>
+                {slug === "webb" && (
+                  <p>
+                    Behöver ni en vanlig företagshemsida? <Link href="/mjukvara/kop-hemsida">Se våra paket med fast pris</Link>.
+                  </p>
+                )}
               </div>
             </div>
           </div>
