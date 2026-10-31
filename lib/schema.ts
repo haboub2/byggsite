@@ -31,6 +31,8 @@ export const briefSchema = z.object({
   ...base,
   company: z.string().trim().optional().default(""),
   tooling: z.string().trim().optional().default(""),
+  /** The website-package order form (/mjukvara/kop-hemsida). */
+  currentSite: z.string().trim().max(300).optional().default(""),
   service: z.string().trim().min(1, "Välj en typ av projekt."),
   budget: z.string().trim().optional().default(""),
   timeline: z.string().trim().optional().default(""),
