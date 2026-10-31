@@ -2195,6 +2195,24 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .fakt-edge--rot { stroke: var(--orange-press); stroke-dasharray: 5 4; }
 .fakt-arrowhead { fill: var(--ink-3); }
 .fakt-edge-label { font-size: 12px; font-weight: 500; fill: var(--orange-text); }
+/* /fakturering#priser */
+.founder { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin-bottom: 24px; padding: 14px 18px; background: var(--dark-2); color: var(--on-dark); border-left: 3px solid var(--orange); border-radius: var(--radius-sm); }
+.founder strong { font-weight: 600; }
+.founder span { color: var(--on-dark-2); font-size: 15px; }
+.plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
+.plan { position: relative; display: flex; flex-direction: column; padding: clamp(22px, 2.6vw, 32px); background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); }
+.plan--featured { border: 2px solid var(--orange); }
+.plan-tag { position: absolute; top: -12px; left: 24px; padding: 2px 10px; background: var(--orange); color: var(--dark); font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; border-radius: var(--radius-sm); }
+.plan h3 { font-size: 22px; }
+.plan-lead { margin-top: 6px; color: var(--ink-2); font-size: 15px; }
+.plan-price { margin-top: 20px; color: var(--ink-2); font-size: 16px; }
+.plan-price strong { font-size: clamp(36px, 4vw, 46px); font-weight: 700; letter-spacing: -0.04em; color: var(--ink); }
+.plan-setup { margin-top: 2px; color: var(--ink-3); font-size: 14px; }
+.plan-items { margin: 18px 0 24px; flex: 1; }
+.plan-items li { display: flex; gap: 10px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.plan-items li svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--orange-press); transform: translateY(2px); }
+.plans-note { margin-top: 20px; max-width: 80ch; color: var(--ink-3); font-size: 14px; }
+@media (max-width: 900px) { .plans { grid-template-columns: minmax(0, 1fr); max-width: 520px; } }
 .form-intro h2 { font-size: clamp(30px, 3.8vw, 46px); letter-spacing: -0.035em; margin-top: 12px; }
 .note-card p + p { margin-top: 6px; }
 .interest-thanks { padding: clamp(22px, 3vw, 36px); background: var(--paper); border: 1px solid var(--line); border-top: 3px solid var(--orange); border-radius: var(--radius); outline: none; }

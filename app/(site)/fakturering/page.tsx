@@ -77,6 +77,52 @@ const INCLUDED = [
   "Allt kan exporteras när ni vill",
 ];
 
+/** Prices are excl. VAT; the packages run for 12 months, then continue monthly. */
+const PLANS = [
+  {
+    name: "Fakturering",
+    lead: "För er som redan har en hemsida.",
+    price: "490",
+    setup: "Ingen uppstartsavgift",
+    cta: { label: "Registrera företaget", href: "/registrera" },
+    items: [
+      "Offert, faktura, ÄTA och ROT",
+      "Betalplaner och delfakturor",
+      "Kundportal för era kunder",
+      "Ingen bindningstid",
+    ],
+  },
+  {
+    name: "Start",
+    lead: "Hemsida och fakturering i ett.",
+    price: "1 490",
+    setup: "4 900 kr i uppstart",
+    featured: true,
+    cta: { label: "Boka en demo", href: "#intresse" },
+    items: [
+      "Allt i Fakturering",
+      "Hemsida med upp till 5 sidor, byggd av oss",
+      "Offertformulär och referenser med bilder",
+      "Drift, säkerhet och backup",
+      "Live inom 3 veckor",
+    ],
+  },
+  {
+    name: "Bygg Pro",
+    lead: "För er som vill ha mer hjälp.",
+    price: "2 290",
+    setup: "9 900 kr i uppstart",
+    cta: { label: "Boka en demo", href: "#intresse" },
+    items: [
+      "Allt i Start",
+      "Fler sidor, en per tjänst",
+      "Google-företagsprofil uppsatt",
+      "2 timmars ändringar i månaden",
+      "Genomgång med oss varje kvartal",
+    ],
+  },
+];
+
 export default async function InvoicingPage() {
   const { company } = await getContent();
   return (
@@ -108,11 +154,11 @@ export default async function InvoicingPage() {
           <Icon name="arrow" strokeWidth={2} />
         </Link>
         <Link
-          href="#intresse"
+          href="#priser"
           className="btn btn-ghost"
           style={{ color: "var(--on-dark)", borderColor: "var(--line-dark-strong)" }}
         >
-          Anmäl intresse
+          Se priser
         </Link>
       </PageHero>
 
@@ -161,15 +207,50 @@ export default async function InvoicingPage() {
         </div>
       </section>
 
-      <section className="sec sec--alt" id="intresse">
+      <section className="sec sec--alt" id="priser">
+        <div className="container">
+          <SectionHead
+            eyebrow="Paket och priser"
+            title="Ett pris. Vi har ansvaret."
+            aside="Vi bygger hemsidan, sätter upp faktureringen och sköter allt efteråt: drift, säkerhet, ändringar och support. Ni ringer oss."
+          />
+          <div className="founder">
+            <strong>De första 5 företagen: 0 kr i uppstart och 1 290 kr/mån för Start.</strong>
+            <span>I gengäld får vi visa er som referens.</span>
+          </div>
+          <ul className="plans reveal-group">
+            {PLANS.map((p) => (
+              <Reveal as="li" key={p.name} className={p.featured ? "plan plan--featured" : "plan"}>
+                {p.featured && <span className="plan-tag">Mest valt</span>}
+                <h3>{p.name}</h3>
+                <p className="plan-lead">{p.lead}</p>
+                <p className="plan-price">
+                  <strong>{p.price}</strong> kr/mån
+                </p>
+                <p className="plan-setup">{p.setup}</p>
+                <Checklist items={p.items} className="plan-items" />
+                <Link href={p.cta.href} className={p.featured ? "btn btn-primary btn-block" : "btn btn-ghost btn-block"}>
+                  {p.cta.label}
+                </Link>
+              </Reveal>
+            ))}
+          </ul>
+          <p className="plans-note">
+            Alla priser exkl. moms. Start och Bygg Pro gäller i 12 månader och fortsätter sedan månad för månad. Ändringar
+            utöver det som ingår kostar 700 kr/h. Domänen är er, och all data kan exporteras när ni vill.
+          </p>
+        </div>
+      </section>
+
+      <section className="sec" id="intresse">
         <div className="container">
           <div className="form-layout">
             <Reveal className="form-intro">
-              <span className="eyebrow eyebrow--accent">Anmäl intresse</span>
-              <h2>Vill ni fakturera så här?</h2>
+              <span className="eyebrow eyebrow--accent">Gratis demo · 20 min</span>
+              <h2>Se hur det funkar för er firma</h2>
               <p>
-                Berätta kort om ert företag. Vi hör av oss och visar hur det fungerar. Det kostar inget och ni förbinder er
-                inte till något.
+                Berätta kort om ert företag. Vi hör av oss och visar hela vägen från offert till betald faktura. Det kostar
+                inget och ni förbinder er inte till något.
               </p>
             </Reveal>
             <Reveal className="form-main">
@@ -180,7 +261,7 @@ export default async function InvoicingPage() {
                 <span className="eyebrow">Läget</span>
                 <strong>Vi använder det själva på Binaafy.</strong>
                 <p>Nu vill vi veta om fler vill ha det.</p>
-                <p>Pris sätts tillsammans med de första företagen.</p>
+                <p>De första 5 företagen betalar ingen uppstart.</p>
                 <p>
                   Vill ni börja direkt? <Link href="/registrera">Registrera företaget</Link> och följ startguiden.
                 </p>
