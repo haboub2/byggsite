@@ -32,6 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       : []),
     entry("/bygg/offert", 0.8),
     entry("/mjukvara", 0.8, "monthly"),
+    entry("/mjukvara/kop-hemsida", 0.8),
     entry("/mjukvara/tjanster", 0.7),
     ...softwareAreas.map((a) => entry(`/mjukvara/tjanster/${a.slug}`, 0.7)),
     entry("/mjukvara/case", 0.5),

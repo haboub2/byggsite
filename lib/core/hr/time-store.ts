@@ -9,7 +9,7 @@ import { demoAddTimeCost, demoTimeCostRate } from "../projects/costs";
 import { addEmploymentVersion, listEmployees, listEmployments } from "./store";
 import { linkSickPeriods, sickRules, type Absence, type AbsenceKind, type ScheduleRule } from "./absence";
 import { projectCostFor, type CostBasis, type ProjectCostRow } from "./project-cost";
-import { blockHours, isReversal, stockholmLocalToIso, type OvertimeKind, type TimeEntry, type TimeKind, type TimeSource, type TimeStatus } from "./time";
+import { blockHours, isReversal, stockholmLocalToIso, timeAuditChanged, timeAuditLogged, timeAuditValues, timeEditNeedsReason, type OvertimeKind, type TimeEntry, type TimeKind, type TimeSource, type TimeStatus } from "./time";
 import { versionsOn, inForce, type Employee, type EmploymentInput, type EmploymentVersion } from "./schema";
 import type { AbsenceInput, ScheduleInput, ShiftOfferInput, TimeEntryInput } from "./time-schema";
 import type { VacationBalance } from "./balances";
@@ -424,36 +424,56 @@ export async function addTimeEntry(employeeId: string, input: TimeEntryInput, op
   return data.id as string;
 }
 
-/** Change a draft or a submitted row; a submitted row the person changes goes back to draft (0038), one a payroll approver changes stays submitted. */
-export async function updateTimeEntry(id: string, input: TimeEntryInput): Promise<void> {
-  const row = entryRow(input);
+/**
+ * Change a draft or a submitted row through time_update() (0045): a submitted
+ * row the person changes goes back to draft (0038), one a payroll approver
+ * changes stays submitted and needs a reason, which the time.updated event
+ * keeps together with the old and new values.
+ */
+export async function updateTimeEntry(id: string, input: TimeEntryInput, note = ""): Promise<void> {
+  const reason = note.trim().slice(0, 200);
   if (isDemo()) {
     const r = demoEntry(id);
     if (r.status === "approved" || r.status === "locked") throw new Error("En godkänd tidrad ändras inte; gör en rättelse.");
+    // Demo mode is always the owner (a payroll approver, not the person): a submitted row stays submitted and the reason is required, as in the database.
+    if (timeEditNeedsReason(r.status, false) && !reason) throw new Error("Ange varför den inskickade raden ändras.");
     demoGuardDate(r.work_date);
     demoGuardDate(input.date);
-    // Demo mode is always the owner (a payroll approver): a submitted row stays submitted, as in the database.
-    Object.assign(r, row, { hours: input.start && input.end ? blockHours(input.start, input.end, input.breakMinutes) : input.hours });
+    const before = timeAuditValues(entryFromRow(r));
+    Object.assign(r, entryRow(input), { hours: input.start && input.end ? blockHours(input.start, input.end, input.breakMinutes) : input.hours });
+    const after = timeAuditValues(entryFromRow(r));
+    if (timeAuditLogged(before.status, false) && timeAuditChanged(before, after)) demoLog(r.employee_id, "time.updated", { entryId: id, date: r.work_date, old: before, new: after, note: reason, byEmployee: false });
     return;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("time_entries").update(row).eq("id", id).select("id");
+  const { error } = await supabase.rpc("time_update", {
+    p_entry: id,
+    p_row: { date: input.date, start: input.start ?? "", end: input.end ?? "", breakMinutes: input.start ? input.breakMinutes : 0, hours: input.hours, kind: input.kind, projectId: input.projectId ?? "", note: input.note },
+    p_note: reason,
+  });
   if (error) fail("Kunde inte spara tiden", error);
-  if (!data?.length) throw new Error("Raden går inte att ändra (godkänd, eller inte din).");
 }
 
-export async function deleteTimeEntry(id: string): Promise<void> {
+/**
+ * Remove a draft (the person or a payroll approver) or a submitted row (a
+ * payroll approver, with a reason) through time_remove() (0045), which says
+ * why when it refuses. The time.removed event keeps the row's values and
+ * the reason.
+ */
+export async function deleteTimeEntry(id: string, note = ""): Promise<void> {
+  const reason = note.trim().slice(0, 200);
   if (isDemo()) {
     const r = demoEntry(id);
     if (r.status === "approved" || r.status === "locked") throw new Error("En godkänd tidrad tas inte bort; gör en rättelse.");
+    if (timeEditNeedsReason(r.status, false) && !reason) throw new Error("Ange varför den inskickade raden tas bort.");
     demoGuardDate(r.work_date);
     demo().entries = demo().entries.filter((e) => e.id !== id);
+    demoLog(r.employee_id, "time.removed", { entryId: id, date: r.work_date, old: timeAuditValues(entryFromRow(r)), note: reason, byEmployee: false });
     return;
   }
   const supabase = await getDb();
-  const { data, error } = await supabase.from("time_entries").delete().eq("id", id).select("id");
+  const { error } = await supabase.rpc("time_remove", { p_entry: id, p_note: reason });
   if (error) fail("Kunde inte ta bort raden", error);
-  if (!data?.length) throw new Error("Raden går inte att ta bort (inskickad, godkänd eller inte din).");
 }
 
 /** Clock in: an open row with a start and no end. */

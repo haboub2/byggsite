@@ -40,6 +40,8 @@ const quote = {
     rotPersons: [{ name: "Anna Lindqvist", personalNumber: "850412-1234" }],
     validDays: 30,
     paymentDays: 14,
+    priceType: "fast",
+    standardTerms: "none",
     terms: { payment: "", start: "", warranty: "", excluded: "", notes: "" },
     date: "2026-09-01",
     leadId: null,

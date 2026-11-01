@@ -49,6 +49,8 @@ export type BalancesInput = {
   /** Working days for counting semester taken; null: Monday–Friday without helgdagar. */
   schedule: WorkSchedule | null;
   asOf: IsoDate;
+  /** Ensamstående förälder: 180 instead of 120 semesterlönegrundande days per parental kind (17 a § 2 st). */
+  singleParent?: boolean;
 };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -112,17 +114,19 @@ export function vacationBalances(input: BalancesInput): VacationBalance[] {
     const rules = sickRules(year.from);
     const earning = vacationYears(year.from, model).paidBy;
     const range = { from: earning.from, to: earning.to };
-    // Wholly absent days in the intjänandeår: sick and parental count up to their caps (17, 17 a §§), unpaid leave never.
+    // Wholly absent days in the intjänandeår: sick, föräldraledighet and VAB count up to their own caps (17, 17 a §§), unpaid leave never.
     let sick = 0;
     let parental = 0;
+    let vab = 0;
     let unpaid = 0;
     for (const a of input.absences) {
       const n = wholeDaysAbsent(a, range, asOf);
       if (a.kind === "sjuk") sick += n;
-      else if (a.kind === "foraldraledig" || a.kind === "vab") parental += n;
+      else if (a.kind === "foraldraledig") parental += n;
+      else if (a.kind === "vab") vab += n;
       else if (a.kind === "tjanstledig") unpaid += n;
     }
-    const { nonQualifyingDays } = qualifyingAbsence(rules, { sick, parental, unpaid });
+    const { nonQualifyingDays } = qualifyingAbsence(rules, { sick, parental, vab, unpaid, singleParent: input.singleParent });
     const earnedDays = paidDaysEarned({
       rules,
       yearFrom: earning.from,

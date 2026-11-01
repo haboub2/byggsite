@@ -202,7 +202,7 @@ export function invoiceLabel(inv: Pick<InvoiceRecord, "kind" | "number">): strin
   return inv.number ? `${word} ${inv.number}` : `${word}, utkast`;
 }
 
-export type InvoiceFilters = { tab?: InvoiceListTab; q?: string; customerId?: string; projectId?: string };
+export type InvoiceFilters = { tab?: InvoiceListTab; q?: string; customerId?: string; projectId?: string; quoteId?: string };
 
 export function parseInvoiceFilters(params: Record<string, string | string[] | undefined>): InvoiceFilters {
   const one = (k: string) => (typeof params[k] === "string" ? (params[k] as string) : undefined);
@@ -286,6 +286,7 @@ export async function listInvoices(f: InvoiceFilters = {}): Promise<InvoiceRecor
     .filter((inv) => inTab(inv, f.tab, today))
     .filter((inv) => !f.customerId || inv.customerId === f.customerId)
     .filter((inv) => !f.projectId || inv.projectId === f.projectId)
+    .filter((inv) => !f.quoteId || inv.quoteId === f.quoteId)
     .filter((inv) => !f.q || matchesText(inv, f.q))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }

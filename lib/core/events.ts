@@ -25,6 +25,7 @@ export const EVENT_TYPES = [
   "invoice.deleted",
   "payment.received",
   "payment.allocated",
+  // Never written: a booked payment is not removed (0045); it is reversed with a negative payment (payment.received).
   "payment.removed",
   "rot_claim.created",
   "rot_claim.sent",
@@ -63,6 +64,9 @@ export const EVENT_TYPES = [
   "time.returned",
   "time.corrected",
   "time.locked",
+  // 0045: a submitted row changed or removed, or any row by someone other than the employee; old and new values, the reason.
+  "time.updated",
+  "time.removed",
   "absence.reported",
   "absence.updated",
   "absence.approved",
@@ -105,6 +109,11 @@ export const EVENT_TYPES = [
   "expense.paid",
   // Produkt (0043): löneartsregistret fick ett förval, aggregate "payroll".
   "payroll.preset_applied",
+  // Offerter (0046): skickad, återkallad, accepterad, avböjd; aggregate "quote".
+  "quote.sent",
+  "quote.withdrawn",
+  "quote.accepted",
+  "quote.declined",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -135,7 +144,7 @@ export const WEBHOOK_EVENT_TYPES = [
 ] as const satisfies readonly EventType[];
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
-export type AggregateType = "customer" | "invoice" | "payment" | "rot_claim" | "export" | "api_key" | "organization" | "webhook" | "employee" | "time" | "payroll";
+export type AggregateType = "customer" | "invoice" | "payment" | "rot_claim" | "export" | "api_key" | "organization" | "webhook" | "employee" | "time" | "payroll" | "quote";
 
 export type Actor =
   | { kind: "user"; id: string; name: string }
@@ -171,6 +180,10 @@ export function isWebhookEvent(type: EventType): type is WebhookEventType {
 export const EVENT_LABEL: Record<EventType, { text: string; customer: boolean }> = {
   "customer.created": { text: "Kund skapad", customer: false },
   "customer.updated": { text: "Kund ändrad", customer: false },
+  "quote.sent": { text: "Offert skickad", customer: true },
+  "quote.withdrawn": { text: "Offert återkallad till utkast", customer: false },
+  "quote.accepted": { text: "Offert accepterad", customer: true },
+  "quote.declined": { text: "Offert avböjd", customer: false },
   "invoice.created": { text: "Utkast skapat", customer: false },
   "invoice.updated": { text: "Utkast ändrat", customer: false },
   "invoice.issued": { text: "Utfärdad", customer: true },
@@ -223,6 +236,8 @@ export const EVENT_LABEL: Record<EventType, { text: string; customer: boolean }>
   "time.returned": { text: "Tid återskickad", customer: false },
   "time.corrected": { text: "Tid rättad", customer: false },
   "time.locked": { text: "Tidsperiod låst", customer: false },
+  "time.updated": { text: "Tidrad ändrad", customer: false },
+  "time.removed": { text: "Tidrad borttagen", customer: false },
   "absence.reported": { text: "Frånvaro anmäld", customer: false },
   "absence.updated": { text: "Frånvaro ändrad", customer: false },
   "absence.approved": { text: "Frånvaro godkänd", customer: false },

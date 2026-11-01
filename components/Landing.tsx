@@ -20,7 +20,7 @@ import { PricingSection } from "./Pricing";
 import { hasImage, resolveImage } from "@/lib/images";
 import { listPublishedProjects, projectCard } from "@/lib/projects";
 import { SIDES, type Side } from "@/lib/sides";
-import { services, processSteps, responsibility, faq as byggFaq } from "@/lib/placeholder";
+import { site, services, processSteps, responsibility, faq as byggFaq } from "@/lib/placeholder";
 import { getContent } from "@/lib/content/store";
 import { fillWarranty } from "@/lib/content/schema";
 import { serviceExtras } from "@/lib/services-content";
@@ -125,7 +125,8 @@ export default async function Landing({ side }: { side: Side }) {
                   l.key === side ? (
                     <h1 key={l.key} className="lhero-line" aria-current="true">
                       Vi bygger <span className="lhero-word">{l.word}</span>.
-                      <span className="sr-only"> {cfg.topic}.</span>
+                      {/* The brand in the h1, so a search for the name has a page that is about it. */}
+                      <span className="sr-only"> {site.brand}: {cfg.topic}.</span>
                     </h1>
                   ) : (
                     <Link key={l.key} href={l.href} scroll={false} transitionTypes={["side-switch"]} className="lhero-line">

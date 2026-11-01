@@ -9,10 +9,18 @@
 
 import { addDays, daysBetween, type IsoDate } from "../rules/index";
 import { agiDueDate } from "../rules/payroll";
+import { addMonths } from "./employment-clocks";
 import { monthLabel } from "./format";
 import { agiDueFor, payDateFor, runDueFrom, type PayrollSettings } from "./settings";
 
-export type PayrollTodo = { id: string; kind: "run-due" | "approve" | "tax-account"; tag: string; title: string; meta: string; href: string; weight: number };
+export type PayrollTodo = { id: string; kind: "run-due" | "approve" | "tax-account" | "final-pay"; tag: string; title: string; meta: string; href: string; weight: number };
+
+/**
+ * An employment that ends (and is not carried on by another contract):
+ * the slutlön with semesterersättning is due at the latest a month after
+ * the last day (semesterlagen 30 §). `paid` once a payslip carries it.
+ */
+export type EmploymentEnding = { employeeId: string; name: string; endsOn: IsoDate; paid: boolean };
 
 type RunLike = { id: string; periodStart: IsoDate; payDate: IsoDate; agiPeriod: string; status: string; totals: { taxOre?: number; employerContributionOre?: number } };
 
@@ -28,9 +36,25 @@ export function payrollTodos(input: {
   canApprove: boolean;
   hasPeople: boolean;
   agi?: ReadonlyMap<string, AgiPayment>;
+  endings?: readonly EmploymentEnding[];
 }): PayrollTodo[] {
   const { today } = input;
   const out: PayrollTodo[] = [];
+  for (const e of input.endings ?? []) {
+    // From two weeks before the last day until the slutlön is on a payslip; the deadline is a month after.
+    if (e.paid || today < addDays(e.endsOn, -14)) continue;
+    const dueBy = addMonths(e.endsOn, 1);
+    const left = daysBetween(today, dueBy);
+    out.push({
+      id: `final-pay-${e.employeeId}-${e.endsOn}`,
+      kind: "final-pay",
+      tag: "Lön",
+      title: `Slutlön för ${e.name}`,
+      meta: `Anställningen ${e.endsOn < today ? "slutade" : "slutar"} ${e.endsOn}; semesterersättning senast ${dueBy}${left < 0 ? ` (${-left} ${-left === 1 ? "dag" : "dagar"} försenad)` : ""}, semesterlagen 30 §`,
+      href: `/admin/personal/${e.employeeId}`,
+      weight: left <= 7 ? 1 : 3,
+    });
+  }
   if (input.hasPeople) {
     for (const month of [today.slice(0, 7), addDays(`${today.slice(0, 7)}-28`, 7).slice(0, 7)]) {
       const payDate = payDateFor(month, input.settings);

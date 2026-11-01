@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import PortalLogin from "@/components/portal/PortalLogin";
 import { isDemo } from "@/lib/leads";
@@ -28,6 +29,9 @@ export default async function PortalLoginPage({
         ) : (
           <p className="portal-login-hint">Portalen är inte kopplad ännu. Hör av dig till oss så hjälper vi dig.</p>
         )}
+        <p className="portal-login-hint">
+          Hur portalen hanterar dina uppgifter står i vår <Link href="/integritetspolicy">integritetspolicy</Link>.
+        </p>
       </div>
     </main>
   );

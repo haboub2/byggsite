@@ -5,16 +5,21 @@ import type { Company } from "@/lib/content/schema";
 import { softwareAreas } from "@/lib/software-content";
 import { projectsReady } from "@/lib/projects";
 import { PRODUCT_NAME, PRODUCT_PATH } from "@/lib/product";
+import CookieSettingsLink from "@/components/CookieSettingsLink";
 
 type Props = {
   /** Passed by the 404 page, which reads them from a cache; otherwise read here. */
   company?: Company;
+  /** Momsregistreringsnummer (quote.vatNumber in the content store); read here when not passed. */
+  vatNumber?: string;
   showProjects?: boolean;
 };
 
 export default async function Footer(props: Props = {}) {
   const year = new Date().getFullYear();
-  const company = props.company ?? (await getContent()).company;
+  const content = props.company && props.vatNumber !== undefined ? null : await getContent();
+  const company = props.company ?? content!.company;
+  const vatNumber = props.vatNumber ?? content!.quote.vatNumber;
   const showProjects = props.showProjects ?? (await projectsReady());
 
   return (
@@ -70,11 +75,17 @@ export default async function Footer(props: Props = {}) {
         </div>
       </div>
       <div className="container ftr-bottom">
+        {/* E-handelslagen 8 §: name, org.nr and VAT nr next to the address and e-mail above. */}
         <span>
           © {year} {company.legalName}
-          {company.orgNr ? `, org.nr ${company.orgNr}` : ""}.
+          {company.orgNr ? `, org.nr ${company.orgNr}` : ""}
+          {vatNumber ? `, Momsreg.nr ${vatNumber}` : ""}.
         </span>
-        <Link href="/integritetspolicy">Integritetspolicy</Link>
+        <nav className="ftr-legal" aria-label="Juridik">
+          <Link href="/villkor">Villkor</Link>
+          <Link href="/integritetspolicy">Integritetspolicy</Link>
+          <CookieSettingsLink />
+        </nav>
       </div>
     </footer>
   );

@@ -14,6 +14,16 @@ export const site = {
     address: "Uppstigen 130, 412 80 Göteborg",
   },
   areasServed: ["Skåne län", "Hallands län", "Västra Götalands län"],
+  /** Other names people search for the company under (schema.org alternateName). */
+  alternateNames: ["Binaafy Bygg", "Binaafy Software", "Binaafy AB", "Binaafy Göteborg", "binaafy.se"],
+  /** How people misspell the name when they search for it. Listed in the
+   *  Organization JSON-LD and said once on /om-oss, so a search for one of
+   *  these finds Binaafy rather than a better-known name that looks alike. */
+  misspellings: ["Binafy", "Binaafi", "Binafi", "Binaffy", "Binaify"],
+  /** The company's own profiles elsewhere (schema.org sameAs): Google Business
+   *  Profile, LinkedIn, Instagram, Facebook, allabolag. They are what tells
+   *  Google that "Binaafy" is its own company, so add each one once it exists. */
+  profiles: [] as string[],
 };
 
 export const team = [

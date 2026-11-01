@@ -54,10 +54,13 @@ export type RuleSet = {
     surchargePercent: number;
   };
   reminderFee: {
-    /** Statutory fee against a business debtor, öre (lag om ersättning för inkassokostnader). */
-    businessOre: Ore;
-    /** Against a consumer only if agreed in the contract; 0 by default. */
-    consumerOre: Ore;
+    /**
+     * The most a betalningspåminnelse may cost any debtor, öre (lag 1981:739
+     * om ersättning för inkassokostnader, 2 och 4 §§). Charged only when the
+     * invoice carried the clause (the agreement must exist when the claim
+     * arose), business or consumer alike: lib/core/reminders/reminders.ts.
+     */
+    maxOre: Ore;
   };
   collection: {
     /** Inkassoavgift for a demand that meets 5 § inkassolagen (1974:182): lag (1981:739) 3 § 1 and 4 §, any debtor. */
@@ -93,7 +96,7 @@ const COMMON = {
     exemptionReasonCode: "VATEX-EU-AE",
   },
   lateInterest: { surchargePercent: 8 },
-  reminderFee: { businessOre: 6_000, consumerOre: 0 },
+  reminderFee: { maxOre: 6_000 },
   collection: { demandFeeOre: 18_000, delayCompensationOre: 45_000, minPayDays: 8, minBankDays: 4 },
   invoice: { simplifiedInvoiceMaxOre: 400_000, retentionYears: 7 },
   rotClaim: { schemaVersion: 6, maxBuyersPerFile: 100, deadlineMonthDay: "01-31" },
@@ -131,16 +134,22 @@ export function rulesAt(date: string): RuleSet {
 }
 
 /**
- * Riksbanken's reference rate (referensränta), set 1 January and 1 July.
- * Percent. Add a row each half-year; the latest known row is used for later
- * dates and flagged `assumed`.
+ * Riksbanken's reference rate (referensränta, räntelagen 9 §), set for each
+ * calendar half-year: the policy rate at the end of the previous half-year,
+ * rounded UP to the nearest half point, so it is always a whole or half
+ * percent. Source: https://www.riksbank.se/sv/statistik/rantor-och-valutakurser/referensranta/
+ * Add a row each 1 January and 1 July (rules.test.ts fails when the newest
+ * row is older than the current half-year). Later dates use the latest row
+ * and are flagged `assumed`; nothing that charges or prints the rate may use
+ * an assumed value (assertReferenceRateKnown).
  */
 export const REFERENCE_RATES: readonly { from: IsoDate; percent: number }[] = [
   { from: "2024-01-01", percent: 4.0 },
-  { from: "2024-07-01", percent: 3.75 },
-  { from: "2025-01-01", percent: 2.5 },
+  { from: "2024-07-01", percent: 4.0 },
+  { from: "2025-01-01", percent: 3.0 },
   { from: "2025-07-01", percent: 2.0 },
-  { from: "2026-01-01", percent: 1.75 },
+  { from: "2026-01-01", percent: 2.0 },
+  { from: "2026-07-01", percent: 2.0 },
 ];
 
 export function referenceRateAt(date: string): { percent: number; from: IsoDate; assumed: boolean } {
@@ -155,6 +164,19 @@ export function referenceRateAt(date: string): { percent: number; from: IsoDate;
 /** Statutory late-payment interest in percent per year when nothing else is agreed. */
 export function lateInterestPercentAt(date: string): number {
   return referenceRateAt(date).percent + rulesAt(date).lateInterest.surchargePercent;
+}
+
+/**
+ * Throws when the reference rate for `date` is only assumed: a reminder or
+ * an inkassokrav must state the rate Riksbanken actually set (räntelagen
+ * 6 och 9 §§; FFFS 2025:2 4 kap. 4 §), so nothing is sent until the row is
+ * added to REFERENCE_RATES.
+ */
+export function assertReferenceRateKnown(date: string): void {
+  const r = referenceRateAt(date);
+  if (!r.assumed) return;
+  const half = date.slice(5, 7) <= "06" ? `1 januari ${date.slice(0, 4)}` : `1 juli ${date.slice(0, 4)}`;
+  throw new Error(`Referensräntan från ${half} är inte inlagd (lib/core/rules/index.ts, REFERENCE_RATES). Lägg in Riksbankens värde innan påminnelser och inkassokrav skickas.`);
 }
 
 /**

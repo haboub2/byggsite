@@ -42,7 +42,7 @@ export default function RegisterPage() {
             ))}
           </ol>
           <p className="reg-honest">
-            Vi använder systemet själva på Binaafy AB. Pris sätts tillsammans med de första företagen, och du kan ta med dig all data i CSV, PDF och
+            Vi använder systemet själva på Binaafy AB. Faktureringen kostar 490 kr/mån exkl. moms utan bindningstid, och du kan ta med dig all data i CSV, PDF och
             JSON om du slutar.
           </p>
         </div>

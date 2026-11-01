@@ -746,15 +746,20 @@ export async function loadRunInput(run: PayRun, today: IsoDate): Promise<RunInpu
     for (const s of shifts) if (s.employeeId === e.id && (s.offerStatus === null || s.offerStatus === "accepted")) shiftHours[s.date] = (shiftHours[s.date] ?? 0) + blockHours(s.start, s.end, s.breakMinutes);
     const own = earlier.filter((p) => p.employeeId === e.id && p.runId !== run.id).sort((a, b) => a.run.payDate.localeCompare(b.run.payDate));
     const thisYear = own.filter((p) => p.run.payDate.startsWith(String(year)));
-    // The intjänandeår that pays for this year's semester (the year before the current semesterår).
-    const yearStart = `${run.payDate.slice(0, 4)}-${vacationModel}`;
-    const currentYearFrom = run.payDate >= yearStart ? yearStart : `${year - 1}-${vacationModel}`;
-    const paidByFrom = `${Number(currentYearFrom.slice(0, 4)) - 1}-${vacationModel}`;
-    const paidBy = earningYearHistory(
-      own.map((p) => p.document),
-      paidByFrom,
-      currentYearFrom
-    );
+    // The semesterår the run's time period (where semester is read from) falls in, and
+    // the intjänandeår that pays for it (the year before). Keyed on timeFrom, not the pay
+    // date: March's semester paid in April belongs to the year that ends 31 March.
+    const semesterYearFrom = (d: IsoDate) => (d >= `${d.slice(0, 4)}-${vacationModel}` ? `${d.slice(0, 4)}-${vacationModel}` : `${Number(d.slice(0, 4)) - 1}-${vacationModel}`);
+    const shiftYear = (d: IsoDate, n: number) => `${Number(d.slice(0, 4)) + n}${d.slice(4)}`;
+    const currentYearFrom = semesterYearFrom(run.timeFrom);
+    const paidByFrom = shiftYear(currentYearFrom, -1);
+    const docs = own.map((p) => p.document);
+    const paidBy = earningYearHistory(docs, paidByFrom, currentYearFrom);
+    const thisSemesterYear = earningYearHistory(docs, currentYearFrom, shiftYear(currentYearFrom, 1));
+    // The semesterår that ended before the pay date (sammalöneregeln's 12 % is due a month after it, 26 §).
+    const previousYearFrom = shiftYear(semesterYearFrom(run.payDate), -1);
+    const previousYear = earningYearHistory(docs, previousYearFrom, shiftYear(previousYearFrom, 1));
+    const previousPaidBy = earningYearHistory(docs, shiftYear(previousYearFrom, -1), previousYearFrom);
     people.push({
       employee: e,
       versions: mine,
@@ -769,6 +774,10 @@ export async function loadRunInput(run: PayRun, today: IsoDate): Promise<RunInpu
         vacationLiabilityOre: own.length ? own[own.length - 1].vacationLiabilityOre : 0,
         vacationBasisPaidByYearOre: paidBy.vacationBasisOre,
         variablePayPaidByYearOre: paidBy.variablePayOre,
+        variablePayPreviousPaidByOre: previousPaidBy.variablePayOre,
+        variablePayEarningYearOre: thisSemesterYear.variablePayOre,
+        variableVacationPaidThisYearOre: thisSemesterYear.variableVacationPaidOre,
+        variableVacationPaidPreviousYearOre: previousYear.variableVacationPaidOre,
       },
       corrections: corrections.filter((c) => c.employeeId === e.id && (c.targetRunId === null || c.targetRunId === run.id)).map((c) => ({ id: c.id, lines: c.lines, reason: c.reason })),
       clock: clocks.get(e.id) ?? null,

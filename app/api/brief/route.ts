@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       service: data.service,
       budget: data.budget,
       timeline: data.timeline,
-      extra: { Företag: data.company, "Nuvarande verktyg": data.tooling },
+      extra: { Företag: data.company, "Nuvarande verktyg": data.tooling, "Nuvarande hemsida": data.currentSite },
     }),
   });
 }

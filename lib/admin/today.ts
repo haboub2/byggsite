@@ -16,8 +16,8 @@ import { hrTodos, type HrTodo } from "../core/hr/today";
 import { countWaitingEntries, listAbsences, listShifts, listWaitingEntries, openOffer, timePeople } from "../core/hr/time-store";
 import { certificatesDue } from "../core/hr/absence";
 import { timeTodos, type TimeTodo } from "../core/hr/time-today";
-import { getPayrollSettings, listRunPayslips, listRuns } from "../core/payroll/run-store";
-import { payrollTodos, type AgiPayment, type PayrollTodo } from "../core/payroll/today";
+import { getPayrollSettings, listApprovedPayslips, listRunPayslips, listRuns } from "../core/payroll/run-store";
+import { payrollTodos, type AgiPayment, type EmploymentEnding, type PayrollTodo } from "../core/payroll/today";
 import { listAgiDeclarationSummaries, listPensionReports } from "../core/payroll/authorities-store";
 import { authorityTodos, type AuthorityTodo } from "../core/payroll/authorities-today";
 import { listClaims } from "../core/payroll/benefits-store";
@@ -115,22 +115,56 @@ async function loadTimeTodos(access: Access[], today: string): Promise<TimeTodo[
 
 /** What the payroll and the authorities' rows both read, loaded once per Idag. */
 async function loadPayrollData() {
-  const [runs, { settings }, employees, declarations] = await Promise.all([
+  const [runs, { settings }, employees, declarations, employments] = await Promise.all([
     listRuns(),
     getPayrollSettings(),
     listEmployees(),
     listAgiDeclarationSummaries().catch((): Awaited<ReturnType<typeof listAgiDeclarationSummaries>> => []),
+    listEmployments(),
   ]);
-  return { runs, settings, employees, declarations };
+  return { runs, settings, employees, declarations, employments };
+}
+
+/** The pay item codes of semesterersättning in a slutlön (lib/core/payroll/pay-items.default.ts). */
+const FINAL_PAY_CODES = new Set(["1521", "1522"]);
+
+/**
+ * Employments ending around today that no other contract carries on, and
+ * whether an approved payslip since then already carries the slutlön.
+ */
+async function employmentEndings(data: PayrollData, today: string): Promise<EmploymentEnding[]> {
+  const from = addDays(today, -60);
+  const to = addDays(today, 14);
+  const ending = data.employments.filter(
+    (v) =>
+      v.endsOn !== null &&
+      v.endsOn >= from &&
+      v.endsOn <= to &&
+      v.vacationRule !== "none" &&
+      v.payForm !== "fee" &&
+      (v.validTo === null || v.validTo >= v.endsOn) &&
+      !data.employments.some((o) => o.id !== v.id && o.employeeId === v.employeeId && o.payForm !== "fee" && o.startsOn <= addDays(v.endsOn!, 1) && (o.endsOn === null || o.endsOn > v.endsOn!) && (o.validTo === null || o.validTo > v.endsOn!))
+  );
+  if (!ending.length) return [];
+  const payslips = await listApprovedPayslips({ from: addDays(from, -31), to: addDays(today, 40) });
+  const names = new Map(data.employees.map((e) => [e.id, e.name]));
+  return ending.map((v) => ({
+    employeeId: v.employeeId,
+    name: names.get(v.employeeId) ?? "",
+    endsOn: v.endsOn!,
+    paid: payslips.some((p) => p.employeeId === v.employeeId && p.run.payDate >= addDays(v.endsOn!, -31) && p.document.lines.some((l) => FINAL_PAY_CODES.has(l.code))),
+  }));
 }
 type PayrollData = Awaited<ReturnType<typeof loadPayrollData>>;
 
 /** Payroll rows (lib/core/payroll/today.ts): a run due, a run to approve, the skattekonto payment (the stored AGI's amount once there is one). */
 async function loadPayrollTodos(access: Access[], today: string, data: Promise<PayrollData>): Promise<PayrollTodo[]> {
-  const { runs, settings, employees, declarations } = await data;
+  const loaded = await data;
+  const { runs, settings, employees, declarations } = loaded;
   const agi = new Map<string, AgiPayment>();
   for (const d of declarations) if (!agi.has(d.period) && d.status !== "corrected") agi.set(d.period, { amountOre: d.taxOre + d.contributionsOre, version: d.version, paid: !!d.paidAt });
-  return payrollTodos({ runs, settings, today, canApprove: access.includes("admin"), hasPeople: employees.some((e) => !e.endedAt), agi });
+  const endings = await employmentEndings(loaded, today).catch((): EmploymentEnding[] => []);
+  return payrollTodos({ runs, settings, today, canApprove: access.includes("admin"), hasPeople: employees.some((e) => !e.endedAt), agi, endings });
 }
 
 /**

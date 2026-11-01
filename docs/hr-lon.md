@@ -776,8 +776,10 @@ Lönerapporter under Ekonomi, Inställningar: lön.
   and compared line by line with Skatteverket's calculator and the current
   method, and the accountant's review of the SIE and the account mapping.
   Phase 3 is not done by the plan's definition until that has happened.
-- Not built: off-cycle runs (one run per month; a slutlön goes in the
-  month's run), editing the pay item register in the UI (a new version is
+- Not built: off-cycle runs (one run per month; the slutlön goes in the
+  run whose period holds the last day: unused and saved days plus next
+  year's earned days as semesterersättning 1521/1522, due a month after,
+  with a row on Idag), editing the pay item register in the UI (a new version is
   an insert, allowed by RLS), benefits and expenses (phase 5), AGI, Fora,
   Collectum, arbetsgivarintyg, övertidsjournal, växa-stöd basis (phase 4),
   ATF accrual and payout.

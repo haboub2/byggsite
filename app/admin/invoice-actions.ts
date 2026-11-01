@@ -8,7 +8,9 @@ import { customerToBuyer } from "@/lib/core/customers/schema";
 import { createCustomer, findSimilarCustomer, getCustomer } from "@/lib/core/customers/store";
 import { customerFromBuyerLike } from "@/lib/core/customers/schema";
 import { invoiceDocumentFromQuote } from "@/lib/core/invoices/from-quote";
+import { consumerPriceProblem } from "@/lib/core/invoices/price-guard";
 import { applySellerDefaults, getSellerDefaults } from "@/lib/core/invoices/seller";
+import { reminderFeeFor } from "@/lib/core/org/settings";
 import {
   createCreditNote,
   createInvoice,
@@ -18,6 +20,7 @@ import {
   issueCorrection,
   issueInvoice,
   IssueError,
+  listInvoices,
   markSent,
   refundDue,
   registerPayment,
@@ -62,18 +65,21 @@ export async function createInvoiceAction(formData: FormData): Promise<void> {
   const quoteId = String(formData.get("offert") ?? "") || null;
   const customerId = String(formData.get("kund") ?? "") || null;
   const kind = (String(formData.get("kind") ?? "invoice") === "credit" ? "credit" : "invoice") as InvoiceKind;
-  const { seller, paymentMeans, lateInterestText } = await getSellerDefaults();
+  const { seller, paymentMeans, lateInterestText, settings } = await getSellerDefaults();
   const today = todayIso();
 
   let id: string;
   if (quoteId) {
     const quote = await getQuote(quoteId);
     if (!quote) redirect(`${LIST}/ny?fel=offert`);
+    // The invoice follows the accepted offer (avtalslagen): not a draft, not a declined one.
+    if (quote.status !== "accepted") redirect(`${LIST}/ny?offert=${quote.id}&fel=offert-status`);
     const c = quote.data.customer;
     const input = customerFromBuyerLike({ ...c, type: c.type === "foretag" ? "foretag" : "privat" });
     const existing = customerId ? await getCustomer(customerId) : await findSimilarCustomer(input);
     const cid = existing?.id ?? (await createCustomer(input, check.email));
     const document = invoiceDocumentFromQuote({ quote, seller, paymentMeans, issueDate: today, customerId: cid, lateInterestText });
+    document.se.reminderFeeOre = reminderFeeFor(settings, document.buyer.type, today);
     id = await createInvoice({ document, quoteId: quote.id }, check.email);
   } else {
     if (!customerId) redirect(`${LIST}/ny?fel=kund`);
@@ -84,6 +90,7 @@ export async function createInvoiceAction(formData: FormData): Promise<void> {
       seller,
       buyer: customerToBuyer(customer),
       paymentMeans: { ...paymentMeans, termsDays: customer.defaultTermsDays },
+      reminderFeeOre: reminderFeeFor(settings, customer.type, today),
     });
     document.kind = kind;
     document.se.lateInterestText = lateInterestText;
@@ -123,6 +130,16 @@ export async function issueInvoiceAction(_prev: InvoiceToolState, formData: Form
   if (!check.ok) return { error: "Du saknar behörighet." };
   const id = String(formData.get("id") ?? "");
   try {
+    const inv = await getInvoice(id);
+    if (!inv) return { error: "Fakturan finns inte." };
+    // Konsumenttjänstlagen 36 §: an invoice on a consumer's quote stays within the quoted price (+15 % if approximate), apart from approved ÄTA.
+    if (inv.quoteId && inv.kind !== "credit" && inv.document.buyer.type === "privat") {
+      const quote = await getQuote(inv.quoteId);
+      if (quote) {
+        const problem = consumerPriceProblem({ quote, invoices: await listInvoices({ quoteId: inv.quoteId }), issuingId: inv.id, ataApproved: formData.get("ata") === "on" });
+        if (problem) return { error: "Fakturan kan inte utfärdas än.", problems: [problem] };
+      }
+    }
     const defaults = await getSellerDefaults();
     const { number } = await issueInvoice(id, actorOf(check.email), (doc) => applySellerDefaults(doc, defaults));
     revalidatePath(LIST, "layout");

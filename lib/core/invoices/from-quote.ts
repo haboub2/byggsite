@@ -8,7 +8,7 @@ import {
   type RotBuyer,
   type Seller,
 } from "../documents/invoice";
-import type { Quote, RotPerson } from "../../quotes/schema";
+import { PRICE_TYPE_LABEL, type Quote, type RotPerson } from "../../quotes/schema";
 import type { paymentMeansSchema } from "../documents/invoice";
 import type { z } from "zod";
 
@@ -93,7 +93,7 @@ export function invoiceDocumentFromQuote(input: {
     paymentMeans: { ...input.paymentMeans, termsDays: d.paymentDays ?? input.paymentMeans.termsDays ?? 30 },
   });
   doc.title = d.title;
-  doc.note = `Enligt offert ${quote.number}.`;
+  doc.note = `Enligt offert ${quote.number} (${(PRICE_TYPE_LABEL[d.priceType] ?? PRICE_TYPE_LABEL.fast).toLowerCase()}).`;
   doc.references.quoteNumber = quote.number;
   doc.lines = d.items.map((item) => lineFromQuoteItem(item, d.pricesInclVat));
   doc.se.lateInterestText = input.lateInterestText ?? "";

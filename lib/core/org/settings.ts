@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ORG_NR, VAT_NR, CUSTOMER_TYPES, type CustomerType, type Seller } from "../documents/invoice";
 import { DEFAULT_CHART, DEFAULT_ACCOUNT_NAMES, type ChartOfAccounts } from "../ledger/posting";
 import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "../reminders/reminders";
+import { rulesAt } from "../rules";
 
 /**
  * What an organisation configures (org_settings.data, 0014). The jsonb
@@ -32,7 +33,8 @@ export const companySettingsSchema = z.object({
   city: text(60, "Ort").default(""),
   email: z.union([z.literal(""), z.string().trim().email("Ange en giltig e-postadress.")]).default(""),
   phone: text(30, "Telefon").default(""),
-  fSkatt: z.boolean().default(true),
+  /** Printed as "Godkänd för F-skatt": off until the owner confirms it (marknadsföringslagen 10 §). */
+  fSkatt: z.boolean().default(false),
   /** Who signs reminders and is printed as "Vår referens" when nothing else is set. */
   signer: text(80, "Undertecknare").default(""),
 });
@@ -101,8 +103,14 @@ export const reminderSettingsSchema = z.object({
   graceDays: days("Dagar innan första påminnelsen").default(DEFAULT_REMINDER_SETTINGS.graceDays),
   /** Days between reminders. */
   daysBetween: days("Dagar mellan påminnelser").default(DEFAULT_REMINDER_SETTINGS.daysBetween),
-  /** Charge the reminder fee to private persons too (only when the terms say so). */
-  feeToConsumers: z.boolean().default(DEFAULT_REMINDER_SETTINGS.feeToConsumers),
+  /**
+   * Print the påminnelseavgift clause on invoices to businesses, so the fee
+   * may be charged (lag 1981:739 2 §: agreed at the latest when the claim
+   * arose). Off = no fee to businesses either.
+   */
+  feeToBusinesses: z.boolean().default(true),
+  /** The same clause on invoices to private persons. Off by default. */
+  feeToConsumers: z.boolean().default(false),
   /** The daily run sends due reminders by itself. */
   auto: z.boolean().default(false),
 });
@@ -239,7 +247,18 @@ export function termsDaysFor(s: OrgSettings, type: CustomerType | undefined): nu
 }
 
 export function reminderSettingsFrom(s: OrgSettings): ReminderSettings & { auto: boolean } {
-  return { ...DEFAULT_REMINDER_SETTINGS, graceDays: s.reminders.graceDays, daysBetween: s.reminders.daysBetween, feeToConsumers: s.reminders.feeToConsumers, auto: s.reminders.auto };
+  return { ...DEFAULT_REMINDER_SETTINGS, graceDays: s.reminders.graceDays, daysBetween: s.reminders.daysBetween, auto: s.reminders.auto };
+}
+
+/**
+ * The påminnelseavgift a new invoice to this kind of customer carries, öre:
+ * the statutory maximum when the settings say the clause goes on, else 0.
+ * Frozen into the document at creation (se.reminderFeeOre) and printed, so
+ * the reminder may charge it (lag 1981:739 2 §).
+ */
+export function reminderFeeFor(s: OrgSettings, type: CustomerType | undefined, date: string): number {
+  const on = type === "privat" ? s.reminders.feeToConsumers : s.reminders.feeToBusinesses;
+  return on ? rulesAt(date).reminderFee.maxOre : 0;
 }
 
 /** The chart of accounts the postings use: BAS with this organisation's overrides. */
@@ -349,6 +368,7 @@ export function settingsFromContent(input: {
     reminders: {
       graceDays: n(env.REMINDERS_GRACE_DAYS, DEFAULT_REMINDER_SETTINGS.graceDays),
       daysBetween: n(env.REMINDERS_DAYS_BETWEEN, DEFAULT_REMINDER_SETTINGS.daysBetween),
+      feeToBusinesses: true,
       feeToConsumers: env.REMINDERS_FEE_TO_CONSUMERS === "1",
       auto: env.REMINDERS_AUTO === "1",
     },

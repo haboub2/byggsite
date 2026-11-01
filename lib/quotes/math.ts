@@ -1,5 +1,5 @@
 import { calculateRot, ROT_RATE, ROT_CAP, RUT_RATE, RUT_CAP, type DeductionKind, type RotResult } from "../rot";
-import { ITEM_KINDS, ITEM_KIND_LABEL, type ItemKind, type QuoteData, type QuoteItem } from "./schema";
+import { ITEM_KINDS, ITEM_KIND_LABEL, KTJL_APPROX_TOLERANCE, type ItemKind, type QuoteData, type QuoteItem } from "./schema";
 
 /**
  * Totals for a quote. Pure, so the editor can show them live and the PDF
@@ -87,6 +87,17 @@ export function quoteTotals(q: QuoteData): QuoteTotals {
 export { ROT_RATE, ROT_CAP, RUT_RATE, RUT_CAP };
 
 /**
+ * The most a consumer may be invoiced on this quote incl. VAT, in kronor,
+ * apart from ÄTA they approved (konsumenttjänstlagen 36 §): the price for a
+ * fast pris, +15 % for an ungefärlig prisuppgift, no ceiling on löpande
+ * räkning. Null for business customers and löpande räkning.
+ */
+export function consumerPriceCeiling(q: QuoteData, totals: QuoteTotals = quoteTotals(q)): number | null {
+  if (q.customer.type !== "privat" || q.priceType === "lopande") return null;
+  return Math.round(totals.gross * (q.priceType === "ungefarlig" ? 1 + KTJL_APPROX_TOLERANCE : 1));
+}
+
+/**
  * How amounts are shown to the customer, decided by who the customer is,
  * not by how the prices were typed in: a private person sees what they pay,
  * incl. VAT; a business sees amounts excl. VAT, which is what it books.
@@ -97,11 +108,12 @@ export function showsInclVat(q: Pick<QuoteData, "customer">): boolean {
 
 /**
  * The "Pris sammanställning" box on the PDF. Costs per kind (labour,
- * material, other) excl. VAT in öre, then VAT per rate, then for private
- * customers the ROT/RUT deduction, and a rounding row to whole kronor. The
- * rows always add up to the total: what a private person pays, or for a
- * business the amount excl. VAT (VAT and the total incl. VAT follow below
- * the total, not in the sum).
+ * material, other) excl. VAT in öre, then VAT per rate, and a rounding row
+ * to whole kronor. The rows always add up to the total: the price incl. VAT
+ * for a private person, or for a business the amount excl. VAT (VAT and
+ * the total incl. VAT follow below). A ROT/RUT deduction is shown UNDER
+ * the total as a preliminary figure (prisinformationslagen 6–7 §§: the full
+ * price incl. VAT is the price; the deduction depends on the buyer's tax).
  */
 export type PriceSummary = {
   inclVat: boolean;
@@ -112,8 +124,10 @@ export type PriceSummary = {
   /** ROT/RUT deduction, positive kronor; 0 when none applies. */
   deduction: number;
   deductionKind: DeductionKind;
-  /** The big figure. */
+  /** The big figure: incl. VAT for a private person, excl. VAT for a business. */
   total: number;
+  /** For a private person with ROT/RUT: what they pay after the preliminary deduction. */
+  afterDeduction: number;
   /** Incl. VAT, before any deduction. */
   gross: number;
   net: number;
@@ -140,7 +154,8 @@ export function priceSummary(q: QuoteData, totals: QuoteTotals = quoteTotals(q))
     rounding,
     deduction,
     deductionKind: totals.deductionKind,
-    total: shown - deduction,
+    total: shown,
+    afterDeduction: shown - deduction,
     gross: totals.gross,
     net: totals.net,
   };
@@ -186,18 +201,22 @@ export function displayUnitPrice(item: QuoteItem, pricesInclVat: boolean, inclVa
 }
 
 /** "12 345 kr" — plain spaces so it renders the same in the PDF and the browser. */
+
+// ICU groups Swedish thousands with U+00A0 or, in newer versions, U+202F; both become a plain space.
+const GROUP_SPACE = /[\u00a0\u202f]/g;
+
 export function kr(n: number): string {
-  return `${Math.round(n).toLocaleString("sv-SE").replace(/ /g, " ")} kr`;
+  return `${Math.round(n).toLocaleString("sv-SE").replace(GROUP_SPACE, " ")} kr`;
 }
 
 /** "120 000,00" — accounting style for the PDF, plain spaces. */
 export function sek(n: number): string {
-  return n.toLocaleString("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\u00a0/g, " ");
+  return n.toLocaleString("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(GROUP_SPACE, " ");
 }
 
 /** Quantity with up to two decimals, Swedish comma. */
 export function qty(n: number): string {
-  return n.toLocaleString("sv-SE", { maximumFractionDigits: 2 }).replace(/ /g, " ");
+  return n.toLocaleString("sv-SE", { maximumFractionDigits: 2 }).replace(GROUP_SPACE, " ");
 }
 
 /** Valid-until date from the document date and the validity in days. */

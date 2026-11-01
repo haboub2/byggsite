@@ -709,3 +709,41 @@ export function stockholmLocalToIso(local: string): string {
   const first = asUtc - offsetAt(asUtc);
   return new Date(asUtc - offsetAt(first)).toISOString();
 }
+
+/* ---------- changed time, as the log sees it (0045) ---------- */
+
+/** The fields a change to a time row is judged and logged by (time.updated / time.removed), as time_entry_audit_values() writes them. */
+export type TimeAuditValues = {
+  date: IsoDate;
+  start: string | null;
+  end: string | null;
+  breakMinutes: number;
+  hours: number;
+  kind: TimeKind;
+  projectId: string | null;
+  note: string;
+  status: TimeStatus;
+};
+export const timeAuditValues = (e: Pick<TimeEntry, "workDate" | "start" | "end" | "breakMinutes" | "hours" | "kind" | "projectId" | "note" | "status">): TimeAuditValues => ({
+  date: e.workDate,
+  start: e.start,
+  end: e.end,
+  breakMinutes: e.breakMinutes,
+  hours: e.hours,
+  kind: e.kind,
+  projectId: e.projectId,
+  note: e.note,
+  status: e.status,
+});
+
+/** Whether a change is logged at all: the row was submitted, or someone other than the employee changes or removes it. */
+export const timeAuditLogged = (status: TimeStatus, byEmployee: boolean): boolean => status === "submitted" || !byEmployee;
+
+/** Whether an update is worth a time.updated: the basis changed, or a submitted row went back to draft. A status change alone is the workflow's own event (submitted, approved, locked). */
+export function timeAuditChanged(before: TimeAuditValues, after: TimeAuditValues): boolean {
+  const basis = (v: TimeAuditValues) => JSON.stringify({ ...v, status: undefined });
+  return basis(before) !== basis(after) || (before.status === "submitted" && after.status === "draft");
+}
+
+/** Someone other than the employee changing or removing a submitted row says why (time_update / time_remove); the employee's own edits need no reason. */
+export const timeEditNeedsReason = (status: TimeStatus, byEmployee: boolean): boolean => status === "submitted" && !byEmployee;

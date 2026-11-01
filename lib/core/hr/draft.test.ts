@@ -6,6 +6,10 @@ import { employmentInputSchema, type EmploymentVersion } from "./schema";
 test("presets follow the form and the agreement, and a draft parses", () => {
   const d = newEmploymentDraft("byggavtalet", "2026-11-01");
   assert.equal(d.pensionScheme, "saf-lo");
+  // Byggavtalet's ATF from the rule book (40 h), not a literal; none without an agreement.
+  assert.equal(d.atfHoursPerYear, "40");
+  assert.equal(newEmploymentDraft("none", "2026-11-01").atfHoursPerYear, "0");
+  assert.equal(newEmploymentDraft("byggavtalet", "2031-01-01").atfHoursPerYear, "40");
   const sava = applyFormPreset({ ...d, monthlySalary: "", hourlyRate: "185,50", endsOn: "2026-11-30" }, "sava", "byggavtalet");
   assert.deepEqual([sava.payForm, sava.vacationRule, sava.vacationPercent], ["hourly", "procent", "13"]);
   assert.ok(employmentInputSchema.safeParse(sava).success);

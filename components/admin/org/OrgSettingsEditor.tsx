@@ -104,14 +104,18 @@ export default function OrgSettingsEditor({
 
       <fieldset className="efieldset">
         <legend>Påminnelser</legend>
-        <p className="efield-hint">Avgiften är 60 kr till företag. Ränta räknas enligt räntelagen. Påminnelser skickas med knappen på fakturan, eller av den dagliga körningen om automatiken är på.</p>
+        <p className="efield-hint">Påminnelseavgiften (högst 60 kr) får bara tas ut om fakturan sa det: kryssrutorna nedan lägger meningen på nya fakturor. Ränta räknas enligt räntelagen. Påminnelser skickas med knappen på fakturan, eller av den dagliga körningen om automatiken är på.</p>
         <div className="egrid">
           <TextField label="Dagar efter förfallodagen innan första påminnelsen" path="reminders.graceDays" inputMode="numeric" value={String(s.reminders.graceDays)} onChange={(v) => reminders("graceDays")(digits(v))} />
           <TextField label="Dagar mellan påminnelser" path="reminders.daysBetween" inputMode="numeric" value={String(s.reminders.daysBetween)} onChange={(v) => reminders("daysBetween")(digits(v))} />
         </div>
         <label className="etoggle">
+          <input type="checkbox" checked={s.reminders.feeToBusinesses} onChange={(e) => reminders("feeToBusinesses")(e.target.checked)} />
+          <span>Påminnelseavgift 60 kr på fakturor till företag</span>
+        </label>
+        <label className="etoggle">
           <input type="checkbox" checked={s.reminders.feeToConsumers} onChange={(e) => reminders("feeToConsumers")(e.target.checked)} />
-          <span>Påminnelseavgift även till privatpersoner (bara om era villkor säger det)</span>
+          <span>Påminnelseavgift 60 kr på fakturor till privatpersoner</span>
         </label>
         <label className="etoggle">
           <input type="checkbox" checked={s.reminders.auto} onChange={(e) => reminders("auto")(e.target.checked)} />

@@ -11,7 +11,7 @@ import { breadcrumbJsonLd, pageMetadata, abs } from "@/lib/seo";
 import { ogImage } from "@/lib/images";
 import { publicUrl } from "@/lib/storage";
 import { telHref } from "@/lib/content/schema";
-import { values, trustPoints } from "@/lib/placeholder";
+import { site, values, trustPoints } from "@/lib/placeholder";
 import { getContent } from "@/lib/content/store";
 
 export const metadata: Metadata = pageMetadata({
@@ -39,7 +39,7 @@ const STORY = [
   {
     // The one place the company's registrations are listed (not in the footer).
     heading: "Företagsuppgifter",
-    body: "Binaafy har F-skatt och ansvarsförsäkring, och alla som arbetar på våra byggarbetsplatser är registrerade i ID06.",
+    body: `Binaafy har F-skatt och ansvarsförsäkring, och alla som arbetar på våra byggarbetsplatser är registrerade i ID06. Namnet stavas Binaafy, med dubbelt a (inte ${site.misspellings.slice(0, 3).join(", ")}), och webbplatsen är binaafy.se.`,
   },
 ];
 

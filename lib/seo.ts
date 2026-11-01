@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "./env";
-import { site, services } from "./placeholder";
+import { site, services, team } from "./placeholder";
 import type { Company, Warranty } from "./content/schema";
 import { softwareAreas } from "./software-content";
 
@@ -95,14 +95,22 @@ export function organizationJsonLd(c: Company) {
     "@type": "Organization",
     ...ORG,
     name: site.brand,
+    alternateName: [...site.alternateNames, ...site.misspellings],
     legalName: c.legalName,
     ...(c.orgNr && { taxID: c.orgNr }),
+    ...(site.profiles.length && { sameAs: site.profiles }),
     url: abs("/"),
     logo: { "@type": "ImageObject", url: abs("/brand/binaafy-logo.png"), width: 1200, height: 406 },
     image: abs("/brand/binaafy-mark.png"),
     description:
       "Binaafy är ett företag med två verksamheter: bygg och renovering av hem i södra och västra Sverige, och mjukvara — webb, automation och interna system — för företag i hela Sverige.",
+    // "Binaafy" reads like a misspelling of better-known names to a search
+    // engine; this says what the company is, so it is not merged with them.
+    disambiguatingDescription:
+      "Binaafy är en svensk byggfirma och mjukvarubyrå i Göteborg: renovering av hem i södra och västra Sverige, och system för företag.",
+    slogan: "Vi bygger hem. Vi bygger system.",
     foundingDate: "2026",
+    employee: team.map((m) => ({ "@type": "Person", name: m.name, jobTitle: m.role, worksFor: ORG })),
     email: c.email,
     telephone: c.phone,
     address: address(c),
@@ -119,6 +127,9 @@ export function websiteJsonLd() {
     "@type": "WebSite",
     "@id": abs("/#website"),
     name: site.brand,
+    // Google reads WebSite alternateName for the site name in results;
+    // real alternatives only, not misspellings.
+    alternateName: ["Binaafy Bygg och Software", "binaafy.se"],
     url: abs("/"),
     inLanguage: "sv-SE",
     publisher: ORG,
@@ -144,7 +155,6 @@ export function businessJsonLd(c: Company, w: Warranty) {
     currenciesAccepted: "SEK",
     paymentAccepted: "Faktura, Kort, Swish",
     address: address(c),
-    geo: { "@type": "GeoCoordinates", latitude: 56.6597, longitude: 12.8569 },
     areaServed: areasServed(c),
     contactPoint: contactPoint(c),
     openingHoursSpecification: [

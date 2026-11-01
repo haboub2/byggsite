@@ -4,7 +4,7 @@ import type { Style } from "@react-pdf/stylesheet";
 import type { QuoteSettings } from "../content/schema";
 import type { QuoteCompany as Company } from "../quotes/profile";
 import { deductionLabel, DEDUCTION_RULES, displayUnitPrice, groupItems, priceSummary, quoteTotals, sek, qty, showsInclVat, validUntil, formatDate } from "../quotes/math";
-import { ITEM_KIND_LABEL, type ItemKind, type Quote } from "../quotes/schema";
+import { ITEM_KIND_LABEL, STANDARD_TERMS_TEXT, WITHDRAWAL_DAYS, type ItemKind, type PriceType, type Quote } from "../quotes/schema";
 import { BANNER_LINE } from "../quotes/cover";
 import { maskPersonalNumber } from "../core/rot/pnr";
 import { JAKARTA_BOLD, JAKARTA_ITALIC, JAKARTA_MEDIUM, JAKARTA_REGULAR } from "./fonts";
@@ -266,6 +266,16 @@ function Field({ k, v, wide = false }: { k: string; v: string; wide?: boolean })
 const addressOf = (street: string, postalCode: string, city: string) =>
   [street, [postalCode, city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
 
+/**
+ * The label of the big figure: which kind of price it is (konsumenttjänstlagen
+ * 36 §) and whether VAT is in it. The full price is always the figure shown
+ * first; a ROT/RUT deduction is a preliminary second line.
+ */
+function priceLabel(priceType: PriceType, inclVat: boolean): string {
+  const kind = priceType === "fast" ? "Fast pris" : priceType === "ungefarlig" ? "Ungefärligt pris" : "Uppskattad kostnad";
+  return `${kind} ${inclVat ? "inkl." : "exkl."} moms`;
+}
+
 /* ------------------------------------------------------------ cover */
 
 /** The facts row: dates, payment terms, side and the figure the customer
@@ -273,13 +283,13 @@ const addressOf = (street: string, postalCode: string, city: string) =>
 function Facts({ quote, company, style }: { quote: Quote; company: Company; style: Style }) {
   const d = quote.data;
   const p = priceSummary(d);
-  const amountLabel = p.inclVat ? (p.deduction > 0 ? `Att betala efter ${deductionLabel(p.deductionKind)}` : "Att betala") : "Totalt exkl. moms";
   const facts: [string, string][] = [
     ["Offertdatum", formatDate(d.date)],
     ["Giltig till", formatDate(validUntil(d.date, d.validDays))],
     ["Betalning", `${d.paymentDays} dagar netto`],
     ["Verksamhet", `${company.legalName} ${d.division === "bygg" ? "Bygg" : "Software"}`],
-    [amountLabel, `${sek(p.total).replace(/,00$/, "")} kr`],
+    ...(p.deduction > 0 ? [[`Efter ${deductionLabel(p.deductionKind)}-avdrag, preliminärt`, `${sek(p.afterDeduction).replace(/,00$/, "")} kr`] as [string, string]] : []),
+    [priceLabel(d.priceType, p.inclVat), `${sek(p.total).replace(/,00$/, "")} kr`],
   ];
   return (
     <View style={style}>
@@ -435,18 +445,17 @@ function PriceSummaryBox({ quote }: { quote: Quote }) {
         tag: row.kind === "labor" && p.deduction > 0 ? `Berättigad för ${label}-avdrag` : undefined,
       }));
   const vatRows = p.vatByRate.map((v) => ({ k: `Moms ${v.rate} %`, v: v.amount }));
-  const rows: { k: string; v: number; tag?: string }[] = [
-    ...kindRows,
-    ...(p.inclVat ? vatRows : []),
-    ...(p.deduction > 0 ? [{ k: `${label}-avdrag`, v: -p.deduction }] : []),
-    { k: "Öresavrundning", v: p.rounding },
-  ];
-  const totalLabel = p.inclVat ? (p.deduction > 0 ? `Att betala efter ${label}` : "Att betala") : "Totalt exkl. moms";
+  const rows: { k: string; v: number; tag?: string }[] = [...kindRows, ...(p.inclVat ? vatRows : []), { k: "Öresavrundning", v: p.rounding }];
+  const totalLabel = priceLabel(quote.data.priceType, p.inclVat);
   // Below the total: for a business VAT and the amount incl. VAT, which they pay;
-  // for a private person the price before the deduction.
+  // for a private person the preliminary ROT/RUT deduction and what is left after it
+  // (prisinformationslagen: the full price incl. VAT is the price; the deduction depends on their tax).
   const below: { k: string; v: number }[] = p.inclVat
     ? p.deduction > 0
-      ? [{ k: "Totalpris utan avdrag", v: p.gross }]
+      ? [
+          { k: `${label}-avdrag, preliminärt`, v: -p.deduction },
+          { k: `Att betala efter ${label}, preliminärt`, v: p.afterDeduction },
+        ]
       : []
     : [...vatRows, { k: "Att betala inkl. moms", v: p.gross }];
 
@@ -477,7 +486,7 @@ function PriceSummaryBox({ quote }: { quote: Quote }) {
       {below.map((row) => (
         <View key={row.k} style={s.sumBelow}>
           <Text style={s.sumBelowK}>{row.k}</Text>
-          <Text style={s.sumBelowV}>{sek(row.v)}</Text>
+          <Text style={s.sumBelowV}>{signed(row.v)}</Text>
         </View>
       ))}
       {p.vatByRate.length === 0 ? <Text style={s.sumAfter}>Momsfritt.</Text> : null}
@@ -530,6 +539,41 @@ function Terms({ quote }: { quote: Quote }) {
   if (d.terms.warranty.trim()) cards.push({ h: "Garanti och försäkring", body: <BulletList text={d.terms.warranty} icon="check" /> });
   if (d.terms.excluded.trim()) cards.push({ h: "Ingår inte", body: <BulletList text={d.terms.excluded} icon="cross" /> });
   if (d.terms.notes.trim()) cards.push({ h: "Övrigt", body: <Lines text={d.terms.notes} style={s.termText} /> });
+  const consumer = c.type === "privat";
+  // Which kind of price this is (konsumenttjänstlagen 36–37 §§), when it is not a fast pris.
+  if (d.priceType === "ungefarlig") {
+    cards.push({
+      h: "Ungefärligt pris",
+      body: (
+        <Text style={s.termText}>
+          {consumer
+            ? "Priset är en ungefärlig prisuppgift. Slutpriset får enligt konsumenttjänstlagen 36 § inte överstiga det med mer än 15 procent, utöver tilläggs- och ändringsarbeten (ÄTA) som ni godkänt."
+            : "Priset är en ungefärlig prisuppgift; slutpriset följer utfört arbete och förbrukat material enligt specifikationen."}
+        </Text>
+      ),
+    });
+  } else if (d.priceType === "lopande") {
+    cards.push({
+      h: "Löpande räkning",
+      body: <Text style={s.termText}>Arbetet utförs på löpande räkning: vi fakturerar faktisk tid och faktiskt material enligt priserna i specifikationen. Beloppet i offerten är en uppskattning, inte ett pris{consumer ? ", och ni kan när som helst be om en avstämning av upparbetad kostnad" : ""}.</Text>,
+    });
+  }
+  if (d.standardTerms !== "none") {
+    cards.push({ h: "Standardvillkor", wide: true, body: <Text style={s.termText}>{STANDARD_TERMS_TEXT[d.standardTerms]}</Text> });
+  }
+  if (consumer) {
+    // Distansavtalslagen (2005:59) 2 kap. 2 § 9–11, 10–12 §§, 15 §: the information must reach
+    // the consumer before the contract; without it the ångerfrist runs up to a year.
+    cards.push({
+      h: "Ångerrätt",
+      wide: true,
+      body: (
+        <Text style={s.termText}>
+          Godkänner ni offerten på distans (till exempel via e-post) eller efter ett besök i er bostad har ni enligt lagen om distansavtal och avtal utanför affärslokaler rätt att ångra avtalet inom {WITHDRAWAL_DAYS} dagar från den dag ni godkände det. Meddela oss det tydligt, till exempel med e-post, eller använd ångerblanketten på offertens sista sida. Vill ni att arbetet påbörjas redan under ångerfristen behöver ni uttryckligen begära det; ångrar ni er därefter betalar ni för den del av arbetet som utförts och för material som monterats fram till dess. Ångerrätten gäller inte brådskande reparationer eller underhåll som ni uttryckligen bett oss utföra vid ett besök i er bostad.
+        </Text>
+      ),
+    });
+  }
   const rot = t.rot;
   if (rot) {
     const label = deductionLabel(t.deductionKind);
@@ -604,7 +648,13 @@ function Signature({ quote, company, settings }: { quote: Quote; company: Compan
       <Text style={s.pMuted}>
         Offerten gäller till och med {formatDate(validUntil(d.date, d.validDays))}. Priserna gäller under giltighetstiden.
         Godkänn genom att skriva under och skicka tillbaka, eller svara på mejlet.
+        {c.type === "privat" ? ` Som privatperson har ni ${WITHDRAWAL_DAYS} dagars ångerrätt från godkännandet, se Villkor.` : ""}
       </Text>
+      {c.type === "privat" ? (
+        <Text style={[s.small, { marginTop: 6 }]}>
+          [  ] Jag begär att arbetet påbörjas under ångerfristen och är medveten om att jag då betalar för det arbete som utförts om jag ångrar avtalet.
+        </Text>
+      ) : null}
       <View style={s.sign}>
         <View style={s.signBox}>
           <View style={s.signLine} />
@@ -739,6 +789,48 @@ export function QuotePdf({
           <Contact company={company} settings={settings} />
         </View>
       </Page>
+      {d.customer.type === "privat" ? <WithdrawalFormPage quote={quote} company={company} skip={skip} footLine={footLine} /> : null}
     </Document>
+  );
+}
+
+/**
+ * The standard ångerblankett (bilaga till distansavtalslagen; Konsumentverkets
+ * formulär), on its own page for private customers, so the consumer has it
+ * with the offer (2 kap. 2 § 1 st 11).
+ */
+function WithdrawalFormPage({ quote, company, skip, footLine }: { quote: Quote; company: Company; skip: number; footLine: string }) {
+  const d = quote.data;
+  const number = String(quote.number);
+  const line = "________________________________________";
+  const fields = ["Beställdes den", "Konsumentens namn", "Konsumentens adress", "Konsumentens underskrift (endast om blanketten skickas på papper)", "Datum"];
+  return (
+    <Page size="A4" style={s.page}>
+      <View style={s.head} fixed>
+        <Text style={s.headName}>{clean(company.legalName)}</Text>
+        <View style={s.headRight}>
+          <Text style={s.headText} render={({ pageNumber, totalPages }) => `Offert ${number}  ·  Sida ${pageNumber - skip} av ${totalPages - skip}`} />
+        </View>
+      </View>
+      <View style={s.foot} fixed>
+        <Text style={s.footText}>{clean(footLine)}</Text>
+      </View>
+      <Text style={s.eyebrow}>BILAGA TILL OFFERT {number}</Text>
+      <Text style={s.h1}>Ångerblankett</Text>
+      <Text style={[s.pMuted, { marginTop: 10 }]}>Blanketten fylls i och skickas till oss bara om ni vill ångra avtalet. Ni kan också ångra er på annat sätt, till exempel med ett tydligt meddelande per e-post.</Text>
+      <Text style={[s.pMuted, { marginTop: 12 }]}>
+        Till: {clean(company.legalName)}, {clean(addressOf(company.street, company.postalCode, company.city))}
+        {company.email ? `, ${clean(company.email)}` : ""}
+      </Text>
+      <Text style={[s.pMuted, { marginTop: 12 }]}>
+        Jag/Vi meddelar härmed att jag/vi frånträder mitt/vårt avtal om följande tjänst: {clean(d.title || "enligt offerten")} (offert {number}).
+      </Text>
+      {fields.map((f) => (
+        <View key={f} style={{ marginTop: 14 }}>
+          <Text style={s.label}>{f}</Text>
+          <Text style={[s.pMuted, { marginTop: 4 }]}>{line}</Text>
+        </View>
+      ))}
+    </Page>
   );
 }

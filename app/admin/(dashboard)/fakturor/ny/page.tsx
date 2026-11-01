@@ -25,6 +25,7 @@ export default async function NewInvoice({ searchParams }: { searchParams: Promi
           </div>
         </div>
         {fel === "offert" && <p className="form-feedback error">Offerten hittades inte.</p>}
+        {fel === "offert-status" && <p className="form-feedback error">Offerten är inte accepterad. Registrera kundens accept på offerten först; fakturan följer det som accepterades.</p>}
         {fel === "kund" && <p className="form-feedback error">Välj en kund.</p>}
 
         <div className="tpl-grid" style={{ marginTop: 28 }}>

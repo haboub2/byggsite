@@ -122,7 +122,19 @@ export type PayslipContext = {
   group: "collective" | "salaried";
   /** Including this payslip. */
   yearToDate: { cashGrossOre: Ore; taxOre: Ore };
-  vacation: { rule: "procent" | "sammalon" | "none"; remainingDays: number | null; liabilityOre: Ore; liabilityChangeOre: Ore };
+  vacation: {
+    rule: "procent" | "sammalon" | "none";
+    remainingDays: number | null;
+    liabilityOre: Ore;
+    liabilityChangeOre: Ore;
+    /**
+     * Pay the person would have earned during semesterlönegrundande absence
+     * in this payslip's time period (semesterlagen 16 b § 2 st), to be added
+     * to the procentregeln basis of the intjänandeår (run.ts, earningYearHistory).
+     * Absent on payslips from before the field existed.
+     */
+    imputedBasisOre?: Ore;
+  };
   pension: { scheme: "saf-lo" | "itp1" | "none"; premiumOre: Ore };
   correctionIds: string[];
 };

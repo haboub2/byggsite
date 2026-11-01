@@ -1417,7 +1417,7 @@ versionerade regler med `validFrom`/`validTo`, och anropas med fakturadatumet:
 | Omvänd betalningsskyldighet | Byggtjänster till köpare som mer än tillfälligt säljer byggtjänster: ingen moms, köparens VAT-nr, texten "Omvänd betalningsskyldighet" | Skatteverket, byggsektorn |
 | Fakturans innehåll | Momslagens tio punkter (datum, löpnummer, VAT-nr, namn/adress, omfattning, leveransdatum, underlag per sats, sats, momsbelopp eller omvänd-text) | Skatteverket, momslagens regler om fakturering |
 | Dröjsmålsränta | Referensräntan + 8 procentenheter när inget avtalats; referensräntan uppdateras 1 jan och 1 jul | Räntelagen, Riksbanken |
-| Påminnelseavgift | 60 kr mot näringsidkare; mot konsument bara om avtalat | Lag om ersättning för inkassokostnader |
+| Påminnelseavgift | högst 60 kr, mot företag och konsument bara om fakturan sa det (`se.reminderFeeOre`, klausulen skrivs på fakturan) | Lag om ersättning för inkassokostnader 2 § |
 | Inkassoavgift | 180 kr för ett eget inkassokrav enligt 5 § inkassolagen, alla gäldenärer; frist minst 8 dagar och 4 bankdagar | Lag (1981:739) 3–4 §§, FFFS 2025:2 (kontrollerat 2026-10-25) |
 | Arkivering | 7 år efter räkenskapsårets slut | Bokföringslagen |
 | ROT-begäran | XML, schema version 6, max 100 köpare, ROT och RUT i skilda filer, senast 31 jan året efter betalning | Skatteverket, Rot och rut – företag |
@@ -1532,6 +1532,26 @@ personnumren är krypterade med `pgcrypto` och nyckel i Supabase Vault, även i
 fakturadokumentet (0023). De visas aldrig i portalen. Supabase-projektet ligger i en
 EU-region. Varje organisation får ett personuppgiftsbiträdesavtal när
 produkten säljs (fas 5).
+
+**Villkor och biträdesavtal (2026-11-01).** Dokumenten finns nu som sidor på
+webbplatsen och länkas från registreringens kryssruta
+(`components/RegistrationForm.tsx`):
+
+- `/villkor`: användarvillkoren för produkten (`app/(site)/villkor/page.tsx`).
+- `/personuppgiftsbitradesavtal`: personuppgiftsbiträdesavtalet enligt
+  art. 28(3) med underbiträdeslistan som bilaga 1
+  (`app/(site)/personuppgiftsbitradesavtal/page.tsx`).
+- `/integritetspolicy`: omskriven så att den täcker webbplatsen, produktens
+  användare, kundportalen, Min tid, ROT, underbiträden, gallringstider och
+  cookies (`app/(site)/integritetspolicy/page.tsx`).
+
+Versionen som godkänns är `TERMS_VERSION` i `lib/core/org/registration.ts`;
+`start_registration` sparar den i `pending_registrations.terms_version` och
+`complete_registration` kopierar den till `organizations.terms_version`
+(0047). Texterna är utkast skrivna som färdiga dokument: **en jurist ska
+granska dem innan produkten säljs till företag utanför Binaafy.** Regionerna i
+biträdesavtalets bilaga 1 står som "EU (se aktuell lista)" tills Supabase- och
+Vercel-regionerna är bekräftade (`docs/fakturering-checklista.md`).
 
 ## Kodstruktur
 
