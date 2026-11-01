@@ -52,6 +52,18 @@ test("a calendar-year model earned the same year, and tjänstledighet that does 
   assert.deepEqual(rows.map((r) => [r.yearFrom, r.earnedDays]), [["2026-01-01", 23]]);
 });
 
+test("17 a §: VAB and föräldraledighet have 120 days each; together they used to share one cap", () => {
+  // Intjänandeår 2025-04-01 – 2026-03-31: 130 days föräldraledig, then 130 days VAB.
+  const parental: Absence = { ...semester("p", "2025-04-01", "2025-08-08"), kind: "foraldraledig" };
+  const vab: Absence = { ...semester("v", "2025-08-09", "2025-12-16"), kind: "vab" };
+  const rows = vacationBalances({ model: LAW, versions: [version("2024-01-01")], absences: [parental, vab], schedule: MON_FRI, asOf: "2026-10-30" });
+  const y = rows.find((r) => r.yearFrom === "2026-04-01")!;
+  // 10 + 10 days over the caps do not earn: 25 × 345 / 365 = 23,63 → 24 (one pot of 120 would have given 25 × 225 / 365 → 16).
+  assert.equal(y.earnedDays, 24);
+  const single = vacationBalances({ model: LAW, versions: [version("2024-01-01")], absences: [parental, vab], schedule: MON_FRI, asOf: "2026-10-30", singleParent: true });
+  assert.equal(single.find((r) => r.yearFrom === "2026-04-01")!.earnedDays, 25);
+});
+
 test("styrelseuppdrag gives no semester", () => {
   assert.deepEqual(vacationBalances({ model: LAW, versions: [version("2026-01-01", { form: "uppdrag", vacationRule: "none", vacationDays: 0 })], absences: [], schedule: null, asOf: "2026-10-30" }), []);
 });

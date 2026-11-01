@@ -8,6 +8,7 @@
 
 import { formatOre } from "../money";
 import type { IsoDate } from "../rules/index";
+import { PAYROLL_RULE_SETS, payrollRulesAt } from "../rules/payroll";
 import { maxProbationEnd, type Agreement, type EmploymentForm, type EmploymentVersion, type FeePeriod, type PayForm, type PensionScheme, type VacationRule } from "./schema";
 
 export type EmploymentDraft = {
@@ -41,6 +42,22 @@ export type EmploymentDraft = {
 
 const kronorText = (ore: number | null) => (ore === null ? "" : formatOre(ore, { decimals: ore % 100 === 0 ? 0 : 2 }));
 const numText = (n: number | null) => (n === null ? "" : String(n).replace(".", ","));
+
+/**
+ * Arbetstidsförkortning per year from the rule book's agreement data (Byggavtalet
+ * § 4 p. 7: 40 h), never a literal here: the contract PDF prints it. A date
+ * after the last rule set takes that set.
+ */
+export function atfHoursText(agreement: Agreement, today: IsoDate): string {
+  let rules;
+  try {
+    rules = payrollRulesAt(today);
+  } catch {
+    rules = PAYROLL_RULE_SETS[PAYROLL_RULE_SETS.length - 1];
+  }
+  const hours = agreement === "byggavtalet" ? rules.agreements.byggavtalet.atf.hoursPerYear : null;
+  return hours === null ? "0" : numText(hours);
+}
 
 /** Pension and semester percent that follow the agreement. */
 export function agreementDefaults(agreement: Agreement): { pensionScheme: PensionScheme; vacationPercent: string } {
@@ -92,7 +109,7 @@ export function newEmploymentDraft(agreement: Agreement, today: IsoDate): Employ
     vacationRule: "sammalon",
     vacationDays: "25",
     vacationPercent,
-    atfHoursPerYear: agreement === "byggavtalet" ? "38" : "0",
+    atfHoursPerYear: atfHoursText(agreement, today),
     pensionScheme,
     terms: "",
     changeReason: "",

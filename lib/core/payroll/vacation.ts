@@ -56,23 +56,32 @@ export function vacationYears(date: IsoDate, model: VacationYearModel): { vacati
 export type AbsenceDays = {
   /** Sick days in the intjänandeår (calendar days with sjuklön or sjukpenning). */
   sick: number;
-  /** Föräldraledighet and tillfällig föräldrapenning days. */
+  /** Föräldraledighet with föräldrapenning (17 a § 1 st 3). */
   parental: number;
-  /** Ensamstående förälder: the higher cap for parental days. */
+  /** Tillfällig föräldrapenning, VAB (17 a § 1 st 1): its own cap, separate from föräldraledighet. */
+  vab?: number;
+  /** Ensamstående förälder: the higher cap for both parental kinds. */
   singleParent?: boolean;
   /** Absence that never counts (tjänstledighet, unpaid leave). */
   unpaid: number;
 };
 
-/** Split absence into semesterlönegrundande days (up to the caps) and the rest. */
+/**
+ * Split absence into semesterlönegrundande days (up to the caps) and the
+ * rest. 17 § caps sick days at 180 per intjänandeår; 17 a § gives VAB
+ * (tillfällig föräldrapenning) and föräldraledighet 120 days each (180 for
+ * a single parent), counted separately, not as one pot.
+ */
 export function qualifyingAbsence(rules: PayrollRuleSet, absence: AbsenceDays): { qualifyingDays: number; nonQualifyingDays: number } {
   const v = rules.vacation;
   const parentalCap = absence.singleParent ? v.parentalCountedDaysSingle : v.parentalCountedDays;
+  const vab = absence.vab ?? 0;
   const sickQ = Math.min(absence.sick, v.sickCountedDays);
   const parentalQ = Math.min(absence.parental, parentalCap);
+  const vabQ = Math.min(vab, parentalCap);
   return {
-    qualifyingDays: sickQ + parentalQ,
-    nonQualifyingDays: absence.sick - sickQ + (absence.parental - parentalQ) + absence.unpaid,
+    qualifyingDays: sickQ + parentalQ + vabQ,
+    nonQualifyingDays: absence.sick - sickQ + (absence.parental - parentalQ) + (vab - vabQ) + absence.unpaid,
   };
 }
 
@@ -127,8 +136,11 @@ export function percentRuleVacationPay(basisOre: Ore, absenceImputedOre: Ore, pe
 /**
  * Sammalöneregeln (16 a §): the monthly salary continues during vacation,
  * plus a semestertillägg per paid day taken, plus vacation pay on the
- * variable pay of the intjänandeår: the law's 12 % in total (paid within a
- * month after the semesterår), or an agreement's percent per paid day.
+ * variable pay of the intjänandeår: the law's 12 % in total, or an
+ * agreement's percent per paid day. In "total" mode `variableOre` is the
+ * whole year's amount: the run pays it ONCE per semesterår (the first
+ * vacation month, or at the latest the month after the semesterår ends,
+ * 26 §), never once per vacation month.
  */
 export function sameSalaryVacationPay(input: {
   monthlySalaryOre: Ore;

@@ -132,7 +132,7 @@ const person = (p: Partial<RunPerson> & { id: string; name: string; birthDate: I
   timeEntries: [],
   absences: [],
   schedule: null,
-  history: { yearToDateCashGrossOre: 0, yearToDateTaxOre: 0, vacationLiabilityOre: 0, vacationBasisPaidByYearOre: 0, variablePayPaidByYearOre: 0 },
+  history: { yearToDateCashGrossOre: 0, yearToDateTaxOre: 0, vacationLiabilityOre: 0, vacationBasisPaidByYearOre: 0, variablePayPaidByYearOre: 0, variablePayPreviousPaidByOre: 0, variableVacationPaidThisYearOre: 0, variableVacationPaidPreviousYearOre: 0 },
   corrections: [],
   ...p,
 });
@@ -358,14 +358,70 @@ test("history: OB and övertid count in the intjänandeår they were earned, not
   const ob = april.lines.filter((l) => l.item.kind === "ob").reduce((s, l) => s + l.amountOre, 0);
   assert.ok(ob > 0);
   // The intjänandeår 2025-04-01 – 2026-03-31 gets March's work; 2026/27 does not, though the pay date is in April.
-  assert.deepEqual(earningYearHistory([april], "2025-04-01", "2026-04-01"), { vacationBasisOre: april.bases.vacationBasisOre, variablePayOre: ob });
-  assert.deepEqual(earningYearHistory([april], "2026-04-01", "2027-04-01"), { vacationBasisOre: 0, variablePayOre: 0 });
+  assert.deepEqual(earningYearHistory([april], "2025-04-01", "2026-04-01"), { vacationBasisOre: april.bases.vacationBasisOre, variablePayOre: ob, variableVacationPaidOre: 0 });
+  assert.deepEqual(earningYearHistory([april], "2026-04-01", "2027-04-01"), { vacationBasisOre: 0, variablePayOre: 0, variableVacationPaidOre: 0 });
   // Månadslön belongs to its own month: April's salary is in 2026/27.
   const anna = person({ id: "anna", name: "Anna", birthDate: "1990-05-05", agreement: "tjanstemannaavtalet" });
   anna.versions = [version({ employeeId: "anna", form: "tillsvidare", payForm: "monthly", monthlySalaryOre: 3_000_000, startsOn: "2024-01-01", vacationRule: "sammalon" })];
   const salary = computeRun(runFor("2026-04", {}, [anna])).payslips[0].document;
   assert.equal(earningYearHistory([salary], "2026-04-01", "2027-04-01").vacationBasisOre, 3_000_000);
   assert.equal(earningYearHistory([salary], "2025-04-01", "2026-04-01").vacationBasisOre, 0);
+});
+
+test("sammalöneregeln 16 a §: the 12 % on the intjänandeår's variable pay is paid once per semesterår, not every vacation month", () => {
+  // The law's model (no agreement): one amount, 12 % of last year's OB and övertid.
+  const anna = person({ id: "anna", name: "Anna", birthDate: "1990-05-05", agreement: "none" });
+  anna.versions = [version({ employeeId: "anna", form: "tillsvidare", payForm: "monthly", monthlySalaryOre: 3_000_000, startsOn: "2024-01-01", vacationRule: "sammalon" })];
+  anna.history = { ...anna.history, variablePayPaidByYearOre: 10_000_000 };
+  anna.absences = [absence("anna", "semester", "2026-06-08", "2026-06-12")];
+  const june = computeRun(runFor("2026-06", { variablePeriod: "same" }, [anna])).payslips[0].document;
+  const variable = june.lines.filter((l) => /rörlig lön/.test(l.text));
+  assert.equal(variable.length, 1);
+  assert.equal(variable[0].amountOre, 1_200_000);
+  assert.equal(variable[0].text, "Semesterlön på rörlig lön, semesteråret 2026/27");
+  assert.deepEqual([variable[0].from, variable[0].to], ["2026-04-01", "2027-03-31"]);
+  // The line is dated by its semesterår, so the history sees it as paid for 2026/27.
+  assert.equal(earningYearHistory([june], "2026-04-01", "2027-04-01").variableVacationPaidOre, 1_200_000);
+  // October: more vacation, nothing more on variable pay (it was paid in June).
+  const again = { ...anna, history: { ...anna.history, variableVacationPaidThisYearOre: 1_200_000 }, absences: [absence("anna", "semester", "2026-10-05", "2026-10-09")] };
+  const october = computeRun(runFor("2026-10", { variablePeriod: "same" }, [again])).payslips[0].document;
+  assert.equal(october.lines.filter((l) => /rörlig lön/.test(l.text)).length, 0);
+  assert.ok(october.lines.some((l) => l.code === "1510"), "the semestertillägg per day is still paid");
+});
+
+test("semesterlagen 26 §: a semesterår with no vacation taken gets its variable 12 % in the month after it ends", () => {
+  const anna = person({ id: "anna", name: "Anna", birthDate: "1990-05-05", agreement: "none" });
+  anna.versions = [version({ employeeId: "anna", form: "tillsvidare", payForm: "monthly", monthlySalaryOre: 3_000_000, startsOn: "2024-01-01", vacationRule: "sammalon" })];
+  // 2025/26 ended 31 March 2026; its 12 % (on 2024/25's variable pay) was never paid.
+  anna.history = { ...anna.history, variablePayPreviousPaidByOre: 5_000_000, variableVacationPaidPreviousYearOre: 0 };
+  const april = computeRun(runFor("2026-04", {}, [anna]));
+  const doc = april.payslips[0].document;
+  const line = doc.lines.find((l) => /rörlig lön/.test(l.text))!;
+  assert.equal(line.amountOre, 600_000);
+  assert.equal(line.text, "Semesterlön på rörlig lön, semesteråret 2025/26");
+  assert.ok(april.checks.some((c) => c.code === "vacation-variable-late" && c.level === "info"));
+  // Paid in June instead: the same amount, but the checklist says it is late.
+  const june = computeRun(runFor("2026-06", {}, [anna]));
+  assert.ok(june.payslips[0].document.lines.some((l) => l.text === "Semesterlön på rörlig lön, semesteråret 2025/26"));
+  assert.ok(june.checks.some((c) => c.code === "vacation-variable-late" && c.level === "warn"));
+  // Already paid: nothing.
+  const paid = { ...anna, history: { ...anna.history, variableVacationPaidPreviousYearOre: 600_000 } };
+  assert.equal(computeRun(runFor("2026-04", {}, [paid])).payslips[0].document.lines.filter((l) => /rörlig lön/.test(l.text)).length, 0);
+});
+
+test("procentregeln 16 b §: the year's semesterlön is spread over the paid days earned, not the contract's 25", () => {
+  // Hired 1 October 2025: 182 of the 365 days of intjänandeåret 2025/26 → ceil(25 × 182 / 365) = 13 paid days for 2026/27.
+  const bo = person({ id: "bo", name: "Bo", birthDate: "1988-02-02", agreement: "none" });
+  bo.versions = [version({ employeeId: "bo", form: "tillsvidare", payForm: "hourly", hourlyRateOre: 20_000, startsOn: "2025-10-01", vacationRule: "procent", vacationPercent: 12 })];
+  bo.schedule = { kind: "weekly", hours: [8, 8, 8, 8, 8, 0, 0], holidaysOff: true };
+  bo.history = { ...bo.history, vacationBasisPaidByYearOre: 13_000_000 };
+  bo.absences = [absence("bo", "semester", "2026-06-08", "2026-06-12")];
+  const doc = computeRun(runFor("2026-06", { variablePeriod: "same" }, [bo])).payslips[0].document;
+  const line = doc.lines.find((l) => l.item.kind === "vacation_pay")!;
+  // 12 % × 130 000 = 15 600 kr over 13 days = 1 200 kr a day (over 25 it would have been 624 kr).
+  assert.equal(line.unitPriceOre, 120_000);
+  assert.equal(line.quantity, 5);
+  assert.equal(line.amountOre, 600_000);
 });
 
 /* ---------- phase 5 ---------- */
