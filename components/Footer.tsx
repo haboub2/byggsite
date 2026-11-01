@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { services } from "@/lib/placeholder";
+import { services, site } from "@/lib/placeholder";
 import { getContent } from "@/lib/content/store";
 import type { Company } from "@/lib/content/schema";
 import { softwareAreas } from "@/lib/software-content";
@@ -28,10 +28,13 @@ export default async function Footer(props: Props = {}) {
         <div className="ftr-brand">
           <img src="/brand/binaafy-light.svg" alt="Binaafy" width={121} height={28} />
           <p>Ett företag, två verksamheter. Vi bygger och renoverar hem i södra och västra Sverige och bygger system för verksamheter i hela Sverige.</p>
+          <p className="ftr-areas">
+            Byggfirma i {site.cities.slice(0, -1).join(", ")} och {site.cities[site.cities.length - 1]}.
+          </p>
         </div>
 
         <div className="ftr-col">
-          <h4>Bygg</h4>
+          <h3>Bygg</h3>
           {services.slice(0, 5).map((s) => (
             <Link key={s.slug} href={`/bygg/tjanster/${s.slug}`}>
               {s.title}
@@ -41,19 +44,19 @@ export default async function Footer(props: Props = {}) {
         </div>
 
         <div className="ftr-col">
-          <h4>Software</h4>
+          <h3>Software</h3>
           {softwareAreas.map((a) => (
             <Link key={a.slug} href={`/mjukvara/tjanster/${a.slug}`}>
               {a.title}
             </Link>
           ))}
           <Link href="/mjukvara/case">Case</Link>
-          <h4>För byggföretag</h4>
+          <h3>För byggföretag</h3>
           <Link href={PRODUCT_PATH}>{PRODUCT_NAME}</Link>
         </div>
 
         <div className="ftr-col">
-          <h4>Företaget</h4>
+          <h3>Företaget</h3>
           <Link href="/om-oss">Om oss</Link>
           <Link href="/referenser">Referenser</Link>
           <Link href="/omdomen">Omdömen</Link>
@@ -65,7 +68,7 @@ export default async function Footer(props: Props = {}) {
         </div>
 
         <div className="ftr-col">
-          <h4>Kontakt</h4>
+          <h3>Kontakt</h3>
           <a href={`tel:${company.phone}`}>{company.phoneDisplay}</a>
           <a href={`mailto:${company.email}`}>{company.email}</a>
           <span>
