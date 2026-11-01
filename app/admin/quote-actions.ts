@@ -11,19 +11,25 @@ import { services } from "@/lib/placeholder";
 import { QUOTE_STATUSES, quoteSchema, newItemId, todayIso, type QuoteData, type QuoteStatus } from "@/lib/quotes/schema";
 import { builtInTemplates, quoteFromTemplate } from "@/lib/quotes/templates";
 import {
+  acceptQuote,
   createQuote,
+  declineQuote,
   getQuote,
   getSavedTemplate,
+  markQuoteSent,
   removeQuote,
   removeTemplate,
   saveTemplate,
-  setQuoteStatus,
   updateQuote,
+  withdrawQuote,
 } from "@/lib/quotes/store";
 import { sendQuoteMail } from "@/lib/quotes/send";
+import type { Actor } from "@/lib/core/events";
 import type { ContentActionState } from "./content-actions";
 
 const LIST = "/admin/offerter";
+
+const actorOf = (email: string | null): Actor => ({ kind: "user", id: email ?? "admin", name: email ?? "admin" });
 
 function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Record<string, string> {
   const out: Record<string, string> = {};
@@ -110,13 +116,28 @@ export async function saveQuote(_prev: ContentActionState, formData: FormData): 
   return { ok: true, savedAt: new Date().toISOString() };
 }
 
+/**
+ * The status control: sent (handed over some other way than the mail
+ * button), back to draft (withdrawn), accepted (with the consumer's
+ * early-start request when ticked) or declined. Problems come back as
+ * ?fel= on the quote's page.
+ */
 export async function changeQuoteStatus(formData: FormData): Promise<void> {
   const check = await checkAdmin();
   if (!check.ok) return;
   const id = String(formData.get("id") ?? "");
   const status = String(formData.get("status") ?? "");
   if (!id || !QUOTE_STATUSES.includes(status as QuoteStatus)) return;
-  await setQuoteStatus(id, status as QuoteStatus);
+  const actor = actorOf(check.email);
+  try {
+    if (status === "draft") await withdrawQuote(id, actor);
+    else if (status === "sent") await markQuoteSent(id, actor, { manual: true });
+    else if (status === "accepted") await acceptQuote(id, actor, { earlyStart: formData.get("earlyStart") === "on" });
+    else await declineQuote(id, actor);
+  } catch (err) {
+    revalidatePath(LIST, "layout");
+    redirect(`${LIST}/${id}?fel=${encodeURIComponent(err instanceof Error ? err.message : "Kunde inte ändra status.")}`);
+  }
   revalidatePath(LIST, "layout");
 }
 
@@ -138,7 +159,13 @@ export async function deleteQuote(formData: FormData): Promise<void> {
   const check = await checkAdmin();
   if (!check.ok) return;
   const id = String(formData.get("id") ?? "");
-  if (id) await removeQuote(id);
+  if (id) {
+    try {
+      await removeQuote(id);
+    } catch (err) {
+      redirect(`${LIST}/${id}?fel=${encodeURIComponent(err instanceof Error ? err.message : "Kunde inte ta bort.")}`);
+    }
+  }
   revalidatePath(LIST, "layout");
   redirect(LIST);
 }
@@ -181,9 +208,10 @@ export async function sendQuote(_prev: QuoteToolState, formData: FormData): Prom
   if (!check.ok) return { error: "Du saknar behörighet." };
   const q = await getQuote(String(formData.get("id") ?? ""));
   if (!q) return { error: "Offerten finns inte." };
+  if (q.status === "accepted") return { error: `Offert ${q.number} är redan accepterad.` };
   try {
     await sendQuoteMail(q, String(formData.get("message") ?? "").slice(0, 4000));
-    await setQuoteStatus(q.id, "sent");
+    await markQuoteSent(q.id, actorOf(check.email), { to: q.data.customer.email });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Kunde inte skicka." };
   }

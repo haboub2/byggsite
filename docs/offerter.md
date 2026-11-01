@@ -81,3 +81,26 @@ avstängd eftersom den är engelsk.
 försvinner, och ett enhetslöst `lineHeight` på en `Text` som ärver sin
 fontstorlek räknas mot standardstorleken. Därför sätts `lineHeight` bara på
 `Text` tillsammans med `fontSize`.
+
+## Juridik (2026-11-01, granskningen i docs/juridisk-granskning-2026-10-31.md)
+
+- **Pristyp** (`priceType`: fast, ungefärligt, löpande) skrivs på offerten och i
+  faktarutan. Till privatperson stoppar fakturautfärdandet belopp över
+  offertens pris (+15 % för ungefärligt pris, konsumenttjänstlagen 36 §) om
+  inte raderna är ÄTA eller den som utfärdar kryssar i att kunden godkänt
+  tillägget (`lib/core/invoices/price-guard.ts`).
+- **Ångerrätt**: offerter till privatpersoner har ett villkorskort om
+  ångerrätten (14 dagar, distansavtalslagen), en ruta i godkännandet för
+  begäran om start under ångerfristen och ångerblanketten som sista sida.
+  Mejlet nämner det. Accepten registrerar om kunden begärt tidig start.
+- **Låsning** (0046): Skickad fryser dokumentet (`sent_hash`, `sent_data`);
+  en skickad offert ändras inte utan återkallas till utkast eller dupliceras.
+  Accepterad kräver att den skickade versionen är den som accepteras, att
+  offerten inte gått ut, och en privatpersons offert ska ha skickats. En
+  accepterad offert ändras eller tas aldrig bort; fakturor kräver accepterad
+  offert. Händelser: quote.sent/withdrawn/accepted/declined.
+- **Priset först**: hela priset inkl. moms är den stora siffran; ROT-avdraget
+  står som "preliminärt" under det (prisinformationslagen). F-skatt-flaggan är
+  av tills ägaren kryssar i den.
+- **Standardvillkor** (`standardTerms`): Hantverkarformuläret 17, ABS 18,
+  AB 04 eller ABT 06 hänvisas till under Villkor.

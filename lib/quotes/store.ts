@@ -1,13 +1,18 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { createClient as createSessionClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { isDemo } from "../leads";
 import { currentOrgId, readOrgId } from "../core/org/current";
+import { makeEvent, type Actor, type CoreEvent, type EventType } from "../core/events";
 import { quoteTotals } from "./math";
 import {
   QUOTE_STATUSES,
+  acceptanceProblem,
+  todayIso,
   withQuoteDefaults,
   type Quote,
+  type QuoteAcceptance,
   type QuoteData,
   type QuoteDivision,
   type QuoteStatus,
@@ -43,6 +48,11 @@ type Row = {
   created_at: string;
   updated_at: string;
   sent_at: string | null;
+  /** 0046; absent on rows read before the migration. */
+  sent_hash?: string | null;
+  sent_data?: QuoteData | null;
+  acceptance?: QuoteAcceptance | null;
+  accepted_at?: string | null;
 };
 
 const fromRow = (r: Row): Quote => ({
@@ -53,9 +63,30 @@ const fromRow = (r: Row): Quote => ({
   created_at: r.created_at,
   updated_at: r.updated_at,
   sent_at: r.sent_at,
+  sent_hash: r.sent_hash ?? null,
+  acceptance: r.acceptance ?? null,
   created_by: r.created_by,
   data: withQuoteDefaults(r.data),
 });
+
+/** sha256 of the document, the version the customer got (quotes.sent_hash, 0046). */
+export function quoteHash(data: QuoteData): string {
+  return createHash("sha256").update(JSON.stringify(data)).digest("hex");
+}
+
+/* ---------- events ---------- */
+
+/** The quote's events in the shared log (aggregate "quote"); demo mode keeps them with the invoices' events. */
+async function logQuoteEvent(q: Pick<Quote, "id" | "number" | "orgId">, type: EventType, data: CoreEvent["data"], actor: Actor): Promise<void> {
+  const event = makeEvent({ orgId: q.orgId ?? "demo", aggregateType: "quote", aggregateId: q.id, type, data: { number: q.number, ...data }, actor });
+  if (isDemo()) {
+    (globalThis as unknown as { __binaafyInvoices?: { events: (CoreEvent & { id: string })[] } }).__binaafyInvoices?.events.push({ id: crypto.randomUUID(), ...event });
+    return;
+  }
+  const supabase = await createSessionClient();
+  const { error } = await supabase.from("events").insert({ org_id: event.orgId, aggregate_type: event.aggregateType, aggregate_id: event.aggregateId, type: event.type, data: event.data, actor: event.actor, created_at: event.at });
+  if (error) throw new Error(`Händelsen kunde inte loggas: ${error.message}`);
+}
 
 /** The denormalised columns, recomputed on every save. */
 function summary(data: QuoteData) {
@@ -202,32 +233,96 @@ export async function createQuote(data: QuoteData, createdBy: string | null): Pr
   return inserted.id as string;
 }
 
+/** The message when a sent or accepted quote is edited; null for a draft. */
+export function editProblem(q: Pick<Quote, "status" | "number">): string | null {
+  if (q.status === "draft") return null;
+  if (q.status === "accepted") return `Offert ${q.number} är accepterad och kan inte ändras. Duplicera den till en ny offert för ändringar.`;
+  return `Offert ${q.number} är skickad till kunden och kan inte ändras. Återkalla den till utkast (status Utkast) eller duplicera den till en ny offert.`;
+}
+
 export async function updateQuote(id: string, data: QuoteData): Promise<void> {
+  const existing = await getQuote(id);
+  if (!existing) throw new Error("Offerten finns inte.");
+  const problem = editProblem(existing);
+  if (problem) throw new Error(problem);
   if (isDemo()) {
-    const r = demoQuotes().find((x) => x.id === id);
-    if (!r) throw new Error("Offerten finns inte.");
+    const r = demoQuotes().find((x) => x.id === id)!;
     Object.assign(r, summary(data), { updated_at: new Date().toISOString() });
     return;
   }
   const supabase = await createSessionClient();
-  const { data: rows, error } = await inOrg(supabase.from("quotes").update(summary(data)).eq("id", id), await readOrgId()).select("id");
+  const { data: rows, error } = await inOrg(supabase.from("quotes").update(summary(data)).eq("id", id).eq("status", "draft"), await readOrgId()).select("id");
   if (error) throw new Error(`Kunde inte spara: ${error.message}`);
-  if (!rows?.length) throw new Error("Kunde inte spara: offerten finns inte eller saknar behörighet.");
+  if (!rows?.length) throw new Error("Kunde inte spara: offerten finns inte, är skickad eller saknar behörighet.");
 }
 
-export async function setQuoteStatus(id: string, status: QuoteStatus): Promise<void> {
-  const patch = status === "sent" ? { status, sent_at: new Date().toISOString() } : { status };
+async function patchQuote(id: string, patch: Partial<Row>): Promise<void> {
   if (isDemo()) {
     const r = demoQuotes().find((x) => x.id === id);
-    if (r) Object.assign(r, patch, { updated_at: new Date().toISOString() });
+    if (!r) throw new Error("Offerten finns inte.");
+    Object.assign(r, patch, { updated_at: new Date().toISOString() });
     return;
   }
   const supabase = await createSessionClient();
-  const { error } = await inOrg(supabase.from("quotes").update(patch).eq("id", id), await readOrgId());
+  const { data: rows, error } = await inOrg(supabase.from("quotes").update(patch).eq("id", id), await readOrgId()).select("id");
   if (error) throw new Error(`Kunde inte spara status: ${error.message}`);
+  if (!rows?.length) throw new Error("Offerten finns inte eller saknar behörighet.");
+}
+
+/**
+ * Sent: the document is frozen as the version the customer has (sent_hash,
+ * sent_data). Editing it again means withdrawing it to a draft (the offer
+ * is revoked, avtalslagen 7 §) or duplicating it to a new quote.
+ */
+export async function markQuoteSent(id: string, actor: Actor, options: { to?: string; manual?: boolean } = {}): Promise<void> {
+  const q = await getQuote(id);
+  if (!q) throw new Error("Offerten finns inte.");
+  if (q.status === "accepted") throw new Error(`Offert ${q.number} är redan accepterad.`);
+  const hash = quoteHash(q.data);
+  await patchQuote(id, { status: "sent", sent_at: new Date().toISOString(), sent_hash: hash, sent_data: q.data });
+  await logQuoteEvent(q, "quote.sent", { hash, to: options.to ?? "", manual: options.manual ?? false, customerType: q.data.customer.type }, actor);
+}
+
+/** Back to a draft: the sent version no longer stands (sent_* are cleared by the database as well). */
+export async function withdrawQuote(id: string, actor: Actor): Promise<void> {
+  const q = await getQuote(id);
+  if (!q) throw new Error("Offerten finns inte.");
+  if (q.status === "accepted") throw new Error(`Offert ${q.number} är accepterad och kan inte återkallas. Duplicera den i stället.`);
+  if (q.status === "draft") return;
+  await patchQuote(id, { status: "draft", sent_at: null, sent_hash: null, sent_data: null });
+  await logQuoteEvent(q, "quote.withdrawn", { from: q.status }, actor);
+}
+
+export async function declineQuote(id: string, actor: Actor): Promise<void> {
+  const q = await getQuote(id);
+  if (!q) throw new Error("Offerten finns inte.");
+  if (q.status === "accepted") throw new Error(`Offert ${q.number} är accepterad och kan inte avböjas i efterhand.`);
+  if (q.status === "declined") return;
+  await patchQuote(id, { status: "declined" });
+  await logQuoteEvent(q, "quote.declined", {}, actor);
+}
+
+/**
+ * Accepted: only a sent, unexpired quote, and only the version that was
+ * sent (its hash). Records who registered it and when, and for a consumer
+ * whether they expressly asked for the work to start during the ångerfrist.
+ */
+export async function acceptQuote(id: string, actor: Actor, options: { earlyStart?: boolean; today?: string } = {}): Promise<void> {
+  const q = await getQuote(id);
+  if (!q) throw new Error("Offerten finns inte.");
+  const problem = acceptanceProblem(q, options.today ?? todayIso());
+  if (problem) throw new Error(problem);
+  const hash = quoteHash(q.data);
+  if (q.sent_hash && q.sent_hash !== hash) throw new Error(`Offert ${q.number} har ändrats sedan den skickades. Skicka den igen innan den accepteras.`);
+  const acceptance: QuoteAcceptance = { at: new Date().toISOString(), by: actor.name, hash, earlyStart: q.data.customer.type === "privat" && Boolean(options.earlyStart) };
+  await patchQuote(id, { status: "accepted", acceptance, accepted_at: acceptance.at });
+  await logQuoteEvent(q, "quote.accepted", { hash, earlyStart: acceptance.earlyStart, customerType: q.data.customer.type, totalKronor: quoteTotals(q.data).gross }, actor);
 }
 
 export async function removeQuote(id: string): Promise<void> {
+  const q = await getQuote(id);
+  if (!q) return;
+  if (q.status === "accepted") throw new Error(`Offert ${q.number} är accepterad och kan inte tas bort.`);
   if (isDemo()) {
     g.__binaafyQuotes = demoQuotes().filter((x) => x.id !== id);
     return;

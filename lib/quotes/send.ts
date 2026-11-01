@@ -2,7 +2,7 @@ import "server-only";
 import { Resend } from "resend";
 import { getQuoteProfile } from "./profile-store";
 import { quoteTotals, kr, validUntil, formatDate, deductionLabel } from "./math";
-import type { Quote } from "./schema";
+import { WITHDRAWAL_DAYS, type Quote } from "./schema";
 
 const esc = (v: string) =>
   v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -31,9 +31,11 @@ export async function sendQuoteMail(quote: Quote, message: string): Promise<void
   const signer = settings.signerName || company.legalName;
   const side = d.division === "bygg" ? "Bygg" : "Software";
 
+  const consumer = d.customer.type === "privat";
+  const priceNote = d.priceType === "ungefarlig" ? "Priset är ungefärligt; slutpriset får överstiga det med högst 15 procent utöver tillägg ni godkänt. " : d.priceType === "lopande" ? "Arbetet utförs på löpande räkning; beloppet är en uppskattning. " : "";
   const body = message.trim()
     ? message
-    : `Hej ${firstName},\n\nTack för förfrågan. Bifogat hittar du vår offert på ${d.title.toLowerCase()}. ${t.rot ? `${deductionLabel(t.deductionKind)}-avdraget är redan medräknat i summan att betala. ` : ""}Offerten gäller till ${formatDate(validUntil(d.date, d.validDays))}.\n\nHör av dig om något är oklart, så går vi igenom det tillsammans.`;
+    : `Hej ${firstName},\n\nTack för förfrågan. Bifogat hittar du vår offert på ${d.title.toLowerCase()}. ${priceNote}${t.rot ? `${deductionLabel(t.deductionKind)}-avdraget är preliminärt och förutsätter att du har utrymme för det; priset före avdrag står i offerten. ` : ""}Offerten gäller till ${formatDate(validUntil(d.date, d.validDays))}.${consumer ? `\n\nSom privatperson har du ${WITHDRAWAL_DAYS} dagars ångerrätt från den dag du godkänner offerten. Hur du gör, och en ångerblankett, finns i offerten.` : ""}\n\nHör av dig om något är oklart, så går vi igenom det tillsammans.`;
 
   await new Resend(key).emails.send({
     from,
@@ -45,7 +47,9 @@ export async function sendQuoteMail(quote: Quote, message: string): Promise<void
         <p style="white-space:pre-wrap">${esc(body)}</p>
         <table style="margin:16px 0;border-collapse:collapse;font-size:14px">
           <tr><td style="padding:3px 16px 3px 0;color:#6b7280">Offert</td><td>${quote.number}</td></tr>
-          <tr><td style="padding:3px 16px 3px 0;color:#6b7280">${t.rot ? `Att betala efter ${deductionLabel(t.deductionKind)}` : "Att betala"}</td><td><strong>${esc(kr(t.pay))}</strong></td></tr>
+          <tr><td style="padding:3px 16px 3px 0;color:#6b7280">${consumer ? "Pris inkl. moms" : "Totalt exkl. moms"}</td><td><strong>${esc(kr(consumer ? t.gross : t.net))}</strong></td></tr>
+          ${t.rot ? `<tr><td style="padding:3px 16px 3px 0;color:#6b7280">Efter ${deductionLabel(t.deductionKind)}-avdrag, preliminärt</td><td>${esc(kr(t.pay))}</td></tr>` : ""}
+          ${!consumer ? `<tr><td style="padding:3px 16px 3px 0;color:#6b7280">Att betala inkl. moms</td><td>${esc(kr(t.gross))}</td></tr>` : ""}
           <tr><td style="padding:3px 16px 3px 0;color:#6b7280">Gäller till</td><td>${esc(formatDate(validUntil(d.date, d.validDays)))}</td></tr>
         </table>
         <p>Vänliga hälsningar,<br>${esc(signer)}<br>${esc([`${brand} ${side}`, company.phoneDisplay].filter(Boolean).join(" · "))}</p>

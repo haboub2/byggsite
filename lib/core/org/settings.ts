@@ -32,7 +32,8 @@ export const companySettingsSchema = z.object({
   city: text(60, "Ort").default(""),
   email: z.union([z.literal(""), z.string().trim().email("Ange en giltig e-postadress.")]).default(""),
   phone: text(30, "Telefon").default(""),
-  fSkatt: z.boolean().default(true),
+  /** Printed as "Godkänd för F-skatt": off until the owner confirms it (marknadsföringslagen 10 §). */
+  fSkatt: z.boolean().default(false),
   /** Who signs reminders and is printed as "Vår referens" when nothing else is set. */
   signer: text(80, "Undertecknare").default(""),
 });

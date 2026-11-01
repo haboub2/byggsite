@@ -8,9 +8,24 @@ import {
   sendQuote,
   type QuoteToolState,
 } from "@/app/admin/quote-actions";
-import { QUOTE_STATUSES, QUOTE_STATUS_LABEL } from "@/lib/quotes/schema";
+import { QUOTE_STATUSES, QUOTE_STATUS_LABEL, WITHDRAWAL_DAYS, type QuoteAcceptance } from "@/lib/quotes/schema";
 
-export function QuoteStatusControl({ id, status }: { id: string; status: string }) {
+/**
+ * Status: Utkast withdraws a sent quote (and clears the sent version),
+ * Skickad records a hand-over outside the mail button, Accepterad records
+ * the acceptance of exactly the sent version, Avböjd closes it. An accepted
+ * quote is final: the buttons go away and the record is shown instead.
+ */
+export function QuoteStatusControl({ id, status, consumer, acceptance }: { id: string; status: string; consumer: boolean; acceptance: QuoteAcceptance | null }) {
+  if (status === "accepted" && acceptance) {
+    return (
+      <div className="efield-hint">
+        Accepterad {acceptance.at.slice(0, 10)}, registrerad av {acceptance.by}.
+        {consumer ? (acceptance.earlyStart ? ` Kunden begärde att arbetet påbörjas under ångerfristen (${WITHDRAWAL_DAYS} dagar).` : ` Arbetet påbörjas tidigast när ångerfristen (${WITHDRAWAL_DAYS} dagar från accepten) har gått ut, om kunden inte uttryckligen begär annat.`) : ""}
+        {" "}Offerten är låst; ändringar görs i en ny offert (Duplicera).
+      </div>
+    );
+  }
   return (
     <form action={changeQuoteStatus}>
       <input type="hidden" name="id" value={id} />
@@ -21,6 +36,15 @@ export function QuoteStatusControl({ id, status }: { id: string; status: string 
           </button>
         ))}
       </div>
+      {consumer && status === "sent" ? (
+        <label className="etoggle" style={{ marginTop: 8 }}>
+          <input type="checkbox" name="earlyStart" />
+          <span>Kunden har uttryckligen begärt att arbetet påbörjas under ångerfristen ({WITHDRAWAL_DAYS} dagar) och vet att utfört arbete då betalas vid ett ånger (kryssas innan Accepterad)</span>
+        </label>
+      ) : null}
+      <span className="efield-hint">
+        {status === "draft" ? "Skickad låser offerten som den version kunden fått. Ändringar därefter: Utkast (återkallar) eller Duplicera." : status === "sent" ? "Accepterad registrerar att kunden godkänt just den skickade versionen; Utkast återkallar offerten." : "Utkast öppnar offerten igen."}
+      </span>
     </form>
   );
 }
