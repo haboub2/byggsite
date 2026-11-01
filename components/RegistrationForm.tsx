@@ -75,7 +75,17 @@ export default function RegistrationForm({ product }: { product: string }) {
 
       <label className="checkbox">
         <input type="checkbox" name="accept" required defaultChecked={v.accept === "on"} />
-        <span>Jag är behörig att teckna företaget och godkänner användarvillkoren och personuppgiftsbiträdesavtalet.</span>
+        <span>
+          Jag är behörig att teckna företaget och godkänner{" "}
+          <Link href="/villkor" target="_blank" rel="noopener">
+            användarvillkoren
+          </Link>{" "}
+          och{" "}
+          <Link href="/personuppgiftsbitradesavtal" target="_blank" rel="noopener">
+            personuppgiftsbiträdesavtalet
+          </Link>
+          .
+        </span>
       </label>
 
       <button type="submit" className="btn btn-primary btn-block" disabled={pending}>

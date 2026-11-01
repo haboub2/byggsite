@@ -919,6 +919,24 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .prose ul li { position: relative; padding-left: 20px; color: var(--ink-2); margin-top: 8px; }
 .prose ul li::before { content: ""; position: absolute; left: 0; top: .72em; width: 8px; height: 1px; background: var(--orange-press); }
 
+/* Legal documents (/villkor, /personuppgiftsbitradesavtal, /integritetspolicy) */
+.legal-doc { max-width: 72ch; }
+.legal-meta { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 28px; font-size: 13.5px; color: var(--ink-3); }
+.legal-doc > section + section { margin-top: 36px; }
+.legal-doc > section > h2 { font-size: clamp(21px, 2.2vw, 26px); letter-spacing: -0.025em; margin-bottom: 10px; }
+.legal-doc h3 { font-size: 17.5px; margin: 20px 0 6px; }
+.legal-doc p { color: var(--ink-2); font-size: 16.5px; line-height: 1.75; }
+.legal-doc p + p, .legal-doc ul + p, .legal-doc .legal-table-wrap + p { margin-top: 12px; }
+.legal-doc a { color: var(--orange-text); border-bottom: 1px solid currentColor; }
+.legal-doc ul { margin-top: 10px; }
+.legal-doc ul li { position: relative; padding-left: 20px; color: var(--ink-2); font-size: 16px; line-height: 1.65; margin-top: 6px; }
+.legal-doc ul li::before { content: ""; position: absolute; left: 0; top: .78em; width: 8px; height: 1px; background: var(--orange-press); }
+.legal-table-wrap { margin-top: 14px; overflow-x: auto; }
+.legal-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.legal-table th { text-align: left; font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); padding: 8px 10px 8px 0; border-bottom: 1px solid var(--ink); vertical-align: bottom; }
+.legal-table td { padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); line-height: 1.55; }
+.legal-note { margin-top: 36px; padding: 16px 18px; border-left: 2px solid var(--orange); background: var(--paper); font-size: 14.5px; color: var(--ink-2); }
+
 /* ===== Guides ===== */
 .guide-answer { padding: 22px 24px; background: var(--dark-2); color: var(--on-dark); border-left: 2px solid var(--orange); }
 .guide-answer p, .split-aside .guide-answer p { margin-top: 10px; font-size: 17px; line-height: 1.65; color: var(--on-dark); }
@@ -1101,6 +1119,9 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
   font-size: 13.5px; color: var(--on-dark-3);
 }
 .ftr-bottom a:hover { color: var(--on-dark); }
+.ftr-legal { display: flex; gap: 18px; flex-wrap: wrap; }
+.ftr-legal button { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+.ftr-legal button:hover { color: var(--on-dark); }
 @media (max-width: 980px) { .ftr-grid { grid-template-columns: 1fr 1fr 1fr; } .ftr-brand { grid-column: 1 / -1; } }
 @media (max-width: 560px) { .ftr-grid { grid-template-columns: 1fr 1fr; } }
 

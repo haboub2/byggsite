@@ -8,6 +8,16 @@ import { ORG_NR } from "../documents/invoice";
  * database (start_registration) checks the same rules again.
  */
 
+/**
+ * The version of the användarvillkor (/villkor) and the
+ * personuppgiftsbiträdesavtal (/personuppgiftsbitradesavtal) the checkbox
+ * accepts. Stored with the registration and copied to the organisation
+ * (0047), so it is known which text a company agreed to. Bump it, and the
+ * date, when either document changes materially.
+ */
+export const TERMS_VERSION = "1.0";
+export const TERMS_DATE = "2026-11-01";
+
 /** The token in the link: 32 random bytes as hex. Only its sha256 is stored. */
 export const REGISTRATION_TOKEN = /^[a-f0-9]{64}$/;
 
