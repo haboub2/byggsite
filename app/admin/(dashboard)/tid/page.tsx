@@ -282,7 +282,7 @@ export default async function TidPage({ searchParams }: { searchParams: Promise<
                             </button>
                           </form>
                         )}
-                        {isAdmin && (e.status === "draft" || e.status === "submitted") && (
+                        {isAdmin && e.status === "draft" && (
                           <form action={deleteTimeAction}>
                             <Back to={here} />
                             <input type="hidden" name="entryId" value={e.id} />
@@ -290,6 +290,22 @@ export default async function TidPage({ searchParams }: { searchParams: Promise<
                               Ta bort
                             </button>
                           </form>
+                        )}
+                        {isAdmin && e.status === "submitted" && (
+                          <details>
+                            <summary className="link-quiet">Ta bort</summary>
+                            <form action={deleteTimeAction} className="tg-correct">
+                              <Back to={here} />
+                              <input type="hidden" name="entryId" value={e.id} />
+                              <div className="efield">
+                                <label>Skäl</label>
+                                <input name="note" maxLength={200} required placeholder="t.ex. dubbelt rapporterad" />
+                              </div>
+                              <button className="btn btn-ghost hr-btn-small" type="submit">
+                                Ta bort raden
+                              </button>
+                            </form>
+                          </details>
                         )}
                         {canApprove && e.status === "approved" && !reversed.has(e.id) && !isReversal(e) && !around.some((x) => x.correctsId === e.id) && (
                           <details>

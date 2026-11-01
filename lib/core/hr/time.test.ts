@@ -133,3 +133,30 @@ test("Swedish wall-clock time to an instant: winter +01, summer +02", async () =
   assert.equal(stockholmLocalToIso("2026-11-05T18:00"), "2026-11-05T17:00:00.000Z");
   assert.equal(stockholmLocalToIso("2026-07-01T07:30"), "2026-07-01T05:30:00.000Z");
 });
+
+test("changed time (0045): what the log judges by, when it is written, and when a reason is needed", async () => {
+  const { timeAuditChanged, timeAuditLogged, timeAuditValues, timeEditNeedsReason } = await import("./time");
+  const before = timeAuditValues(entry({ status: "submitted", start: "07:00", end: "16:00", breakMinutes: 60, hours: 8, kind: "work", projectId: null, note: "" }));
+  assert.deepEqual(before, { date: "2026-10-19", start: "07:00", end: "16:00", breakMinutes: 60, hours: 8, kind: "work", projectId: null, note: "", status: "submitted" });
+
+  // The basis changed: logged. The status alone is the workflow's own event, except a submitted row going back to draft.
+  assert.equal(timeAuditChanged(before, { ...before, hours: 7 }), true);
+  assert.equal(timeAuditChanged(before, { ...before, note: "kom sent" }), true);
+  assert.equal(timeAuditChanged(before, { ...before, projectId: "p1" }), true);
+  assert.equal(timeAuditChanged(before, { ...before }), false);
+  assert.equal(timeAuditChanged(before, { ...before, status: "approved" }), false);
+  assert.equal(timeAuditChanged({ ...before, status: "draft" }, { ...before, status: "submitted" }), false);
+  assert.equal(timeAuditChanged(before, { ...before, status: "draft" }), true);
+
+  // A submitted row is always logged; a draft only when someone other than the employee touches it.
+  assert.equal(timeAuditLogged("submitted", true), true);
+  assert.equal(timeAuditLogged("submitted", false), true);
+  assert.equal(timeAuditLogged("draft", true), false);
+  assert.equal(timeAuditLogged("draft", false), true);
+
+  // The reason: someone else on a submitted row; never the employee, never a draft.
+  assert.equal(timeEditNeedsReason("submitted", false), true);
+  assert.equal(timeEditNeedsReason("submitted", true), false);
+  assert.equal(timeEditNeedsReason("draft", false), false);
+  assert.equal(timeEditNeedsReason("approved", false), false);
+});

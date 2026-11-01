@@ -158,11 +158,12 @@ export async function addTimeForAction(formData: FormData): Promise<void> {
   );
 }
 
+/** Remove a draft, or a submitted row with a reason (time_remove, 0045): the time.removed event keeps the row and why. */
 export async function deleteTimeAction(formData: FormData): Promise<void> {
   const check = await requireRole("admin");
   if (!check.ok) redirect(withMessage(back(formData, "/admin/tid"), "fel", NO_ACCESS));
   await run(formData, "/admin/tid", async () => {
-    await deleteTimeEntry(text(formData, "entryId"));
+    await deleteTimeEntry(text(formData, "entryId"), text(formData, "note").slice(0, 200));
     return "Raden är borttagen.";
   });
 }

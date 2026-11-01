@@ -106,7 +106,7 @@ export async function addOwnTimeAction(formData: FormData): Promise<void> {
 export async function deleteOwnTimeAction(formData: FormData): Promise<void> {
   await me();
   await run(async () => {
-    // RLS lets a person delete only their own drafts; anything else removes no row and deleteTimeEntry says so.
+    // time_remove() lets a person remove only their own drafts and says why otherwise (0045).
     await deleteTimeEntry(text(formData, "entryId"));
     return "Raden är borttagen.";
   });
