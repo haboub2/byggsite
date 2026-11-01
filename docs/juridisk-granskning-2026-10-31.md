@@ -398,3 +398,34 @@ lagen.nu for ATL 1982:673, semesterlagen 1977:480, sjuklönelagen 1991:1047,
 inkassolagen 1974:182, lag 1981:739, räntelagen 1975:635, mervärdesskattelagen
 2023:200, distansavtalslagen 2005:59, konsumenttjänstlagen 1985:716; FFFS 2025:2;
 prop. 2025/26:24 (växa-stöd); Byggnads 2025 information sheets (ATF 40 h).
+
+---
+
+## 11. Status 2026-11-01: fixes as pull requests
+
+| PR | Findings | Content |
+|---|---|---|
+| #27 | Fakturor H1, H2, M6 | Riksbankens referensränta rättad + H2 2026; påminnelseavgift bara när fakturan bar klausulen; konsumentränta tidigast 30 dagar efter faktura. Rapporten ingår. |
+| #28 | Lön C1, H1, H3; Tid H5, M1 | Semesterlön på rörlig lön en gång per semesterår; procentregeln per intjänad dag; VAB/föräldraledighet egna tak; ATF 40 h. |
+| #29 (bygger på #28) | Lön H2, M11; Tid H4 | Slutlön med semesterersättning; obetald semester; rad på Idag. |
+| #30 | Juridik H1, H2, M3, M4, LOW | Användarvillkor, personuppgiftsbiträdesavtal, ny integritetspolicy, cookieinställningar, momsreg.nr i sidfoten, terms_version (0047). Juristgranskning krävs före extern försäljning. |
+| #31 | Fakturor H3; Tid H1 | Oföränderliga betalningar, allokeringar, påminnelser och inkassoärenden (0045); loggning och skäl vid ändring av inskickad tid. |
+| #32 | Offerter H1, H2, H3, M1, M2, M3, M5 | Ångerrätt och ångerblankett; pristyp med 15 %-spärr vid fakturering; låsta skickade/accepterade offerter (0046); priset inkl. moms först; standardvillkor; F-skatt av som förval. |
+| #33 | Tid H2, H3, M2, M6, L5 | Mertid och jourtid, övertidens slag, övertid över avtalets arbetstid, 10 b §, rast, natt, övertidsjournal (0048). |
+
+Merge order: #27, #28, #29, #30, #31, #32, #33. #31 and #33 both touch
+`lib/core/hr/time.ts`, `time-store.ts` and `lib/core/events.ts`; #32 adds
+quote events to `events.ts` as well. Expect small conflicts in the event
+list and the time store when the later ones are merged.
+
+Migrations added: 0045 (immutability), 0046 (quotes), 0047 (terms version),
+0048 (ATL). None has been run against a database here; run them on a test
+project first, in that order.
+
+Still open after these PRs (the owner's or a later task): Lön M1–M10 (AGI
+098, skattekolumn check, OB in sjuklön, SÄVA ≤ 3 months, kvittning consent,
+SINK, dated SQL rules for 2027, friskvård/gåvor, kostförmån on tjänsteresa,
+1 000 kr refile), Fakturor M1–M5, M7–M10 and the inkasso-on-behalf opinion
+(M8), Offerter M4 and Juridik M1 (retention jobs, art. 30 register), Juridik
+M2 (EU region), the single-parent flag on employees (Lön H3), the parallel
+payroll run, and the lawyer review of #30.
