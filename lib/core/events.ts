@@ -25,6 +25,7 @@ export const EVENT_TYPES = [
   "invoice.deleted",
   "payment.received",
   "payment.allocated",
+  // Never written: a booked payment is not removed (0045); it is reversed with a negative payment (payment.received).
   "payment.removed",
   "rot_claim.created",
   "rot_claim.sent",
@@ -63,6 +64,9 @@ export const EVENT_TYPES = [
   "time.returned",
   "time.corrected",
   "time.locked",
+  // 0045: a submitted row changed or removed, or any row by someone other than the employee; old and new values, the reason.
+  "time.updated",
+  "time.removed",
   "absence.reported",
   "absence.updated",
   "absence.approved",
@@ -223,6 +227,8 @@ export const EVENT_LABEL: Record<EventType, { text: string; customer: boolean }>
   "time.returned": { text: "Tid återskickad", customer: false },
   "time.corrected": { text: "Tid rättad", customer: false },
   "time.locked": { text: "Tidsperiod låst", customer: false },
+  "time.updated": { text: "Tidrad ändrad", customer: false },
+  "time.removed": { text: "Tidrad borttagen", customer: false },
   "absence.reported": { text: "Frånvaro anmäld", customer: false },
   "absence.updated": { text: "Frånvaro ändrad", customer: false },
   "absence.approved": { text: "Frånvaro godkänd", customer: false },
