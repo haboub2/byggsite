@@ -28,6 +28,8 @@ const quote = (patch: Partial<QuoteData>): QuoteData => ({
   rotPersons: [],
   validDays: 30,
   paymentDays: 30,
+  priceType: "fast",
+  standardTerms: "none",
   terms: { ...emptyTerms },
   date: "2026-10-15",
   leadId: null,
@@ -134,9 +136,11 @@ test("price summary, private customer with ROT: rows add up to what they pay", (
   assert.deepEqual(s.vatByRate, [{ rate: 25, amount: 33_600 }]);
   assert.equal(s.rounding, 0);
   assert.equal(s.deduction, 33_000);
-  assert.equal(s.total, 135_000);
+  // The price incl. VAT is the total; the preliminary deduction and what is left come under it.
+  assert.equal(s.total, 168_000);
+  assert.equal(s.afterDeduction, 135_000);
   assert.equal(s.gross, 168_000);
-  assert.equal(88_000 + 46_400 + 33_600 - 33_000 + s.rounding, s.total);
+  assert.equal(88_000 + 46_400 + 33_600 + s.rounding, s.total);
 });
 
 test("RUT: 50 % of labour incl. VAT, under the shared 75 000 kr cap", () => {

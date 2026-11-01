@@ -26,10 +26,10 @@ export default async function EditQuote({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ kopia?: string }>;
+  searchParams: Promise<{ kopia?: string; fel?: string }>;
 }) {
   const { id } = await params;
-  const { kopia } = await searchParams;
+  const { kopia, fel } = await searchParams;
   const quote = await getQuote(id);
   if (!quote) notFound();
   const lead = quote.data.leadId ? await getLead(quote.data.leadId) : null;
@@ -68,6 +68,18 @@ export default async function EditQuote({
           </div>
         </div>
         {kopia && <p className="admin-flash">Kopian är skapad som ett nytt utkast med dagens datum.</p>}
+        {fel && (
+          <p className="form-feedback error" role="alert">
+            {fel}
+          </p>
+        )}
+        {quote.status !== "draft" && (
+          <p className="admin-flash">
+            {quote.status === "accepted"
+              ? "Offerten är accepterad och låst. Ändringar görs i en ny offert (Duplicera)."
+              : "Offerten är skickad och låst som den version kunden fått. Sätt status Utkast för att återkalla och ändra, eller duplicera den."}
+          </p>
+        )}
 
         <div className="quote-layout">
           <QuoteEditor key={version} id={quote.id} initial={quote.data} coverPreviews={coverPreviews()} />
@@ -75,7 +87,7 @@ export default async function EditQuote({
           <aside className="lead-aside quote-aside">
             <div className="lead-status">
               <h2 className="lead-h2">Status</h2>
-              <QuoteStatusControl id={quote.id} status={quote.status} />
+              <QuoteStatusControl id={quote.id} status={quote.status} consumer={quote.data.customer.type === "privat"} acceptance={quote.acceptance} />
             </div>
             <div>
               <h2 className="lead-h2">Skicka till kund</h2>

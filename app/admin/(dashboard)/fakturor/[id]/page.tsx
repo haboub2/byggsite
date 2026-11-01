@@ -103,6 +103,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                   id={inv.id}
                   problems={problems}
                   isCredit={inv.kind === "credit"}
+                  consumerQuote={inv.quoteId && inv.kind !== "credit" && d.buyer.type === "privat" ? (d.references.quoteNumber ?? 0) : null}
                   summary={{
                     buyer: d.buyer.name,
                     payableLabel: inv.kind === "credit" ? "Att återfå" : "Att betala",

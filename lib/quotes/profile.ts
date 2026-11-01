@@ -29,7 +29,7 @@ export const BLANK_QUOTE_TEXTS: QuoteSettings = {
   iban: "",
   bic: "",
   vatNumber: "",
-  fSkatt: true,
+  fSkatt: false,
   insurance: "",
   validDays: 30,
   paymentDays: 30,

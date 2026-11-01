@@ -1,4 +1,4 @@
-import { emptyCustomer, emptyTerms, newItemId, type QuoteData, type QuoteDivision, type QuoteItem } from "./schema";
+import { emptyCustomer, emptyTerms, newItemId, type PriceType, type QuoteData, type QuoteDivision, type QuoteItem } from "./schema";
 import type { QuoteSettings } from "../content/schema";
 import { coverForGroup } from "./cover";
 
@@ -24,6 +24,8 @@ export type BuiltInTemplate = {
   rot: boolean;
   items: Omit<QuoteItem, "id">[];
   terms?: Partial<QuoteData["terms"]>;
+  /** Fast pris unless the template is on timpris / löpande räkning (konsumenttjänstlagen 36 §). */
+  priceType?: PriceType;
 };
 
 type Kind = QuoteItem["kind"];
@@ -403,6 +405,7 @@ const byggTemplates: BuiltInTemplate[] = [
     key: "el-timpris",
     group: "El & VVS",
     name: "Elarbeten på timpris",
+    priceType: "lopande",
     description: "Behörig elektriker, uppskattat antal timmar och material enligt faktisk kostnad.",
     title: "Elarbeten",
     intro: "Tack för förfrågan. Nedan följer vår offert på elarbetet. Antalet timmar är en uppskattning; vi fakturerar faktisk tid efter avstämning med er.",
@@ -506,6 +509,7 @@ const byggTemplates: BuiltInTemplate[] = [
     key: "lopande",
     group: "Projektledning",
     name: "Löpande räkning",
+    priceType: "lopande",
     description: "Timpris och uppskattat antal timmar. Material enligt faktisk kostnad.",
     title: "Arbete på löpande räkning",
     intro: "Nedan följer vår offert på arbete enligt löpande räkning. Antalet timmar är en uppskattning; vi stämmer av med er löpande och fakturerar faktisk tid.",
@@ -775,6 +779,8 @@ export function quoteFromTemplate(t: BuiltInTemplate, settings: QuoteSettings, d
     rotPersons: [],
     validDays: settings.validDays,
     paymentDays: settings.paymentDays,
+    priceType: t.priceType ?? "fast",
+    standardTerms: "none",
     terms: {
       ...emptyTerms,
       payment: t.terms?.payment ?? d.payment,

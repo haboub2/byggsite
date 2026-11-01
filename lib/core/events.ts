@@ -109,6 +109,11 @@ export const EVENT_TYPES = [
   "expense.paid",
   // Produkt (0043): löneartsregistret fick ett förval, aggregate "payroll".
   "payroll.preset_applied",
+  // Offerter (0046): skickad, återkallad, accepterad, avböjd; aggregate "quote".
+  "quote.sent",
+  "quote.withdrawn",
+  "quote.accepted",
+  "quote.declined",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -139,7 +144,7 @@ export const WEBHOOK_EVENT_TYPES = [
 ] as const satisfies readonly EventType[];
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
-export type AggregateType = "customer" | "invoice" | "payment" | "rot_claim" | "export" | "api_key" | "organization" | "webhook" | "employee" | "time" | "payroll";
+export type AggregateType = "customer" | "invoice" | "payment" | "rot_claim" | "export" | "api_key" | "organization" | "webhook" | "employee" | "time" | "payroll" | "quote";
 
 export type Actor =
   | { kind: "user"; id: string; name: string }
@@ -175,6 +180,10 @@ export function isWebhookEvent(type: EventType): type is WebhookEventType {
 export const EVENT_LABEL: Record<EventType, { text: string; customer: boolean }> = {
   "customer.created": { text: "Kund skapad", customer: false },
   "customer.updated": { text: "Kund ändrad", customer: false },
+  "quote.sent": { text: "Offert skickad", customer: true },
+  "quote.withdrawn": { text: "Offert återkallad till utkast", customer: false },
+  "quote.accepted": { text: "Offert accepterad", customer: true },
+  "quote.declined": { text: "Offert avböjd", customer: false },
   "invoice.created": { text: "Utkast skapat", customer: false },
   "invoice.updated": { text: "Utkast ändrat", customer: false },
   "invoice.issued": { text: "Utfärdad", customer: true },

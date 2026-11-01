@@ -44,7 +44,7 @@ function Feedback({ state }: { state: InvoiceToolState }) {
  * opens the review step (the PDF as it will look, and what it says) where
  * "Utfärda nu" issues it.
  */
-export function IssueInvoiceForm({ id, problems, isCredit, summary }: { id: string; problems: string[]; isCredit: boolean; summary: IssueSummary }) {
+export function IssueInvoiceForm({ id, problems, isCredit, summary, consumerQuote }: { id: string; problems: string[]; isCredit: boolean; summary: IssueSummary; consumerQuote?: number | null }) {
   const [state, action, pending] = useActionState<InvoiceToolState, FormData>(issueInvoiceAction, {});
   const dialog = useRef<HTMLDialogElement>(null);
   const [preview, setPreview] = useState(0);
@@ -127,6 +127,12 @@ export function IssueInvoiceForm({ id, problems, isCredit, summary }: { id: stri
               När du utfärdar låses {what} och får nästa nummer i serien. Den kan sedan aldrig ändras: fel uppgifter rättas med en ändringsfaktura och fel belopp med en kreditfaktura.
             </p>
             <p className="efield-hint">Det är den sparade versionen som utfärdas. Har du ändrat något i redigeraren, stäng och spara först.</p>
+            {consumerQuote ? (
+              <label className="etoggle">
+                <input type="checkbox" name="ata" />
+                <span>Beloppet går utöver offert {consumerQuote}: kunden har godkänt tillägget (ÄTA). Utan det stoppas fakturan över offertens pris (konsumenttjänstlagen 36 §).</span>
+              </label>
+            ) : null}
             {state.problems && state.problems.length > 0 && (
               <ul className="inv-problems">
                 {state.problems.map((p) => (

@@ -8,9 +8,15 @@ import { COVER_CHOICES, NO_COVER, coverSlot } from "@/lib/quotes/cover";
 import {
   ITEM_KINDS,
   ITEM_KIND_LABEL,
+  PRICE_TYPES,
+  PRICE_TYPE_LABEL,
+  STANDARD_TERMS,
+  STANDARD_TERMS_LABEL,
   UNITS,
   VAT_RATES,
   newItemId,
+  type PriceType,
+  type StandardTerms,
   type QuoteCustomer,
   type QuoteData,
   type QuoteItem,
@@ -299,6 +305,28 @@ export default function QuoteEditor({ id, initial, coverPreviews = {} }: { id: s
             onChange={(v) => set("paymentDays")(Number(v.replace(/[^\d]/g, "")) || 0)}
             hint="Skrivs som ”30 dagar” i faktarutan. Betalplanen beskrivs under Villkor."
           />
+          <div className="efield">
+            <label htmlFor="price-type">Pristyp</label>
+            <select id="price-type" value={q.priceType} onChange={(e) => set("priceType")(e.target.value as PriceType)}>
+              {PRICE_TYPES.map((p) => (
+                <option key={p} value={p}>
+                  {PRICE_TYPE_LABEL[p]}
+                </option>
+              ))}
+            </select>
+            <span className="efield-hint">Skrivs på offerten. Till privatperson: ett fast pris får inte överskridas och ett ungefärligt pris med högst 15 % (konsumenttjänstlagen 36 §), utom för ÄTA kunden godkänt; fakturan kontrollerar det.</span>
+          </div>
+          <div className="efield">
+            <label htmlFor="standard-terms">Standardvillkor</label>
+            <select id="standard-terms" value={q.standardTerms} onChange={(e) => set("standardTerms")(e.target.value as StandardTerms)}>
+              {STANDARD_TERMS.map((t) => (
+                <option key={t} value={t}>
+                  {STANDARD_TERMS_LABEL[t]}
+                </option>
+              ))}
+            </select>
+            <span className="efield-hint">Hänvisas till under Villkor på PDF:en. Privatpersoner får dessutom alltid ångerrättsinformation och en ångerblankett.</span>
+          </div>
           <TextArea label="Inledning" path="intro" value={q.intro} onChange={set("intro")} rows={4} hint="Några rader om vad ni gick igenom och vad offerten omfattar. Visas under rubriken." />
           <CoverPicker q={q} previews={coverPreviews} onChange={set("cover")} />
           <div className="efield efield--wide">
@@ -471,7 +499,7 @@ export default function QuoteEditor({ id, initial, coverPreviews = {} }: { id: s
             </div>
           )}
           <div className="qsum-pay">
-            <dt>{rotApplies(q) ? `Att betala efter ${deductionLabel(q.deductionType)}` : "Att betala"}</dt>
+            <dt>{rotApplies(q) ? `Efter ${deductionLabel(q.deductionType)}-avdrag, preliminärt` : "Att betala"}</dt>
             <dd>{kr(t.pay)}</dd>
           </div>
         </dl>
