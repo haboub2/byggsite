@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import { ABSENCE_EXTENTS, ABSENCE_KINDS } from "./absence";
-import { TIME_KINDS, blockHours } from "./time";
+import { OVERTIME_KINDS, TIME_KINDS, blockHours } from "./time";
 
 const isoDate = (label: string) => z.string().regex(/^\d{4}-\d{2}-\d{2}$/, `${label}: välj ett datum.`);
 const optionalDate = (label: string) => z.union([z.literal(""), z.null(), isoDate(label)]).transform((v) => (v ? v : null));
@@ -46,6 +46,8 @@ export const timeEntryInputSchema = z
     breakMinutes: minutes.default(0),
     hours: decimal("Timmar", 0.25, 24).default(""),
     kind: z.enum(TIME_KINDS).default("work"),
+    /** Which övertid an övertid row is (ATL 8, 8 a, 9 §§); null on other kinds. */
+    overtimeKind: z.enum(OVERTIME_KINDS).nullable().default(null),
     projectId: uuidOrNull.default(""),
     note: z.string().trim().max(500, "Anteckningen: högst 500 tecken.").default(""),
   })
@@ -56,7 +58,7 @@ export const timeEntryInputSchema = z
     if (v.start && v.end && blockHours(v.start, v.end, v.breakMinutes) <= 0) issue("breakMinutes", "Rasten är längre än passet.");
     if (!v.start && v.hours === null) issue("hours", "Ange start och slut, eller antal timmar.");
   })
-  .transform((v) => ({ ...v, hours: v.start && v.end ? blockHours(v.start, v.end, v.breakMinutes) : (v.hours as number) }));
+  .transform((v) => ({ ...v, overtimeKind: v.kind === "overtime" ? (v.overtimeKind ?? "allman") : null, hours: v.start && v.end ? blockHours(v.start, v.end, v.breakMinutes) : (v.hours as number) }));
 export type TimeEntryInput = z.infer<typeof timeEntryInputSchema>;
 
 export const absenceInputSchema = z

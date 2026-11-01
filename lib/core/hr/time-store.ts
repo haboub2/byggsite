@@ -9,7 +9,7 @@ import { demoAddTimeCost, demoTimeCostRate } from "../projects/costs";
 import { addEmploymentVersion, listEmployees, listEmployments } from "./store";
 import { linkSickPeriods, sickRules, type Absence, type AbsenceKind, type ScheduleRule } from "./absence";
 import { projectCostFor, type CostBasis, type ProjectCostRow } from "./project-cost";
-import { blockHours, isReversal, stockholmLocalToIso, type TimeEntry, type TimeKind, type TimeSource, type TimeStatus } from "./time";
+import { blockHours, isReversal, stockholmLocalToIso, type OvertimeKind, type TimeEntry, type TimeKind, type TimeSource, type TimeStatus } from "./time";
 import { versionsOn, inForce, type Employee, type EmploymentInput, type EmploymentVersion } from "./schema";
 import type { AbsenceInput, ScheduleInput, ShiftOfferInput, TimeEntryInput } from "./time-schema";
 import type { VacationBalance } from "./balances";
@@ -65,6 +65,8 @@ type TimeRow = {
   break_minutes: number;
   hours: number | string;
   kind: TimeKind;
+  /** 0048; absent on rows read before the migration. */
+  overtime_kind?: OvertimeKind | null;
   project_id: string | null;
   shift_id: string | null;
   note: string;
@@ -86,6 +88,7 @@ const entryFromRow = (r: TimeRow): TimeEntry => ({
   breakMinutes: r.break_minutes,
   hours: Number(r.hours),
   kind: r.kind,
+  overtimeKind: r.kind === "overtime" ? (r.overtime_kind ?? "allman") : null,
   projectId: r.project_id,
   shiftId: r.shift_id,
   note: r.note,
@@ -393,6 +396,7 @@ const entryRow = (i: TimeEntryInput) => ({
   break_minutes: i.start ? i.breakMinutes : 0,
   hours: i.hours,
   kind: i.kind,
+  overtime_kind: i.kind === "overtime" ? (i.overtimeKind ?? "allman") : null,
   project_id: i.projectId,
   note: i.note,
 });
@@ -467,6 +471,7 @@ export async function clockIn(employeeId: string, at: { date: IsoDate; time: str
       break_minutes: 0,
       hours: 0,
       kind: "work",
+      overtime_kind: null,
       project_id: at.projectId,
       shift_id: at.shiftId ?? null,
       note: "",

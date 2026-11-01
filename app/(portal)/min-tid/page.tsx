@@ -7,7 +7,7 @@ import { todayIso } from "@/lib/quotes/schema";
 import { addDays } from "@/lib/core/rules/index";
 import { listDocuments, listEmployees } from "@/lib/core/hr/store";
 import { ABSENCE_EXTENTS, ABSENCE_KIND_LABEL, EXTENT_LABEL, SELF_REPORTED_KINDS, dayLabel } from "@/lib/core/hr/absence";
-import { DEMO_PICK_COOKIE, TIME_KIND_LABEL, TIME_KINDS, isOpenClock, isoWeek, stockholmClock, weekDates, weekStart, type TimeEntry } from "@/lib/core/hr/time";
+import { DEMO_PICK_COOKIE, OVERTIME_KINDS, OVERTIME_KIND_LABEL, TIME_KIND_LABEL, TIME_KINDS, isOpenClock, isoWeek, stockholmClock, sumByKind, weekDates, weekStart, workingTimeRules, type TimeEntry } from "@/lib/core/hr/time";
 import { listAbsences, listShifts, listTimeEntries, myEmployee, openOffer, timeProjects } from "@/lib/core/hr/time-store";
 import { listEmployeePayslips } from "@/lib/core/payroll/run-store";
 import { listCertificates, type EmployerCertificate } from "@/lib/core/payroll/authorities-store";
@@ -95,7 +95,7 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
 
   const monday = weekStart(/^\d{4}-\d{2}-\d{2}$/.test(sp.vecka ?? "") ? (sp.vecka as string) : today);
   const sunday = addDays(monday, 6);
-  const [entries, projects, shifts, absences, documents, payslips, certificates, claims] = await Promise.all([
+  const [entries, projects, shifts, absences, documents, payslips, certificates, claims, yearEntries] = await Promise.all([
     listTimeEntries({ employeeId: me.id, from: addDays(monday < today ? monday : today, -7), to: sunday > today ? sunday : today }),
     timeProjects(),
     listShifts({ from: addDays(today, -1), to: addDays(today, 28) }),
@@ -104,7 +104,11 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
     listEmployeePayslips(me.id),
     listCertificates(me.id).catch((): EmployerCertificate[] => []),
     listClaims({ employeeId: me.id }).catch((): ExpenseClaim[] => []),
+    // ATL 11 §: the employee has a right to see the record of their övertid, mertid and jourtid.
+    listTimeEntries({ employeeId: me.id, from: `${today.slice(0, 4)}-01-01`, to: today }).catch((): TimeEntry[] => []),
   ]);
+  const yearSums = sumByKind(yearEntries);
+  const limits = workingTimeRules(today);
   const active = projects.filter((p) => p.status === "active");
   const projectName = new Map(projects.map((p) => [p.id, p.title]));
   const open = entries.find(isOpenClock) ?? null;
@@ -250,6 +254,11 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
           <h2>Vecka {weekNo}</h2>
           <span className="mt-muted">{h(weekHours)}</span>
         </div>
+        <p className="mt-muted">
+          I år, godkänt: övertid {h(yearSums.overtime)} av {limits.overtimePerYearHours} h
+          {yearSums.mertid ? `, mertid ${h(yearSums.mertid)} av ${limits.mertidPerYearHours} h` : ""}
+          {yearSums.jour ? `, jourtid ${h(yearSums.jour)}` : ""} (arbetstidslagen 8, 10 och 11 §§).
+        </p>
         <nav className="mt-row mt-row--between mt-muted">
           <a href={`/min-tid?vecka=${addDays(monday, -7)}`}>← Förra</a>
           {monday !== weekStart(today) && <a href="/min-tid">Den här veckan</a>}
@@ -332,6 +341,16 @@ export default async function MinTidPage({ searchParams }: { searchParams: Promi
                 {TIME_KINDS.map((k) => (
                   <option key={k} value={k}>
                     {TIME_KIND_LABEL[k]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mt-label">
+              Övertidens slag (bara för Övertid)
+              <select name="overtimeKind" className="mt-input" defaultValue="allman">
+                {OVERTIME_KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {OVERTIME_KIND_LABEL[k]}
                   </option>
                 ))}
               </select>

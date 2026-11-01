@@ -98,6 +98,7 @@ test("time entry and absence resources validate against their schemas", () => {
   const t: TimeEntry = {
     id: ID(10),
     employeeId: ID(1),
+    overtimeKind: null,
     workDate: "2026-10-05",
     start: "07:00",
     end: "16:00",

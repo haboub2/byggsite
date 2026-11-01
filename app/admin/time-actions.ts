@@ -120,6 +120,7 @@ export async function correctTimeAction(formData: FormData): Promise<void> {
         breakMinutes: text(formData, "breakMinutes") || "0",
         hours: text(formData, "hours"),
         kind: text(formData, "kind") || "work",
+      overtimeKind: text(formData, "overtimeKind") || null,
         projectId: text(formData, "projectId"),
         note: text(formData, "note"),
       });
@@ -147,6 +148,7 @@ export async function addTimeForAction(formData: FormData): Promise<void> {
         breakMinutes: text(formData, "breakMinutes") || "0",
         hours: text(formData, "hours"),
         kind: text(formData, "kind") || "work",
+      overtimeKind: text(formData, "overtimeKind") || null,
         projectId: text(formData, "projectId"),
         note: text(formData, "note"),
       });

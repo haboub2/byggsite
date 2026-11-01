@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { addDays } from "@/lib/core/rules/index";
 import { dayLabel } from "@/lib/core/hr/absence";
-import { TIME_KIND_LABEL, atlWarnings, currentEntries, isReversal, isoWeek, monthDates, monthSums, sumByKind, weekStart, type TimeStatus } from "@/lib/core/hr/time";
-import { listTimeEntries, timeProjects } from "@/lib/core/hr/time-store";
+import { TIME_KIND_LABEL, atlWarnings, currentEntries, isReversal, isoWeek, monthDates, monthSums, overtimeJournal, sumByKind, weekStart, type TimeStatus } from "@/lib/core/hr/time";
+import { listAbsences, listSchedules, listTimeEntries, timeProjects } from "@/lib/core/hr/time-store";
+import { listEmployments } from "@/lib/core/hr/store";
+import { personWorkingTime } from "@/lib/core/hr/working-time";
 import { addTimeForAction } from "@/app/admin/time-actions";
 import { Back, EntryFields, StatusPill, hoursLabel } from "@/components/admin/time/parts";
 
@@ -16,12 +18,24 @@ function shiftMonth(month: string, n: number): string {
 /** The person's month (docs/hr-lon.md, section 11 "Person › Tid"): every row by day, week and month sums, ATL warnings. */
 export async function PersonTimeTab({ employeeId, month, today, canWrite }: { employeeId: string; month: string; today: string; canWrite: boolean }) {
   const dates = monthDates(month);
-  const [entries, projects] = await Promise.all([listTimeEntries({ employeeId, from: addDays(dates[0], -7), to: addDays(dates[dates.length - 1], 7) }), timeProjects()]);
+  const last = dates[dates.length - 1];
+  const [entries, projects, versions, schedules, absences, yearEntries] = await Promise.all([
+    listTimeEntries({ employeeId, from: addDays(dates[0], -7), to: addDays(last, 7) }),
+    timeProjects(),
+    listEmployments(employeeId).catch(() => []),
+    listSchedules(employeeId).catch(() => []),
+    listAbsences({ employeeId, from: addDays(dates[0], -7), to: addDays(last, 7) }).catch(() => []),
+    listTimeEntries({ employeeId, from: `${month.slice(0, 4)}-01-01`, to: last }),
+  ]);
   const inMonth = entries.filter((e) => e.workDate.slice(0, 7) === month);
   const projectName = new Map(projects.map((p) => [p.id, p.title]));
   const sums = monthSums(entries, month);
   const pending = sumByKind(inMonth, ["draft", "submitted"]);
-  const warnings = atlWarnings(entries, { from: dates[0], to: dates[dates.length - 1] });
+  const person = personWorkingTime(versions, schedules, last);
+  const people = person ? new Map([[employeeId, person]]) : undefined;
+  const warnings = atlWarnings(entries, { from: dates[0], to: last, people, absences: absences.filter((a) => a.approvedAt) });
+  // ATL 11 §: the year's övertid, mertid and jourtid so far, against the limits.
+  const year = overtimeJournal(yearEntries, { year: Number(month.slice(0, 4)), people }).find((j) => j.employeeId === employeeId) ?? null;
   const weeks = [...new Set(dates.map(weekStart))];
   const here = `/admin/personal/${employeeId}?flik=tid&manad=${month}`;
   const shown = new Set(currentEntries(inMonth, ["draft", "submitted", "approved", "locked"]).map((e) => e.id));
@@ -46,7 +60,15 @@ export async function PersonTimeTab({ employeeId, month, today, canWrite }: { em
           <span>Godkänt i månaden</span>
           <strong>{hoursLabel(sums.total)}</strong>
           <small>
-            arbete {hoursLabel(sums.work + sums.ob)}, övertid {hoursLabel(sums.overtime)}, restid {hoursLabel(sums.travel)}, beredskap {hoursLabel(sums.on_call)}
+            arbete {hoursLabel(sums.work + sums.ob)}, övertid {hoursLabel(sums.overtime)}, mertid {hoursLabel(sums.mertid)}, jour {hoursLabel(sums.jour)}, restid {hoursLabel(sums.travel)}, beredskap {hoursLabel(sums.on_call)}
+          </small>
+        </div>
+        <div className={year && (year.overtimeHours > year.overtimeLimit || year.mertidHours > year.mertidLimit) ? "kpi kpi--alert" : "kpi"}>
+          <span>I år (ATL 11 §)</span>
+          <strong>{year ? hoursLabel(year.overtimeHours) : "–"}</strong>
+          <small>
+            övertid av {year?.overtimeLimit ?? 200} h{year?.mertidHours ? `, mertid ${hoursLabel(year.mertidHours)} av ${year.mertidLimit} h` : ""}
+            {year?.jourHours ? `, jour ${hoursLabel(year.jourHours)}` : ""} · <Link href={`/admin/rapporter/overtid?ar=${month.slice(0, 4)}`}>journalen</Link>
           </small>
         </div>
         <div className={pending.total ? "kpi kpi--alert" : "kpi"}>

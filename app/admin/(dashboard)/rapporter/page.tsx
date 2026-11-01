@@ -89,6 +89,13 @@ export default async function PayrollReportsPage({ searchParams }: { searchParam
         <div className="hr-stack hr-gap">
           <AgiSection period={pick(sp.agi)} months={payMonths} settings={settings} canApprove={canApprove} keep={keep} />
 
+          <div className="hr-card" id="overtidsjournal">
+            <h2 className="hr-h2">Övertidsjournal (arbetstidslagen 11 §)</h2>
+            <p className="hr-muted">
+              Jourtid, övertid och mertid per person och månad, mot årets tak, från godkänd tid. <Link href={`/admin/rapporter/overtid?ar=${today.slice(0, 4)}`}>Öppna journalen för {today.slice(0, 4)}</Link> eller <a href={`/admin/rapporter/overtid/${today.slice(0, 4)}`}>ladda ner den som CSV</a>.
+            </p>
+          </div>
+
           <div className="hr-card" id="semesterloneskuld">
             <h2 className="hr-h2">Semesterlöneskuld per person</h2>
             {liabilities.length === 0 ? (
