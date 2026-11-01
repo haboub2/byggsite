@@ -10,7 +10,7 @@ import { getOrgSettings } from "../org/settings-store";
 import { chartFromSettings, reminderSettingsFrom } from "../org/settings";
 import { readOrgId } from "../org/current";
 import { formatOre } from "../money";
-import { daysBetween, lateInterestPercentAt, referenceRateAt } from "../rules";
+import { assertReferenceRateKnown, daysBetween, lateInterestPercentAt, referenceRateAt } from "../rules";
 import { paymentReference } from "../documents/invoice";
 import { postReminder } from "../ledger/posting";
 import { makeEvent, type Actor } from "../events";
@@ -256,6 +256,8 @@ function demandLines(inv: InvoiceRecord, plan: DemandPlan, today: string): Amoun
 
 /** What an inkassokrav sent today would say, for the dialog and the preview. */
 export async function planDemand(inv: InvoiceRecord, payBy: string, today = todayIso()): Promise<DemandPlan> {
+  // The inkassokrav prints the reference rate (FFFS 2025:2 4 kap. 4 §): refuse an assumed one.
+  assertReferenceRateKnown(today);
   const settings = reminderSettingsFrom(await getOrgSettings());
   return demandPlan(inv, today, { payBy, settings, earlier: earlierCharges(await listInvoiceReminders(inv)) });
 }

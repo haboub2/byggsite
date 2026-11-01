@@ -2,10 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   addDays,
+  assertReferenceRateKnown,
   daysBetween,
   lateInterestOre,
   lateInterestPercentAt,
   referenceRateAt,
+  REFERENCE_RATES,
   retentionUntil,
   rotClaimDeadline,
   rulesAt,
@@ -39,11 +41,25 @@ test("VAT and reverse charge constants", () => {
 });
 
 test("late interest is the reference rate plus eight points", () => {
-  assert.equal(referenceRateAt("2026-03-01").percent, 1.75);
+  // Riksbanken's table: 4,00 / 4,00 / 3,00 / 2,00 / 2,00 / 2,00 for 2024-01 … 2026-07.
+  assert.equal(referenceRateAt("2024-09-01").percent, 4.0);
+  assert.equal(referenceRateAt("2025-03-01").percent, 3.0);
   assert.equal(referenceRateAt("2025-09-01").percent, 2.0);
-  assert.equal(lateInterestPercentAt("2026-03-01"), 9.75);
-  assert.equal(referenceRateAt("2026-03-01").assumed, false);
-  assert.equal(referenceRateAt("2026-08-01").assumed, true);
+  assert.equal(referenceRateAt("2026-03-01").percent, 2.0);
+  assert.equal(referenceRateAt("2026-08-01").percent, 2.0);
+  assert.equal(lateInterestPercentAt("2026-03-01"), 10);
+  assert.equal(referenceRateAt("2026-08-01").assumed, false);
+  assert.equal(referenceRateAt("2027-01-01").assumed, true);
+  assert.throws(() => assertReferenceRateKnown("2027-02-01"), /1 januari 2027/);
+  assert.doesNotThrow(() => assertReferenceRateKnown("2026-12-31"));
+});
+
+test("the reference rate is always a whole or half percent and the table is current", () => {
+  for (const r of REFERENCE_RATES) assert.equal((r.percent * 2) % 1, 0, `${r.from}: ${r.percent} är inte en hel eller halv procent`);
+  const today = new Date().toISOString().slice(0, 10);
+  // Fails on purpose from the first day of a half-year whose rate is not in the table:
+  // look it up at riksbank.se and add the row. Reminders refuse to send until then.
+  assert.equal(referenceRateAt(today).assumed, false, `Lägg in referensräntan för det halvår som börjar efter ${REFERENCE_RATES[REFERENCE_RATES.length - 1].from} i lib/core/rules/index.ts.`);
 });
 
 test("interest amount, actual/365", () => {
@@ -53,9 +69,8 @@ test("interest amount, actual/365", () => {
   assert.equal(lateInterestOre(0, 9.75, 30), 0);
 });
 
-test("reminder fee: 60 kr against businesses, nothing against consumers by default", () => {
-  assert.equal(rulesAt("2026-10-10").reminderFee.businessOre, 6_000);
-  assert.equal(rulesAt("2026-10-10").reminderFee.consumerOre, 0);
+test("reminder fee: at most 60 kr, and only when agreed (lag 1981:739 2 §)", () => {
+  assert.equal(rulesAt("2026-10-10").reminderFee.maxOre, 6_000);
 });
 
 test("ROT claim deadline is 31 January the year after payment", () => {

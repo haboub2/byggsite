@@ -105,6 +105,7 @@ function LineRow({ line, index, count, incl, sum, reverse, onChange, onMove, onR
 
 export default function InvoiceEditor({ id, initial }: { id: string; initial: InvoiceDocument }) {
   const [d, setD] = useState(initial);
+  const REMINDER_FEE_MAX_ORE = rulesAt(initial.issueDate).reminderFee.maxOre;
   const [incl, setIncl] = useState(initial.buyer.type === "privat");
   const set = <K extends keyof InvoiceDocument>(k: K) => (v: InvoiceDocument[K]) => setD((prev) => ({ ...prev, [k]: v }));
   const setBuyer = <K extends keyof InvoiceDocument["buyer"]>(k: K) => (v: InvoiceDocument["buyer"][K]) => setD((prev) => ({ ...prev, buyer: { ...prev.buyer, [k]: v } }));
@@ -367,6 +368,12 @@ export default function InvoiceEditor({ id, initial }: { id: string; initial: In
           <TextField label="IBAN (valfritt)" path="paymentMeans.iban" value={d.paymentMeans.iban} onChange={setPm("iban")} />
           <TextArea label="Dröjsmålsränta" path="se.lateInterestText" value={d.se.lateInterestText} onChange={(v) => setD((prev) => ({ ...prev, se: { ...prev.se, lateInterestText: v } }))} rows={2} />
         </div>
+        {!isCredit ? (
+          <label className="etoggle">
+            <input type="checkbox" checked={d.se.reminderFeeOre > 0} onChange={(e) => setD((prev) => ({ ...prev, se: { ...prev.se, reminderFeeOre: e.target.checked ? REMINDER_FEE_MAX_ORE : 0 } }))} />
+            <span>Påminnelseavgift 60 kr vid försenad betalning (skrivs på fakturan; utan den får ingen avgift tas ut, lag om ersättning för inkassokostnader 2 §)</span>
+          </label>
+        ) : null}
         <span className="efield-hint" style={{ display: "block", marginTop: 10 }}>
           Referensen sätts när fakturan utfärdas: fakturanumret, eller OCR-numret (fakturanumret med längd- och kontrollsiffra) om bankgirot har OCR-avtal under Inställningar.
         </span>

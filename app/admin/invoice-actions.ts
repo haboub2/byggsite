@@ -9,6 +9,7 @@ import { createCustomer, findSimilarCustomer, getCustomer } from "@/lib/core/cus
 import { customerFromBuyerLike } from "@/lib/core/customers/schema";
 import { invoiceDocumentFromQuote } from "@/lib/core/invoices/from-quote";
 import { applySellerDefaults, getSellerDefaults } from "@/lib/core/invoices/seller";
+import { reminderFeeFor } from "@/lib/core/org/settings";
 import {
   createCreditNote,
   createInvoice,
@@ -62,7 +63,7 @@ export async function createInvoiceAction(formData: FormData): Promise<void> {
   const quoteId = String(formData.get("offert") ?? "") || null;
   const customerId = String(formData.get("kund") ?? "") || null;
   const kind = (String(formData.get("kind") ?? "invoice") === "credit" ? "credit" : "invoice") as InvoiceKind;
-  const { seller, paymentMeans, lateInterestText } = await getSellerDefaults();
+  const { seller, paymentMeans, lateInterestText, settings } = await getSellerDefaults();
   const today = todayIso();
 
   let id: string;
@@ -74,6 +75,7 @@ export async function createInvoiceAction(formData: FormData): Promise<void> {
     const existing = customerId ? await getCustomer(customerId) : await findSimilarCustomer(input);
     const cid = existing?.id ?? (await createCustomer(input, check.email));
     const document = invoiceDocumentFromQuote({ quote, seller, paymentMeans, issueDate: today, customerId: cid, lateInterestText });
+    document.se.reminderFeeOre = reminderFeeFor(settings, document.buyer.type, today);
     id = await createInvoice({ document, quoteId: quote.id }, check.email);
   } else {
     if (!customerId) redirect(`${LIST}/ny?fel=kund`);
@@ -84,6 +86,7 @@ export async function createInvoiceAction(formData: FormData): Promise<void> {
       seller,
       buyer: customerToBuyer(customer),
       paymentMeans: { ...paymentMeans, termsDays: customer.defaultTermsDays },
+      reminderFeeOre: reminderFeeFor(settings, customer.type, today),
     });
     document.kind = kind;
     document.se.lateInterestText = lateInterestText;

@@ -35,7 +35,7 @@ const base: CollectionInput = {
 test("the amounts are the statute's: 180 kr demand, 60 kr reminder, 450 kr förseningsersättning", () => {
   const r = rulesAt("2026-10-25");
   assert.equal(r.collection.demandFeeOre, 18_000);
-  assert.equal(r.reminderFee.businessOre, 6_000);
+  assert.equal(r.reminderFee.maxOre, 6_000);
   assert.equal(r.collection.delayCompensationOre, 45_000);
   assert.equal(r.collection.minPayDays, 8);
   assert.equal(r.collection.minBankDays, 4);
@@ -43,11 +43,11 @@ test("the amounts are the statute's: 180 kr demand, 60 kr reminder, 450 kr förs
 
 test("interest to date: one period with one rate is the reminders' formula", () => {
   const i = interestToDate({ payableOre: 4_250_000, dueOn: "2026-10-12", payments: [], to: "2026-10-25" });
-  // 42 500 × 9,75 % × 13 / 365 = 147,59 kr
-  assert.equal(i.totalOre, 14_759);
+  // 42 500 × 10 % (2,00 + 8) × 13 / 365 = 151,37 kr
+  assert.equal(i.totalOre, 15_137);
   assert.equal(i.periods.length, 1);
-  assert.deepEqual(i.periods[0], { from: "2026-10-12", to: "2026-10-25", days: 13, capitalOre: 4_250_000, percent: 9.75, referencePercent: 1.75, interestOre: 14_759 });
-  assert.equal(i.percentToday, 9.75);
+  assert.deepEqual(i.periods[0], { from: "2026-10-12", to: "2026-10-25", days: 13, capitalOre: 4_250_000, percent: 10, referencePercent: 2.0, interestOre: 15_137 });
+  assert.equal(i.percentToday, 10);
 });
 
 test("interest to date: each half-year's reference rate, and a payment lowers the capital from its date", () => {
@@ -55,15 +55,14 @@ test("interest to date: each half-year's reference rate, and a payment lowers th
   assert.deepEqual(
     i.periods.map((p) => [p.from, p.to, p.days, p.capitalOre, p.percent, p.interestOre]),
     [
-      // 100 000 × 10 % (2,0 + 8) × 31 / 365
-      ["2025-12-01", "2026-01-01", 31, 10_000_000, 10, 84_932],
-      // 100 000 × 9,75 % (1,75 + 8) × 14 / 365
-      ["2026-01-01", "2026-01-15", 14, 10_000_000, 9.75, 37_397],
-      // 60 000 × 9,75 % × 17 / 365
-      ["2026-01-15", "2026-02-01", 17, 6_000_000, 9.75, 27_247],
+      // The reference rate is 2,00 % in both halves (H2 2025 and H1 2026), so the
+      // periods either side of New Year merge: 100 000 × 10 % × 45 / 365
+      ["2025-12-01", "2026-01-15", 45, 10_000_000, 10, 123_288],
+      // 60 000 × 10 % × 17 / 365
+      ["2026-01-15", "2026-02-01", 17, 6_000_000, 10, 27_945],
     ]
   );
-  assert.equal(i.totalOre, 149_576);
+  assert.equal(i.totalOre, 151_233);
 });
 
 test("interest to date: nothing before the due date, nothing on what was paid before it", () => {
@@ -86,11 +85,11 @@ test("the claim: capital, interest to date, reminder fees and the demand fee sep
     asOf: "2026-02-01",
   });
   assert.equal(claim.capitalOre, 6_000_000);
-  assert.equal(claim.interest.totalOre, 149_576);
+  assert.equal(claim.interest.totalOre, 151_233);
   assert.equal(claim.invoicedInterestOre, 12_000);
   assert.equal(claim.reminderFeesOre, 6_000);
   assert.equal(claim.demandFeeOre, 18_000);
-  assert.equal(claim.totalOre, 6_000_000 + 149_576 + 6_000 + 18_000);
+  assert.equal(claim.totalOre, 6_000_000 + 151_233 + 6_000 + 18_000);
 });
 
 test("pay-by: at least eight days and four bank days from receipt, later around Christmas", () => {
@@ -108,9 +107,9 @@ test("demand plan: 180 kr, interest since the last reminder, earlier fees still 
   const plan = demandPlan(base, "2026-10-25", { payBy: "2026-11-04", earlier: { feesOre: 6_000, interestOre: 5_000 } });
   assert.equal(plan.feeOre, 18_000);
   assert.equal(plan.interestFrom, "2026-10-10");
-  // 42 500 × 9,75 % × 15 / 365 = 170,29 kr
-  assert.equal(plan.interestOre, 17_029);
-  assert.equal(plan.totalOre, 4_250_000 + 6_000 + 5_000 + 18_000 + 17_029);
+  // 42 500 × 10 % × 15 / 365 = 174,66 kr
+  assert.equal(plan.interestOre, 17_466);
+  assert.equal(plan.totalOre, 4_250_000 + 6_000 + 5_000 + 18_000 + 17_466);
   assert.equal(plan.daysOverdue, 24);
   // Private customers pay the demand fee too (lag 1981:739 3 §, no agreement needed).
   assert.equal(demandPlan({ ...base, document: { ...base.document, buyer: { type: "privat" } } }, "2026-10-25", { payBy: "2026-11-04", earlier: { feesOre: 0, interestOre: 0 } }).feeOre, 18_000);
@@ -168,7 +167,7 @@ test("CSV: the generic columns first, amounts with decimal comma, the personal n
   assert.equal(
     row,
     // A leading + would be guarded as a formula ('+46…), so the phone is written 0046….
-    "10001-1;Anna Andersson;19850412-1234;Vägen 2;anna@exempel.se;0046 70 123 45 67;10001;2026-09-12;2026-10-12;42500,00;147,59;60,00;1000108;123-4567;123 45;Täby;SE;Privatperson;0,00;2026-10-12;2026-10-25;9,75;SEK;\"Badrumsrenovering; kakel\""
+    "10001-1;Anna Andersson;19850412-1234;Vägen 2;anna@exempel.se;0046 70 123 45 67;10001;2026-09-12;2026-10-12;42500,00;151,37;60,00;1000108;123-4567;123 45;Täby;SE;Privatperson;0,00;2026-10-12;2026-10-25;10;SEK;\"Badrumsrenovering; kakel\""
   );
 });
 
@@ -182,7 +181,7 @@ test("amounts and file names", () => {
 test("demand plan: interest across a half-year uses each half-year's rate, as the letter says", () => {
   const inv: CollectionInput = { ...base, dueOn: "2025-12-01", reminders: 0, remindedAt: null };
   const plan = demandPlan(inv, "2026-01-15", { payBy: "2026-01-26", earlier: { feesOre: 0, interestOre: 0 } });
-  // 42 500 × 10 % × 31 / 365 + 42 500 × 9,75 % × 14 / 365
-  assert.equal(plan.interestOre, 36_096 + 15_894);
-  assert.equal(plan.interestPercent, 9.75);
+  // 2,00 % + 8 in both halves: 42 500 × 10 % × 45 / 365 = 523,97 kr
+  assert.equal(plan.interestOre, 52_397);
+  assert.equal(plan.interestPercent, 10);
 });

@@ -4,6 +4,7 @@ import { buyerFromQuote, lineFromQuoteItem, rotBuyersFromQuote } from "./from-qu
 import { kindTotals, stepInvoiceLines, type ChangeOrderLike } from "../plans/billing";
 import type { PaymentPlan, PaymentPlanStep } from "../plans/schema";
 import { getSellerDefaults } from "./seller";
+import { reminderFeeFor } from "../org/settings";
 import { countsAsInvoiced, listInvoices } from "./store";
 import type { Quote } from "../../quotes/schema";
 import type { PortalProject } from "../../portal/schema";
@@ -27,7 +28,7 @@ export async function invoiceDocumentForStep(input: {
   changeOrders: ChangeOrderLike[];
   issueDate: string;
 }): Promise<{ document: InvoiceDocument; changeOrderIds: string[] }> {
-  const { seller, paymentMeans, lateInterestText } = await getSellerDefaults();
+  const { seller, paymentMeans, lateInterestText, settings } = await getSellerDefaults();
   const { project, plan, step, quote } = input;
   const quoteLines = quoteInvoiceLines(quote);
   const stepIndex = plan.steps.findIndex((s) => s.id === step.id);
@@ -42,7 +43,7 @@ export async function invoiceDocumentForStep(input: {
 
   const lines = stepInvoiceLines({ step, stepIndex, stepCount: plan.steps.length, quoteLines, quoteNumber: quote.number, invoicedByKind, changeOrders: input.changeOrders });
   const buyer = buyerFromQuote(quote, input.customerId);
-  const doc = newInvoiceDocument({ issueDate: input.issueDate, seller, buyer, paymentMeans: { ...paymentMeans, termsDays: quote.data.paymentDays ?? paymentMeans.termsDays ?? 30 } });
+  const doc = newInvoiceDocument({ issueDate: input.issueDate, seller, buyer, paymentMeans: { ...paymentMeans, termsDays: quote.data.paymentDays ?? paymentMeans.termsDays ?? 30 }, reminderFeeOre: reminderFeeFor(settings, buyer.type, input.issueDate) });
   doc.title = `${quote.data.title || project.title}${step.dueRule === "on_completion" ? ", slutfaktura" : `, ${step.label.toLowerCase()}`}`;
   doc.note = `Enligt offert ${quote.number}, betalplan steg ${stepIndex + 1} av ${plan.steps.length}: ${step.label}.${step.dueRule === "on_completion" && lines.some((l) => l.changeOrderId) ? " Godkända ändringar (ÄTA) ingår som egna rader." : ""}`;
   doc.references.quoteNumber = quote.number;

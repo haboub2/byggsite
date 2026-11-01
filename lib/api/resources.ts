@@ -4,6 +4,7 @@ import { customerToBuyer } from "../core/customers/schema";
 import { getCustomer } from "../core/customers/store";
 import { buyerSchema, lineForBuyer, newInvoiceDocument, type InvoiceDocument } from "../core/documents/invoice";
 import { getSellerDefaults } from "../core/invoices/seller";
+import { reminderFeeFor } from "../core/org/settings";
 import { todayIso } from "../quotes/schema";
 import type { InvoiceCreate } from "./schemas";
 import { ApiProblem } from "./route";
@@ -23,10 +24,10 @@ export async function documentFromApi(input: InvoiceCreate): Promise<InvoiceDocu
     if (!customer) throw new ApiProblem("not_found", "Kunden finns inte.");
   }
   const buyer = customer ? customerToBuyer(customer) : buyerSchema.parse({ ...input.buyer, customerId: null });
-  const { seller, paymentMeans, lateInterestText } = await getSellerDefaults(buyer.type);
+  const { seller, paymentMeans, lateInterestText, settings } = await getSellerDefaults(buyer.type);
   const issueDate = input.issueDate ?? todayIso();
   const termsDays = input.termsDays ?? customer?.defaultTermsDays ?? paymentMeans.termsDays ?? 30;
-  const doc = newInvoiceDocument({ issueDate, seller, buyer, paymentMeans: { ...paymentMeans, termsDays, termsText: "" } });
+  const doc = newInvoiceDocument({ issueDate, seller, buyer, paymentMeans: { ...paymentMeans, termsDays, termsText: "" }, reminderFeeOre: reminderFeeFor(settings, buyer.type, issueDate) });
   return {
     ...doc,
     dueDate: input.dueDate ?? doc.dueDate,

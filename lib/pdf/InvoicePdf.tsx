@@ -2,7 +2,7 @@ import { Document, Font, Page, Text, View, Image, StyleSheet } from "@react-pdf/
 import type { Style } from "@react-pdf/stylesheet";
 import { formatOre } from "../core/money";
 import { rulesAt } from "../core/rules";
-import { INVOICE_KIND_LABEL, LINE_KIND_LABEL, paymentReference, type InvoiceDocument } from "../core/documents/invoice";
+import { INVOICE_KIND_LABEL, LINE_KIND_LABEL, paymentReference, reminderFeeClause, type InvoiceDocument } from "../core/documents/invoice";
 import { customerSummary, invoiceTotals, type InvoiceTotals } from "../core/invoices/totals";
 import { maskPersonalNumber } from "../core/rot/pnr";
 import { JAKARTA_BOLD, JAKARTA_ITALIC, JAKARTA_MEDIUM, JAKARTA_REGULAR } from "./fonts";
@@ -343,6 +343,7 @@ export function InvoicePdf({ document: doc, totals = invoiceTotals(doc), signer,
               </View>
             ) : null}
             {!isCredit && doc.se.lateInterestText ? <Text style={s.boxText}>{clean(doc.se.lateInterestText)}</Text> : null}
+            {!isCredit && doc.se.reminderFeeOre > 0 ? <Text style={s.boxText}>{clean(reminderFeeClause(doc.se.reminderFeeOre))}</Text> : null}
           </View>
 
           <View style={s.sum}>

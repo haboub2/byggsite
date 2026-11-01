@@ -1,6 +1,6 @@
 import "server-only";
 import { getOrgSettings } from "../org/settings-store";
-import { DEFAULT_LATE_INTEREST_TEXT, sellerFromSettings, termsDaysFor, type OrgSettings } from "../org/settings";
+import { DEFAULT_LATE_INTEREST_TEXT, reminderFeeFor, sellerFromSettings, termsDaysFor, type OrgSettings } from "../org/settings";
 import type { CustomerType, InvoiceDocument, Seller } from "../documents/invoice";
 import type { PaymentMeansInput } from "./from-quote";
 
@@ -32,10 +32,11 @@ export function applySellerDefaults(doc: InvoiceDocument, defaults: { seller: Se
  * The seller block and payment details for a new invoice, from the
  * organisation's settings (org_settings; lib/core/org/settings-store.ts,
  * which falls back to Företaget, Offertuppgifter and SWISH_NUMBER for the
- * first organisation until its settings are saved). Terms follow the
- * customer type when it is known.
+ * first organisation until its settings are saved). Terms and the
+ * påminnelseavgift clause follow the customer type when it is known; a
+ * caller that learns the type later takes `reminderFeeFor(settings, type)`.
  */
-export async function getSellerDefaults(customerType?: CustomerType): Promise<{ seller: Seller; paymentMeans: PaymentMeansInput; lateInterestText: string; signer: string; settings: OrgSettings }> {
+export async function getSellerDefaults(customerType?: CustomerType, date = new Date().toISOString().slice(0, 10)): Promise<{ seller: Seller; paymentMeans: PaymentMeansInput; lateInterestText: string; reminderFeeOre: number; signer: string; settings: OrgSettings }> {
   const settings = await getOrgSettings();
   return {
     seller: sellerFromSettings(settings),
@@ -49,6 +50,7 @@ export async function getSellerDefaults(customerType?: CustomerType): Promise<{ 
       termsDays: termsDaysFor(settings, customerType),
     },
     lateInterestText: settings.lateInterestText || DEFAULT_LATE_INTEREST_TEXT,
+    reminderFeeOre: reminderFeeFor(settings, customerType, date),
     signer: settings.company.signer || settings.company.legalName,
     settings,
   };

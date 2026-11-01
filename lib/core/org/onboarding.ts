@@ -96,7 +96,7 @@ export function onboardingSteps(input: OnboardingInput): OnboardingStep[] {
       key: "terms",
       n: 3,
       title: "Villkor och påminnelser",
-      body: `${sameTerms ? `${s.terms.privat} dagar till privatpersoner och företag` : `${s.terms.privat} dagar till privatpersoner, ${s.terms.foretag} till företag`}${input.termsReviewed ? "" : " är förvalt"}. Dröjsmålsränta enligt räntelagen, påminnelseavgift 60 kr till företag.`,
+      body: `${sameTerms ? `${s.terms.privat} dagar till privatpersoner och företag` : `${s.terms.privat} dagar till privatpersoner, ${s.terms.foretag} till företag`}${input.termsReviewed ? "" : " är förvalt"}. Dröjsmålsränta enligt räntelagen; påminnelseavgift 60 kr när fakturan säger det.`,
       done: input.termsReviewed,
       href: "/admin/installningar#villkor",
       action: "approve-terms",

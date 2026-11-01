@@ -1,6 +1,6 @@
 import { formatKronor, formatOre, roundToKronor, type Ore } from "../../core/money";
 import { invoiceTotals } from "../../core/invoices/totals";
-import { INVOICE_TYPE_CODE, PEPPOL_ID, paymentReference, type InvoiceDocument, type InvoiceLine } from "../../core/documents/invoice";
+import { INVOICE_TYPE_CODE, PEPPOL_ID, paymentReference, reminderFeeClause, type InvoiceDocument, type InvoiceLine } from "../../core/documents/invoice";
 
 /**
  * Peppol BIS Billing 3.0 (UBL 2.1) for one invoice document. An invoice
@@ -210,6 +210,7 @@ export function renderPeppolInvoice(doc: InvoiceDocument, opts: PeppolOptions = 
     doc.se.reverseCharge ? "Omvänd betalningsskyldighet" : "",
     rot ? `ROT-avdrag ${rotAmount} kr begärs av säljaren hos Skatteverket. Att betala efter ROT-avdrag: ${afterRot}.` : "",
     doc.se.lateInterestText,
+    reminderFeeClause(doc.se.reminderFeeOre),
   ].filter(present);
 
   const root = credit ? "CreditNote" : "Invoice";
