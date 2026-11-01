@@ -26,6 +26,22 @@ test("a computed run waits for an approver; the skattekonto payment shows three 
   assert.match(tax[0].meta, /2026-12-14/);
 });
 
+test("slutlön: a row from two weeks before the last day until the semesterersättning is on a payslip, due a month after (30 §)", () => {
+  const ending = { employeeId: "e1", name: "Anna Andersson", endsOn: "2026-06-15", paid: false };
+  const finalRows = (today: string, endings: typeof ending[]) => payrollTodos({ runs: [], settings, today, canApprove: true, hasPeople: true, endings }).filter((t) => t.kind === "final-pay");
+  assert.equal(finalRows("2026-05-20", [ending]).length, 0);
+  const row = finalRows("2026-06-02", [ending])[0];
+  assert.equal(row.kind, "final-pay");
+  assert.match(row.title, /Anna Andersson/);
+  assert.match(row.meta, /senast 2026-07-15/);
+  assert.equal(row.href, "/admin/personal/e1");
+  assert.equal(row.weight, 3);
+  const late = finalRows("2026-07-20", [ending])[0];
+  assert.match(late.meta, /5 dagar försenad/);
+  assert.equal(late.weight, 1);
+  assert.equal(finalRows("2026-06-20", [{ ...ending, paid: true }]).length, 0);
+});
+
 test("the skattekonto row takes the stored AGI's amount and goes away when it is marked paid", () => {
   const closed = { id: "r", periodStart: "2026-11-01", payDate: "2026-11-25", agiPeriod: "2026-11", status: "closed", totals: { taxOre: 1_185_000, employerContributionOre: 1_571_000 } };
   const args = { runs: [closed], settings: { payDay: 25 }, today: "2026-12-01", canApprove: true, hasPeople: false };

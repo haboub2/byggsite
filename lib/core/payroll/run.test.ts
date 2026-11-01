@@ -132,7 +132,7 @@ const person = (p: Partial<RunPerson> & { id: string; name: string; birthDate: I
   timeEntries: [],
   absences: [],
   schedule: null,
-  history: { yearToDateCashGrossOre: 0, yearToDateTaxOre: 0, vacationLiabilityOre: 0, vacationBasisPaidByYearOre: 0, variablePayPaidByYearOre: 0, variablePayPreviousPaidByOre: 0, variableVacationPaidThisYearOre: 0, variableVacationPaidPreviousYearOre: 0 },
+  history: { yearToDateCashGrossOre: 0, yearToDateTaxOre: 0, vacationLiabilityOre: 0, vacationBasisPaidByYearOre: 0, variablePayPaidByYearOre: 0, variablePayPreviousPaidByOre: 0, variablePayEarningYearOre: 0, variableVacationPaidThisYearOre: 0, variableVacationPaidPreviousYearOre: 0 },
   corrections: [],
   ...p,
 });
@@ -422,6 +422,68 @@ test("procentregeln 16 b §: the year's semesterlön is spread over the paid day
   assert.equal(line.unitPriceOre, 120_000);
   assert.equal(line.quantity, 5);
   assert.equal(line.amountOre, 600_000);
+});
+
+test("semesterlagen 28–30 §§: slutlön pays every unused day and next year's earned days at the day value, and the liability is gone", () => {
+  // Hired 2024-01-01, leaves 2026-06-15, 30 000 kr, no agreement (4,6 % + 0,43 % a day, 12 % on variable pay).
+  const anna = person({ id: "anna", name: "Anna", birthDate: "1990-05-05", agreement: "none" });
+  anna.versions = [version({ employeeId: "anna", form: "tillsvidare", payForm: "monthly", monthlySalaryOre: 3_000_000, startsOn: "2024-01-01", endsOn: "2026-06-15", vacationRule: "sammalon" })];
+  anna.history = { ...anna.history, variablePayPaidByYearOre: 2_000_000, variablePayEarningYearOre: 500_000 };
+  const run = computeRun(runFor("2026-06", { variablePeriod: "same" }, [anna]));
+  const doc = run.payslips[0].document;
+  const final = doc.lines.filter((l) => l.code === "1522");
+  // 2026/27: 25 earned + 5 saved from 2025/26 = 30 left; 2026-04-01 – 06-15 = 76 days → ceil(25 × 76 / 365) = 6 for 2027/28.
+  assert.equal(final[0].quantity, 36);
+  assert.equal(final[0].unitPriceOre, 138_000 + 12_900);
+  assert.equal(final[0].amountOre, 36 * 150_900);
+  // 12 % on the 20 000 kr of 2025/26 (never paid this year) and on the 5 000 kr earned since April.
+  assert.equal(final[1].amountOre, 240_000 + 60_000);
+  assert.equal(final.every((l) => l.item.flags.taxMode === "lump_sum"), true);
+  assert.equal(run.payslips[0].vacationLiabilityOre, 0);
+  assert.equal(doc.context?.vacation.remainingDays, 0);
+  assert.ok(run.checks.some((c) => c.code === "final-pay" && c.level === "info" && /2026-07-15/.test(c.text)));
+  // A contract that goes straight on into another is not a termination.
+  const stays = { ...anna, versions: [...anna.versions, version({ employeeId: "anna", form: "tillsvidare", payForm: "monthly", monthlySalaryOre: 3_200_000, startsOn: "2026-06-16", vacationRule: "sammalon" })] };
+  assert.equal(computeRun(runFor("2026-06", { variablePeriod: "same" }, [stays])).payslips[0].document.lines.filter((l) => l.code === "1522").length, 0);
+});
+
+test("slutlön under procentregeln pays out the whole semesterlöneskuld, this month's accrual included", () => {
+  const bo = person({ id: "bo", name: "Bo", birthDate: "1988-02-02", agreement: "byggavtalet" });
+  bo.versions = [version({ employeeId: "bo", form: "tillsvidare", payForm: "hourly", hourlyRateOre: 20_000, startsOn: "2025-01-01", endsOn: "2026-06-30", vacationRule: "procent", vacationPercent: 13 })];
+  bo.schedule = { kind: "weekly", hours: [8, 8, 8, 8, 8, 0, 0], holidaysOff: true };
+  bo.history = { ...bo.history, vacationLiabilityOre: 5_000_000 };
+  bo.timeEntries = [entry("bo", "2026-06-01", "07:00", "15:00"), entry("bo", "2026-06-02", "07:00", "15:00")];
+  const run = computeRun(runFor("2026-06", { variablePeriod: "same" }, [bo]));
+  const doc = run.payslips[0].document;
+  const final = doc.lines.find((l) => l.code === "1521")!;
+  // 16 h × 200 kr = 3 200 kr this month → 13 % = 416 kr, plus the 50 000 kr already owed.
+  assert.equal(final.amountOre, 5_000_000 + 41_600);
+  assert.equal(run.payslips[0].vacationLiabilityOre, 0);
+});
+
+test("obetald semester: days beyond the balance get no semestertillägg and a deduction on månadslön, no semesterlön on timlön", () => {
+  // Hired 2026-02-01: 59 days of intjänandeåret 2025/26 → ceil(25 × 59 / 365) = 5 paid days for 2026/27; takes 10 in June.
+  const anna = person({ id: "anna", name: "Anna", birthDate: "1990-05-05", agreement: "none" });
+  anna.versions = [version({ employeeId: "anna", form: "tillsvidare", payForm: "monthly", monthlySalaryOre: 3_000_000, startsOn: "2026-02-01", vacationRule: "sammalon" })];
+  // 1–12 June 2026: ten working days (6 June is a Saturday).
+  anna.absences = [absence("anna", "semester", "2026-06-01", "2026-06-12")];
+  const run = computeRun(runFor("2026-06", { variablePeriod: "same" }, [anna]));
+  const doc = run.payslips[0].document;
+  assert.equal(doc.lines.find((l) => l.code === "1510")!.quantity, 5);
+  const deduction = doc.lines.find((l) => l.code === "1530")!;
+  assert.equal(deduction.quantity, 5);
+  assert.equal(deduction.amountOre, -5 * 138_000);
+  assert.ok(run.checks.some((c) => c.code === "vacation-unpaid"));
+  // Timlön, procentregeln: 13 paid days earned (hired 2025-10-01), 15 taken → semesterlön for 13.
+  const bo = person({ id: "bo", name: "Bo", birthDate: "1988-02-02", agreement: "none" });
+  bo.versions = [version({ employeeId: "bo", form: "tillsvidare", payForm: "hourly", hourlyRateOre: 20_000, startsOn: "2025-10-01", vacationRule: "procent", vacationPercent: 12 })];
+  bo.schedule = { kind: "weekly", hours: [8, 8, 8, 8, 8, 0, 0], holidaysOff: true };
+  bo.history = { ...bo.history, vacationBasisPaidByYearOre: 13_000_000 };
+  bo.absences = [absence("bo", "semester", "2026-06-01", "2026-06-19")];
+  const boRun = computeRun(runFor("2026-06", { variablePeriod: "same" }, [bo]));
+  const line = boRun.payslips[0].document.lines.find((l) => l.item.kind === "vacation_pay")!;
+  assert.equal(line.quantity, 13);
+  assert.ok(boRun.checks.some((c) => c.code === "vacation-unpaid"));
 });
 
 /* ---------- phase 5 ---------- */
