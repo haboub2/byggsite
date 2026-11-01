@@ -65,7 +65,7 @@ test("terms: the default is offered for approval, and counts once saved", () => 
   const step = onboardingSteps(fresh())[2];
   assert.equal(step.done, false);
   assert.equal(step.action, "approve-terms");
-  assert.equal(step.body, "30 dagar till privatpersoner och företag är förvalt. Dröjsmålsränta enligt räntelagen, påminnelseavgift 60 kr till företag.");
+  assert.equal(step.body, "30 dagar till privatpersoner och företag är förvalt. Dröjsmålsränta enligt räntelagen; påminnelseavgift 60 kr när fakturan säger det.");
   assert.equal(status({ ...fresh(), termsReviewed: true }).terms, true);
   // The banner cannot approve: its "next" for the terms leads to the guide.
   const input = ready();

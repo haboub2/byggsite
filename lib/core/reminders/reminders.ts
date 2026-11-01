@@ -1,14 +1,16 @@
-import { daysBetween, lateInterestOre, lateInterestPercentAt, rulesAt } from "../rules";
+import { addDays, daysBetween, lateInterestOre, lateInterestPercentAt, referenceRateAt, rulesAt } from "../rules";
 import type { Ore } from "../money";
 import type { CustomerType } from "../documents/invoice";
 
 /**
  * Påminnelser (docs/fakturering.md, fas 3). Pure: given an invoice and the
- * date, say whether a reminder is due and what it may add. The statutory
- * fee (60 kr) applies to businesses; against a consumer only when the
- * contract says so, so it is off by default for private customers.
- * Interest is reference rate + 8 points, actual/365, from the due date (or
- * the last reminder) on what is still unpaid.
+ * date, say whether a reminder is due and what it may add. The fee (at most
+ * 60 kr) is charged only when the invoice itself carried the clause, to
+ * businesses and consumers alike: lag (1981:739) 2 § requires the agreement
+ * to exist when the claim arose. Interest is reference rate + 8 points,
+ * actual/365, on what is still unpaid, from the due date (or the last
+ * reminder); against a consumer not before 30 days after the invoice
+ * (räntelagen 4 § 3 st: the invoice is the demand that states interest).
  */
 
 export type ReminderSettings = {
@@ -16,8 +18,6 @@ export type ReminderSettings = {
   graceDays: number;
   /** Days between reminders. */
   daysBetween: number;
-  /** Charge the statutory fee to private customers too (requires it in the terms). */
-  feeToConsumers: boolean;
   /** Add late interest on reminders. */
   chargeInterest: boolean;
   /** Reminders before the invoice is handed to collection (shown as a hint only). */
@@ -27,10 +27,12 @@ export type ReminderSettings = {
 export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
   graceDays: 3,
   daysBetween: 10,
-  feeToConsumers: false,
   chargeInterest: true,
   maxReminders: 2,
 };
+
+/** Days after the invoice date before interest may run against a consumer (räntelagen 4 § 3 st). */
+export const CONSUMER_INTEREST_DAYS = 30;
 
 export type ReminderInput = {
   payableOre: Ore;
@@ -42,6 +44,8 @@ export type ReminderInput = {
   customerType: CustomerType;
   status: string;
   kind: "invoice" | "credit" | "correction";
+  /** The påminnelseavgift the invoice carried as a clause (document.se.reminderFeeOre); absent or 0 = none may be charged. */
+  reminderFeeOre?: Ore;
   /** Handed to a collection agency (invoices.collection_case_id, 0031): no more reminders. */
   atCollection?: boolean;
   /** An inkassokrav has been sent (0031): the next step is collection, not another reminder. */
@@ -57,7 +61,7 @@ export function reminderInput(inv: {
   remindedAt: string | null;
   status: string;
   kind: ReminderInput["kind"];
-  document: { issueDate: string; buyer: { type: CustomerType } };
+  document: { issueDate: string; buyer: { type: CustomerType }; se?: { reminderFeeOre?: number } };
   collectionCaseId?: string | null;
   collectionDemandedOn?: string | null;
 }): ReminderInput {
@@ -69,6 +73,7 @@ export function reminderInput(inv: {
     reminders: inv.reminders,
     remindedAt: inv.remindedAt,
     customerType: inv.document.buyer.type,
+    reminderFeeOre: inv.document.se?.reminderFeeOre ?? 0,
     status: inv.status,
     kind: inv.kind,
     atCollection: Boolean(inv.collectionCaseId),
@@ -90,6 +95,8 @@ export type ReminderPlan = {
   interestFrom: string;
   /** True when this reminder is the last before collection. */
   lastBeforeCollection: boolean;
+  /** The reference rate for `today` is not in the rule book: the reminder must not be sent (assertReferenceRateKnown). */
+  rateAssumed: boolean;
 };
 
 /** Days overdue, or 0. */
@@ -114,19 +121,32 @@ export function reminderDue(inv: ReminderInput, today: string, settings: Reminde
   if (sinceLast === null ? overdue < settings.graceDays : sinceLast < settings.daysBetween) return null;
 
   const rules = rulesAt(today);
-  const business = inv.customerType !== "privat";
-  const feeOre = business ? rules.reminderFee.businessOre : settings.feeToConsumers ? rules.reminderFee.businessOre : rules.reminderFee.consumerOre;
-  const interestFrom = inv.remindedAt ? inv.remindedAt.slice(0, 10) : inv.dueOn!;
+  // Only what the invoice agreed, never above the statutory ceiling.
+  const feeOre = Math.min(inv.reminderFeeOre ?? 0, rules.reminderFee.maxOre);
+  const interestFrom = inv.remindedAt ? inv.remindedAt.slice(0, 10) : interestStart(inv);
   const interestPercent = lateInterestPercentAt(today);
-  const interestOre = settings.chargeInterest ? lateInterestOre(remaining, interestPercent, daysBetween(interestFrom, today)) : 0;
+  const interestDays = Math.max(0, daysBetween(interestFrom, today));
+  const interestOre = settings.chargeInterest ? lateInterestOre(remaining, interestPercent, interestDays) : 0;
   const level = inv.reminders + 1;
-  return { level, daysOverdue: overdue, remainingOre: remaining, feeOre, interestOre, interestPercent, interestFrom, lastBeforeCollection: level >= settings.maxReminders };
+  return { level, daysOverdue: overdue, remainingOre: remaining, feeOre, interestOre, interestPercent, interestFrom, lastBeforeCollection: level >= settings.maxReminders, rateAssumed: referenceRateAt(today).assumed };
+}
+
+/**
+ * The day interest starts on an invoice nobody has reminded about yet: the
+ * due date, but against a consumer never earlier than 30 days after the
+ * invoice date (räntelagen 4 § 3 st), whatever the payment terms were.
+ */
+export function interestStart(inv: Pick<ReminderInput, "dueOn" | "issueDate" | "customerType">): string {
+  const due = inv.dueOn!;
+  if (inv.customerType !== "privat") return due;
+  const earliest = addDays(inv.issueDate, CONSUMER_INTEREST_DAYS);
+  return earliest > due ? earliest : due;
 }
 
 /** The text on the reminder mail and PDF. */
 export function reminderText(plan: ReminderPlan, invoiceNumber: string, dueOn: string): string {
   const parts = [`Påminnelse ${plan.level}: faktura ${invoiceNumber} förföll ${dueOn} och är ${plan.daysOverdue} dagar försenad.`];
-  if (plan.feeOre > 0) parts.push(`Påminnelseavgift ${plan.feeOre / 100} kr enligt lag.`);
+  if (plan.feeOre > 0) parts.push(`Påminnelseavgift ${plan.feeOre / 100} kr enligt fakturans villkor.`);
   if (plan.interestOre > 0) parts.push(`Dröjsmålsränta ${plan.interestPercent} % från ${plan.interestFrom}.`);
   if (plan.lastBeforeCollection) parts.push("Betalas inte fakturan inom tio dagar lämnas den till inkasso.");
   return parts.join(" ");

@@ -12,6 +12,8 @@ const base: ReminderInput = {
   customerType: "foretag",
   status: "sent",
   kind: "invoice",
+  // The invoice carried the clause (document.se.reminderFeeOre).
+  reminderFeeOre: 6_000,
 };
 
 test("not due before the grace period, due after it", () => {
@@ -22,20 +24,47 @@ test("not due before the grace period, due after it", () => {
   assert.equal(plan.level, 1);
   assert.equal(plan.daysOverdue, 7);
   assert.equal(plan.feeOre, 6_000);
-  assert.equal(plan.interestPercent, 9.75);
-  // 42 500 × 9,75 % × 7 / 365 = 79,47 kr
-  assert.equal(plan.interestOre, 7_947);
+  // Riksbanken: 2,00 % from 2026-07-01, plus 8.
+  assert.equal(plan.interestPercent, 10);
+  // 42 500 × 10 % × 7 / 365 = 81,51 kr
+  assert.equal(plan.interestOre, 8_151);
   assert.equal(plan.interestFrom, "2026-10-12");
   assert.equal(plan.lastBeforeCollection, false);
+  assert.equal(plan.rateAssumed, false);
+  assert.equal(reminderDue(base, "2027-03-01")!.rateAssumed, true);
 });
 
-test("private customers get no fee unless the terms say so, and no credit notes", () => {
+test("the fee is only what the invoice agreed, never above 60 kr, for businesses and consumers alike", () => {
+  // No clause on the invoice: no fee, whoever the debtor is (lag 1981:739 2 §).
+  assert.equal(reminderDue({ ...base, reminderFeeOre: 0 }, "2026-10-19")!.feeOre, 0);
+  assert.equal(reminderDue({ ...base, reminderFeeOre: undefined }, "2026-10-19")!.feeOre, 0);
+  assert.equal(reminderDue({ ...base, customerType: "privat", reminderFeeOre: 0 }, "2026-10-19")!.feeOre, 0);
+  // A clause on a consumer invoice: the fee may be charged.
+  assert.equal(reminderDue({ ...base, customerType: "privat", reminderFeeOre: 6_000 }, "2026-10-19")!.feeOre, 6_000);
+  // Never above the statutory ceiling.
+  assert.equal(reminderDue({ ...base, reminderFeeOre: 9_900 }, "2026-10-19")!.feeOre, 6_000);
+  assert.ok(reminderText(reminderDue(base, "2026-10-19")!, "10020", "2026-10-12").includes("enligt fakturans villkor"));
+  assert.ok(!reminderText(reminderDue(base, "2026-10-19")!, "10020", "2026-10-12").includes("enligt lag"));
+});
+
+test("against a consumer, interest runs at the earliest 30 days after the invoice (räntelagen 4 §)", () => {
+  // Ten-day terms: due 2026-09-22, but interest from 2026-10-12.
+  const short = { ...base, customerType: "privat" as const, dueOn: "2026-09-22" };
+  const plan = reminderDue(short, "2026-10-19")!;
+  assert.equal(plan.interestFrom, "2026-10-12");
+  assert.equal(plan.interestOre, 8_151);
+  // A reminder before that day charges no interest at all.
+  assert.equal(reminderDue(short, "2026-10-05")!.interestOre, 0);
+  // Thirty-day terms or more: from the due date, as for businesses.
+  assert.equal(reminderDue({ ...base, customerType: "privat" }, "2026-10-19")!.interestFrom, "2026-10-12");
+  assert.equal(reminderDue({ ...base, dueOn: "2026-09-22" }, "2026-10-19")!.interestFrom, "2026-09-22");
+});
+
+test("interest can be switched off, and no credit notes", () => {
   const privat = reminderDue({ ...base, customerType: "privat" }, "2026-10-19")!;
-  assert.equal(privat.feeOre, 0);
   assert.ok(privat.interestOre > 0);
-  const agreed = reminderDue({ ...base, customerType: "privat" }, "2026-10-19", { graceDays: 3, daysBetween: 10, feeToConsumers: true, chargeInterest: false, maxReminders: 2 })!;
-  assert.equal(agreed.feeOre, 6_000);
-  assert.equal(agreed.interestOre, 0);
+  const off = reminderDue({ ...base, customerType: "privat" }, "2026-10-19", { graceDays: 3, daysBetween: 10, chargeInterest: false, maxReminders: 2 })!;
+  assert.equal(off.interestOre, 0);
   assert.equal(reminderDue({ ...base, kind: "credit" }, "2026-10-19"), null);
   assert.equal(reminderDue({ ...base, status: "paid" }, "2026-10-19"), null);
   assert.equal(reminderDue({ ...base, paidOre: 4_250_000 }, "2026-10-19"), null);

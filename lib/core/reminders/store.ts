@@ -14,6 +14,7 @@ import { demoJournalEntries, getInvoice, invoiceLabel, listInvoices, type Invoic
 import { todayIso } from "../../quotes/schema";
 import { documentRecipients, recipientsText, type Recipients } from "../invoices/recipients";
 import { reminderDue, reminderInput, reminderText, type ReminderPlan, type ReminderSettings } from "./reminders";
+import { assertReferenceRateKnown } from "../rules";
 
 // The PDF renderer loads on first use, not with every page that imports this module.
 const renderInvoicePdf: typeof import("../../pdf/render-invoice").renderInvoicePdf = async (...args) => (await import("../../pdf/render-invoice")).renderInvoicePdf(...args);
@@ -95,6 +96,8 @@ export async function sendReminder(invoiceId: string, actor: Actor, options: { m
   if (inv.collectionDemandedOn) throw new Error(`${invoiceLabel(inv)} har fått inkassokrav. Nästa steg är att lämna den till inkasso.`);
   const plan = reminderDue(reminderInput(inv), today, { ...(await reminderSettings()), graceDays: 0, daysBetween: 1 });
   if (!plan) throw new Error(`${invoiceLabel(inv)} är inte förfallen eller påmindes nyss.`);
+  // The reminder states a rate: never an assumed one (räntelagen 9 §).
+  if (plan.interestOre > 0) assertReferenceRateKnown(today);
   const recipients = options.mail ? await mailReminder(inv, plan) : null;
   const sentTo = recipients ? recipientsText(recipients) : "manuellt";
   const posting = postReminder({ reminderId: crypto.randomUUID(), fee: plan.feeOre, interest: plan.interestOre, date: today, text: `Påminnelse ${plan.level} ${invoiceLabel(inv).toLowerCase()} ${inv.document.buyer.name}`, dimensions: { projectId: inv.projectId, customerId: inv.customerId } }, chartFromSettings(await getOrgSettings()));

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { recipientsSchema } from "../invoices/recipients";
+import { rulesAt } from "../rules";
 
 /**
  * The invoice document (docs/fakturering.md, grundkrav 3). One JSON object
@@ -262,6 +263,15 @@ export const invoiceDocumentSchema = z.object({
       /** Late-interest clause as printed. */
       lateInterestText: text(200, "Dröjsmålsränta").default(""),
       /**
+       * The påminnelseavgift the buyer agreed to by this invoice, öre; 0 = none.
+       * Lag (1981:739) 2 §: a reminder may only be charged for when it was
+       * agreed at the latest when the claim arose, so the clause is printed
+       * on the invoice (reminderFeeClause) and the reminder charges exactly
+       * this. Capped by the rule book at issue (validateForIssue). Absent on
+       * documents issued before the field existed: then no fee.
+       */
+      reminderFeeOre: z.number().int().min(0).default(0),
+      /**
        * Who the invoice and its reminders are mailed to, frozen from the
        * customer's lists at issue (lib/core/invoices/recipients.ts). The
        * standard has one buyer e-mail (BT-58, buyer.email), which stays the
@@ -351,6 +361,9 @@ export function validateForIssue(doc: InvoiceDocument): string[] {
     if (line.vatCategory !== "S" && line.vatRate !== 0) errors.push(`Raden "${line.description}": omvänd eller undantagen moms har satsen 0 %.`);
   }
 
+  if (doc.se.reminderFeeOre > rulesAt(doc.issueDate).reminderFee.maxOre)
+    errors.push(`Påminnelseavgiften får vara högst ${rulesAt(doc.issueDate).reminderFee.maxOre / 100} kr (lag om ersättning för inkassokostnader).`);
+
   if (doc.se.reverseCharge) {
     if (doc.buyer.type !== "byggforetag") errors.push("Omvänd betalningsskyldighet gäller bara byggföretag.");
     if (!doc.buyer.vatNr) errors.push("Omvänd betalningsskyldighet kräver köparens momsregistreringsnummer.");
@@ -382,6 +395,11 @@ export function hasRotPersonalNumber(b: Pick<RotBuyer, "personalNumber" | "perso
   return PERSONAL_NUMBER.test(b.personalNumber) || (MASKED_PERSONAL_NUMBER.test(b.personalNumber) && !!b.personalNumberSealed);
 }
 
+/** The sentence on the invoice that makes the påminnelseavgift agreed; empty when none. */
+export function reminderFeeClause(feeOre: number): string {
+  return feeOre > 0 ? `Vid försenad betalning debiteras påminnelseavgift ${Math.round(feeOre / 100)} kr enligt lag om ersättning för inkassokostnader.` : "";
+}
+
 /** A new draft with sensible defaults for one seller and buyer. */
 export function newInvoiceDocument(input: {
   issueDate: string;
@@ -389,6 +407,8 @@ export function newInvoiceDocument(input: {
   buyer: Buyer;
   paymentMeans?: Partial<z.input<typeof paymentMeansSchema>>;
   series?: string;
+  /** The agreed påminnelseavgift printed on the invoice (lib/core/org/settings.ts, reminderFeeFor). */
+  reminderFeeOre?: number;
 }): InvoiceDocument {
   const buyer = buyerSchema.parse(input.buyer);
   const paymentMeans = paymentMeansSchema.parse(input.paymentMeans ?? {});
@@ -402,7 +422,7 @@ export function newInvoiceDocument(input: {
     buyer,
     lines: [],
     paymentMeans: { ...paymentMeans, termsText: paymentMeans.termsText || `${paymentMeans.termsDays} dagar netto` },
-    se: { reverseCharge: reverseChargeFor(buyer.type), rot: null },
+    se: { reverseCharge: reverseChargeFor(buyer.type), rot: null, reminderFeeOre: input.reminderFeeOre ?? 0 },
   });
 }
 
