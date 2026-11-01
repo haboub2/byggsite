@@ -1734,3 +1734,21 @@ other (noted in section 4).
 - Basbelopp 2026: [SEB](https://seb.se/privat/pension-och-forsakring/pensionsspara/aktuella-basbelopp) · [Wolters Kluwer](https://www.wolterskluwer.com/sv-se/expert-insights/basbelopp) · [FAR Online](https://www.faronline.se/dokument/rattserien/ratt-lon/p/rl_prisbasbelopp/)
 - Växa-stöd 2026: [Företagarna](https://www.foretagarna.se/nyheter/riks/2025/oktober/vaxa-stodet-blir-krangligare-fran-arsskiftet/) · [Prop. 2025/26:24](https://www.regeringen.se/contentassets/542ed05775614dc4ba988e3c43e3863f/anpassning-av-vissa-skatte--och-avgiftsnedsattningar-till-eus-regler-om-statsstod-prop-20252624.pdf) · [FAR Online](https://www.faronline.se/dokument/rattserien/ratt-skatt/v/rs_vaxastod/)
 - Traktamente and milersättning 2026 (secondary): [Infobric, for byggföretag](https://infobric.com/se/artiklar/traktamente-2026-regler-belopp-och-vad-byggforetag-maste-ha-koll-pa/) · [Talea](https://talea.se/arbetsgivare/guide/traktamente-reseersattning-arbetsgivare/)
+
+## Arbetstidslagen i Tid (2026-11-01, granskningen Tid H2–H3, M2, M6)
+
+- Sorter: `mertid` (deltid, ATL 10 §) och `jour` (jourtid på arbetsstället,
+  6 §) utöver arbete, övertid, OB, restid och beredskap; övertidsrader har
+  `overtimeKind` allmän/extra/nödfall (8, 8 a, 9 §§). Migration 0048.
+- Timmar över avtalets veckoarbetstid räknas som övertid (deltid: först
+  mertid upp till heltid) även när raden är märkt Arbete
+  (`derivedExtra` i `lib/core/hr/time.ts`; `personWorkingTime` i
+  `working-time.ts` läser avtalet och schemat). Varningarna täcker 200/350 h
+  övertid, 200/350 h mertid, 48/50 h jour, 48 h i genomsnitt per vecka över
+  referensperioden (10 b §, frånvaro medräknad), dygns- och veckovila, rast
+  efter fem timmar (15 §) och nattarbete (13 a §).
+- `overtimeJournal` är anteckningarna enligt 11 §: Rapporter › Övertidsjournal
+  (sida och CSV), personens Tid-flik och Min tid visar årets summor.
+- Avtalens egna gränser (3 §) läggs i `AgreementRules.workingTime`; inga är
+  inlagda än. Efter sista regelåret används de senast kända gränserna och
+  journalen säger det.

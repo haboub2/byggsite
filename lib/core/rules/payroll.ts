@@ -103,6 +103,35 @@ export type AgreementRules = {
     calendarDayDenominator: number;
   };
   pensionScheme: "saf-lo" | "itp1";
+  /**
+   * Working-time limits the agreement sets instead of arbetstidslagen's
+   * (ATL 3 §: a central collective agreement may replace 5–10 b §§ and
+   * 13–15 §§). Only the keys given override; none are set until the
+   * agreement's own text has been read for them.
+   */
+  workingTime?: Partial<Omit<PayrollRuleSet["workingTime"], "source">>;
+  source: RuleSource;
+};
+
+/** Arbetstidslagen's limits (see the 2026 set for the paragraphs). */
+export type WorkingTimeRules = {
+  fullTimeWeeklyHours: number;
+  overtimePerYearHours: number;
+  overtimePer4WeeksHours: number;
+  overtimePerMonthHours: number;
+  extraOvertimePerYearHours: number;
+  mertidPerYearHours: number;
+  extraMertidPerYearHours: number;
+  jourPer4WeeksHours: number;
+  jourPerMonthHours: number;
+  averageWeeklyMaxHours: number;
+  averageReferenceWeeks: number;
+  dailyRestHours: number;
+  weeklyRestHours: number;
+  nightStart: string;
+  nightEnd: string;
+  nightMaxHoursPer24: number;
+  maxHoursWithoutBreak: number;
   source: RuleSource;
 };
 
@@ -227,14 +256,7 @@ export type PayrollRuleSet = {
   };
 
   /** Arbetstidslagen (1982:673). */
-  workingTime: {
-    overtimePerYearHours: number;
-    overtimePer4WeeksHours: number;
-    overtimePerMonthHours: number;
-    dailyRestHours: number;
-    weeklyRestHours: number;
-    source: RuleSource;
-  };
+  workingTime: WorkingTimeRules;
 
   /** LAS (1982:80): the conversion clocks. */
   las: {
@@ -579,12 +601,32 @@ const SET_2026: PayrollRuleSet = {
   agreements: { byggavtalet: BYGGAVTALET, tjanstemannaavtalet: TJANSTEMANNAAVTALET },
 
   workingTime: {
-    // 8 §, 13 §, 14 §.
+    // Arbetstidslagen (1982:673). Replaced by a collective agreement where one applies (3 §): AgreementRules.workingTime.
+    // 5 §: ordinary hours at most 40 a week (full time); a part-timer's extra hours up to that are mertid (10 §).
+    fullTimeWeeklyHours: 40,
+    // 8 §: allmän övertid 200 h a calendar year, and 48 h per four weeks or 50 h per calendar month.
     overtimePerYearHours: 200,
     overtimePer4WeeksHours: 48,
     overtimePerMonthHours: 50,
+    // 8 a §: extra övertid, another 150 h a year when special reasons call for it (same four-week/month caps).
+    extraOvertimePerYearHours: 150,
+    // 10 §, 10 a §: allmän mertid 200 h a year, extra mertid 150 h.
+    mertidPerYearHours: 200,
+    extraMertidPerYearHours: 150,
+    // 6 §: jourtid at most 48 h per four weeks or 50 h per calendar month.
+    jourPer4WeeksHours: 48,
+    jourPerMonthHours: 50,
+    // 10 b §: total working time at most 48 h per seven days on average over a reference period of at most four months.
+    averageWeeklyMaxHours: 48,
+    averageReferenceWeeks: 17,
+    // 13 §, 14 §: 11 h dygnsvila (with 00–05 in it), 36 h veckovila.
     dailyRestHours: 11,
     weeklyRestHours: 36,
+    // 13 a §: night work (22–06) at most 8 h per 24 h on average; 15 §: a break after at most five hours of work.
+    nightStart: "22:00",
+    nightEnd: "06:00",
+    nightMaxHoursPer24: 8,
+    maxHoursWithoutBreak: 5,
     source: { url: "https://data.riksdagen.se/dokument/sfs-1982-673.text", checked: CHECKED },
   },
 

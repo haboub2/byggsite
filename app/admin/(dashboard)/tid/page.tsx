@@ -7,7 +7,9 @@ import { todayIso } from "@/lib/quotes/schema";
 import { addDays } from "@/lib/core/rules/index";
 import { dayLabel } from "@/lib/core/hr/absence";
 import { TIME_KIND_LABEL, TIME_KIND_SHORT, atlWarnings, currentEntries, isApproved, isOpenClock, isReversal, isoWeek, weekDates, weekStart, type TimeEntry } from "@/lib/core/hr/time";
-import { leaderCandidates, listShifts, listTimeEntries, listTimeLocks, openOffer, shiftPool, timePeople, timeProjects } from "@/lib/core/hr/time-store";
+import { leaderCandidates, listAbsences, listSchedules, listShifts, listTimeEntries, listTimeLocks, openOffer, shiftPool, timePeople, timeProjects } from "@/lib/core/hr/time-store";
+import { listEmployments } from "@/lib/core/hr/store";
+import { personWorkingTimes } from "@/lib/core/hr/working-time";
 import {
   approveTimeAction,
   correctTimeAction,
@@ -43,7 +45,7 @@ export default async function TidPage({ searchParams }: { searchParams: Promise<
   const dates = weekDates(monday);
   const here = `/admin/tid?vecka=${monday}${sp.projekt ? `&projekt=${sp.projekt}` : ""}`;
 
-  const [around, people, projects, locks, shifts, pool, candidates] = await Promise.all([
+  const [around, people, projects, locks, shifts, pool, candidates, versions, schedules, absences] = await Promise.all([
     // A week either side, so the rest checks see the neighbours.
     listTimeEntries({ from: addDays(monday, -7), to: addDays(sunday, 7) }),
     timePeople(),
@@ -52,11 +54,15 @@ export default async function TidPage({ searchParams }: { searchParams: Promise<
     listShifts({ from: today < monday ? today : monday, to: addDays(today > sunday ? today : sunday, 28) }),
     canApprove ? shiftPool().catch(() => []) : Promise.resolve([]),
     isAdmin ? leaderCandidates() : Promise.resolve([]),
+    // The contracts' ordinary hours and schedules: hours above them count as övertid or mertid (ATL 7, 10 §§).
+    listEmployments().catch(() => []),
+    listSchedules().catch(() => []),
+    listAbsences({ from: addDays(monday, -7), to: addDays(sunday, 7) }).catch(() => []),
   ]);
   const name = new Map(people.map((p) => [p.id, p.name]));
   const projectName = new Map(projects.map((p) => [p.id, p.title]));
   const week = around.filter((e) => e.workDate >= monday && e.workDate <= sunday && (!sp.projekt || e.projectId === sp.projekt));
-  const warnings = atlWarnings(around, { from: monday, to: sunday });
+  const warnings = atlWarnings(around, { from: monday, to: sunday, people: personWorkingTimes(versions, schedules, sunday), absences: absences.filter((a) => a.approvedAt) });
   const lockedDay = (d: string) => locks.some((l) => d >= l.from && d <= l.to);
 
   // Rows: project, then person.
@@ -226,7 +232,9 @@ export default async function TidPage({ searchParams }: { searchParams: Promise<
         {warnings.length > 0 && (
           <div className="hr-card tg-gap">
             <h2 className="lead-h2">Arbetstidslagen</h2>
-            <p className="efield-hint">Varningar, inga stopp: kontrollera innan du godkänner.</p>
+            <p className="efield-hint">
+              Varningar, inga stopp: kontrollera innan du godkänner. Årets övertid, mertid och jourtid per person finns i <Link href="/admin/rapporter/overtid">övertidsjournalen</Link> (ATL 11 §).
+            </p>
             <ul className="hr-clocks">
               {warnings.map((w, i) => (
                 <li key={i} data-tone="alert">

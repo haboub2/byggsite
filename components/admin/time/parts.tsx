@@ -4,7 +4,7 @@
  * No client JavaScript: every form posts to a server action that redirects.
  */
 
-import { TIME_KINDS, TIME_KIND_LABEL, TIME_STATUS_LABEL, type TimeStatus } from "@/lib/core/hr/time";
+import { OVERTIME_KINDS, OVERTIME_KIND_LABEL, TIME_KINDS, TIME_KIND_LABEL, TIME_STATUS_LABEL, type TimeStatus } from "@/lib/core/hr/time";
 import type { TimeProject } from "@/lib/core/hr/time-store";
 
 export function Flash({ ok, error }: { ok?: string; error?: string }) {
@@ -41,7 +41,7 @@ export function ProjectSelect({ projects, name = "projectId", value = "", requir
 }
 
 /** Date, start, end, break or hours, kind, project, note: the fields timeEntryInputSchema reads. */
-export function EntryFields({ projects, date, fixedDate = false, defaults = {} }: { projects: readonly TimeProject[]; date: string; fixedDate?: boolean; defaults?: { start?: string; end?: string; breakMinutes?: number; hours?: string; kind?: string; projectId?: string; note?: string } }) {
+export function EntryFields({ projects, date, fixedDate = false, defaults = {} }: { projects: readonly TimeProject[]; date: string; fixedDate?: boolean; defaults?: { start?: string; end?: string; breakMinutes?: number; hours?: string; kind?: string; overtimeKind?: string; projectId?: string; note?: string } }) {
   return (
     <div className="tg-fields">
       {fixedDate ? (
@@ -77,6 +77,17 @@ export function EntryFields({ projects, date, fixedDate = false, defaults = {} }
             </option>
           ))}
         </select>
+      </div>
+      <div className="efield">
+        <label>Övertidens slag</label>
+        <select name="overtimeKind" defaultValue={defaults.overtimeKind ?? "allman"} className="tg-select" aria-describedby="overtime-kind-hint">
+          {OVERTIME_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {OVERTIME_KIND_LABEL[k]}
+            </option>
+          ))}
+        </select>
+        <span id="overtime-kind-hint" className="efield-hint">Bara för sorten Övertid: allmän (200 h/år), extra (150 h till, särskilda skäl) eller nödfall (ATL 8, 8 a, 9 §§).</span>
       </div>
       <ProjectSelect projects={projects} value={defaults.projectId ?? ""} />
       <div className="efield tg-wide">

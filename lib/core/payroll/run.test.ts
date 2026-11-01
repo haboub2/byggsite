@@ -98,6 +98,7 @@ function entry(employeeId: string, date: IsoDate, start: string, end: string, ki
     breakMinutes: 0,
     hours: (eh * 60 + em - sh * 60 - sm) / 60,
     kind,
+    overtimeKind: null,
     projectId: null,
     shiftId: null,
     note: "",

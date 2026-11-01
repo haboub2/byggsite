@@ -145,7 +145,7 @@ export function certificateContent(input: CertificateInput): CertificateContent 
     .sort((a, b) => a.startsOn.localeCompare(b.startsOn));
 
   const employedOn = (d: IsoDate) => versions.find((v) => v.startsOn <= d && (v.endsOn === null || v.endsOn >= d) && v.validFrom <= d && (v.validTo === null || v.validTo >= d)) ?? null;
-  const approved = input.timeEntries.filter((e) => isApproved(e) && e.kind !== "on_call");
+  const approved = input.timeEntries.filter((e) => isApproved(e) && e.kind !== "on_call" && e.kind !== "jour");
 
   const out: CertificateMonth[] = [];
   for (let m = from.slice(0, 7); `${m}-01` <= input.to; m = addMonths(`${m}-01`, 1).slice(0, 7)) {

@@ -428,6 +428,7 @@ function computePerson(input: RunInput, p: RunPerson): PersonOutcome {
   if (p.absences.some((a) => !a.approvedAt && overlaps(a.from, a.to, timeFrom, timeTo))) check("absence-unapproved", "warn", "frånvaro i perioden är inte godkänd och räknas inte.");
   for (const w of atlWarnings(timeRows.filter((t) => t.status !== "draft"), { from: timeFrom, to: timeTo })) check("atl", "warn", w.message);
   if (work.other.some((o) => o.kind === "on_call")) check("on-call", "warn", "beredskap betalas inte av körningen; lägg den som en rad i en rättelse.");
+  if (work.other.some((o) => o.kind === "jour")) check("jour", "warn", "jourtid betalas inte av körningen (jourersättning enligt avtalet); lägg den som en rad i en rättelse.");
   if (work.untimed.some((u) => u.overtime)) check("untimed-overtime", "warn", "övertid utan klockslag kan inte delas på band och räknas inte.");
 
   let sickImputedOre = 0;
