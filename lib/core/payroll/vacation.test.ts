@@ -57,6 +57,9 @@ test("7 §: paid days = ceil(25 × (employment days − days wholly absent witho
 test("17 § and 17 a §: sick days count up to 180, parental days up to 120 (180 for a single parent)", () => {
   assert.deepEqual(qualifyingAbsence(rules, { sick: 200, parental: 130, unpaid: 10 }), { qualifyingDays: 300, nonQualifyingDays: 40 });
   assert.deepEqual(qualifyingAbsence(rules, { sick: 0, parental: 130, unpaid: 0, singleParent: true }), { qualifyingDays: 130, nonQualifyingDays: 0 });
+  // VAB has its own 120 days (17 a § 1 st 1), apart from föräldraledighet (1 st 3).
+  assert.deepEqual(qualifyingAbsence(rules, { sick: 0, parental: 130, vab: 130, unpaid: 0 }), { qualifyingDays: 240, nonQualifyingDays: 20 });
+  assert.deepEqual(qualifyingAbsence(rules, { sick: 0, parental: 0, vab: 200, unpaid: 0, singleParent: true }), { qualifyingDays: 180, nonQualifyingDays: 20 });
 });
 
 test("procentregeln: 12 % by law, 13 % under Byggavtalet, absence pay added to the basis", () => {

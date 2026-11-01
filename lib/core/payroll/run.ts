@@ -80,6 +80,15 @@ export type RunPerson = {
     vacationBasisPaidByYearOre: Ore;
     /** Variable pay (OB, övertid) in that intjänandeår, for sammalöneregeln's variable part. */
     variablePayPaidByYearOre: Ore;
+    /** Variable pay in the intjänandeår before that one (what the previous semesterår's 12 % was due on). */
+    variablePayPreviousPaidByOre: Ore;
+    /**
+     * Sammalöneregeln's semesterlön on variable pay already paid for the
+     * current semesterår (16 a § 3 st: once a year) and for the previous
+     * one (26 §: due at the latest a month after the semesterår ends).
+     */
+    variableVacationPaidThisYearOre: Ore;
+    variableVacationPaidPreviousYearOre: Ore;
   };
   /** Pending corrections from earlier runs (payroll_corrections). */
   corrections: readonly { id: string; lines: readonly PayLineInput[]; reason: string }[];
@@ -154,18 +163,35 @@ export function payItemsOn(rows: readonly (PayItem & { validFrom: IsoDate })[], 
  * from (context.timeFrom, the month before under the common model), so
  * March's OB paid in April belongs to the year that ends 31 March.
  */
-export function earningYearHistory(docs: readonly PayslipDocument[], from: IsoDate, to: IsoDate): { vacationBasisOre: Ore; variablePayOre: Ore } {
+export function earningYearHistory(docs: readonly PayslipDocument[], from: IsoDate, to: IsoDate): { vacationBasisOre: Ore; variablePayOre: Ore; variableVacationPaidOre: Ore } {
   let vacationBasisOre = 0;
   let variablePayOre = 0;
+  let variableVacationPaidOre = 0;
   for (const d of docs) {
+    const timeFrom = d.context?.timeFrom ?? d.periodStart;
     for (const l of d.lines) {
-      const earnedOn = l.item.kind === "salary" ? d.periodStart : (d.context?.timeFrom ?? d.periodStart);
+      // The variable semesterlön line is dated by the semesterår it pays for (its own `from`).
+      const earnedOn = l.item.kind === "salary" ? d.periodStart : isVariableVacationLine(l) ? (l.from ?? timeFrom) : timeFrom;
       if (earnedOn < from || earnedOn >= to) continue;
       if (l.item.flags.vacationPayBasis) vacationBasisOre += l.amountOre;
       if (l.item.kind === "ob" || l.item.kind === "overtime") variablePayOre += l.amountOre;
+      if (isVariableVacationLine(l)) variableVacationPaidOre += l.amountOre;
     }
+    // 16 b § 2 st: pay the person would have earned during semesterlönegrundande absence belongs to the basis.
+    const imputed = d.context?.vacation?.imputedBasisOre ?? 0;
+    if (imputed && timeFrom >= from && timeFrom < to) vacationBasisOre += imputed;
   }
-  return { vacationBasisOre, variablePayOre };
+  return { vacationBasisOre, variablePayOre, variableVacationPaidOre };
+}
+
+/**
+ * Sammalöneregeln's "Semesterlön på rörlig lön" line: the vacation-pay code
+ * with no day count (the supplement and procentregeln lines carry days,
+ * the monthly compensation has its own code). Used to see what a semesterår
+ * has already been paid.
+ */
+export function isVariableVacationLine(l: Pick<PayslipDocument["lines"][number], "code" | "quantity" | "item" | "from">): boolean {
+  return l.item.kind === "vacation_pay" && l.quantity === null && (l.code === CODES.collective.vacationPay || l.code === CODES.salaried.vacationPay);
 }
 
 /* ---------- codes and agreements ---------- */
@@ -450,20 +476,43 @@ function computePerson(input: RunInput, p: RunPerson): PersonOutcome {
     lines.push(...sick.lines);
 
     vacationDaysTaken = semester.reduce((s, a) => s + absenceWorkdays(a, { from: timeFrom, to: timeTo }, schedule, timeTo), 0);
-    if (vacationDaysTaken > 0 && v.vacationRule === "sammalon") {
-      const vac = sameSalaryVacationPay({
-        monthlySalaryOre,
-        daysTaken: vacationDaysTaken,
-        dailySupplementPercent: agreement.vacationDailySupplementPercent,
-        variablePayOre: p.history.variablePayPaidByYearOre,
-        variable: agreement.vacationVariablePay,
-      });
-      const range = semesterRange(semester, timeFrom, timeTo);
-      if (vac.supplementOre) {
-        lines.push({ code: codes.supplement, text: `Semestertillägg ${range.label}`, quantity: vacationDaysTaken, unit: "dag", unitPriceOre: rateOf(monthlySalaryOre, agreement.vacationDailySupplementPercent), basisOre: monthlySalaryOre, ratePercent: agreement.vacationDailySupplementPercent, amountOre: vac.supplementOre, from: range.from, to: range.to });
+    if (v.vacationRule === "sammalon") {
+      const model = vacationModelFor(input.settings);
+      const years = vacationYears(timeFrom, model);
+      const yearLabel = (y: { from: IsoDate; to: IsoDate }) => `${y.from.slice(0, 4)}/${y.to.slice(2, 4)}`;
+      const total = agreement.vacationVariablePay.mode === "total";
+      let variablePaidFor: IsoDate | null = null;
+      if (vacationDaysTaken > 0) {
+        const vac = sameSalaryVacationPay({
+          monthlySalaryOre,
+          daysTaken: vacationDaysTaken,
+          dailySupplementPercent: agreement.vacationDailySupplementPercent,
+          variablePayOre: p.history.variablePayPaidByYearOre,
+          variable: agreement.vacationVariablePay,
+        });
+        const range = semesterRange(semester, timeFrom, timeTo);
+        if (vac.supplementOre) {
+          lines.push({ code: codes.supplement, text: `Semestertillägg ${range.label}`, quantity: vacationDaysTaken, unit: "dag", unitPriceOre: rateOf(monthlySalaryOre, agreement.vacationDailySupplementPercent), basisOre: monthlySalaryOre, ratePercent: agreement.vacationDailySupplementPercent, amountOre: vac.supplementOre, from: range.from, to: range.to });
+        }
+        // 16 a § 3 st: the law's 12 % of the intjänandeår's variable pay is one amount per
+        // semesterår, paid with the first vacation; an agreement's per-day percent follows the days.
+        if (vac.variableOre && (!total || p.history.variableVacationPaidThisYearOre === 0)) {
+          const text = total ? `Semesterlön på rörlig lön, semesteråret ${yearLabel(years.vacationYear)}` : `Semesterlön på rörlig lön ${range.label}`;
+          lines.push({ code: codes.vacationPay, text, quantity: null, unit: null, unitPriceOre: null, basisOre: p.history.variablePayPaidByYearOre, ratePercent: agreement.vacationVariablePay.percent, amountOre: vac.variableOre, from: total ? years.vacationYear.from : range.from, to: total ? years.vacationYear.to : range.to });
+          if (total) variablePaidFor = years.vacationYear.from;
+        }
       }
-      if (vac.variableOre) {
-        lines.push({ code: codes.vacationPay, text: `Semesterlön på rörlig lön ${range.label}`, quantity: null, unit: null, unitPriceOre: null, basisOre: p.history.variablePayPaidByYearOre, ratePercent: agreement.vacationVariablePay.percent, amountOre: vac.variableOre, from: range.from, to: range.to });
+      // 26 §: the 12 % for the semesterår that ended before this pay date is due at the
+      // latest a month after it ended; a year with no vacation taken is paid here.
+      const previous = vacationYears(addDays(vacationYears(payDate, model).vacationYear.from, -1), model).vacationYear;
+      if (total && model.earning === "previous-year" && p.history.variablePayPreviousPaidByOre > 0 && p.history.variableVacationPaidPreviousYearOre === 0 && variablePaidFor !== previous.from) {
+        const onSammalon = p.versions.some((x) => x.vacationRule === "sammalon" && x.payForm === "monthly" && x.validFrom <= previous.to && (x.validTo === null || x.validTo >= previous.from) && x.startsOn <= previous.to && (x.endsOn === null || x.endsOn >= previous.from));
+        if (onSammalon) {
+          const amount = rateOf(p.history.variablePayPreviousPaidByOre, agreement.vacationVariablePay.percent);
+          lines.push({ code: codes.vacationPay, text: `Semesterlön på rörlig lön, semesteråret ${yearLabel(previous)}`, quantity: null, unit: null, unitPriceOre: null, basisOre: p.history.variablePayPreviousPaidByOre, ratePercent: agreement.vacationVariablePay.percent, amountOre: amount, from: previous.from, to: previous.to });
+          const late = payDate > addMonths(previous.to, 1);
+          check("vacation-variable-late", late ? "warn" : "info", `semesterlön på rörlig lön för semesteråret ${yearLabel(previous)} (${kr(amount)}) betalas med den här lönen${late ? "; den skulle ha betalats senast en månad efter semesterårets slut (semesterlagen 26 §)" : ", eftersom ingen semester togs ut under året (semesterlagen 26 §)"}.`);
+        }
       }
     }
   }
@@ -499,8 +548,16 @@ function computePerson(input: RunInput, p: RunPerson): PersonOutcome {
     if (!monthly.version) {
       vacationDaysTaken = semester.reduce((s, a) => s + absenceWorkdays(a, { from: timeFrom, to: timeTo }, p.schedule, timeTo), 0);
       if (vacationDaysTaken > 0 && v.vacationRule === "procent" && v.form !== "sava") {
-        const perDay = percentRuleVacationPay(p.history.vacationBasisPaidByYearOre, 0, vacationPercent, v.vacationDays).perDayOre;
-        if (!perDay) check("vacation-basis", "warn", "ingen semesterlönegrundande lön i intjänandeåret; semesterlönen blir 0.");
+        // 16 b §: the year's semesterlön divided by the paid days EARNED for this
+        // semesterår (7 §), not the contract's 25: a part-year employee with 13
+        // days gets the whole 12 % over those 13 days.
+        const model = vacationModelFor(input.settings);
+        const year = vacationYears(timeFrom, model).vacationYear;
+        const withVacation = p.versions.filter((x) => x.vacationRule !== "none");
+        const balance = withVacation.length ? vacationBalances({ model, versions: withVacation, absences, schedule: p.schedule, asOf: periodEnd }).find((b) => b.yearFrom === year.from) : undefined;
+        const earnedDays = balance ? balance.earnedDays : v.vacationDays;
+        const perDay = earnedDays > 0 ? percentRuleVacationPay(p.history.vacationBasisPaidByYearOre, 0, vacationPercent, earnedDays).perDayOre : 0;
+        if (!perDay) check("vacation-basis", "warn", earnedDays > 0 ? "ingen semesterlönegrundande lön i intjänandeåret; semesterlönen blir 0." : "inga betalda semesterdagar intjänade för semesteråret; semesterlönen blir 0.");
         const range = semesterRange(semester, timeFrom, timeTo);
         if (perDay) {
           lines.push({ code: codes.vacationPay, text: `Semesterlön ${range.label}`, quantity: vacationDaysTaken, unit: "dag", unitPriceOre: perDay, basisOre: p.history.vacationBasisPaidByYearOre, ratePercent: vacationPercent, amountOre: lineAmount(perDay, vacationDaysTaken), from: range.from, to: range.to });
@@ -616,7 +673,7 @@ function computePerson(input: RunInput, p: RunPerson): PersonOutcome {
     pnrMasked: e.pnrMasked,
     group,
     yearToDate: { cashGrossOre: p.history.yearToDateCashGrossOre + document.totals.cashGrossOre, taxOre: p.history.yearToDateTaxOre + document.totals.taxOre },
-    vacation: { rule: vacationRule, remainingDays, liabilityOre: liability, liabilityChangeOre: liability - p.history.vacationLiabilityOre },
+    vacation: { rule: vacationRule, remainingDays, liabilityOre: liability, liabilityChangeOre: liability - p.history.vacationLiabilityOre, imputedBasisOre: sickImputedOre },
     pension: { scheme: pensionScheme, premiumOre: premium?.totalOre ?? 0 },
     correctionIds: pending.map((c) => c.id),
   };
