@@ -5,7 +5,7 @@ import { createAdminClient } from "../../supabase/admin";
 import { isDemo } from "../../leads";
 import { DEMO_ORG_ID } from "./current";
 import { companySettingsSchema } from "./settings";
-import { REGISTRATION_TOKEN, registrationProblem, type RegistrationInput, type RegistrationProblem } from "./registration";
+import { REGISTRATION_TOKEN, TERMS_VERSION, registrationProblem, type RegistrationInput, type RegistrationProblem } from "./registration";
 
 /**
  * Pending registrations (0033). start_registration runs with the service
@@ -42,6 +42,8 @@ export async function startRegistration(input: RegistrationInput, ip: string | n
     p_email: input.email,
     p_token: token,
     p_ip: ip,
+    // Which villkor and biträdesavtal the checkbox accepted (0047).
+    p_terms_version: TERMS_VERSION,
   });
   if (error) throw new Error(`Kunde inte spara registreringen: ${error.message}`);
   return { token, status: data === "resent" ? "resent" : "created" };

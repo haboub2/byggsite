@@ -12,10 +12,10 @@ import type { Company } from "./schema";
  * number on a 404 page for five minutes is harmless.
  */
 export const siteChrome = unstable_cache(
-  async (): Promise<{ company: Company; showProjects: boolean }> => ({
-    company: (await getContent()).company,
-    showProjects: await projectsReady(),
-  }),
+  async (): Promise<{ company: Company; vatNumber: string; showProjects: boolean }> => {
+    const content = await getContent();
+    return { company: content.company, vatNumber: content.quote.vatNumber, showProjects: await projectsReady() };
+  },
   ["site-chrome"],
   { revalidate: 300 }
 );

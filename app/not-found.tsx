@@ -5,7 +5,7 @@ import { Icon } from "@/components/Icons";
 import { siteChrome } from "@/lib/content/chrome";
 
 export default async function NotFound() {
-  const { company, showProjects } = await siteChrome();
+  const { company, vatNumber, showProjects } = await siteChrome();
   return (
     <>
       <Header showProjects={showProjects} />
@@ -30,7 +30,7 @@ export default async function NotFound() {
           </div>
         </section>
       </main>
-      <Footer company={company} showProjects={showProjects} />
+      <Footer company={company} vatNumber={vatNumber} showProjects={showProjects} />
     </>
   );
 }
