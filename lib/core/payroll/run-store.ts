@@ -775,6 +775,7 @@ export async function loadRunInput(run: PayRun, today: IsoDate): Promise<RunInpu
         vacationBasisPaidByYearOre: paidBy.vacationBasisOre,
         variablePayPaidByYearOre: paidBy.variablePayOre,
         variablePayPreviousPaidByOre: previousPaidBy.variablePayOre,
+        variablePayEarningYearOre: thisSemesterYear.variablePayOre,
         variableVacationPaidThisYearOre: thisSemesterYear.variableVacationPaidOre,
         variableVacationPaidPreviousYearOre: previousYear.variableVacationPaidOre,
       },
