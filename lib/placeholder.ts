@@ -4,7 +4,7 @@
 
 export const site = {
   brand: "Binaafy",
-  legalName: "Binaafy",
+  legalName: "Binaafy AB",
   domain: "binaafy.se",
   contact: {
     hours: "Mån–Fre, 07:00–16:00",
@@ -14,6 +14,10 @@ export const site = {
     address: "Uppstigen 130, 412 80 Göteborg",
   },
   areasServed: ["Skåne län", "Hallands län", "Västra Götalands län"],
+  /** Towns people search from, in the order of how close they are to Göteborg.
+   *  Said on the landing page, in the FAQ and in the footer so a search for
+   *  "byggfirma <ort>" has something to match; no separate page per town. */
+  cities: ["Göteborg", "Mölndal", "Partille", "Kungsbacka", "Kungälv", "Borås", "Varberg", "Halmstad", "Helsingborg", "Malmö"],
   /** Other names people search for the company under (schema.org alternateName). */
   alternateNames: ["Binaafy Bygg", "Binaafy Software", "Binaafy AB", "Binaafy Göteborg", "binaafy.se"],
   /** How people misspell the name when they search for it. Listed in the
@@ -23,7 +27,13 @@ export const site = {
   /** The company's own profiles elsewhere (schema.org sameAs): Google Business
    *  Profile, LinkedIn, Instagram, Facebook, allabolag. They are what tells
    *  Google that "Binaafy" is its own company, so add each one once it exists. */
-  profiles: [] as string[],
+  profiles: [
+    // Company registers (verified 2026-11-01). Add Google Business Profile,
+    // LinkedIn, Instagram and Facebook here as soon as they exist.
+    "https://www.allabolag.se/5596033471",
+    "https://www.bolagsfakta.se/5596033471-Binaafy_AB",
+    "https://www.ratsit.se/5596033471-Binaafy_AB",
+  ] as string[],
 };
 
 export const team = [
@@ -110,7 +120,7 @@ export const featuredProjects = [
 
 export const faq = [
   { q: "Erbjuder ni kostnadsfri offert?", a: "Ja. Vi tar fram en kostnadsfri och detaljerad offert utan förpliktelser. Fyll i formuläret så återkommer vi inom 24 timmar." },
-  { q: "Vilka områden arbetar ni i?", a: "Vi utför bygg- och renoveringsprojekt i södra och västra Sverige – i Skåne, Halland och Västra Götaland, från Malmö till Borås. Hör av dig så berättar vi om vi kan ta ditt projekt." },
+  { q: "Vilka områden arbetar ni i?", a: "Vi utgår från Göteborg och tar uppdrag i hela södra och västra Sverige: Västra Götaland, Halland och Skåne. Vanligast är Göteborg, Mölndal, Partille, Kungsbacka, Kungälv och Borås, men vi har också byggt i Hyltebruk, Halmstad, Helsingborg och Malmö. Hör av dig så berättar vi om vi kan ta ditt projekt." },
   { q: "Gör ni allt arbete själva?", a: "Merparten, ja. Rivning, stomme, snickerier, golv, kakel och montering gör vi med egen personal. Moment som kräver särskild behörighet utförs av specialister som vi har arbetat med länge. Du har ändå bara ett avtal och en kontaktperson – vi samordnar arbetet och ansvarar för helheten, inklusive garantin." },
   { q: "Kan jag använda ROT-avdrag?", a: "Ja, för de flesta renoverings- och byggarbeten i hemmet kan du nyttja ROT-avdraget på arbetskostnaden. Vi hjälper dig med uppgifterna och drar av direkt på fakturan." },
   { q: "Hur lång tid tar ett projekt?", a: "Det beror på omfattningen. Ett badrum tar ofta 3–5 veckor, medan en totalrenovering kan ta flera månader. Du får en tydlig tidplan i offerten." },

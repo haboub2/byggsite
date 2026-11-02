@@ -1110,7 +1110,8 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .ftr-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1.3fr; gap: 32px; padding-bottom: 56px; }
 .ftr-brand img { height: 28px; width: auto; }
 .ftr-brand p { margin-top: 18px; max-width: 30ch; font-size: 15px; line-height: 1.65; }
-.ftr h4 { font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--on-dark-3); margin-bottom: 16px; }
+.ftr-brand .ftr-areas { margin-top: 12px; max-width: 36ch; font-size: 13px; line-height: 1.6; color: var(--on-dark-3); }
+.ftr h3 { font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--on-dark-3); margin-bottom: 16px; }
 .ftr-col a, .ftr-col span { display: block; margin-bottom: 10px; font-size: 15px; color: var(--on-dark-2); transition: color .18s var(--ease); }
 .ftr-col a:hover { color: var(--orange); }
 .ftr-bottom {

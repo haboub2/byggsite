@@ -11,7 +11,7 @@ import { softwareAreas } from "./software-content";
  */
 
 /** Bump when the site's content meaningfully changes (sitemap lastmod, llms.txt). */
-export const CONTENT_UPDATED = "2026-09-26";
+export const CONTENT_UPDATED = "2026-11-01";
 
 export const abs = (path = "/") => `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
