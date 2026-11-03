@@ -8,7 +8,7 @@ import RotCalculator from "@/components/RotCalculator";
 import { Icon } from "@/components/Icons";
 import { Faq, CtaBand } from "@/components/Sections";
 import { presets } from "@/components/Pricing";
-import { guides, guideBySlug } from "@/lib/guides";
+import { guides, guideBySlug, guideAuthor } from "@/lib/guides";
 import { articleJsonLd, breadcrumbJsonLd, faqJsonLd, pageMetadata } from "@/lib/seo";
 import { ogImage } from "@/lib/images";
 import { SIDES } from "@/lib/sides";
@@ -46,6 +46,7 @@ export default async function GuidePage({
   const g = guideBySlug(slug);
   if (!g) notFound();
   const cfg = SIDES[g.side];
+  const author = guideAuthor(g);
   const calcPresets = g.calculatorAfter !== undefined ? await presets() : [];
 
   return (
@@ -59,6 +60,7 @@ export default async function GuidePage({
             published: g.published,
             modified: g.updated,
             image: ogImage(g.image),
+            author,
           }),
           faqJsonLd(g.faq),
           breadcrumbJsonLd([
@@ -84,7 +86,8 @@ export default async function GuidePage({
               <p>{g.answer}</p>
             </div>
             <p className="article-meta">
-              Av {cfg.label === "Bygg" ? "Binaafy Bygg" : "Binaafy Software"} ·{" "}
+              Av {author ? `${author.name}, ${author.jobTitle.toLowerCase()} på ` : ""}
+              {cfg.label === "Bygg" ? "Binaafy Bygg" : "Binaafy Software"} ·{" "}
               <time dateTime={g.updated}>uppdaterad {dateSv(g.updated)}</time>
             </p>
           </aside>

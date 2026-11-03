@@ -2523,3 +2523,5 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
   .order-pick-opt { flex-direction: row; justify-content: space-between; align-items: baseline; }
   .perk-grid { grid-template-columns: minmax(0, 1fr); }
 }
+.ftr-col .ftr-social { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 16px; }
+.ftr-col .ftr-social a { display: inline; margin: 0; }

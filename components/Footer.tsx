@@ -75,6 +75,15 @@ export default async function Footer(props: Props = {}) {
             {company.street}, {company.postalCode} {company.city}
           </span>
           <span>{company.hours}</span>
+          <span className="ftr-social">
+            {site.profiles
+              .filter((p) => p.social)
+              .map((p) => (
+                <a key={p.url} href={p.url} target="_blank" rel="noopener me">
+                  {p.label}
+                </a>
+              ))}
+          </span>
         </div>
       </div>
       <div className="container ftr-bottom">

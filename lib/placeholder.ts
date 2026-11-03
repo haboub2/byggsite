@@ -16,7 +16,7 @@ export const site = {
   areasServed: ["Skåne län", "Hallands län", "Västra Götalands län"],
   /** Uppstigen 130, Göteborg (OpenStreetMap, 2026-11-03), for LocalBusiness geo. */
   geo: { latitude: 57.68628, longitude: 11.99267 },
-  mapUrl: "https://www.google.com/maps/search/?api=1&query=Binaafy+AB%2C+Uppstigen+130%2C+412+80+G%C3%B6teborg",
+  mapUrl: "https://maps.google.com/?cid=11268357212090190672",
   /** Towns people search from, in the order of how close they are to Göteborg.
    *  Said on the landing page, in the FAQ and in the footer so a search for
    *  "byggfirma <ort>" has something to match; no separate page per town. */
@@ -26,17 +26,20 @@ export const site = {
   /** How people misspell the name when they search for it. Listed in the
    *  Organization JSON-LD and said once on /om-oss, so a search for one of
    *  these finds Binaafy rather than a better-known name that looks alike. */
-  misspellings: ["Binafy", "Binaafi", "Binafi", "Binaffy", "Binaify"],
+  misspellings: ["Binafy", "Binaafi", "Binafi", "Binaffy", "Binaify", "Benafy", "Bina afy"],
   /** The company's own profiles elsewhere (schema.org sameAs): Google Business
    *  Profile, LinkedIn, Instagram, Facebook, allabolag. They are what tells
-   *  Google that "Binaafy" is its own company, so add each one once it exists. */
+   *  Google that "Binaafy" is its own company. `social` ones are linked in the footer. */
   profiles: [
-    // Company registers (verified 2026-11-01). Add Google Business Profile,
-    // LinkedIn, Instagram and Facebook here as soon as they exist.
-    "https://www.allabolag.se/5596033471",
-    "https://www.bolagsfakta.se/5596033471-Binaafy_AB",
-    "https://www.ratsit.se/5596033471-Binaafy_AB",
-  ] as string[],
+    // Google Business Profile, by its stable Maps CID rather than a search URL.
+    { label: "Google", url: "https://maps.google.com/?cid=11268357212090190672", social: true },
+    { label: "Instagram", url: "https://www.instagram.com/binaafy_ab/", social: true },
+    { label: "Facebook", url: "https://www.facebook.com/profile.php?id=61596061529846", social: true },
+    // Company registers (verified 2026-11-01).
+    { label: "Allabolag", url: "https://www.allabolag.se/foretag/binaafy-ab/g%C3%B6teborg/byggm%C3%A4stare/2KJQF27I5YDDT", social: false },
+    { label: "Bolagsfakta", url: "https://www.bolagsfakta.se/5596033471-Binaafy_AB", social: false },
+    { label: "Ratsit", url: "https://www.ratsit.se/5596033471-Binaafy_AB", social: false },
+  ],
 };
 
 export const team = [
