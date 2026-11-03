@@ -18,7 +18,7 @@ const AI_CRAWLERS = [
   "Bingbot",
 ];
 
-const disallow = ["/admin", "/api/"];
+const disallow = ["/admin", "/api/", "/recension"];
 
 export default function robots(): MetadataRoute.Robots {
   return {
