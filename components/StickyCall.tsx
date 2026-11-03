@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Icon } from "./Icons";
 import { sideFromPath } from "@/lib/sides";
+import { track } from "@/lib/track";
 
 /** Mobile-only fixed call/WhatsApp bar. Hides while a form is in view so it
  *  never overlaps the thing the user is trying to fill in. Bygg side only. */
@@ -34,7 +35,7 @@ export default function StickyCall({ phone }: { phone: string }) {
 
   return (
     <div className={`sticky-call${hidden ? " sticky-call--hidden" : ""}`} ref={barRef}>
-      <a href={`tel:${phone}`} className="sticky-call-btn sticky-call-btn--ring">
+      <a href={`tel:${phone}`} className="sticky-call-btn sticky-call-btn--ring" onClick={() => track("contact_call", { placement: "sticky" })}>
         <Icon name="phone" strokeWidth={2} />
         Ring
       </a>
@@ -43,6 +44,7 @@ export default function StickyCall({ phone }: { phone: string }) {
         target="_blank"
         rel="noopener noreferrer"
         className="sticky-call-btn sticky-call-btn--wa"
+        onClick={() => track("contact_whatsapp", { placement: "sticky" })}
       >
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.4.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.5-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.8 1.2 3c.1.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3z"/>

@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
   },
   // Stock mood photography (lib/images.ts). Phase 2: add the Supabase Storage host too.
   images: {
+    // Project cards use quality 60; everything else the default 75.
+    qualities: [60, 75],
+    // Uploads have unique names and stock URLs are fixed, so an optimized
+    // image can be cached for 31 days instead of being re-done every 4 hours.
+    minimumCacheTTL: 2678400,
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com", pathname: "/photo-*" },
       // Photos uploaded from /admin (lib/storage.ts).

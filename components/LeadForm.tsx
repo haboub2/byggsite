@@ -5,6 +5,7 @@ import Link from "next/link";
 import { services } from "@/lib/placeholder";
 import { softwareAreas } from "@/lib/software-content";
 import { HONEYPOT } from "@/lib/schema";
+import { track } from "@/lib/track";
 
 type Variant = "offert" | "kontakt" | "brief";
 
@@ -92,6 +93,7 @@ export default function LeadForm({
       }
       form.reset();
       setFeedback({ msg: cfg.success, kind: "success" });
+      track("generate_lead", { form: variant, service: data.service || undefined, page: source.page });
     } catch {
       setFeedback({
         msg: `Något gick fel när formuläret skulle skickas. Ring ${contact.phoneDisplay} eller mejla ${contact.email} så länge.`,

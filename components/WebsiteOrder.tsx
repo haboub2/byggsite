@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Icon } from "./Icons";
 import { HONEYPOT } from "@/lib/schema";
 import { websitePackages, websiteCare, formatSek } from "@/lib/website-packages";
+import { track } from "@/lib/track";
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -72,6 +73,7 @@ export default function WebsiteOrder({ contact }: { contact: { phone: string; ph
       }
       form.reset();
       setDone(true);
+      track("generate_lead", { form: "kop-hemsida" });
     } catch {
       setError(`Något gick fel när beställningen skulle skickas. Ring ${contact.phoneDisplay} eller mejla ${contact.email} så länge.`);
     } finally {

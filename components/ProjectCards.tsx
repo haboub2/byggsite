@@ -109,10 +109,10 @@ function Card({ p, big, teach }: { p: ProjectCard; big: boolean; teach: boolean 
             : undefined
         }
       >
-        <Image src={p.after.url} alt={p.after.alt} fill sizes={sizes} />
+        <Image src={p.after.url} alt={p.after.alt} fill sizes={sizes} quality={60} />
         {p.before && (
           <>
-            <Image src={p.before.url} alt="" fill sizes={sizes} className="pc-before" />
+            <Image src={p.before.url} alt="" fill sizes={sizes} quality={60} className="pc-before" />
             <span className="pc-line" aria-hidden="true" />
             <span className="pc-pill pc-pill--l">Före</span>
             <span className="pc-hint" aria-hidden="true">

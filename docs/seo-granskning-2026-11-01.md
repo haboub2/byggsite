@@ -168,3 +168,31 @@ guide, check Search Console for pages with impressions but a low click rate and 
 - Fixing "Duplicate, Google chose different canonical": https://rightblogger.com/blog/canonical-errors
 - Reco, badrum i Göteborg: https://www.reco.se/kategori/badrum/g%C3%B6teborg/1
 - Hitta.se, badrumsrenovering Göteborg: https://www.hitta.se/badrumsrenovering+g%C3%B6teborg/f%C3%B6retag/2
+
+## 8. Sprint 2 (2026-11-03): what an agency's technical and on-page pass adds in code
+
+Done on top of section 3, after the owner set the Vercel env var (canonical now www everywhere).
+
+**Performance**
+- Every photo uploaded from /admin is now resized to at most 2 000 px and re-encoded as WebP (quality 80) with EXIF rotation applied, in `lib/storage.ts`. The two 90–100 KB project cards on the home page were the biggest LCP cost; new uploads land at a fraction of that. Existing photos keep their size until re-uploaded.
+- Project cards request quality 60 from next/image (`images.qualities: [60, 75]`), and optimized images are cached 31 days instead of 4 hours (`images.minimumCacheTTL`), which cuts re-optimization work and makes repeat visits faster.
+- Inactive steps in the "Fyra steg" story now sit at 55 % opacity instead of 34 % (Lighthouse contrast warning).
+
+**Structured data**
+- LocalBusiness got `geo` (57.68628, 11.99267), `hasMap`, `sameAs`, `foundingDate`, `slogan` and `knowsAbout` (the eight services). Add the Business Profile URL to `site.profiles` when known.
+- Each project page now publishes an `ImageGallery` with every photo as `ImageObject`, the town as `contentLocation`, the year and the service it belongs to. This is what lets Google show our own photos for "takbyte Hyltebruk"-style searches, and ties the projects to the service pages.
+
+**On-page**
+- Home page: a new "Områden" section lists every town (plus every town a published project is in) and links towns we have built in to that project. One page, real links, no doorway pages.
+- /bygg/tjanster was 226 words; it now opens with two paragraphs that say what the company is, where it works and how pricing works, with links to the ROT guide, the renovation checklist and the references, and its h1 carries "Byggfirma i Göteborg" for search.
+- Service pages link to the new guides (tak → takbyte kostnad; totalrenovering, badrum and projektledning → välja byggfirma).
+
+**Content**
+- `/guider/takbyte-kostnad-2026`: price per m², a worked 150 m² example with ROT, the five price drivers, bygglov (with the 2025-12-01 PBL change flagged), warning signs, process. Sources: Skatteverket, Boverket.
+- `/guider/valja-byggfirma-checklista`: nine checks (F-skatt, försäkring, ID06, behörigheter, referenser, offert, Hantverkarformuläret 17, besiktning, varningstecken). Sources: Konsumentverket, Boverket, Skatteverket, ID06, Säker Vatten, GVK.
+- Both have FAQ schema, dated, and are listed in the sitemap and llms.txt automatically.
+
+**Measurement**
+- GA4 key events via `lib/track.ts`: `generate_lead` on every lead form (offert, kontakt, brief, köp hemsida), `contact_call` and `contact_whatsapp` on the mobile call bar. Mark them as key events in GA4 so Search Console and Ads can be judged on leads, not visits. GA still loads only after cookie consent.
+
+**Still outside the code** (unchanged from section 4): Business Profile website link to www, company name "Binaafy AB" in /admin, reviews, register claims, social profiles, byggly.se redirect, Ads brand campaign.

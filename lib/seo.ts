@@ -11,7 +11,7 @@ import { softwareAreas } from "./software-content";
  */
 
 /** Bump when the site's content meaningfully changes (sitemap lastmod, llms.txt). */
-export const CONTENT_UPDATED = "2026-11-01";
+export const CONTENT_UPDATED = "2026-11-03";
 
 export const abs = (path = "/") => `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
@@ -153,6 +153,12 @@ export function businessJsonLd(c: Company, w: Warranty) {
     email: c.email,
     priceRange: "$$",
     currenciesAccepted: "SEK",
+    foundingDate: "2026",
+    slogan: "Fast pris, ROT på fakturan och " + w.sentence + ".",
+    geo: { "@type": "GeoCoordinates", ...site.geo },
+    hasMap: site.mapUrl,
+    ...(site.profiles.length && { sameAs: site.profiles }),
+    knowsAbout: services.map((s) => s.title),
     paymentAccepted: "Faktura, Kort, Swish",
     address: address(c),
     areaServed: areasServed(c),
@@ -231,6 +237,51 @@ export function serviceJsonLd({
     areaServed: provider === "bygg" ? areasServed(company) : { "@type": "Country", name: "Sverige" },
     url: abs(path),
     ...(image && { image }),
+  };
+}
+
+/** A finished project: a gallery of our own photos, tied to the service and the town. */
+export function projectJsonLd({
+  path,
+  title,
+  description,
+  location,
+  year,
+  service,
+  photos,
+}: {
+  path: string;
+  title: string;
+  description: string;
+  location: string | null;
+  year: number | null;
+  service: { slug: string; title: string } | undefined;
+  photos: { url: string; alt: string | null; stage?: string | null }[];
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ImageGallery",
+    "@id": abs(`${path}#gallery`),
+    name: title,
+    description,
+    url: abs(path),
+    inLanguage: "sv-SE",
+    creator: BYGG,
+    publisher: ORG,
+    ...(year && { dateCreated: String(year) }),
+    ...(location && {
+      contentLocation: {
+        "@type": "Place",
+        name: location,
+        address: { "@type": "PostalAddress", addressLocality: location, addressCountry: "SE" },
+      },
+    }),
+    ...(service && { about: { "@type": "Service", name: service.title, url: abs(`/bygg/tjanster/${service.slug}`) } }),
+    associatedMedia: photos.map((p) => ({
+      "@type": "ImageObject",
+      contentUrl: p.url,
+      ...(p.alt && { caption: p.stage ? `${p.stage}: ${p.alt}` : p.alt }),
+    })),
   };
 }
 
