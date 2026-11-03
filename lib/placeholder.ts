@@ -4,7 +4,7 @@
 
 export const site = {
   brand: "Binaafy",
-  legalName: "Binaafy",
+  legalName: "Binaafy AB",
   domain: "binaafy.se",
   contact: {
     hours: "Mån–Fre, 07:00–16:00",
@@ -19,11 +19,17 @@ export const site = {
   /** How people misspell the name when they search for it. Listed in the
    *  Organization JSON-LD and said once on /om-oss, so a search for one of
    *  these finds Binaafy rather than a better-known name that looks alike. */
-  misspellings: ["Binafy", "Binaafi", "Binafi", "Binaffy", "Binaify"],
+  misspellings: ["Binafy", "Binaafi", "Binafi", "Binaffy", "Binaify", "Benafy", "Bina afy"],
   /** The company's own profiles elsewhere (schema.org sameAs): Google Business
    *  Profile, LinkedIn, Instagram, Facebook, allabolag. They are what tells
    *  Google that "Binaafy" is its own company, so add each one once it exists. */
-  profiles: [] as string[],
+  profiles: [
+    // Google Business Profile, by its stable Maps CID rather than a search URL.
+    { label: "Google", url: "https://maps.google.com/?cid=11268357212090190672" },
+    { label: "Instagram", url: "https://www.instagram.com/binaafy_ab/" },
+    { label: "Facebook", url: "https://www.facebook.com/profile.php?id=61596061529846" },
+    { label: "Allabolag", url: "https://www.allabolag.se/foretag/binaafy-ab/g%C3%B6teborg/byggm%C3%A4stare/2KJQF27I5YDDT" },
+  ],
 };
 
 export const team = [

@@ -11,7 +11,7 @@ import { softwareAreas } from "./software-content";
  */
 
 /** Bump when the site's content meaningfully changes (sitemap lastmod, llms.txt). */
-export const CONTENT_UPDATED = "2026-09-26";
+export const CONTENT_UPDATED = "2026-11-03";
 
 export const abs = (path = "/") => `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
@@ -98,7 +98,7 @@ export function organizationJsonLd(c: Company) {
     alternateName: [...site.alternateNames, ...site.misspellings],
     legalName: c.legalName,
     ...(c.orgNr && { taxID: c.orgNr }),
-    ...(site.profiles.length && { sameAs: site.profiles }),
+    ...(site.profiles.length && { sameAs: site.profiles.map((p) => p.url) }),
     url: abs("/"),
     logo: { "@type": "ImageObject", url: abs("/brand/binaafy-logo.png"), width: 1200, height: 406 },
     image: abs("/brand/binaafy-mark.png"),
@@ -109,7 +109,18 @@ export function organizationJsonLd(c: Company) {
     disambiguatingDescription:
       "Binaafy är en svensk byggfirma och mjukvarubyrå i Göteborg: renovering av hem i södra och västra Sverige, och system för företag.",
     slogan: "Vi bygger hem. Vi bygger system.",
-    foundingDate: "2026",
+    knowsAbout: [
+      "Renovering",
+      "Badrumsrenovering",
+      "Köksrenovering",
+      "Tillbyggnad",
+      "ROT-avdrag",
+      "Webbutveckling",
+      "Hemsidor för företag",
+      "Systemintegration",
+      "Fakturering för byggföretag",
+    ],
+    foundingDate: "2026-09-23",
     employee: team.map((m) => ({ "@type": "Person", name: m.name, jobTitle: m.role, worksFor: ORG })),
     email: c.email,
     telephone: c.phone,
@@ -267,6 +278,7 @@ export function articleJsonLd({
   modified,
   image,
   about,
+  author,
 }: {
   path: string;
   title: string;
@@ -275,6 +287,8 @@ export function articleJsonLd({
   modified?: string;
   image?: string;
   about?: string;
+  /** A named writer; without one the company is the author. */
+  author?: { name: string; jobTitle: string };
 }) {
   return {
     "@context": "https://schema.org",
@@ -285,7 +299,7 @@ export function articleJsonLd({
     inLanguage: "sv-SE",
     datePublished: published,
     dateModified: modified ?? published,
-    author: ORG,
+    author: author ? { "@type": "Person", ...author, worksFor: ORG } : ORG,
     publisher: ORG,
     mainEntityOfPage: abs(path),
     ...(image && { image }),

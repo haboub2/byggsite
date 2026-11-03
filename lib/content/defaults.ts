@@ -16,7 +16,7 @@ const softwareWarranty = { short: "3 mån", sentence: "3 månaders garanti: fel 
 export const defaultContent: ContentMap = {
   company: {
     legalName: site.legalName,
-    orgNr: "",
+    orgNr: "559603-3471",
     street: "Uppstigen 130",
     postalCode: "412 80",
     city: "Göteborg",
