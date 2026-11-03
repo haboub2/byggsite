@@ -8,7 +8,7 @@ import { Icon } from "@/components/Icons";
 import { Stats, CtaBand, Checklist, SectionHead } from "@/components/Sections";
 import { services } from "@/lib/placeholder";
 import { SIDES } from "@/lib/sides";
-import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd, pageMetadata, projectJsonLd } from "@/lib/seo";
 import { getPublishedProject, listPublishedProjects, projectPhotos, resolve } from "@/lib/projects";
 
 export async function generateStaticParams() {
@@ -54,11 +54,22 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <JsonLd
-        data={breadcrumbJsonLd([
-          { name: "Bygg", path: "/" },
-          { name: "Projekt", path: "/bygg/projekt" },
-          { name: p.title, path: `/bygg/projekt/${slug}` },
-        ])}
+        data={[
+          projectJsonLd({
+            path: `/bygg/projekt/${slug}`,
+            title: p.title,
+            description: p.summary,
+            location: p.location || null,
+            year: p.year,
+            service,
+            photos: shots.photos,
+          }),
+          breadcrumbJsonLd([
+            { name: "Bygg", path: "/" },
+            { name: "Projekt", path: "/bygg/projekt" },
+            { name: p.title, path: `/bygg/projekt/${slug}` },
+          ]),
+        ]}
       />
       <PageHero
         crumbs={[{ label: "Bygg", href: "/" }, { label: "Projekt", href: "/bygg/projekt" }, { label: p.title }]}

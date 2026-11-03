@@ -14,6 +14,9 @@ export const site = {
     address: "Uppstigen 130, 412 80 Göteborg",
   },
   areasServed: ["Skåne län", "Hallands län", "Västra Götalands län"],
+  /** Uppstigen 130, Göteborg (OpenStreetMap, 2026-11-03), for LocalBusiness geo. */
+  geo: { latitude: 57.68628, longitude: 11.99267 },
+  mapUrl: "https://www.google.com/maps/search/?api=1&query=Binaafy+AB%2C+Uppstigen+130%2C+412+80+G%C3%B6teborg",
   /** Towns people search from, in the order of how close they are to Göteborg.
    *  Said on the landing page, in the FAQ and in the footer so a search for
    *  "byggfirma <ort>" has something to match; no separate page per town. */

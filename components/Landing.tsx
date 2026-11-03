@@ -31,6 +31,60 @@ import {
   softwareFaq,
 } from "@/lib/software-content";
 
+/** Where we work: the towns from lib/placeholder plus every town a published
+ *  project is in, each linked to a project there when we have one. Plain
+ *  text on the home page, so a search for "byggfirma <ort>" has something to
+ *  match, without a thin page per town. */
+function Areas({
+  company,
+  projects,
+}: {
+  company: { city: string; areasServed: string[] };
+  projects: { slug: string; title: string; location: string }[];
+}) {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const inTown = (town: string) => projects.filter((p) => p.location && norm(p.location).includes(norm(town)));
+  const extra = projects
+    .map((p) => p.location?.trim())
+    .filter((l): l is string => Boolean(l) && !site.cities.some((c) => norm(l!).includes(norm(c))))
+    .filter((l, i, arr) => arr.findIndex((x) => norm(x) === norm(l)) === i);
+  const towns = [...site.cities, ...extra];
+  const regions = company.areasServed.map((a) => a.replace(/ län$/, "")).join(", ");
+  return (
+    <section className="sec sec--tight">
+      <div className="container split">
+        <div className="split-aside">
+          <span className="eyebrow">Områden</span>
+          <h2>Byggfirma i {company.city}, uppdrag i hela {regions}.</h2>
+        </div>
+        <div>
+          <p className="lede-text">
+            Vi utgår från {company.city} och tar bygg- och renoveringsuppdrag i {regions}. Hembesök och
+            offert är kostnadsfria i hela området. Orter där vi redan byggt länkar till projektet.
+          </p>
+          <ul className="areas reveal-group" aria-label="Orter vi arbetar i">
+            {towns.map((town) => {
+              const done = inTown(town);
+              return (
+                <li key={town}>
+                  {done.length > 0 ? (
+                    <Link href={`/bygg/projekt/${done[0].slug}`} title={done[0].title}>
+                      {town}
+                      <small>{done.length}</small>
+                    </Link>
+                  ) : (
+                    <span>{town}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** Landing page for one side. Both sides share this template; the two
  *  headline lines double as the Bygg / Software switch. */
 const HERO_SIZES = "(max-width: 900px) 100vw, 44vw";
@@ -283,6 +337,8 @@ export default async function Landing({ side }: { side: Side }) {
           <Faq items={faq} name={`faq-${side}`} />
         </div>
       </section>
+
+      {isBygg && <Areas company={company} projects={projects} />}
 
       <section className="sec sec--tight">
         <div className="container">

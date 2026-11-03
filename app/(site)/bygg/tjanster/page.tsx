@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 import PageHero from "@/components/PageHero";
@@ -23,8 +24,33 @@ export default function ByggServicesIndex() {
         crumbs={[{ label: "Bygg", href: "/" }, { label: "Tjänster" }]}
         eyebrow="Våra tjänster"
         title="Nio tjänster, ett team."
+        titleContext="Byggfirma i Göteborg: bygg och renovering i södra och västra Sverige"
         lead="Från ett nytt golv till ett helt hus. Allt görs av samma team, med en kontaktperson och ett fast pris."
       />
+      <section className="sec sec--tight">
+        <div className="container split">
+          <div className="split-aside">
+            <span className="eyebrow">Så jobbar vi</span>
+            <h2>Ett avtal, ett fast pris, en garanti.</h2>
+          </div>
+          <div className="article-sections">
+            <p>
+              Binaafy är en byggfirma i Göteborg som tar hela ansvaret för renoveringen: rivning, stomme,
+              snickerier, golv, kakel och montering gör vi med egen personal, och el, VVS och våtrum utförs
+              av behöriga specialister som vi har arbetat med länge. Du skriver ett avtal med oss, får en
+              specificerad offert med fast pris efter ett kostnadsfritt hembesök, och ROT-avdraget dras
+              direkt på fakturan.
+            </p>
+            <p>
+              Vi utgår från Göteborg och tar uppdrag i Västra Götaland, Halland och Skåne. Priserna nedan
+              är riktpriser inklusive moms före ROT; det bindande priset står i offerten. Vill du räkna
+              själv finns vår <Link href="/guider/rot-avdrag-2026">guide om ROT-avdraget 2026</Link> och
+              en <Link href="/guider/checklista-infor-renovering">checklista inför renoveringen</Link>.
+              Vill du se vad vi byggt finns <Link href="/referenser">referenser med före- och efterbilder</Link>.
+            </p>
+          </div>
+        </div>
+      </section>
       <section className="sec">
         <div className="container">
           <Register

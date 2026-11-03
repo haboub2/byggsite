@@ -315,20 +315,224 @@ export const guides: Guide[] = [
       { label: "Skicka en brief", href: "/mjukvara/brief" },
     ],
   },
+  {
+    slug: "takbyte-kostnad-2026",
+    side: "bygg",
+    title: "Vad kostar ett takbyte 2026? Pris per kvadratmeter, ROT och det som styr",
+    description:
+      "Riktpris för takbyte 2026: från 1 400 kr per kvadratmeter för falsad plåt inklusive moms. Räkneexempel på 150 m² med ROT-avdrag, vad som påverkar priset och när bygglov krävs.",
+    answer:
+      "Ett takbyte med falsad plåt kostar hos oss från 1 400 kronor per kvadratmeter inklusive moms, före ROT-avdrag. Ett villatak på 150 kvadratmeter landar då runt 210 000 kronor, varav ungefär hälften är arbete. Med ROT-avdraget 2026 (30 procent av arbetskostnaden) betalar du cirka 177 000 kronor. Takyta, material, underlagstak och plåtdetaljer är det som styr priset.",
+    published: "2026-11-03",
+    updated: "2026-11-03",
+    image: "tak-hero",
+    readingMinutes: 6,
+    calculatorAfter: 1,
+    sections: [
+      {
+        heading: "Riktpris per kvadratmeter",
+        paragraphs: [
+          "Vårt riktpris för omläggning med falsad plåt är från 1 400 kronor per kvadratmeter inklusive moms, före ROT. I det ingår rivning av det gamla taket, nytt underlagstak och läkt, själva taktäckningen, plåtarbeten runt skorsten och genomföringar samt bortforsling. Ställning och säkerhetsutrustning ingår alltid, eftersom arbete på tak kräver det.",
+          "Betongpannor och takpapp hamnar normalt lägre per kvadratmeter än falsad plåt, lertegel och bandtäckt plåt högre. Det bindande priset får du efter en kostnadsfri takbesiktning, där vi också ser hur läkt, underlagstak och takfot mår.",
+        ],
+      },
+      {
+        heading: "Räkneexempel: villa med 150 kvadratmeter tak",
+        paragraphs: [
+          "Ett vanligt villatak på 150 kvadratmeter med falsad plåt kostar i vårt exempel 210 000 kronor inklusive moms: 110 000 kronor arbete och 100 000 kronor material. ROT-avdraget är 30 procent av arbetskostnaden, alltså 33 000 kronor, vilket ligger under taket på 50 000 kronor per person. Du betalar 177 000 kronor, och vi drar avdraget direkt på fakturan.",
+          "Material, ställning, maskiner och bortforsling ger inget avdrag. Därför står arbete och material alltid var för sig i vår offert.",
+        ],
+      },
+      {
+        heading: "Det som styr priset",
+        paragraphs: ["Fem saker avgör var ett takbyte hamnar:"],
+        list: [
+          "Takyta och lutning. Ett brant tak tar längre tid och kräver mer säkerhetsutrustning än ett flackt.",
+          "Materialval. Betongpannor, lertegel, takpapp, falsad plåt eller bandtäckning skiljer sig både i pris och livslängd.",
+          "Underlaget. Behöver underlagstak, läkt eller råspont bytas syns det först när det gamla taket är borta. Vi bedömer det vid besiktningen och skriver in det i offerten.",
+          "Plåtdetaljer. Skorstenar, takfönster, ventilationshuvar och vinkelrännor är de moment som tar tid och där läckor annars uppstår.",
+          "Tillägg. Nya hängrännor och stuprör, snörasskydd, takstege, isolering av vinden eller solceller görs bäst när ställningen ändå står.",
+        ],
+      },
+      {
+        heading: "Krävs bygglov för att byta tak?",
+        paragraphs: [
+          "Att byta till samma typ av tak kräver normalt inte bygglov. Inom detaljplanerat område kan det däremot krävas lov om du byter taktäckningsmaterial eller kulör så att byggnadens utseende ändras, till exempel från röda tegelpannor till svart plåt. Boverket har ett rättsfall just om byte av takpannor. Reglerna för lovbefriade åtgärder ändrades den 1 december 2025, så kontrollera med kommunens bygglovshandläggare innan start. Vi hjälper till med underlaget.",
+          "Solceller på ett befintligt tak är i de flesta fall lovbefriade för en- och tvåbostadshus när de följer takets lutning, men undantag finns i kulturhistoriskt värdefulla områden och där detaljplanen säger annat.",
+        ],
+      },
+      {
+        heading: "Tecken på att taket behöver bytas",
+        paragraphs: ["Ett tak håller ofta 30–50 år beroende på material. Dags att låta någon titta på det när du ser:"],
+        list: [
+          "Spruckna, frostsprängda eller lösa pannor, eller plåt med rost och släppt färg.",
+          "Mossa och alger som håller fukt kvar mot taket.",
+          "Fuktfläckar på vinden eller i innertaket, särskilt runt skorsten och takfönster.",
+          "Underlagspapp som är spröd eller hänger mellan läkten när du tittar från vinden.",
+          "Hängrännor som läcker eller takfot som är mjuk när du trycker på den.",
+        ],
+      },
+      {
+        heading: "Så går ett takbyte till",
+        paragraphs: [
+          "Efter besiktningen får du en specificerad offert med fast pris och tidplan. Själva bytet på en villa tar oftast en till tre veckor: ställning, rivning av gammal täckning, kontroll och byte av underlagstak och läkt, ny täckning, plåtarbeten, rännor och stuprör, städning och slutgenomgång. Vi fotodokumenterar underlaget innan det täcks och lämnar garanti på hantverket.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Vad kostar ett takbyte per kvadratmeter?",
+        a: "Hos oss från 1 400 kronor per kvadratmeter inklusive moms för falsad plåt, före ROT-avdrag. Betongpannor hamnar oftast lägre, lertegel och bandtäckning högre. Fast pris efter kostnadsfri takbesiktning.",
+      },
+      {
+        q: "Får jag ROT-avdrag på takbyte?",
+        a: "Ja, på arbetskostnaden. 2026 är avdraget 30 procent av arbetet, högst 50 000 kronor per person och år. Material, ställning och maskiner ger inget avdrag.",
+      },
+      {
+        q: "Hur lång tid tar ett takbyte?",
+        a: "En villa tar oftast en till tre veckor beroende på storlek, lutning och hur mycket av underlaget som behöver bytas. Du får en tidplan i offerten.",
+      },
+      {
+        q: "Behöver jag bygglov för att byta tak?",
+        a: "Inte för samma material och kulör. Inom detaljplan kan byte till annat material eller annan färg kräva lov. Fråga kommunen; vi hjälper till med underlaget.",
+      },
+    ],
+    related: [
+      { label: "Takarbeten", href: "/bygg/tjanster/tak" },
+      { label: "ROT-avdrag 2026", href: "/guider/rot-avdrag-2026" },
+      { label: "Begär offert", href: "/bygg/offert?tjanst=Takarbeten" },
+    ],
+    sources: [
+      { label: "Skatteverket: Rot och rut – privat", href: "https://www.skatteverket.se/privat/fastigheterochbostad/rotochrutarbete.4.2e56d4ba1202f95012080002966.html" },
+      { label: "Boverket: Bygglov för byte av takpannor (rättsfall)", href: "https://www.boverket.se/sv/samhallsplanering/arkitektur-och-gestaltad-livsmiljo/arbetssatt/arkitektur-och-pbl/rattsfall/en--och-tvabostadshus/bygglov-for-byte-av-takpannor/" },
+      { label: "Boverket: Får jag bygga? (2026)", href: "https://www.boverket.se/globalassets/publikationer/dokument/2026/bv_far-jag-bygga_broschyr_a4_k3.pdf" },
+    ],
+  },
+  {
+    slug: "valja-byggfirma-checklista",
+    side: "bygg",
+    title: "Så väljer du byggfirma: 9 kontroller innan du skriver på",
+    description:
+      "Kontrollera F-skatt, försäkring, ID06, behörighet för våtrum och el, referenser och offertens innehåll innan du anlitar en byggfirma. Använd Hantverkarformuläret 17 som avtal.",
+    answer:
+      "Kontrollera att byggfirman har F-skatt (krävs för ROT), ansvarsförsäkring och ID06, att våtrum, el och VVS görs av behöriga, och be om referenser med bilder. Kräv en skriftlig offert med fast pris där arbete och material står var för sig, och skriv avtal på Hantverkarformuläret 17. Betala aldrig stora förskott.",
+    published: "2026-11-03",
+    updated: "2026-11-03",
+    image: "projektledning-hero",
+    readingMinutes: 7,
+    sections: [
+      {
+        heading: "1. F-skatt och organisationsnummer",
+        paragraphs: [
+          "Be om organisationsnumret och kontrollera företaget hos Bolagsverket eller på allabolag.se: att det finns, är aktivt och är godkänt för F-skatt. Utan F-skatt får du inget ROT-avdrag, eftersom avdraget bygger på att företaget fakturerar och begär pengarna från Skatteverket. Vårt organisationsnummer står längst ner på varje sida.",
+        ],
+      },
+      {
+        heading: "2. Ansvarsförsäkring",
+        paragraphs: [
+          "En byggfirma ska ha en ansvarsförsäkring som täcker skador på ditt hus och på grannens under arbetet. Be att få se försäkringsbrevet. Vid större projekt, som tillbyggnad, kan ni också avtala om en allriskförsäkring för själva entreprenaden.",
+        ],
+      },
+      {
+        heading: "3. ID06 och vem som faktiskt gör jobbet",
+        paragraphs: [
+          "ID06 är byggbranschens system för legitimation på arbetsplatsen. Fråga om alla som kommer hem till dig är registrerade. Fråga också hur mycket firman gör med egen personal och vad som läggs ut på underentreprenörer, och se till att du ändå bara har ett avtal och en kontaktperson som ansvarar för helheten.",
+        ],
+      },
+      {
+        heading: "4. Behörighet för våtrum, el och VVS",
+        paragraphs: [
+          "Elarbeten får bara utföras av elinstallationsföretag registrerade hos Elsäkerhetsverket. Tätskikt i badrum bör göras enligt GVK:s branschregler och VVS enligt Säker Vatten, med dokumentation som du får efter avslut. Hemförsäkringen kan kräva det vid en vattenskada. Fråga vilka regler firman följer och vem som är certifierad.",
+        ],
+      },
+      {
+        heading: "5. Referenser och bilder",
+        paragraphs: [
+          "Be om två eller tre referenser på liknande jobb och ring dem. Fråga om tidplanen hölls, hur extrakostnader hanterades och om de skulle anlita firman igen. Titta på före- och efterbilder, gärna från projekt i din närhet. Omdömen på Google och Reco är bra, men ett samtal med en tidigare kund säger mer.",
+        ],
+      },
+      {
+        heading: "6. Offerten: fast pris, specificerad",
+        paragraphs: ["En bra offert är skriftlig och går att jämföra. Den ska innehålla:"],
+        list: [
+          "Fast pris inklusive moms, med arbete och material på separata rader (det behövs för ROT).",
+          "Vad som ingår och vad som inte ingår, till exempel bygglov, rivning, bortforsling och städning.",
+          "Tidplan med start och färdigdatum.",
+          "Hur ändringar och tilläggsarbeten (ÄTA) hanteras: skriftligt godkännande och pris innan de görs.",
+          "Betalplan knuten till färdiga delmoment, inte till datum. Betala aldrig stora belopp i förskott.",
+          "Garanti och hur fel anmäls.",
+        ],
+      },
+      {
+        heading: "7. Avtalet: Hantverkarformuläret 17",
+        paragraphs: [
+          "Skriv alltid avtal. Hantverkarformuläret 17 är framtaget av Konsumentverket, Villaägarna och byggbranschen för reparationer och renoveringar i hemmet; för nybyggnad och större tillbyggnader används ABS 18. Som privatperson skyddas du dessutom av konsumenttjänstlagen, som bland annat ger dig rätt att reklamera fel i upp till tre år. Villkor i ett avtal som är sämre för dig än lagen gäller inte.",
+        ],
+      },
+      {
+        heading: "8. Besiktning och garanti",
+        paragraphs: [
+          "Gå igenom arbetet tillsammans innan slutbetalning och skriv ner det som ska åtgärdas. Vid större projekt är en oberoende besiktningsman värd pengarna. Kräv dokumentation på tätskikt, el och VVS, och ett skriftligt besked om garantitiden.",
+        ],
+      },
+      {
+        heading: "9. Varningstecken",
+        paragraphs: ["Tacka nej om du ser något av det här:"],
+        list: [
+          "Pris långt under alla andra, eller pris som bara ges muntligt.",
+          "Erbjudande om att betala kontant utan faktura, eller \"utan moms\".",
+          "Krav på stort förskott innan arbetet börjat.",
+          "Inget organisationsnummer, ingen F-skatt eller ingen försäkring att visa.",
+          "Press att skriva på direkt, eller ovilja att skriva avtal.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Hur kontrollerar jag att en byggfirma har F-skatt?",
+        a: "Sök på organisationsnumret på allabolag.se eller fråga Skatteverket. F-skatt är ett krav för att du ska få ROT-avdrag.",
+      },
+      {
+        q: "Vilket avtal ska jag använda med hantverkare?",
+        a: "Hantverkarformuläret 17 för reparation och renovering, ABS 18 för nybyggnad och större tillbyggnader. Båda finns hos Konsumentverket.",
+      },
+      {
+        q: "Hur mycket får jag betala i förskott?",
+        a: "Helst inget. En betalplan ska följa färdiga delmoment, till exempel 30 procent vid start av arbetet, 40 procent vid halva arbetet och resten efter godkänd slutbesiktning.",
+      },
+      {
+        q: "Vad gäller om det blir fel?",
+        a: "Konsumenttjänstlagen ger dig rätt att reklamera fel i upp till tre år efter att arbetet avslutades. Reklamera skriftligt och ge företaget chans att rätta felet.",
+      },
+    ],
+    related: [
+      { label: "Checklista inför renovering", href: "/guider/checklista-infor-renovering" },
+      { label: "Om Binaafy", href: "/om-oss" },
+      { label: "Begär offert", href: "/bygg/offert" },
+    ],
+    sources: [
+      { label: "Konsumentverket: Hantverkarformuläret 17", href: "https://publikationer.konsumentverket.se/produkter-och-tjanster/boende-och-hantverkstjanster/bo-2017-03-hantverkarformularet-17" },
+      { label: "Boverket: När du ska anlita ett företag", href: "https://www.boverket.se/sv/energiguiden/energirenovera-smahus/6.upphandling" },
+      { label: "Skatteverket: Rot och rut – privat", href: "https://www.skatteverket.se/privat/fastigheterochbostad/rotochrutarbete.4.2e56d4ba1202f95012080002966.html" },
+      { label: "ID06", href: "https://www.id06.se/" },
+      { label: "Säker Vatten", href: "https://www.sakervatten.se/" },
+      { label: "GVK", href: "https://www.gvk.se/" },
+    ],
+  },
 ];
 
 export const guideBySlug = (slug: string) => guides.find((g) => g.slug === slug);
 
 /** Guides worth linking from a service page. */
 export const guidesFor: Record<string, string[]> = {
-  badrumsrenovering: ["badrumsrenovering-steg-for-steg", "rot-avdrag-2026"],
-  totalrenovering: ["checklista-infor-renovering", "rot-avdrag-2026"],
+  badrumsrenovering: ["badrumsrenovering-steg-for-steg", "valja-byggfirma-checklista", "rot-avdrag-2026"],
+  totalrenovering: ["checklista-infor-renovering", "valja-byggfirma-checklista", "rot-avdrag-2026"],
   koksrenovering: ["rot-avdrag-2026", "checklista-infor-renovering"],
   tillbyggnad: ["checklista-infor-renovering", "rot-avdrag-2026"],
-  tak: ["rot-avdrag-2026"],
+  tak: ["takbyte-kostnad-2026", "rot-avdrag-2026"],
   golv: ["rot-avdrag-2026"],
   maleri: ["rot-avdrag-2026"],
-  projektledning: ["checklista-infor-renovering"],
+  projektledning: ["checklista-infor-renovering", "valja-byggfirma-checklista"],
   "interna-system": ["standardsystem-eller-eget-system"],
   automation: ["standardsystem-eller-eget-system"],
 };
