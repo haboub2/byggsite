@@ -5,6 +5,8 @@
  * ROT figures are for 2026 and were checked against Skatteverket.
  */
 
+import { team } from "./placeholder";
+
 export type GuideSection = { heading: string; paragraphs: string[]; list?: string[] };
 
 export type Guide = {
@@ -16,6 +18,8 @@ export type Guide = {
   answer: string;
   published: string;
   updated: string;
+  /** Name of the team member who wrote it (lib/placeholder.ts team). */
+  author?: string;
   image: string;
   readingMinutes: number;
   sections: GuideSection[];
@@ -315,13 +319,301 @@ export const guides: Guide[] = [
       { label: "Skicka en brief", href: "/mjukvara/brief" },
     ],
   },
+  {
+    slug: "vad-kostar-en-hemsida-for-foretag",
+    side: "mjukvara",
+    title: "Vad kostar en hemsida för företag 2026? Priser, löpande kostnader och fällor",
+    description:
+      "En hemsida för företag kostar allt från några hundralappar i månaden till över 100 000 kr. Så skiljer sig alternativen, vad som driver priset och vad du betalar efter lansering.",
+    answer:
+      "En företagshemsida byggd av en byrå kostar oftast mellan 10 000 och 40 000 kronor exklusive moms för fem till femton sidor. Ett eget verktyg som Wix kostar några hundra kronor i månaden men kräver din egen tid. Räkna även med domän, drift och ändringar efter lansering.",
+    published: "2026-11-03",
+    updated: "2026-11-03",
+    author: "Ibrahim Al Haboub",
+    image: "webb-hero",
+    readingMinutes: 5,
+    sections: [
+      {
+        heading: "Tre sätt att skaffa en hemsida",
+        paragraphs: [
+          "Priset beror först och främst på vem som gör jobbet. Det finns i grunden tre vägar, och de passar olika företag.",
+        ],
+        list: [
+          "Bygga själv i ett verktyg som Wix, Squarespace eller WordPress.com. Kostnaden är en månadsavgift på några hundra kronor, men du står för design, texter och sökmotoroptimering själv. Räkna med flera arbetsdagar för en enkel sida.",
+          "Låta en byrå bygga ett färdigt paket. Vanligt pris är 10 000–40 000 kronor beroende på antal sidor och hur mycket som ingår. Du får en färdig sida på några veckor och slipper lära dig verktyget.",
+          "Låta bygga en skräddarsydd lösning med inloggning, bokning eller kopplingar till andra system. Då hamnar priset ofta över 60 000 kronor, och det lönar sig bara när hemsidan ska göra mer än att presentera företaget.",
+        ],
+      },
+      {
+        heading: "Det här driver priset",
+        paragraphs: [
+          "Två hemsidor som ser lika ut kan skilja flera tiotusentals kronor. Skillnaden ligger nästan alltid i fem saker:",
+        ],
+        list: [
+          "Antal sidor. Varje tjänst bör ha en egen sida om du vill synas på Google när folk söker på just den tjänsten, och varje sida tar tid att skriva och bygga.",
+          "Design. En anpassad mall är billigare än en helt unik design som tas fram från grunden.",
+          "Texter. Skriver du själv sparar du pengar. Ska byrån skriva, med sökord och struktur för Google, kostar det mer men ger oftast bättre resultat.",
+          "Funktioner. Offertformulär, bokning, nyhetsflöde eller koppling till ett CRM lägger till tid.",
+          "Sökmotoroptimering. Grunderna bör alltid ingå, men en sökordsanalys och lokala sidor för varje ort du jobbar i är extra arbete.",
+        ],
+      },
+      {
+        heading: "Löpande kostnader efter lansering",
+        paragraphs: [
+          "Engångspriset är bara en del av kostnaden. Fråga alltid vad som tillkommer varje månad och varje år, så att du kan jämföra offerterna på riktigt.",
+          "Domänen kostar normalt ett par hundra kronor om året och ska registreras i företagets namn, inte byråns. Drift och säkerhetsuppdateringar kostar från några hundra kronor i månaden hos de flesta byråer. Mejl på egen domän betalas oftast per användare och månad. Mindre ändringar efter lansering ingår ibland i ett supportavtal och debiteras annars per timme.",
+          "Var försiktig med avtal där hemsidan hyrs ut med lång bindningstid. Det kan se billigt ut per månad, men efter tre år har du ofta betalat mer än för en köpt sida, och du äger ingenting när avtalet tar slut.",
+        ],
+      },
+      {
+        heading: "Fem frågor att ställa innan du köper",
+        paragraphs: ["Med de här svaren kan du jämföra två offerter på samma villkor:"],
+        list: [
+          "Vem äger koden, designen och domänen när sidan är klar?",
+          "Vad kostar det per månad och per år efter lansering, och finns det bindningstid?",
+          "Kan jag ändra texter och bilder själv, eller måste jag beställa varje ändring?",
+          "Vilken sökmotoroptimering ingår, och hur ser jag om sidan ger förfrågningar?",
+          "Hur lång tid tar det, och vad behöver ni från mig för att hålla tidplanen?",
+        ],
+      },
+      {
+        heading: "Våra priser",
+        paragraphs: [
+          "Hos oss kostar en hemsida på upp till fem sidor 9 900 kronor, och en sida med en egen undersida per tjänst 17 900 kronor, båda exklusive moms. Större sidor med lokala sidor per ort och koppling till andra system börjar på 29 900 kronor. Du äger koden och domänen, och det finns ingen bindningstid på drift.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Är det billigare att bygga hemsidan själv?",
+        a: "I pengar ja, men inte alltid i tid. En enkel sida i ett eget verktyg kostar några hundra kronor i månaden, men tar flera arbetsdagar att få bra, och sökmotoroptimeringen får du sköta själv.",
+      },
+      {
+        q: "Vad kostar en hemsida per månad?",
+        a: "Domän, drift och mejl kostar tillsammans oftast från några hundra kronor i månaden. Hyr du hela hemsidan av en byrå blir månadskostnaden högre, men då äger du sällan sidan.",
+      },
+      {
+        q: "Hur lång tid tar det att få en ny hemsida?",
+        a: "En färdig paketsida tar ofta två till fyra veckor. Det som oftast försenar är texter och bilder, så ta fram dem tidigt.",
+      },
+      {
+        q: "Är priserna inklusive moms?",
+        a: "Byråer anger oftast priser till företag exklusive moms. Ett momsregistrerat företag drar av momsen, så priset exklusive moms är den verkliga kostnaden.",
+      },
+    ],
+    related: [
+      { label: "Köp hemsida — paket och priser", href: "/mjukvara/kop-hemsida" },
+      { label: "Hemsida för hantverkare: 7 saker som ger fler förfrågningar", href: "/guider/hemsida-for-hantverkare" },
+      { label: "Webb och kundportaler", href: "/mjukvara/tjanster/webb" },
+    ],
+  },
+  {
+    slug: "vad-kostar-badrumsrenovering-goteborg",
+    side: "bygg",
+    title: "Vad kostar en badrumsrenovering i Göteborg 2026?",
+    description:
+      "Ett helkaklat badrum på 5–8 m² kostar oftast från 150 000 kr före ROT. Så fördelas kostnaden, vad som gör det dyrare och vad du betalar efter ROT-avdraget.",
+    answer:
+      "En komplett badrumsrenovering på 5–8 kvadratmeter i Göteborg kostar oftast från 150 000 kronor inklusive moms, före ROT-avdrag. Med ROT-avdraget på 30 procent av arbetskostnaden betalar du för ett normalt badrum på sex kvadratmeter ungefär 123 000 kronor.",
+    published: "2026-11-03",
+    updated: "2026-11-03",
+    author: "Mohamed Al Haboub",
+    image: "badrum-hero",
+    readingMinutes: 5,
+    sections: [
+      {
+        heading: "Ett räkneexempel: badrum på 6 kvadratmeter",
+        paragraphs: [
+          "Ett vanligt badrum i en villa eller lägenhet är fem till åtta kvadratmeter. För ett helkaklat badrum på sex kvadratmeter med dusch, toalett, kommod och golvvärme ser en normal kalkyl ut ungefär så här, inklusive moms:",
+        ],
+        list: [
+          "Arbete: cirka 90 000 kronor för rivning, VVS, el, underarbete, tätskikt, kakel och montage.",
+          "Material: cirka 60 000 kronor för tätskikt, kakel och klinker, porslin, blandare, duschvägg och golvvärme.",
+          "Summa före ROT: cirka 150 000 kronor.",
+          "ROT-avdrag: 30 procent av arbetet, alltså 27 000 kronor.",
+          "Du betalar: cirka 123 000 kronor.",
+        ],
+      },
+      {
+        heading: "Så fördelas kostnaden",
+        paragraphs: [
+          "Ungefär 60 procent av priset är arbete och 40 procent material. Arbetet är svårt att pressa utan att tumma på kvaliteten, eftersom de moment som tar tid är de som skyddar huset: fall mot golvbrunnen, tätskiktet och dess torktider.",
+          "Materialet är där du själv styr mest. Standardkakel i normalt format kan kosta en bråkdel av stora plattor i natursten, och en enkel blandare kostar en tiondel av en designserie. Bestäm tidigt var du vill lägga pengarna, så kan offerten bli exakt från början.",
+        ],
+      },
+      {
+        heading: "Det här gör badrummet dyrare",
+        paragraphs: ["Priset stiger ofta av samma skäl. Ju fler av dem du vet om innan offerten, desto färre överraskningar:"],
+        list: [
+          "Flytt av golvbrunn, toalett eller dusch. Nya avloppsdragningar i bjälklaget är tidskrävande.",
+          "Fuktskador bakom gammalt kakel. De syns först vid rivningen och måste åtgärdas innan det nya byggs.",
+          "Stora plattor, mönster eller natursten. De tar längre tid att sätta och kräver ett jämnare underlag.",
+          "Badkar, inbyggd cistern eller nischer i väggen.",
+          "Gamla rör och gammal el. I äldre hus i Göteborg är det vanligt att avlopp och el behöver bytas när badrummet ändå öppnas.",
+        ],
+      },
+      {
+        heading: "Det här ska stå i offerten",
+        paragraphs: [
+          "Två offerter på samma badrum går bara att jämföra om de innehåller samma sak. Be om ett skriftligt fast pris där det framgår:",
+        ],
+        list: [
+          "Arbetskostnad och material var för sig, så att du ser vad ROT-avdraget blir.",
+          "Vilket tätskiktssystem som används och att arbetet följer branschreglerna för våtrum.",
+          "Vem som gör el och VVS, och att de är behöriga.",
+          "Vad som händer om rivningen visar fuktskador, och vad det i så fall kostar.",
+          "Tidplan, betalningsplan och vilken garanti du får.",
+        ],
+      },
+      {
+        heading: "Bor du i bostadsrätt?",
+        paragraphs: [
+          "I en bostadsrätt behöver du styrelsens tillstånd innan du ändrar i badrummet, eftersom det berör vatten och avlopp. Kontrollera också om föreningen planerar stambyte. I många äldre flerbostadshus i Göteborg görs badrummen om i samband med stambytet, och då kan det löna sig att vänta eller samordna.",
+        ],
+      },
+      {
+        heading: "Spara rätt, inte på fel ställen",
+        paragraphs: [
+          "Det billigaste anbudet är sällan det billigaste badrummet. Ett tätskikt som inte följer branschreglerna kan ge en vattenskada som kostar mer än hela renoveringen, och försäkringsbolaget kan kräva att arbetet är gjort av behörig personal och dokumenterat. Spara hellre på kakel och inredning än på underarbetet. Be om ett fast pris där arbete och material står var för sig, så ser du var pengarna går och vad ROT-avdraget blir.",
+        ],
+      },
+    ],
+    calculatorAfter: 0,
+    faq: [
+      {
+        q: "Vad kostar ett litet badrum på 3–4 kvadratmeter?",
+        a: "Ett litet badrum är billigare i material men inte i samma takt i arbete, eftersom rivning, VVS och tätskikt tar nästan lika lång tid. Räkna med att priset per kvadratmeter blir högre än för ett större badrum.",
+      },
+      {
+        q: "Hur mycket ROT-avdrag får jag på badrummet?",
+        a: "År 2026 är ROT-avdraget 30 procent av arbetskostnaden, högst 50 000 kronor per person och år. Äger ni bostaden två kan ni dela avdraget.",
+      },
+      {
+        q: "Hur lång tid tar en badrumsrenovering?",
+        a: "Ett badrum på 5–8 kvadratmeter tar oftast 3–5 veckor från rivning till klart, inklusive torktider för tätskiktet.",
+      },
+      {
+        q: "Varför skiljer sig offerterna så mycket?",
+        a: "Ofta för att de inte innehåller samma sak. Jämför vad som ingår i arbetet, vilket material som räknats med, om tätskiktet görs enligt branschregler och om priset är fast eller löpande.",
+      },
+    ],
+    related: [
+      { label: "Badrumsrenovering i Göteborg", href: "/bygg/tjanster/badrumsrenovering" },
+      { label: "Badrumsrenovering steg för steg", href: "/guider/badrumsrenovering-steg-for-steg" },
+      { label: "ROT-avdrag 2026", href: "/guider/rot-avdrag-2026" },
+      { label: "Begär offert", href: "/bygg/offert?tjanst=Badrum" },
+    ],
+    sources: [
+      {
+        label: "Skatteverket — Rot och rut",
+        href: "https://www.skatteverket.se/privat/fastigheterochbostad/rotochrutarbete.4.2e56d4ba1202f95012080002966.html",
+      },
+      { label: "Säker Vatten — branschregler för VVS", href: "https://www.sakervatten.se/" },
+      { label: "Byggkeramikrådet — branschregler för våtrum", href: "https://www.bkr.se/" },
+    ],
+  },
+  {
+    slug: "hemsida-for-hantverkare",
+    side: "mjukvara",
+    title: "Hemsida för hantverkare: 7 saker som ger fler förfrågningar",
+    description:
+      "De flesta hantverkarsajter ser bra ut men ger få förfrågningar. Sju konkreta saker som gör att fler kunder hittar dig på Google, litar på dig och faktiskt hör av sig.",
+    answer:
+      "En hemsida för hantverkare ger fler förfrågningar när telefonnumret syns på varje sida, varje tjänst och ort har en egen sida, egna projektbilder visar vad du gör, och kunden direkt ser F-skatt, försäkring, garanti och ROT. Koppla den till din Google Företagsprofil och håll offertformuläret kort.",
+    published: "2026-11-03",
+    updated: "2026-11-03",
+    author: "Ibrahim Al Haboub",
+    image: "hero-software",
+    readingMinutes: 5,
+    sections: [
+      {
+        heading: "Varför många hantverkarsajter inte ger jobb",
+        paragraphs: [
+          "Den som söker hantverkare har oftast bråttom och jämför tre eller fyra företag på mobilen. De letar efter svar på tre frågor: gör ni det jag behöver, finns ni där jag bor, och går det att lita på er. Hittar de inte svaren på några sekunder går de vidare. Vi driver själva en byggfirma, och det här är det vi har sett fungera.",
+        ],
+      },
+      {
+        heading: "1. Telefonnumret ska synas överallt",
+        paragraphs: [
+          "Många kunder vill ringa, inte fylla i formulär. Ha numret klickbart högst upp på varje sida, och gärna en knapp som följer med när man scrollar på mobilen. Svarar du inte direkt, ring tillbaka samma dag. Det är ofta den som svarar först som får jobbet.",
+        ],
+      },
+      {
+        heading: "2. En sida per tjänst och ort",
+        paragraphs: [
+          "Google visar sidor, inte företag. Har du bara en sida som räknar upp allt du gör, konkurrerar den dåligt mot företag som har en egen sida för badrumsrenovering, en för kök och en för tak. Samma sak gäller orter: jobbar du i Göteborg, Mölndal och Kungsbacka, nämn dem tydligt och skriv något konkret om jobb du gjort där.",
+        ],
+      },
+      {
+        heading: "3. Egna bilder slår bildbank",
+        paragraphs: [
+          "Före och efter-bilder från dina egna jobb är det starkaste bevis du har. Fota med mobilen i dagsljus, från samma vinkel före och efter, och skriv en mening om vad som gjordes. Kunder känner igen bildbanksbilder direkt, och då tappar resten av sidan i trovärdighet.",
+        ],
+      },
+      {
+        heading: "4. Google Företagsprofil och omdömen",
+        paragraphs: [
+          "När någon söker på en tjänst och en ort visar Google ofta en karta med lokala företag överst, före vanliga sökresultat. Dit kommer du med en verifierad Google Företagsprofil med samma namn, adress och telefonnummer som på hemsidan. Be varje nöjd kund om ett omdöme, gärna med en direktlänk i ett sms när jobbet är klart.",
+        ],
+      },
+      {
+        heading: "5. Visa det som skapar trygghet",
+        paragraphs: [
+          "Renovering är ett stort köp och kunden är rädd att välja fel. Visa tydligt att du har F-skatt och ansvarsförsäkring, vilken garanti du lämnar, och att ROT-avdraget dras direkt på fakturan. Har du behörigheter för våtrum, el eller VVS, skriv ut dem. Det är ofta det som avgör mellan dig och nästa företag.",
+        ],
+      },
+      {
+        heading: "6. Ett kort offertformulär",
+        paragraphs: [
+          "Fråga bara efter det du behöver för att höra av dig: namn, telefon, ort, vilken tjänst och en kort beskrivning. Låt kunden bifoga bilder om de vill. Varje extra obligatoriskt fält gör att fler ger upp halvvägs.",
+        ],
+      },
+      {
+        heading: "7. Snabb på mobilen",
+        paragraphs: [
+          "De flesta besökare kommer från telefonen, ofta ute på mobilnät. En sida som tar flera sekunder att ladda tappar besökare innan de sett något, och Google rankar långsamma sidor lägre. Komprimera bilderna, undvik tunga tillägg och testa sidan på din egen telefon.",
+        ],
+      },
+      {
+        heading: "Mät det som spelar roll",
+        paragraphs: [
+          "Antal besökare säger lite. Följ hur många som ringer, skickar formuläret eller klickar på vägbeskrivningen, och vilka sidor de kom från. Då ser du vilka tjänster och orter som ger jobb och var det är värt att lägga mer tid.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Behöver en hantverkare verkligen en hemsida?",
+        a: "Ja, om du vill ha jobb från folk som inte redan känner dig. Kunder kollar nästan alltid upp ett företag innan de ringer, och utan hemsida är det svårt att synas i Googles lokala resultat.",
+      },
+      {
+        q: "Räcker det med en Facebooksida?",
+        a: "Den är bra som komplement, men du styr inte över den och den syns sällan när folk söker på en tjänst och en ort. En egen hemsida och en Google Företagsprofil når fler.",
+      },
+      {
+        q: "Vad kostar en hemsida för en hantverkare?",
+        a: "En paketsida från en byrå kostar ofta 10 000–20 000 kronor exklusive moms. Hos oss kostar en sida med en egen undersida per tjänst 17 900 kronor.",
+      },
+    ],
+    related: [
+      { label: "Köp hemsida — paket och priser", href: "/mjukvara/kop-hemsida" },
+      { label: "Vad kostar en hemsida för företag?", href: "/guider/vad-kostar-en-hemsida-for-foretag" },
+      { label: "Fakturering för byggföretag", href: "/fakturering" },
+    ],
+  },
 ];
 
 export const guideBySlug = (slug: string) => guides.find((g) => g.slug === slug);
 
+/** The guide's writer as name and role, if it has one on the team. */
+export function guideAuthor(g: Guide) {
+  const m = team.find((t) => t.name === g.author);
+  return m ? { name: m.name, jobTitle: m.role } : undefined;
+}
+
 /** Guides worth linking from a service page. */
 export const guidesFor: Record<string, string[]> = {
-  badrumsrenovering: ["badrumsrenovering-steg-for-steg", "rot-avdrag-2026"],
+  badrumsrenovering: ["vad-kostar-badrumsrenovering-goteborg", "badrumsrenovering-steg-for-steg"],
   totalrenovering: ["checklista-infor-renovering", "rot-avdrag-2026"],
   koksrenovering: ["rot-avdrag-2026", "checklista-infor-renovering"],
   tillbyggnad: ["checklista-infor-renovering", "rot-avdrag-2026"],
@@ -329,6 +621,7 @@ export const guidesFor: Record<string, string[]> = {
   golv: ["rot-avdrag-2026"],
   maleri: ["rot-avdrag-2026"],
   projektledning: ["checklista-infor-renovering"],
+  webb: ["vad-kostar-en-hemsida-for-foretag", "hemsida-for-hantverkare"],
   "interna-system": ["standardsystem-eller-eget-system"],
   automation: ["standardsystem-eller-eget-system"],
 };

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
 import PageHero from "@/components/PageHero";
 import Reveal from "@/components/Reveal";
@@ -146,6 +147,10 @@ export default async function BuyWebsitePage() {
               Till paketen
               <Icon name="arrow" strokeWidth={2} />
             </a>
+            <Link href="/guider/vad-kostar-en-hemsida-for-foretag" className="link-arrow" style={{ marginTop: 12 }}>
+              Guide: vad kostar en hemsida?
+              <Icon name="arrow" strokeWidth={2} />
+            </Link>
           </div>
           <div className="article-sections">
             {websiteSections.map((s, i) => (
