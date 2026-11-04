@@ -37,7 +37,7 @@ export const SIDES: Record<Side, SideConfig> = {
     word: "hem",
     topic: "Bygg och renovering från Göteborg till Malmö",
     lead: "Renovering, ombyggnad och nybygg i södra och västra Sverige. Ett team, en kontaktperson, från första skiss till sista detalj.",
-    heroCta: { label: "Berätta om ditt projekt", href: "/bygg/offert" },
+    heroCta: { label: "Få offert inom 24 h", href: "/bygg/offert" },
     heroSecondary: { label: "Se referenser", href: "/referenser" },
     cta: { label: "Begär offert", href: "/bygg/offert" },
     nav: [

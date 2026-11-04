@@ -17,6 +17,7 @@ import StackCards from "./scroll/StackCards";
 import Marquee from "./scroll/Marquee";
 import ProjectCards from "./ProjectCards";
 import { PricingSection } from "./Pricing";
+import LeadForm from "./LeadForm";
 import { hasImage, resolveImage } from "@/lib/images";
 import { listPublishedProjects, projectCard } from "@/lib/projects";
 import { SIDES, type Side } from "@/lib/sides";
@@ -54,16 +55,32 @@ export default async function Landing({ side }: { side: Side }) {
   const cfg = SIDES[side];
   const isBygg = side === "bygg";
   preloadHero(isBygg ? "mjukvara" : "bygg");
-  const [{ company, warranty }, projects, cases] = await Promise.all([getContent(), listPublishedProjects(), listPublishedCases()]);
+  const [{ company, warranty, quote, reviews }, projects, cases] = await Promise.all([getContent(), listPublishedProjects(), listPublishedCases()]);
   const w = isBygg ? warranty.bygg : warranty.software;
+
+  // Bygg shows its proof right under the hero button. Only what's saved in
+  // /admin: no score until a review platform has real numbers.
+  const rated = reviews.platforms.find((p) => p.rating !== null && p.count !== null);
+  const trust: { text: string; href?: string }[] = isBygg
+    ? [
+        { text: w.sentence.charAt(0).toUpperCase() + w.sentence.slice(1) },
+        { text: "ROT-avdrag direkt på fakturan" },
+        ...(quote.fSkatt ? [{ text: quote.insurance ? `F-skatt och ${quote.insurance.toLowerCase()}` : "F-skatt" }] : []),
+        ...(company.orgNr ? [{ text: `Org.nr ${company.orgNr}` }] : []),
+        ...(rated
+          ? [{
+              text: `${rated.rating!.toLocaleString("sv-SE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} av 5 på ${rated.name} (${rated.count} omdömen)`,
+              href: "/omdomen",
+            }]
+          : []),
+      ]
+    : [];
   const steps = (isBygg ? processSteps : softwareProcess).map((s, i) => ({
     ...s,
     body: fillWarranty(s.body, w),
     slot: STEP_SLOTS[side][i] ?? STEP_SLOTS[side][0],
   }));
   const faq = (isBygg ? byggFaq : softwareFaq).map((f) => ({ ...f, a: fillWarranty(f.a, w) }));
-  const secondary =
-    isBygg && projects.length === 0 ? { label: "Se vad det kostar", href: "#priser" } : cfg.heroSecondary;
 
   const register: RegisterItem[] = isBygg
     ? services.map((s) => ({
@@ -148,10 +165,26 @@ export default async function Landing({ side }: { side: Side }) {
                     {cfg.heroCta.label}
                     <Icon name="arrow" strokeWidth={2} />
                   </Link>
-                  <Link href={secondary.href} className="link-quiet">
-                    {secondary.label}
-                  </Link>
+                  {isBygg ? (
+                    <a href={`tel:${company.phone}`} className="link-quiet">
+                      Ring {company.phoneDisplay}
+                    </a>
+                  ) : (
+                    <Link href={cfg.heroSecondary.href} className="link-quiet">
+                      {cfg.heroSecondary.label}
+                    </Link>
+                  )}
                 </div>
+                {trust.length > 0 && (
+                  <ul className="lhero-trust">
+                    {trust.map((t) => (
+                      <li key={t.text}>
+                        <Icon name="check" strokeWidth={2} />
+                        {t.href ? <Link href={t.href}>{t.text}</Link> : t.text}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </ViewTransition>
           </div>
@@ -223,6 +256,26 @@ export default async function Landing({ side }: { side: Side }) {
       )}
 
       {isBygg && <PricingSection />}
+
+      {isBygg && (
+        <section className="sec" id="snabboffert">
+          <div className="container split">
+            <div className="split-aside">
+              <span className="eyebrow">Offert inom 24 h</span>
+              <h2>Berätta om ditt projekt.</h2>
+              <p>Fyra fält. Vi ringer upp inom 24 timmar och bokar ett kostnadsfritt hembesök.</p>
+              <p>
+                Vill du beskriva mer, med budget och önskad start?{" "}
+                <Link href="/bygg/offert" className="link-quiet">Fyll i hela offertformuläret</Link>.
+              </p>
+            </div>
+            <LeadForm
+              variant="snabb"
+              contact={{ phoneDisplay: company.phoneDisplay, email: company.email }}
+            />
+          </div>
+        </section>
+      )}
 
       {useStrip ? (
         <WorkStrip
