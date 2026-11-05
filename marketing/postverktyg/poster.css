@@ -1,0 +1,133 @@
+/* Själva inläggen. Allt mäts i px på en 1080 px bred bild, precis som de färdiga PNG-filerna. */
+.cv{position:relative;width:1080px;overflow:hidden;font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;
+  --fg:#f5f2ed;--mut:#cfd5da;--mut2:#a9b3bd;--bg:#18232c;--em:#f7802e;--rule:rgba(245,242,237,.14);background:var(--bg);color:var(--fg)}
+.cv.light{--fg:#1e2c37;--mut:#4b5763;--mut2:#5e6a76;--bg:#f5f2ed;--em:#b8560f;--rule:rgba(30,44,55,.14)}
+.cv em{font-style:normal;color:var(--em)}
+.cv .tex{position:absolute;inset:0;pointer-events:none;background-size:72px 72px;
+  background-image:linear-gradient(rgba(245,242,237,.045) 2px,transparent 2px),linear-gradient(90deg,rgba(245,242,237,.045) 2px,transparent 2px)}
+.cv.light .tex{background-image:linear-gradient(rgba(30,44,55,.06) 2px,transparent 2px),linear-gradient(90deg,rgba(30,44,55,.06) 2px,transparent 2px)}
+.cv .pimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.cv .pempty{position:absolute;inset:0;display:grid;place-items:center;background:#26343f;color:#a9b3bd;font-size:36px;font-weight:600}
+.cv .cm{position:absolute;width:54px;height:54px;border:0 solid #f7802e;z-index:2}
+.cv .cm-tl{top:28px;left:28px;border-top-width:5px;border-left-width:5px}
+.cv .cm-br{bottom:28px;right:28px;border-bottom-width:5px;border-right-width:5px}
+.cv .cap{position:absolute;z-index:2;left:28px;bottom:28px;font-size:20px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#fff;background:rgba(24,35,44,.78);padding:12px 22px}
+.cv .eyebrow{display:flex;align-items:center;gap:22px;font-size:22px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:var(--mut2)}
+.cv .eyebrow::before{content:"";width:54px;height:3px;background:#f7802e;flex:none}
+.cv .h{font-weight:700;line-height:1.02;letter-spacing:-.035em;margin-top:30px}
+.cv .body{font-size:31px;line-height:1.45;color:var(--mut);margin-top:26px}
+.cv .chip{display:inline-block;margin-top:32px;border:2px solid var(--rule);padding:12px 22px;font-size:26px;font-weight:600}
+.cv .foot{display:flex;justify-content:space-between;align-items:center;gap:30px;margin-top:52px}
+.cv .foot img{height:46px;display:block}
+.cv .btn{background:#f7802e;color:#18232c;font-weight:600;font-size:30px;padding:22px 34px;white-space:nowrap}
+
+/* Foto + text */
+.t-foto .ph{position:relative;flex:1;min-height:280px;overflow:hidden}
+.t-foto .panel{position:relative;padding:70px 70px 66px}
+.t-foto.story .panel{padding-bottom:240px}
+
+/* Stort foto */
+.t-stor .grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(24,35,44,.12) 0%,rgba(24,35,44,.25) 42%,rgba(24,35,44,.92) 76%,#18232c 100%)}
+.t-stor .lbl{position:absolute;left:84px;top:96px;font-size:26px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;background:rgba(24,35,44,.78);padding:14px 24px;color:#f5f2ed}
+.t-stor.story .lbl{top:220px}
+.t-stor .bottom{position:absolute;left:84px;right:84px;bottom:110px}
+.t-stor.story .bottom{bottom:260px}
+.t-stor .big{font-weight:700;letter-spacing:-.045em;line-height:.9}
+.t-stor .line{height:6px;background:#f7802e;margin:40px -84px 38px}
+.t-stor .sub{font-size:34px;font-weight:500;color:#cfd5da;line-height:1.4}
+.t-stor .btn{display:inline-block}
+
+/* Lista */
+.t-lista .inner{position:relative;padding:110px 84px 90px;display:flex;flex-direction:column;flex:1}
+.t-lista.story .inner{padding:240px 84px 260px}
+.t-lista .list{list-style:none;margin-top:54px}
+.t-lista .list li{display:flex;gap:30px;align-items:baseline;padding:26px 0;border-bottom:2px solid var(--rule);font-size:38px;font-weight:600;line-height:1.25}
+.t-lista .list li b{color:var(--em);font-size:28px;flex:none;width:44px}
+.t-lista .foot{margin-top:auto;padding-top:48px}
+
+/* Före/efter */
+.t-foreefter .fe-tag{position:absolute;z-index:2;left:56px;top:56px;font-size:30px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;background:#f5f2ed;color:#18232c;padding:14px 26px}
+.t-foreefter .fe-tag.after{background:#f7802e}
+.t-foreefter.story .fe-tag{top:200px}
+.t-foreefter .fe-ph{position:relative;flex:1;min-height:0;overflow:hidden}
+.t-foreefter .fe-ph .fe-tag{left:40px;top:40px;font-size:24px;padding:10px 20px}
+.t-foreefter.story .fe-ph:first-child .fe-tag{top:190px}
+.t-foreefter .fe-div{height:8px;background:#f7802e;flex:none}
+.t-foreefter .fe-panel{position:relative;padding:48px 70px 56px}
+.t-foreefter.story .fe-panel{padding-bottom:230px}
+.t-foreefter .fe-panel .h{margin-top:0}
+.t-foreefter .fe-panel .foot{margin-top:38px}
+.t-foreefter .fe-grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(24,35,44,0) 40%,rgba(24,35,44,.6) 66%,rgba(24,35,44,.95) 100%)}
+.t-foreefter .fe-bottom{position:absolute;left:70px;right:70px;bottom:70px;color:#f5f2ed}
+.t-foreefter.story .fe-bottom{bottom:250px}
+.t-foreefter .fe-bottom .h{margin:0}
+.t-foreefter .fe-swipe{display:inline-block;margin-top:40px;background:#f7802e;color:#18232c;font-size:32px;font-weight:700;padding:18px 32px;border-radius:999px}
+.t-foreefter .fe-logo{display:block;height:50px;margin-top:44px}
+.t-foreefter .fe-end{position:relative;flex:1;display:flex;flex-direction:column;padding:70px 70px 64px}
+.t-foreefter.story .fe-end{padding:200px 70px 240px}
+.t-foreefter .fe-thumbs{display:grid;grid-template-columns:1fr 1fr;gap:8px;height:44%;margin-bottom:50px}
+.t-foreefter .fe-thumbs>div{position:relative;overflow:hidden}
+.t-foreefter .fe-thumbs .fe-tag{left:20px;top:20px;font-size:20px;padding:8px 16px}
+.t-foreefter .list{list-style:none;margin-top:30px}
+.t-foreefter .list li{display:flex;gap:30px;align-items:baseline;padding:22px 0;border-bottom:2px solid var(--rule);font-size:36px;font-weight:600;line-height:1.25}
+.t-foreefter .list li b{color:var(--em);font-size:28px;flex:none;width:44px}
+.t-foreefter .fe-end .foot{margin-top:auto;padding-top:40px}
+
+/* Highlight-omslag */
+.t-hl{display:grid;place-items:center}
+.t-hl svg{position:relative;width:540px;height:540px;fill:none;stroke:#f7802e;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* Delad logga: en 3240 px bred rad som visas en tredjedel i taget */
+.t-delad .row{position:absolute;top:0;width:3240px;height:100%}
+.t-delad .logo{position:absolute}
+.t-delad .tag{position:absolute;left:1080px;width:1080px;text-align:center;font-size:36px;font-weight:600;letter-spacing:.32em;padding-left:.32em;text-transform:uppercase;color:#a9b3bd}
+.t-delad .rule{position:absolute;left:0;right:0;height:6px;background:#f7802e}
+.t-delad .word{position:absolute;width:1080px;text-align:center;font-size:56px;font-weight:700;letter-spacing:-.02em}
+.t-delad .word small{display:block;margin-top:14px;font-size:30px;font-weight:500;letter-spacing:0;color:#a9b3bd}
+.t-delad .word.mid{color:#f7802e}
+
+/* Skärm: hemsidan i en webbläsare och/eller telefon, som sticker ut nedtill */
+.t-skarm .sk-text{position:relative;padding:90px 84px 0}
+.t-skarm.story .sk-text{padding-top:220px}
+.t-skarm .foot{margin-top:40px}
+.t-skarm .sk-dev{position:relative;flex:1;margin-top:60px;min-height:0}
+.t-skarm .sk-scr{position:absolute;inset:0;overflow:hidden;background:#fff}
+.t-skarm .sk-scr .pimg{object-position:50% 0}
+.t-skarm .sk-browser{position:absolute;left:84px;right:-40px;top:0;bottom:-30px;border-radius:18px 0 0 0;overflow:hidden;background:#0f171e;box-shadow:0 30px 80px rgba(0,0,0,.45);border:2px solid rgba(245,242,237,.12)}
+.t-skarm .sk-browser .sk-scr{top:58px}
+.t-skarm .sk-bar{height:58px;display:flex;align-items:center;gap:12px;padding:0 24px}
+.t-skarm .sk-bar i{width:16px;height:16px;border-radius:50%;background:rgba(245,242,237,.25)}
+.t-skarm .sk-bar i:first-child{background:#f7802e}
+.t-skarm .sk-bar span{margin-left:20px;flex:1;max-width:520px;height:34px;border-radius:17px;background:rgba(245,242,237,.08);color:#a9b3bd;font-size:20px;font-weight:500;display:flex;align-items:center;padding:0 22px}
+.t-skarm .sk-phone{position:absolute;width:360px;height:760px;border:14px solid #0b1116;border-radius:58px;overflow:hidden;background:#0b1116;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.t-skarm .sk-phone .sk-scr{border-radius:44px}
+.t-skarm .sk-notch{position:absolute;left:50%;top:12px;width:110px;height:32px;margin-left:-55px;border-radius:16px;background:#0b1116}
+.t-skarm .sk-bada .sk-browser{right:180px}
+.t-skarm .sk-bada .sk-phone{right:70px;top:90px}
+.t-skarm .sk-mobil .sk-phone{left:50%;width:460px;height:980px;margin-left:-230px;top:0;border-width:16px;border-radius:70px}
+.t-skarm .sk-mobil .sk-phone .sk-scr{border-radius:54px}
+.cv.light.t-skarm .sk-browser{background:#e8e3db;border-color:rgba(30,44,55,.12);box-shadow:0 30px 80px rgba(30,44,55,.18)}
+.cv.light.t-skarm .sk-bar i{background:rgba(30,44,55,.2)}
+.cv.light.t-skarm .sk-bar span{background:rgba(30,44,55,.07);color:#5e6a76}
+
+/* Priser: paketkort, ett per rad */
+.t-pris .inner{position:relative;padding:100px 84px 84px;display:flex;flex-direction:column;flex:1}
+.t-pris.story .inner{padding:240px 84px 260px}
+.t-pris .pr-cards{display:flex;flex-direction:column;gap:22px;margin-top:50px}
+.t-pris .pr-card{position:relative;display:grid;grid-template-columns:1fr auto;align-items:baseline;column-gap:30px;padding:30px 36px;border:2px solid var(--rule);background:rgba(127,127,127,.04)}
+.t-pris .pr-card.hot{border:3px solid #f7802e}
+.t-pris .pr-tag{position:absolute;right:30px;top:-19px;background:#f7802e;color:#18232c;font-size:19px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:6px 14px}
+.t-pris .pr-n{font-size:28px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--mut2)}
+.t-pris .pr-p{font-size:58px;font-weight:700;letter-spacing:-.03em;white-space:nowrap}
+.t-pris .pr-card.hot .pr-p{color:var(--em)}
+.t-pris .pr-d{grid-column:1/-1;margin-top:10px;font-size:26px;color:var(--mut)}
+.t-pris .pr-note{margin-top:28px;font-size:24px;color:var(--mut2)}
+.t-pris .foot{margin-top:auto;padding-top:40px}
+/* Datorskärmen visar hela sidans bredd, uppifrån */
+.t-skarm .sk-browser .pimg{height:auto}
+.t-skarm .sk-browser .sk-scr{background:#18232c}
+
+/* ~text~: överstruket, t.ex. ett ordinarie pris */
+.cv s{text-decoration:line-through;text-decoration-color:#f7802e;text-decoration-thickness:.09em;color:var(--mut2);font-weight:inherit}
+.t-pris .pr-p s{font-size:.62em;margin-right:.35em;vertical-align:.12em}
+.t-pris .pr-card.hot .pr-p{font-size:70px}

@@ -1,0 +1,305 @@
+[
+  {
+    "template": "skarm",
+    "theme": "dark",
+    "format": "4:5",
+    "device": "bada",
+    "photo": {
+      "src": "/marketing/postverktyg/bilder/sajt-kop-hemsida-dator.png",
+      "x": 50,
+      "y": 0,
+      "zoom": 100
+    },
+    "photo2": {
+      "src": "/marketing/postverktyg/bilder/sajt-kop-hemsida-mobil.png",
+      "x": 50,
+      "y": 0,
+      "zoom": 100
+    },
+    "url": "binaafy.se/mjukvara/kop-hemsida",
+    "eyebrow": "Binaafy Software",
+    "hSize": 96,
+    "body": "Hemsidor, fakturering och system för företag. Fast pris, och koden är er.",
+    "logo": true,
+    "cta": "binaafy.se/mjukvara →",
+    "pinned": true,
+    "captions": [
+      ""
+    ],
+    "id": "sw-intro",
+    "name": "Software intro",
+    "headline": "Hemsidor som *ger kunder.*"
+  },
+  {
+    "template": "pris",
+    "theme": "light",
+    "format": "4:5",
+    "id": "sw-priser",
+    "name": "Software priser",
+    "eyebrow": "Hemsida till fast pris",
+    "headline": "Vad kostar en hemsida? *Här är svaret.*",
+    "hSize": 76,
+    "cards": "Start | 9 900 kr | Upp till 5 sidor · klar på ca 2 veckor\n!Företag | 17 900 kr | En sida per tjänst · klar på 2–3 veckor\nTillväxt | från 29 900 kr | 15+ sidor, unik design · klar på 3–5 veckor",
+    "note": "Exkl. moms · fast pris · koden är er · fakturering ~490 kr/mån~ *gratis första året*",
+    "logo": true,
+    "cta": "Beställ: binaafy.se →",
+    "pinned": true,
+    "captions": [
+      ""
+    ]
+  },
+  {
+    "template": "pris",
+    "logo": true,
+    "pinned": true,
+    "captions": [
+      ""
+    ],
+    "eyebrow": "Erbjudande",
+    "headline": "Köp en hemsida. *Faktureringen bjuder vi på.*",
+    "cards": "Hemsida | från 9 900 kr | Fast pris · klar på ca 2 veckor · koden är er\n![Ingår gratis]Fakturering | ~490 kr/mån~ 0 kr | Första året: offert, faktura, ROT och påminnelser",
+    "note": "Priser exkl. moms · efter första året 490 kr/mån, ingen bindningstid",
+    "cta": "Beställ: binaafy.se →",
+    "id": "sw-erbjudande",
+    "name": "Software erbjudande",
+    "theme": "dark",
+    "format": "4:5",
+    "hSize": 104
+  },
+  {
+    "template": "pris",
+    "logo": true,
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "eyebrow": "Erbjudande",
+    "headline": "Köp en hemsida. *Faktureringen bjuder vi på.*",
+    "cards": "Hemsida | från 9 900 kr | Fast pris · klar på ca 2 veckor · koden är er\n![Ingår gratis]Fakturering | ~490 kr/mån~ 0 kr | Första året: offert, faktura, ROT och påminnelser",
+    "note": "Priser exkl. moms · efter första året 490 kr/mån, ingen bindningstid",
+    "cta": "Länk i bio →",
+    "id": "sw-erbjudande-story",
+    "name": "Software erbjudande story",
+    "theme": "dark",
+    "format": "9:16",
+    "hSize": 124
+  },
+  {
+    "template": "lista",
+    "theme": "light",
+    "format": "4:5",
+    "hSize": 76,
+    "logo": true,
+    "cta": "binaafy.se/mjukvara →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "sw-fem-saker",
+    "name": "Software fem saker",
+    "eyebrow": "Spara till senare",
+    "headline": "Fem saker din hemsida *måste klara.*",
+    "items": "Ladda snabbt i mobilen\nSynas när kunderna googlar\nHa en tydlig knapp: ring eller begär offert\nGå att ändra utan att kunna kod\nVara er: kod, domän och innehåll"
+  },
+  {
+    "template": "skarm",
+    "theme": "dark",
+    "format": "4:5",
+    "device": "mobil",
+    "photo": null,
+    "photo2": {
+      "src": "/marketing/postverktyg/bilder/sajt-kop-hemsida-mobil.png",
+      "x": 50,
+      "y": 0,
+      "zoom": 100
+    },
+    "url": "binaafy.se",
+    "eyebrow": "",
+    "hSize": 80,
+    "body": "",
+    "logo": true,
+    "cta": "",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "sw-googlar",
+    "name": "Software googlar",
+    "headline": "Kunderna googlar er *innan de ringer.*"
+  },
+  {
+    "template": "lista",
+    "theme": "dark",
+    "format": "4:5",
+    "id": "sw-excel",
+    "name": "Software excel",
+    "eyebrow": "Känner du igen dig?",
+    "headline": "Drivs företaget *i ett Excelark?*",
+    "hSize": 80,
+    "items": "Kundlistan i ett ark, offerterna i Word\nFakturorna skrivs för hand varje månad\nIngen vet säkert vem som inte har betalat\nAllt finns i en persons huvud",
+    "logo": true,
+    "cta": "Vi bygger systemet: binaafy.se →",
+    "pinned": false,
+    "captions": [
+      ""
+    ]
+  },
+  {
+    "template": "lista",
+    "theme": "dark",
+    "format": "4:5",
+    "hSize": 76,
+    "logo": true,
+    "cta": "Beställ: binaafy.se →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "sw-process",
+    "name": "Software sa gar det till",
+    "eyebrow": "Så går det till",
+    "headline": "Från beställning *till lansering.*",
+    "items": "Välj paket: två minuter, ingen betalning nu\nStartmöte: 30 minuter om era tjänster och kunder\nDesign: ni godkänner den innan vi bygger\nLansering: vi publicerar och anmäler sidan till Google"
+  },
+  {
+    "template": "skarm",
+    "theme": "dark",
+    "format": "4:5",
+    "device": "dator",
+    "photo": {
+      "src": "/marketing/postverktyg/bilder/sajt-fakturering-dator.png",
+      "x": 50,
+      "y": 0,
+      "zoom": 100
+    },
+    "photo2": null,
+    "url": "binaafy.se/fakturering",
+    "eyebrow": "Binaafy Fakturering",
+    "hSize": 80,
+    "body": "ROT, betalplaner och bankmatchning i samma verktyg. ~490 kr/mån~ *Gratis första året* när ni köper en hemsida.",
+    "logo": true,
+    "cta": "binaafy.se/fakturering →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "sw-fakturering",
+    "name": "Software fakturering",
+    "headline": "Fakturerar du fortfarande *på kvällarna?*"
+  },
+  {
+    "template": "lista",
+    "theme": "light",
+    "format": "4:5",
+    "hSize": 76,
+    "logo": true,
+    "cta": "binaafy.se/mjukvara →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "sw-ager-allt",
+    "name": "Software ni ager allt",
+    "eyebrow": "Ingen inlåsning",
+    "headline": "Ni betalar en gång. *Ni äger allt.*",
+    "items": "Koden – ta den vidare när ni vill\nDomänen – registrerad i ert namn\nTexter och bilder – ändra själva\nInga licensavgifter varje månad"
+  },
+  {
+    "template": "skarm",
+    "theme": "dark",
+    "format": "9:16",
+    "device": "mobil",
+    "photo": null,
+    "photo2": {
+      "src": "/marketing/postverktyg/bilder/sajt-kop-hemsida-mobil.png",
+      "x": 50,
+      "y": 0,
+      "zoom": 100
+    },
+    "url": "binaafy.se",
+    "eyebrow": "Binaafy Software",
+    "hSize": 96,
+    "body": "Från 9 900 kr. Fakturering ~490 kr/mån~ *gratis första året.*",
+    "logo": true,
+    "cta": "Länk i bio →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "sw-story",
+    "name": "Software story",
+    "headline": "Ny hemsida *på två veckor.*"
+  },
+  {
+    "template": "hl",
+    "format": "9:16",
+    "theme": "dark",
+    "id": "sw-hl-priser",
+    "name": "Priser",
+    "icon": "pengar",
+    "pinned": false,
+    "captions": [
+      ""
+    ]
+  },
+  {
+    "template": "hl",
+    "format": "9:16",
+    "theme": "dark",
+    "id": "sw-hl-erbjudande",
+    "name": "Erbjudande",
+    "icon": "gava",
+    "pinned": false,
+    "captions": [
+      ""
+    ]
+  },
+  {
+    "template": "hl",
+    "format": "9:16",
+    "theme": "dark",
+    "id": "sw-hl-sa-funkar-det",
+    "name": "Så funkar det",
+    "icon": "lista",
+    "pinned": false,
+    "captions": [
+      ""
+    ]
+  },
+  {
+    "template": "hl",
+    "format": "9:16",
+    "theme": "dark",
+    "id": "sw-hl-fakturering",
+    "name": "Fakturering",
+    "icon": "dokument",
+    "pinned": false,
+    "captions": [
+      ""
+    ]
+  },
+  {
+    "template": "hl",
+    "format": "9:16",
+    "theme": "dark",
+    "id": "sw-hl-granskning",
+    "name": "Granskning",
+    "icon": "skarm",
+    "pinned": false,
+    "captions": [
+      ""
+    ]
+  },
+  {
+    "template": "hl",
+    "format": "9:16",
+    "theme": "dark",
+    "id": "sw-hl-fragor",
+    "name": "Frågor",
+    "icon": "fraga",
+    "pinned": false,
+    "captions": [
+      ""
+    ]
+  }
+]

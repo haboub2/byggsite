@@ -1,0 +1,63 @@
+/* Gemensam stil för tjänsteaffischerna (bygg-instagram/affischer och software-instagram/affischer).
+   Allt mäts på en 1080 px bred yta; A3 renderas 1240 px bred med skala 2. */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow:hidden;background:#18232c}
+.cv{position:relative;overflow:hidden;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#fff;-webkit-font-smoothing:antialiased;background:#18232c}
+em{font-style:normal;color:#f7802e}
+s{text-decoration:line-through;text-decoration-color:#f7802e;text-decoration-thickness:.1em;color:#8b96a1}
+.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.logo{height:50px;display:block}
+.kick{display:inline-block;font-size:22px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;background:#f7802e;color:#18232c;padding:9px 16px}
+.h{font-size:96px;font-weight:800;line-height:1;letter-spacing:-.04em;text-shadow:0 4px 30px rgba(0,0,0,.35)}
+.sub{font-size:31px;line-height:1.4;color:#e6e9ec;margin-top:18px}
+.hand{font-family:'Caveat',cursive;font-weight:700;color:#f7802e;line-height:.95}
+
+/* poster: hjälte, mitten, fot */
+.poster{position:absolute;inset:0;display:flex;flex-direction:column}
+.p-hero{position:relative;flex:0 0 50%;overflow:hidden}
+.p-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,20,26,.6),rgba(14,20,26,.05) 32%,rgba(14,20,26,.25) 60%,rgba(24,35,44,1))}
+.p-top{position:absolute;z-index:2;left:64px;right:64px;top:54px;display:flex;justify-content:space-between;align-items:center}
+.p-head{position:absolute;z-index:2;left:64px;right:64px;bottom:40px}
+.p-mid{position:relative;flex:1;display:flex;align-items:center;gap:40px;padding:0 64px;min-height:0}
+.pols{position:relative;flex:0 0 520px;height:100%}
+.pol{position:absolute;width:290px;background:#fdfbf6;padding:14px 14px 0;box-shadow:0 24px 50px rgba(0,0,0,.5)}
+.pol .ph{position:relative;height:250px;overflow:hidden}
+.pol span{display:block;font-family:'Caveat',cursive;font-size:40px;font-weight:700;color:#1e2c37;text-align:center;padding:6px 0 10px}
+.pol:nth-child(1){left:0;top:4%;transform:rotate(-5deg)}
+.pol:nth-child(2){left:225px;top:30%;transform:rotate(4deg)}
+.list{flex:1;list-style:none}
+.list li{display:flex;gap:16px;align-items:baseline;font-size:30px;font-weight:600;line-height:1.25;padding:15px 0;border-bottom:2px solid rgba(255,255,255,.12)}
+.list li:before{content:"✓";font-family:'Caveat',cursive;font-size:46px;color:#f7802e;line-height:.6}
+.p-foot{display:flex;justify-content:space-between;align-items:center;gap:30px;padding:24px 64px 44px}
+.badges{display:flex;flex-direction:column;gap:8px}.badges span{font-size:23px;font-weight:700}
+.badges span:before{content:"✓ ";color:#f7802e}
+.contact{display:flex;align-items:center;gap:22px;background:#fdfbf6;color:#18232c;padding:16px 16px 16px 26px;border-left:8px solid #f7802e;box-shadow:0 14px 30px rgba(0,0,0,.35)}
+.contact small{display:block;font-size:17px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7a8590}
+.contact b{display:block;font-size:42px;font-weight:800;letter-spacing:-.02em}
+.contact span{display:block;font-size:21px;font-weight:600}
+.contact .qr{width:120px;height:120px}
+
+/* story: luft för Instagrams knappar uppe och nere */
+.story .p-hero{flex:0 0 40%}.story .p-top{top:200px}
+.story .p-mid{flex-direction:column;align-items:stretch;gap:20px;padding-top:20px}
+.story .pols{flex:0 0 360px;height:360px}.story .pol:nth-child(1){left:20px;top:10px}.story .pol:nth-child(2){left:auto;right:40px;top:40px}
+.story .p-mid{flex:1 1 auto}.story .list li{padding:12px 0}
+.story .p-foot{padding-bottom:240px}
+/* A3: lite mer luft */
+.a3 .p-hero{flex-basis:52%}.a3 .h{font-size:104px}
+
+/* papper, prislapp, skärmar (mjukvara) */
+.paper{position:relative;background:#fdfbf6;color:#1e2c37;box-shadow:0 2px 0 rgba(0,0,0,.05),0 30px 60px rgba(0,0,0,.5),0 8px 18px rgba(0,0,0,.25)}
+.paper:before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(30,44,55,.025) 0 2px,transparent 2px 6px)}
+.blurbg{position:absolute;inset:-40px;width:calc(100% + 80px);height:calc(100% + 80px);object-fit:cover;object-position:50% 0;filter:blur(14px) brightness(.45) saturate(1.1)}
+.glow{position:absolute;inset:0;background:radial-gradient(60% 40% at 80% 30%,rgba(247,128,46,.28),transparent 70%),linear-gradient(180deg,rgba(14,20,26,.4),rgba(14,20,26,.2) 40%,rgba(24,35,44,.95))}
+.laptop{position:absolute;width:760px}
+.laptop .scr{position:relative;height:470px;border:16px solid #0b1116;border-bottom-width:22px;border-radius:22px 22px 0 0;overflow:hidden;background:#18232c;box-shadow:0 30px 70px rgba(0,0,0,.55)}
+.laptop .scr img{width:100%;display:block}
+.laptop .base{height:26px;margin:0 -50px;background:linear-gradient(#c9ced3,#8e969e);border-radius:0 0 26px 26px}
+.mob{position:absolute;width:250px;height:520px;border:11px solid #0b1116;border-radius:42px;overflow:hidden;background:#fff;box-shadow:0 30px 70px rgba(0,0,0,.6)}
+.mob img{width:100%;display:block}
+.tag{position:absolute;background:#f7802e;color:#18232c;padding:22px 34px 22px 56px;font-weight:800;border-radius:6px 12px 12px 6px;box-shadow:0 18px 40px rgba(0,0,0,.45)}
+.tag:before{content:"";position:absolute;left:18px;top:50%;width:20px;height:20px;margin-top:-10px;border-radius:50%;background:#18232c}
+.tag small{display:block;font-size:20px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.tag b{display:block;font-size:56px;letter-spacing:-.03em;line-height:1}

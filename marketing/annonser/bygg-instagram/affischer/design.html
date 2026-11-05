@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Byggaffischer</title>
+<!-- Visar en affisch från design.js: design.html?id=tak-inlagg. Används av rendera.js. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="../../_kalla/affisch.css">
+</head>
+<body>
+<script src="design.js"></script>
+<script>
+const d = DESIGNS.find((x) => x.id === new URLSearchParams(location.search).get("id")) || DESIGNS[0];
+document.body.innerHTML = `<div class="cv" style="width:${d.size[0]}px;height:${d.size[1]}px">${d.html()}</div>`;
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Binaafy postverktyg</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="poster.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <b>Binaafy postverktyg</b>
+  <nav class="tabs"><button data-view="edit" class="on">Redigera</button><button data-view="grid">Rutnät</button></nav>
+  <div class="top-r">
+    <button id="exportJson" title="Spara alla inlägg som en fil">Säkerhetskopiera</button>
+    <label class="filebtn" title="Läs in en säkerhetskopia">Läs in<input type="file" id="importJson" accept=".json"></label>
+  </div>
+</header>
+
+<main id="viewEdit" class="edit">
+  <aside class="side">
+    <div class="new">
+      <select id="newTemplate"></select>
+      <button id="newPost" class="primary">+ Nytt inlägg</button>
+    </div>
+    <ol id="postList" class="plist"></ol>
+    <p class="hint">Ordningen här är postningsordningen: överst postas först.</p>
+  </aside>
+
+  <section class="stage">
+    <div id="preview" class="preview"></div>
+    <div class="stage-bar">
+      <span id="sizeInfo"></span>
+      <button id="downloadPng" class="primary">Ladda ner PNG</button>
+    </div>
+  </section>
+
+  <aside class="form">
+    <div id="fields"></div>
+    <div id="captions"></div>
+  </aside>
+</main>
+
+<main id="viewGrid" class="gridview" hidden>
+  <div class="phone">
+    <div class="pf-head">
+      <img src="/public/brand/binaafy-mark.png" alt="">
+      <div><b>binaafy</b><span id="pfCount"></span></div>
+    </div>
+    <div id="hlRow" class="hlrow"></div>
+    <div id="grid" class="igrid"></div>
+  </div>
+  <div class="gnote">
+    <h2>Så ser profilen ut</h2>
+    <p>Fästa inlägg ligger först. Resten visas nyast först, alltså omvänd postningsordning. Rutnätet visar mitten av varje bild i 3:4.</p>
+    <p>Klicka på en ruta för att redigera inlägget.</p>
+  </div>
+</main>
+
+<div id="render" class="render" aria-hidden="true"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+<script src="mallar.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
