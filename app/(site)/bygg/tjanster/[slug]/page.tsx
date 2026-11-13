@@ -11,6 +11,7 @@ import { servicesContent, serviceExtras, serviceSeo } from "@/lib/services-conte
 import { ogImage, serviceImage } from "@/lib/images";
 import { getContent } from "@/lib/content/store";
 import { fillWarranty } from "@/lib/content/schema";
+import { byggCities } from "@/lib/keywords";
 
 export function generateStaticParams() {
   return services.map((s) => ({ slug: s.slug }));
@@ -110,6 +111,10 @@ export default async function ByggServicePage({
             <div className="split-aside">
               <span className="eyebrow">Så arbetar vi</span>
               <h2>Det du behöver veta om {svc.title.toLowerCase()}.</h2>
+              <p>
+                Vi tar uppdrag i {byggCities.slice(0, -1).join(", ")} och {byggCities.at(-1)} — och i resten av
+                Västra Götaland, Halland och Skåne.
+              </p>
             </div>
             <div className="article-sections">
               {content.sections.map((s, i) => (

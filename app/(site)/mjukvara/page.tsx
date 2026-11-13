@@ -6,9 +6,9 @@ import { ogImage } from "@/lib/images";
 import { getContent } from "@/lib/content/store";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Webbutveckling, automation och interna system",
+  title: "Webbyrå och systemutveckling i Göteborg",
   description:
-    "Binaafy Software bygger webbplatser, kundportaler, integrationer och interna system som tar bort dubbelarbete. Fast pris per etapp, kod ni äger.",
+    "Binaafy Software är en webbyrå och systemutvecklare i Göteborg: hemsidor till företag, kundportaler, integrationer och skräddarsydda system. Fast pris per etapp, kod ni äger.",
   path: "/mjukvara",
   image: ogImage("hero-software"),
 });

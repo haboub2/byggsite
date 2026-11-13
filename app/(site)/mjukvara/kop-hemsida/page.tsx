@@ -22,9 +22,9 @@ const PATH = "/mjukvara/kop-hemsida";
 const from = formatSek(Math.min(...websitePackages.map((p) => p.price)));
 
 export const metadata: Metadata = pageMetadata({
-  title: `Köp hemsida till företag — fast pris från ${from.replace(/ /g, " ")}`,
+  title: `Köpa hemsida till företag — fast pris från ${from.replace(/ /g, " ")}`,
   description:
-    "Köp en snabb, mobilanpassad hemsida till ditt företag. Tre paket med fast pris, SEO från start, klar på 2–3 veckor och ni äger allt. Beställ på två minuter.",
+    "Köp hemsida till ditt företag: vi skapar snabba, mobilanpassade hemsidor med SEO från start. Fast pris, klar på 2–3 veckor och ni äger allt. Beställ på två minuter.",
   path: PATH,
   image: ogImage("webb-hero"),
 });
@@ -36,6 +36,7 @@ function offersJsonLd() {
     "@type": "Service",
     "@id": abs(`${PATH}#service`),
     serviceType: "Webbdesign och webbutveckling",
+    alternateName: ["Köp hemsida", "Skapa hemsida till företag", "Bygga hemsida"],
     name: "Hemsida till företag",
     description:
       "Färdiga hemsidepaket för företag med fast pris: design i er profil, mobilanpassning, SEO och publicering. Byggt i Next.js, koden ägs av kunden.",
@@ -149,6 +150,10 @@ export default async function BuyWebsitePage() {
             </a>
             <Link href="/guider/vad-kostar-en-hemsida-for-foretag" className="link-arrow" style={{ marginTop: 12 }}>
               Guide: vad kostar en hemsida?
+              <Icon name="arrow" strokeWidth={2} />
+            </Link>
+            <Link href="/guider/skapa-hemsida-for-foretag" className="link-arrow" style={{ marginTop: 12 }}>
+              Guide: skapa hemsida för företag
               <Icon name="arrow" strokeWidth={2} />
             </Link>
           </div>

@@ -96,6 +96,10 @@ export const guides: Guide[] = [
         a: "30 procent av arbetskostnaden inklusive moms, högst 50 000 kronor per person och år. ROT och RUT tillsammans får vara högst 75 000 kronor per person och år.",
       },
       {
+        q: "Gäller ROT-avdrag i bostadsrätt?",
+        a: "Ja. Som bostadsrättsinnehavare får du ROT-avdrag för arbete i din egen lägenhet, till exempel badrum, kök och golv. Arbete som föreningen ansvarar för, som stambyte eller fasad, ger inget avdrag för dig.",
+      },
+      {
         q: "Gäller ROT-avdraget på material?",
         a: "Nej. Bara arbetskostnaden ger avdrag. Material, resor och maskiner betalar du fullt ut.",
       },
@@ -601,6 +605,99 @@ export const guides: Guide[] = [
       { label: "Fakturering för byggföretag", href: "/fakturering" },
     ],
   },
+  {
+    slug: "skapa-hemsida-for-foretag",
+    side: "mjukvara",
+    title: "Skapa hemsida för företag: själv, med AI eller med webbyrå?",
+    description:
+      "Tre sätt att skapa en hemsida till företaget — hemsidebyggare, AI-verktyg eller webbyrå. Vad varje väg kostar, hur lång tid den tar och vilken som ger kunder från Google.",
+    answer:
+      "Ett företag kan skapa en hemsida på tre sätt: själv i en hemsidebyggare som Wix eller Squarespace, med ett AI-verktyg som tar fram ett första utkast, eller genom att låta en webbyrå bygga den. Själv eller med AI är billigast och går snabbast att komma igång med. En webbyrå lönar sig när hemsidan ska ge förfrågningar från Google.",
+    published: "2026-11-13",
+    updated: "2026-11-13",
+    author: "Ibrahim Al Haboub",
+    image: "hero-software",
+    readingMinutes: 6,
+    sections: [
+      {
+        heading: "Steg för steg: så skapar du en hemsida för företaget",
+        paragraphs: [
+          "Oavsett vilket verktyg du väljer är stegen desamma. Det är ordningen som avgör om sidan blir klar och om den ger något.",
+        ],
+        list: [
+          "Bestäm vad sidan ska åstadkomma: samtal, offertförfrågningar, bokningar eller försäljning.",
+          "Registrera en domän i företagets namn, till exempel dittforetag.se. Den kostar normalt ett par hundra kronor om året.",
+          "Välj hur sidan ska byggas: själv, med AI eller av en webbyrå. Se jämförelsen nedan.",
+          "Skriv en sida per tjänst, med de ord dina kunder söker på och orterna du jobbar i.",
+          "Gör det lätt att höra av sig: klickbart telefonnummer, ett kort formulär och tydliga knappar på varje sida.",
+          "Anmäl sidan till Google Search Console och koppla den till en Google Företagsprofil.",
+          "Mät samtal och förfrågningar, inte bara besökare, och förbättra de sidor som ger mest.",
+        ],
+      },
+      {
+        heading: "Skapa hemsida själv i en hemsidebyggare",
+        paragraphs: [
+          "Wix, Squarespace och WordPress.com låter dig dra och släppa fram en sida utan att kunna kod. Du betalar en månadsavgift, och det går att ha något uppe på en eftermiddag. Gratisplanerna visar verktygets namn i adressen och reklam på sidan, så för ett företag behövs en betald plan med egen domän.",
+          "Nackdelen är tiden. Design, texter, bilder och sökmotoroptimering gör du själv, och det är där de flesta egenbyggda sidor fastnar. Sidan blir ofta långsam på mobilen, och du äger den inte: slutar du betala försvinner den.",
+        ],
+      },
+      {
+        heading: "Skapa hemsida med AI",
+        paragraphs: [
+          "AI-verktyg kan på några minuter bygga en sida som ser färdig ut utifrån en kort beskrivning. Det är ett snabbt sätt att se hur sidan skulle kunna se ut och att testa en idé.",
+          "Men en sida som ser färdig ut är inte samma sak som en sida som ger kunder. Texterna blir ofta allmänna och liknar konkurrenternas, verktyget vet inte vad just dina kunder söker på, och teknisk sökmotoroptimering, drift, säkerhet och domän får du fortfarande lösa själv. Använd gärna AI för ett första utkast, men räkna med arbete innan det är en riktig företagssida.",
+        ],
+      },
+      {
+        heading: "Låta en webbyrå bygga hemsidan",
+        paragraphs: [
+          "En webbyrå tar fram struktur, design, texter och teknik, publicerar sidan och anmäler den till Google. Du lägger några timmar på ett startmöte och på att godkänna, i stället för flera arbetsdagar. Ett färdigt paket kostar ofta 10 000–40 000 kronor exklusive moms beroende på antal sidor.",
+          "Fråga alltid vem som äger koden och domänen, vad som kostar per månad efter lansering och om det finns bindningstid. En sida du hyr kan bli dyrare än en du köper redan efter några år.",
+        ],
+      },
+      {
+        heading: "Vilket ska du välja?",
+        paragraphs: ["En enkel tumregel utifrån vad hemsidan ska göra:"],
+        list: [
+          "Du vill bara finnas på nätet med kontaktuppgifter: bygg själv i en hemsidebyggare.",
+          "Du vill testa en idé eller se ett förslag snabbt: ta fram ett utkast med AI.",
+          "Hemsidan ska ge nya kunder från Google: låt en webbyrå bygga den, med en sida per tjänst och ort.",
+        ],
+      },
+      {
+        heading: "Så gör vi",
+        paragraphs: [
+          "Vi bygger hemsidor till företag med fast pris: 9 900 kronor för upp till fem sidor och 17 900 kronor för en sida med en egen undersida per tjänst, båda exklusive moms. Sidan är klar på två till tre veckor, sökmotoroptimering ingår och ni äger koden, domänen och innehållet.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Kan man skapa en hemsida gratis?",
+        a: "Ja, de flesta hemsidebyggare har en gratisplan, men då visas verktygets namn i adressen och reklam på sidan. För ett företag behövs en egen domän, och då kostar det från ett par hundra kronor i månaden.",
+      },
+      {
+        q: "Är det bra att bygga hemsida med AI?",
+        a: "Som utkast, ja. För en företagssida som ska synas på Google behöver texterna, strukturen och tekniken oftast arbetas om, och någon behöver ansvara för drift och säkerhet.",
+      },
+      {
+        q: "Hur lång tid tar det att skapa en hemsida?",
+        a: "En enkel sida i en hemsidebyggare kan vara uppe på en dag, men en bra företagssida tar oftast flera arbetsdagar att göra själv. En webbyrå levererar ett färdigt paket på två till fyra veckor.",
+      },
+      {
+        q: "Vad behöver jag för att skapa en hemsida till företaget?",
+        a: "En domän, logga, några egna bilder och en kort beskrivning av varje tjänst. Bygger en webbyrå sidan räcker det oftast, eftersom byrån kan skriva texterna utifrån ett startmöte.",
+      },
+    ],
+    related: [
+      { label: "Köp hemsida — paket och priser", href: "/mjukvara/kop-hemsida" },
+      { label: "Vad kostar en hemsida för företag?", href: "/guider/vad-kostar-en-hemsida-for-foretag" },
+      { label: "Hemsida för hantverkare: 7 saker som ger fler förfrågningar", href: "/guider/hemsida-for-hantverkare" },
+    ],
+    sources: [
+      { label: "Google Search Central — startguide för sökmotoroptimering", href: "https://developers.google.com/search/docs/fundamentals/seo-starter-guide?hl=sv" },
+    ],
+  },
 ];
 
 export const guideBySlug = (slug: string) => guides.find((g) => g.slug === slug);
@@ -621,7 +718,7 @@ export const guidesFor: Record<string, string[]> = {
   golv: ["rot-avdrag-2026"],
   maleri: ["rot-avdrag-2026"],
   projektledning: ["checklista-infor-renovering"],
-  webb: ["vad-kostar-en-hemsida-for-foretag", "hemsida-for-hantverkare"],
+  webb: ["vad-kostar-en-hemsida-for-foretag", "skapa-hemsida-for-foretag"],
   "interna-system": ["standardsystem-eller-eget-system"],
   automation: ["standardsystem-eller-eget-system"],
 };

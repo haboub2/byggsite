@@ -7,9 +7,9 @@ import { softwareAreas, techStack } from "@/lib/software-content";
 import { SIDES } from "@/lib/sides";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Mjukvarutjänster — webb, automation och interna system",
+  title: "Mjukvaruutveckling — webb, automation och system",
   description:
-    "Webbutveckling och kundportaler, automation och systemintegration, interna verksamhetssystem. Tre sätt vi tar bort dubbelarbete, med fast pris per etapp.",
+    "Webbutveckling och kundportaler, automatisering och systemintegration, skräddarsydda verksamhetssystem. Tre sätt vi tar bort dubbelarbete, med fast pris per etapp.",
   path: "/mjukvara/tjanster",
 });
 

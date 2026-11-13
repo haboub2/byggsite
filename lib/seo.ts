@@ -3,6 +3,7 @@ import { SITE_URL } from "./env";
 import { site, services, team } from "./placeholder";
 import type { Company, Warranty } from "./content/schema";
 import { softwareAreas } from "./software-content";
+import { byggCities, keywordsFor } from "./keywords";
 
 /**
  * SEO helpers: per-page metadata and schema.org JSON-LD.
@@ -11,7 +12,7 @@ import { softwareAreas } from "./software-content";
  */
 
 /** Bump when the site's content meaningfully changes (sitemap lastmod, llms.txt). */
-export const CONTENT_UPDATED = "2026-11-03";
+export const CONTENT_UPDATED = "2026-11-13";
 
 export const abs = (path = "/") => `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
@@ -20,7 +21,10 @@ const BYGG = { "@id": abs("/#business") };
 const SOFTWARE = { "@id": abs("/#software") };
 
 /* Company details come from the content store (editable in /admin). */
-const areasServed = (c: Company) => c.areasServed.map((name) => ({ "@type": "AdministrativeArea", name }));
+const areasServed = (c: Company) => [
+  ...c.areasServed.map((name) => ({ "@type": "AdministrativeArea", name })),
+  ...byggCities.map((name) => ({ "@type": "City", name })),
+];
 
 const address = (c: Company) => ({
   "@type": "PostalAddress",
@@ -52,6 +56,7 @@ export function pageMetadata({
   absoluteTitle = false,
   noindex = false,
   type = "website",
+  keywords,
 }: {
   title: string;
   description: string;
@@ -61,13 +66,17 @@ export function pageMetadata({
   absoluteTitle?: boolean;
   noindex?: boolean;
   type?: "website" | "article";
+  /** Defaults to the page's list in lib/keywords.ts. */
+  keywords?: string[];
 }): Metadata {
+  const kw = keywords ?? keywordsFor(path);
   // A page-level openGraph object replaces the root one, so fall back to the
   // site-wide share image explicitly.
   const images = [{ url: image ?? "/opengraph-image.png", width: 1200, height: 630, alt: title }];
   return {
     title: absoluteTitle ? { absolute: title } : title,
     description,
+    ...(kw?.length && { keywords: kw }),
     alternates: { canonical: path },
     openGraph: {
       type,
@@ -114,9 +123,14 @@ export function organizationJsonLd(c: Company) {
       "Badrumsrenovering",
       "Köksrenovering",
       "Tillbyggnad",
+      "Takbyte",
+      "Golvläggning",
+      "Måleri",
       "ROT-avdrag",
       "Webbutveckling",
+      "Webbdesign",
       "Hemsidor för företag",
+      "Systemutveckling",
       "Systemintegration",
       "Fakturering för byggföretag",
     ],

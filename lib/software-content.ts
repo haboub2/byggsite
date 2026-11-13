@@ -30,8 +30,8 @@ export const softwareAreas: SoftwareArea[] = [
     title: "Webb & portaler",
     meta: "Sajter och kundportaler",
     seo: {
-      title: "Webbutveckling och kundportaler för företag",
-      description: "Vi bygger snabba webbplatser och inloggade kundportaler i Next.js. Redigerbart innehåll, SEO från start, fast pris per etapp och kod ni äger.",
+      title: "Webbutveckling och webbdesign i Göteborg",
+      description: "Webbutveckling för företag: snabba webbplatser, webbapplikationer och inloggade kundportaler i Next.js. SEO från start, fast pris per etapp och kod ni äger.",
     },
     body: "Publika sajter och inloggade kundportaler — snabba, mätbara och byggda så att ni själva kan ändra innehåll utan att vänta på en utvecklare för varje textrad.",
     fitsIf: [
@@ -92,8 +92,8 @@ export const softwareAreas: SoftwareArea[] = [
     title: "Automation & integrationer",
     meta: "Integrationer och dataflöden",
     seo: {
-      title: "Automation och systemintegration",
-      description: "Koppla ihop system som inte pratar med varandra: API-integrationer, synk och automatiska flöden. Testat mot verklig data, med larm om något fallerar.",
+      title: "Systemintegration och automatisering för företag",
+      description: "Koppla ihop system som inte pratar med varandra: API-integrationer, synk och automatiserade arbetsflöden. Testat mot verklig data, med larm om något fallerar.",
     },
     body: "Koppla ihop system som idag inte pratar med varandra. Om någon i teamet kopierar data mellan Excel, mejl och ett affärssystem varje vecka, är det ett automationsproblem, inte en personalfråga.",
     fitsIf: [
@@ -145,6 +145,7 @@ export const softwareAreas: SoftwareArea[] = [
       { q: "Vad händer om ett av systemen byts ut?", a: "Integrationen byggs så att den delen kan bytas utan att allt annat påverkas. Det står i dokumentationen hur." },
       { q: "Vem märker om en synk slutar fungera?", a: "Vi sätter upp larm som går till oss och till en utsedd person hos er, så att ett fel upptäcks samma dag." },
       { q: "Vad kostar en integration?", a: "Det beror på hur många system och flöden som ingår. Efter kartläggningen får ni ett fast pris per integration, och en fast månadsavgift om ni vill att vi övervakar och underhåller den." },
+      { q: "Kan ni bygga en integration mot Fortnox?", a: "Ja. Fortnox har ett öppet API, så vi kan koppla det till till exempel er webbshop, ert CRM eller ett eget system, så att kunder, ordrar och fakturor förs över automatiskt." },
       { q: "Måste vi byta system för att automatisera?", a: "Nej. Poängen är oftast att behålla de system ni redan använder och låta dem utbyta information automatiskt." },
     ],
   },
@@ -153,8 +154,8 @@ export const softwareAreas: SoftwareArea[] = [
     title: "Interna system",
     meta: "Offert, planering, uppföljning",
     seo: {
-      title: "Interna system — offert, planering och uppföljning",
-      description: "Skräddarsydda verksamhetssystem som ersätter Excel-ark: offert, planering och uppföljning med behörigheter och historik. Smalt först, i drift på veckor.",
+      title: "Systemutveckling — skräddarsydda interna system",
+      description: "Systemutveckling av skräddarsydda verksamhetssystem som ersätter Excel-ark: offert, planering och uppföljning med behörigheter och historik. I drift på veckor.",
     },
     body: "Verktyg för offert, planering och uppföljning — formade efter hur ni faktiskt jobbar, inte efter hur ett generiskt SaaS-verktyg tror att alla jobbar.",
     fitsIf: [

@@ -8,9 +8,9 @@ import { serviceExtras } from "@/lib/services-content";
 import { SIDES } from "@/lib/sides";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Bygg och renovering — alla tjänster",
+  title: "Bygg och renovering i Göteborg — alla tjänster",
   description:
-    "Totalrenovering, badrum, kök, tillbyggnad, tak, golv, måleri och projektledning i södra och västra Sverige. Ett team, fast pris och ROT-avdrag.",
+    "Byggfirma för totalrenovering, badrum, kök, tillbyggnad, tak, golv, måleri och projektledning i Göteborg och södra och västra Sverige. Fast pris och ROT-avdrag.",
   path: "/bygg/tjanster",
 });
 
