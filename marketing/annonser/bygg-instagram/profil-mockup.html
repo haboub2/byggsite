@@ -1,0 +1,244 @@
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Binaafy Instagram-mockup</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--dark:#18232c;--dark2:#1e2c37;--cream:#f5f2ed;--orange:#f7802e;--ink:#1e2c37;--ink2:#4b5763;--line:#dbdbdb;--ig:#000;--ig2:#737373;--blue:#0095f6}
+body{background:#e3ddd3;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);padding:32px 16px 64px}
+h1{font-size:28px;margin:0 auto 6px;max-width:1300px}
+.lead{max-width:1300px;margin:0 auto 32px;color:var(--ink2)}
+.stage{display:flex;gap:28px;justify-content:center;flex-wrap:wrap;align-items:flex-start;max-width:1300px;margin:0 auto}
+.col{display:flex;flex-direction:column;gap:14px;align-items:center}
+.col h2{font-size:15px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink2)}
+
+/* phone */
+.phone{width:390px;max-width:100%;height:844px;background:#fff;border-radius:46px;border:10px solid #111;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.25);display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--ig)}
+.status{height:44px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 26px;font-size:14px;font-weight:600}
+.scroll{flex:1;overflow-y:auto;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.tabbar{height:50px;flex:none;border-top:1px solid #efefef;display:flex;justify-content:space-around;align-items:center}
+.tabbar svg{width:24px;height:24px}
+.ic{fill:none;stroke:#000;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* profile */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 10px}
+.topbar b{font-size:20px;display:flex;align-items:center;gap:4px}
+.topbar .r{display:flex;gap:20px}
+.head{display:flex;align-items:center;gap:22px;padding:4px 16px 12px}
+.avatar{width:86px;height:86px;border-radius:50%;padding:3px;background:#fff;box-shadow:0 0 0 1px var(--line);flex:none}
+.avatar img{width:100%;height:100%;border-radius:50%;display:block}
+.stats{display:flex;flex:1;justify-content:space-around;text-align:center}
+.stats b{display:block;font-size:17px}
+.stats span{font-size:13px}
+.bio{padding:0 16px 12px;font-size:14px;line-height:1.35}
+.bio .name{font-weight:600}
+.bio .cat{color:var(--ig2)}
+.bio a{color:#00376b;font-weight:600;text-decoration:none}
+.btns{display:flex;gap:6px;padding:0 16px 14px}
+.btns div{flex:1;background:#efefef;border-radius:8px;text-align:center;font-size:14px;font-weight:600;padding:7px 0}
+.btns .p{background:var(--blue);color:#fff}
+
+.hl{display:flex;gap:14px;padding:2px 16px 14px;overflow-x:auto;scrollbar-width:none}
+.hl::-webkit-scrollbar{display:none}
+.hl figure{flex:none;width:66px;text-align:center}
+.hl .ring{width:66px;height:66px;border-radius:50%;padding:3px;box-shadow:0 0 0 1px var(--line)}
+.hl .cov{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+.hl .cov svg{width:28px;height:28px;fill:none;stroke:var(--orange);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hl figcaption{font-size:12px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.gtabs{display:flex;border-top:1px solid #efefef}
+.gtabs div{flex:1;display:grid;place-items:center;height:44px}
+.gtabs .on{border-bottom:1.5px solid #000}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.grid .t{position:relative;aspect-ratio:3/4;overflow:hidden;background:#eee}
+.grid img{width:100%;height:100%;object-fit:cover;display:block}
+.pin{position:absolute;top:6px;right:6px;width:18px;height:18px;filter:drop-shadow(0 0 2px rgba(0,0,0,.5))}
+.num{position:absolute;left:6px;bottom:6px;background:var(--orange);color:#fff;font:700 11px 'Plus Jakarta Sans',sans-serif;border-radius:10px;padding:2px 7px}
+
+/* post */
+.ph-head{display:flex;align-items:center;gap:10px;padding:8px 12px}
+.ph-head img{width:32px;height:32px;border-radius:50%}
+.ph-head b{font-size:14px;display:block}
+.ph-head small{font-size:12px;color:var(--ig)}
+.ph-head .dots{margin-left:auto;font-weight:700;letter-spacing:1px}
+.post-img{width:100%;aspect-ratio:4/5;display:block;object-fit:cover}
+.carousel{position:relative}
+.carousel .cnt{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;border-radius:12px;padding:3px 8px}
+.cta{display:flex;justify-content:space-between;align-items:center;background:var(--blue);color:#fff;font-size:14px;font-weight:600;padding:10px 12px}
+.acts{display:flex;gap:16px;padding:10px 12px 6px}
+.acts .last{margin-left:auto}
+.dotsrow{display:flex;justify-content:center;gap:4px;margin-top:-26px;margin-bottom:12px}
+.dotsrow i{width:6px;height:6px;border-radius:50%;background:#c7c7c7}
+.dotsrow i:first-child{background:var(--blue)}
+.cap{padding:0 12px 6px;font-size:14px;line-height:1.4}
+.cap .more{color:var(--ig2)}
+.meta{padding:0 12px 12px;font-size:13px;color:var(--ig2)}
+
+/* story */
+.story{position:relative;flex:1;background:#000;overflow:hidden}
+.story img{width:100%;height:100%;object-fit:contain;object-position:top;display:block}
+.story .bars{position:absolute;top:10px;left:8px;right:8px;display:flex;gap:3px}
+.story .bars i{flex:1;height:2px;background:rgba(255,255,255,.4);border-radius:2px}
+.story .bars i.on{background:#fff}
+.story .who{position:absolute;top:22px;left:12px;display:flex;align-items:center;gap:8px;color:#fff;font-size:13px;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.story .who img{width:30px;height:30px;border-radius:50%}
+.sticker{position:absolute;left:50%;transform:translateX(-50%);background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.25);font-weight:600;text-align:center}
+.poll{top:30%;width:240px;overflow:hidden}
+.poll p{padding:14px 12px 10px;font-size:15px}
+.poll div{display:flex;border-top:1px solid #eee}
+.poll div span{flex:1;padding:12px 0;font-size:15px;color:var(--blue)}
+.poll div span+span{border-left:1px solid #eee}
+.link{bottom:70px;display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:14px;color:var(--blue)}
+.reply{position:absolute;bottom:12px;left:12px;right:12px;border:1px solid rgba(255,255,255,.6);border-radius:22px;color:#fff;font-size:14px;padding:10px 16px}
+
+/* notes */
+.notes{max-width:1300px;margin:40px auto 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.note{background:var(--cream);border-radius:6px;padding:20px 22px;border-top:4px solid var(--orange)}
+.note h3{font-size:16px;margin-bottom:10px}
+.note ol,.note ul{padding-left:18px;font-size:14px;line-height:1.6;color:var(--ink2)}
+.note p{font-size:14px;line-height:1.6;color:var(--ink2)}
+.note b{color:var(--ink)}
+.note table{width:100%;border-collapse:collapse;font-size:13px}
+.note td{padding:5px 0;border-bottom:1px solid #e0dad0;vertical-align:top;color:var(--ink2)}
+.note td:first-child{font-weight:600;color:var(--ink);width:38%;padding-right:8px}
+</style></head><body>
+<h1>Binaafy Bygg på Instagram</h1>
+<p class="lead">Så ser profilen ut med logobanderollen fäst överst och de sju inläggen under. Rutnätet visas 3:4: banderollen är gjord i 3:4 och syns hel, era 4:5-bilder beskärs lite i kanterna (i flödet syns hela bilden).</p>
+
+<!-- reusable icons -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="pinI" viewBox="0 0 24 24"><path d="M15 3l6 6-3 1-4 4 1 5-2 2-4-4-5 5M9 9l1-4 5-2" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+</svg>
+
+<div class="stage">
+
+<!-- 1. PROFIL -->
+<div class="col"><h2>1 · Profilen</h2>
+<div class="phone">
+  <div class="status"><span>19:41</span><span>●●● ▲ ▮</span></div>
+  <div class="scroll">
+    <div class="topbar"><b>binaafy.bygg <svg width="12" height="12" viewBox="0 0 24 24" class="ic"><path d="M6 9l6 6 6-6"/></svg></b>
+      <div class="r"><svg width="24" height="24" viewBox="0 0 24 24" class="ic"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg><svg width="24" height="24" viewBox="0 0 24 24" class="ic"><path d="M4 7h16M4 12h16M4 17h16"/></svg></div></div>
+    <div class="head">
+      <div class="avatar"><img src="../../../public/brand/binaafy-mark.png" alt="Binaafy"></div>
+      <div class="stats"><div><b>10</b><span>inlägg</span></div><div><b>214</b><span>följare</span></div><div><b>180</b><span>följer</span></div></div>
+    </div>
+    <div class="bio">
+      <div class="name">Binaafy Bygg</div>
+      <div class="cat">Takläggare</div>
+      Tak, plåt och renovering i Halland 🏠<br>
+      ROT-avdraget direkt på fakturan<br>
+      Kostnadsfri offert ↓<br>
+      <a href="#">binaafy.se/bygg/offert</a><br>
+      <span class="cat">📍 Halmstad, Halland</span>
+    </div>
+    <div class="btns"><div>Följer ▾</div><div>Meddelande</div><div class="p">Ring</div></div>
+
+    <div class="hl">
+      <figure><div class="ring"><img class="cov" src="highlights/hl-takbyten.png" alt=""></div><figcaption>Takbyten</figcaption></figure>
+      <figure><div class="ring"><img class="cov" src="highlights/hl-platttak.png" alt=""></div><figcaption>Plåttak</figcaption></figure>
+      <figure><div class="ring"><img class="cov" src="highlights/hl-fore-efter.png" alt=""></div><figcaption>Före/efter</figcaption></figure>
+      <figure><div class="ring"><img class="cov" src="highlights/hl-rot.png" alt=""></div><figcaption>ROT</figcaption></figure>
+      <figure><div class="ring"><img class="cov" src="highlights/hl-sa-funkar-det.png" alt=""></div><figcaption>Så funkar det</figcaption></figure>
+      <figure><div class="ring"><img class="cov" src="highlights/hl-omdomen.png" alt=""></div><figcaption>Omdömen</figcaption></figure>
+      <figure><div class="ring"><img class="cov" src="highlights/hl-offert.png" alt=""></div><figcaption>Offert</figcaption></figure>
+    </div>
+
+    <div class="gtabs"><div class="on"><svg width="22" height="22" viewBox="0 0 24 24" class="ic"><rect x="3" y="3" width="18" height="18"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg></div><div><svg width="22" height="22" viewBox="0 0 24 24" class="ic"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M10 9l5 3-5 3z"/></svg></div><div><svg width="22" height="22" viewBox="0 0 24 24" class="ic"><circle cx="12" cy="9" r="3.5"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div></div>
+    <div class="grid">
+      <div class="t"><img src="ig-banner/ig-banner-1.png" alt=""><svg class="pin"><use href="#pinI"/></svg><span class="num">B1</span></div>
+      <div class="t"><img src="ig-banner/ig-banner-2.png" alt=""><svg class="pin"><use href="#pinI"/></svg><span class="num">B2</span></div>
+      <div class="t"><img src="ig-banner/ig-banner-3.png" alt=""><svg class="pin"><use href="#pinI"/></svg><span class="num">B3</span></div>
+      <div class="t"><img src="ig-detalj/ig-detalj_flode-4x5.png" alt=""><span class="num">7</span></div>
+      <div class="t"><img src="ig-falsad/ig-falsad_flode-4x5.png" alt=""><span class="num">6</span></div>
+      <div class="t"><img src="ig-process/ig-process_flode-4x5.png" alt=""><span class="num">5</span></div>
+      <div class="t"><img src="ig-rot/ig-rot_flode-4x5.png" alt=""><span class="num">4</span></div>
+      <div class="t"><img src="ig-tecken/ig-tecken_flode-4x5.png" alt=""><span class="num">3</span></div>
+      <div class="t"><img src="ig-takbyte/ig-takbyte_flode-4x5.png" alt=""><span class="num">2</span></div>
+      <div class="t"><img src="ig-intro/ig-intro_flode-4x5.png" alt=""><span class="num">1</span></div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <svg viewBox="0 0 24 24" class="ic"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg>
+    <svg viewBox="0 0 24 24" class="ic"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <svg viewBox="0 0 24 24" class="ic"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg>
+    <svg viewBox="0 0 24 24" class="ic"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M10 9l5 3-5 3z"/></svg>
+    <img src="../../../public/brand/binaafy-mark.png" width="26" height="26" style="border-radius:50%;box-shadow:0 0 0 1.5px #000" alt="">
+  </div>
+</div></div>
+
+<!-- 2. INLÄGG -->
+<div class="col"><h2>2 · Inlägg i flödet</h2>
+<div class="phone">
+  <div class="status"><span>19:41</span><span>●●● ▲ ▮</span></div>
+  <div class="scroll">
+    <div class="topbar"><b style="font-family:'Plus Jakarta Sans';font-size:22px">Instagram</b><div class="r"><svg width="24" height="24" viewBox="0 0 24 24" class="ic"><path d="M12 21s-8-5-8-11a4.5 4.5 0 018-3 4.5 4.5 0 018 3c0 6-8 11-8 11z"/></svg><svg width="24" height="24" viewBox="0 0 24 24" class="ic"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/></svg></div></div>
+    <div class="ph-head"><img src="../../../public/brand/binaafy-mark.png" alt=""><div><b>binaafy.bygg</b><small>Halmstad, Halland</small></div><span class="dots">···</span></div>
+    <div class="carousel"><img class="post-img" src="ig-takbyte/ig-takbyte_flode-4x5.png" alt=""><span class="cnt">1/3</span></div>
+    <div class="cta">Få kostnadsfri offert <span>›</span></div>
+    <div class="acts">
+      <svg width="24" height="24" viewBox="0 0 24 24" class="ic"><path d="M12 21s-8-5-8-11a4.5 4.5 0 018-3 4.5 4.5 0 018 3c0 6-8 11-8 11z"/></svg>
+      <svg width="24" height="24" viewBox="0 0 24 24" class="ic"><path d="M21 12a8.5 8.5 0 01-12.5 7.5L3 21l1.5-5.5A8.5 8.5 0 1121 12z"/></svg>
+      <svg width="24" height="24" viewBox="0 0 24 24" class="ic"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/></svg>
+      <svg class="ic last" width="24" height="24" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-5-6 5z"/></svg>
+    </div>
+    <div class="dotsrow"><i></i><i></i><i></i></div>
+    <div class="cap"><b>48 gillamarkeringar</b></div>
+    <div class="cap"><b>binaafy.bygg</b> Från rötskadad läkt till nytt tak – på tre bilder. <span class="more">… mer</span></div>
+    <div class="meta">Visa alla 6 kommentarer · 2 dagar sedan</div>
+    <div class="ph-head" style="border-top:1px solid #efefef;padding-top:12px"><img src="../../../public/brand/binaafy-mark.png" alt=""><div><b>binaafy.bygg</b><small>Halmstad, Halland</small></div><span class="dots">···</span></div>
+    <img class="post-img" src="ig-tecken/ig-tecken_flode-4x5.png" alt="">
+  </div>
+  <div class="tabbar">
+    <svg viewBox="0 0 24 24" class="ic"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg>
+    <svg viewBox="0 0 24 24" class="ic"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <svg viewBox="0 0 24 24" class="ic"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg>
+    <svg viewBox="0 0 24 24" class="ic"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M10 9l5 3-5 3z"/></svg>
+    <img src="../../../public/brand/binaafy-mark.png" width="26" height="26" style="border-radius:50%" alt="">
+  </div>
+</div></div>
+
+<!-- 3. HIGHLIGHT ÖPPNAD -->
+<div class="col"><h2>3 · Highlight "Takbyten"</h2>
+<div class="phone" style="background:#000">
+  <div class="status" style="color:#fff;background:#000"><span>19:41</span><span>●●● ▲ ▮</span></div>
+  <div class="story">
+    <img src="ig-takbyte/ig-takbyte_story-9x16.png" alt="">
+    <div class="bars"><i class="on"></i><i></i><i></i><i></i></div>
+    <div class="who"><img src="../../../public/brand/binaafy-mark.png" alt="">Takbyten <span style="font-weight:400;opacity:.8">· 2 v</span></div>
+    <div class="sticker poll"><p>Hur gammalt är ditt tak?</p><div><span>Under 20 år</span><span>Över 20 år</span></div></div>
+    <div class="sticker link"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 14a4 4 0 006 0l3-3a4 4 0 00-6-6l-1 1M14 10a4 4 0 00-6 0l-3 3a4 4 0 006 6l1-1"/></svg>BOKA BESÖK</div>
+    <div class="reply">Skicka meddelande</div>
+  </div>
+</div></div>
+
+</div>
+
+<div class="notes">
+  <div class="note"><h3>Rutnätet</h3>
+    <ol>
+      <li><b>Banderollen (B1–B3) är tre separata inlägg</b>, inte en karusell. Posta i ordningen B3 → B2 → B1 så hamnar de rätt från vänster till höger.</li><li><b>Fäst alla tre</b> (nålen) så ligger banderollen kvar överst. Instagram tillåter bara 3 fästa inlägg, så Intro, Så går det till och ROT fästs inte längre. Kolla ordningen efteråt och fäst om ifall den blivit fel.</li>
+      <li>Resten hamnar under i postningsordning, nyast först. Siffrorna = ordningen i captions.md.</li>
+      <li>Varva <b>foto</b> och <b>grafik</b> så rutnätet inte blir en vägg av text.</li>
+    </ol>
+  </div>
+  <div class="note"><h3>Highlights – vad som ligger i varje</h3>
+    <table>
+      <tr><td>Takbyten</td><td>ig-takbyte, ig-intro, ig-detalj-storys + korta klipp från bygget</td></tr>
+      <tr><td>Plåttak</td><td>ig-falsad-storyn + omröstningen "Plåt eller tegel?"</td></tr>
+      <tr><td>Före/efter</td><td>En story per färdigt jobb – fyll på varje gång</td></tr>
+      <tr><td>ROT</td><td>ig-rot + quiz-stickern</td></tr>
+      <tr><td>Så funkar det</td><td>ig-process + ig-tecken</td></tr>
+      <tr><td>Omdömen</td><td>Skärmdumpar av kundmeddelanden/recensioner (tom tills ni har några – lägg den sist)</td></tr>
+      <tr><td>Offert</td><td>En story med länksticker till offertsidan + telefonnummer</td></tr>
+    </table>
+  </div>
+  <div class="note"><h3>Omslag och profil</h3>
+    <ul>
+      <li>Alla omslag: mörkblå (#18232c) cirkel med orange linjeikon. Samma stil = proffsigt, och ni slipper foton som ser röriga ut i små cirklar.</li>
+      <li>Profilbild: B-märket, inte hela loggan – den blir oläslig i 86 px.</li>
+      <li>Byt till <b>företagskonto</b> och kategori "Takläggare" så får ni Ring-knappen och statistik.</li>
+      <li>Max 5–6 highlights syns utan att svepa – lägg de viktigaste först.</li>
+    </ul>
+  </div>
+</div>
+</body></html>

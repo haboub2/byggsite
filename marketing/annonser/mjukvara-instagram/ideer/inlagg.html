@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Idéinlägg</title>
+<!-- Visar ett inlägg från inlagg.js: inlagg.html?id=hus-1. Används av rendera.js. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:transparent;overflow:hidden}
+.cv{position:relative;overflow:hidden;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#f5f2ed;-webkit-font-smoothing:antialiased;background:#18232c}
+.cv.clear{background:transparent}
+em{font-style:normal;color:#f7802e}
+s{text-decoration:line-through;text-decoration-color:#f7802e;text-decoration-thickness:.09em;color:#a9b3bd;font-weight:inherit}
+.cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.tex{position:absolute;inset:0;background-size:72px 72px;background-image:linear-gradient(rgba(245,242,237,.045) 2px,transparent 2px),linear-gradient(90deg,rgba(245,242,237,.045) 2px,transparent 2px)}
+.grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(24,35,44,0) 30%,rgba(24,35,44,.75) 58%,#18232c 82%)}
+.grad--full{background:linear-gradient(180deg,rgba(24,35,44,.8),rgba(24,35,44,.55) 45%,rgba(24,35,44,.92))}
+.pad{position:relative;height:100%;display:flex;flex-direction:column;padding:80px 84px 76px}
+.bottom{position:absolute;left:84px;right:84px;bottom:76px}
+.top{display:flex;justify-content:space-between;align-items:center;font-size:24px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:#a9b3bd}
+.top img{height:42px}.top .n{color:#f7802e}
+.h{font-weight:700;line-height:1.02;letter-spacing:-.035em}
+.sub{font-size:34px;line-height:1.42;color:#cfd5da;margin-top:24px}
+.swipe{display:inline-block;margin-top:34px;background:#f7802e;color:#18232c;font-size:32px;font-weight:700;padding:16px 30px;border-radius:999px}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:40px}
+.bottom .foot{margin-top:40px;padding-top:0}
+.foot img{height:48px}
+.btn{background:#f7802e;color:#18232c;font-weight:600;font-size:30px;padding:22px 34px;white-space:nowrap}
+.lbl{position:absolute;z-index:2;left:30px;top:30px;font-size:22px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;background:#f5f2ed;color:#18232c;padding:10px 18px}
+.lbl--o{background:#f7802e}
+.ex{position:absolute;z-index:3;font-size:20px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;background:rgba(245,242,237,.14);color:#cfd5da;padding:8px 14px}
+.hint{margin-top:50px;font-size:34px;font-weight:600;color:#a9b3bd}
+
+/* webbläsare och telefon */
+.browser{position:relative;width:100%;height:100%;border-radius:16px;overflow:hidden;background:#0f171e;border:2px solid rgba(245,242,237,.14)}
+.browser .bar{height:50px;display:flex;align-items:center;gap:10px;padding:0 20px}
+.browser .bar i{width:14px;height:14px;border-radius:50%;background:rgba(245,242,237,.25)}.browser .bar i:first-child{background:#f7802e}
+.browser .bar span{margin-left:14px;height:30px;padding:0 18px;border-radius:15px;background:rgba(245,242,237,.08);color:#a9b3bd;font-size:18px;display:flex;align-items:center;min-width:320px}
+.browser .scr{position:absolute;left:0;right:0;top:50px;bottom:0;overflow:hidden;background:#18232c}
+.browser .scr .cover[style*="height:auto"]{height:auto}
+.phone{position:absolute;width:330px;height:680px;border:13px solid #0b1116;border-radius:52px;overflow:hidden;background:#f5f2ed;box-shadow:0 26px 70px rgba(0,0,0,.5)}
+.phone .scr{position:absolute;inset:0;border-radius:39px;overflow:hidden}
+.phone .notch{position:absolute;left:50%;top:10px;width:96px;height:28px;margin-left:-48px;border-radius:14px;background:#0b1116}
+
+/* 1 hus */
+.split2{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.split2>img{position:relative}.split2>.browser{border-radius:0;border:0}
+.hus-ph{position:absolute;left:0;right:0;top:0;height:470px;overflow:hidden}
+.div{position:absolute;left:0;right:0;top:470px;height:8px;background:#f7802e}
+.hus-web{position:absolute;left:84px;right:84px;top:520px;height:440px}
+.hus-web .lbl{left:0;top:-14px;transform:translateY(-100%)}
+.hus-web .lbl{top:0;left:24px;transform:none;z-index:4;top:64px}
+.hus-txt{position:absolute;left:84px;right:84px;bottom:70px}
+.hus-n{font-size:22px;font-weight:700;letter-spacing:.2em;color:#f7802e;margin-bottom:14px}
+.dom{height:100%;display:flex;align-items:center;gap:30px;padding:0 44px;border:2px solid rgba(245,242,237,.14);border-radius:16px;background:#0f171e}
+.dom .lock{font-size:90px}.dom b{display:block;font-size:46px;letter-spacing:-.02em}.dom span{display:block;margin-top:12px;font-size:26px;color:#a9b3bd}
+.serp{height:100%;padding:40px 44px;border:2px solid rgba(245,242,237,.14);border-radius:16px;background:#f5f2ed;color:#1e2c37;display:flex;flex-direction:column;justify-content:center}
+.serp span{font-size:22px;color:#4b5763}.serp b{display:block;margin-top:10px;font-size:38px;color:#1a4fb4;font-weight:600}.serp p{margin-top:12px;font-size:24px;color:#4b5763;line-height:1.4}
+.serp .chk{margin-top:26px;font-size:24px;font-weight:600}.serp .chk em{color:#1e8e3e}
+.cards{display:flex;flex-direction:column;gap:22px;margin-top:50px}
+.card{position:relative;display:grid;grid-template-columns:1fr auto;align-items:baseline;column-gap:24px;padding:30px 36px;border:2px solid rgba(245,242,237,.14);background:rgba(245,242,237,.03)}
+.card.hot{border:3px solid #f7802e}.card i{position:absolute;right:30px;top:-19px;font-style:normal;background:#f7802e;color:#18232c;font-size:19px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:6px 14px}
+.card span{font-size:28px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#a9b3bd}.card b{font-size:60px;letter-spacing:-.03em;white-space:nowrap}
+.card.hot b{color:#f7802e;font-size:68px}.card b s{font-size:.6em;margin-right:.3em;vertical-align:.12em}
+.card small{grid-column:1/-1;margin-top:10px;font-size:26px;color:#cfd5da}
+.note{margin-top:24px;font-size:24px;color:#a9b3bd}
+
+/* 2 granskning */
+.check{margin-top:56px;display:flex;flex-direction:column;gap:22px}
+.check div{display:flex;align-items:center;gap:26px;font-size:38px;font-weight:600;padding:26px 30px;border:2px solid rgba(245,242,237,.14)}
+.check i{width:46px;height:46px;border:4px solid #f7802e;border-radius:10px;flex:none}
+.ov-top{position:absolute;left:60px;right:60px;top:200px;display:flex;justify-content:space-between;align-items:center;background:rgba(24,35,44,.88);padding:22px 30px;font-size:30px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.ov-top b{background:#f7802e;color:#18232c;padding:8px 16px;letter-spacing:0}
+.ov-bot{position:absolute;left:60px;right:60px;bottom:250px;display:flex;align-items:center;gap:20px;background:rgba(24,35,44,.88);padding:24px 30px}
+.ov-bot div{display:flex;align-items:center;gap:14px;font-size:32px;font-weight:700}
+.ov-bot i{width:40px;height:40px;border:4px solid #f7802e;border-radius:50%}
+.ov-bot img{height:40px;margin-left:auto}
+.ov-bot--prog .pbar{flex:1}
+.ov-step{position:absolute;left:60px;top:330px;font-size:84px;font-weight:700;letter-spacing:-.03em;text-shadow:0 4px 30px rgba(0,0,0,.6)}
+.ov-step em{display:block;font-size:150px;line-height:1}
+
+/* 4 delad skärm */
+.duo{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.duo>div{position:relative;overflow:hidden}
+.duo--v{grid-template-columns:1fr;grid-template-rows:1fr 1fr}
+.mid{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);background:#18232c;padding:40px 70px;border-top:8px solid #f7802e;border-bottom:8px solid #f7802e;text-align:center}
+
+/* 5 portal */
+.portal-wrap{position:relative;flex:1;margin-top:30px}
+.portal-wrap .phone{left:50%;margin-left:-165px;top:10px}
+.portal-wrap .ex{left:0;top:10px}
+.portal{padding:58px 22px 20px;color:#1e2c37}
+.portal .k{display:block;font-size:15px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#5e6a76;margin-top:14px}
+.portal b{display:block;font-size:28px;margin:2px 0 12px}
+.portal .d{display:block;font-size:16px;color:#5e6a76;margin-top:8px}
+.portal .pics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px}.portal .pics img{width:100%;height:76px;object-fit:cover;border-radius:6px}
+.portal .ata{margin-top:16px;border:2px solid #f7802e;border-radius:12px;padding:12px;font-size:16px}
+.portal .ata b{font-size:17px;margin:0}.portal .ata span{color:#5e6a76}
+.portal .ata em{display:block;margin-top:8px;background:#f7802e;color:#18232c;font-weight:700;text-align:center;padding:9px;border-radius:8px}
+.pbar{height:12px;border-radius:6px;background:rgba(127,127,127,.25);overflow:hidden}.pbar i{display:block;height:100%;width:55%;background:#f7802e}
+
+/* 7 skylt */
+.sign{position:absolute;inset:0;background:#f5f2ed;color:#18232c;display:grid;grid-template-columns:1fr 520px;border-bottom:40px solid #f7802e}
+.sign-l{padding:100px 90px;display:flex;flex-direction:column}
+.sign .k{font-size:34px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#5e6a76}
+.sign .t{font-size:128px;font-weight:700;letter-spacing:-.04em;line-height:1;margin-top:30px}.sign .t em{color:#b8560f}
+.sign p{margin-top:40px;font-size:44px;line-height:1.35;color:#4b5763}.sign p b{color:#b8560f}
+.sign .lg{height:78px;margin-top:auto;align-self:flex-start}
+.sign-r{background:#18232c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;color:#f5f2ed}
+.sign-r img{width:380px;height:380px;background:#f5f2ed;padding:26px}
+.sign-r span{font-size:30px;color:#cfd5da}.sign-r b{font-size:56px;letter-spacing:-.02em}
+.decal{position:absolute;inset:0;background:#18232c;display:flex;align-items:center;gap:80px;padding:0 100px;border-bottom:24px solid #f7802e}
+.decal>img{height:120px}.decal .t{flex:1;font-size:110px;font-weight:700;letter-spacing:-.04em}
+.decal .r{display:flex;align-items:center;gap:30px}.decal .r img{width:300px;height:300px;background:#f5f2ed;padding:18px}.decal .r b{font-size:60px}
+
+/* 8 nedräkning */
+.count{margin-top:56px;background:#fff;color:#18232c;border-radius:24px;padding:24px 40px;align-self:flex-start;text-align:center}
+.count small{display:block;font-size:20px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#5e6a76}
+.count b{font-size:96px;letter-spacing:.04em}
+
+/* 9 mätare */
+.gauge{display:flex;align-items:center;gap:50px;margin-top:60px}
+.ring{width:280px;height:280px;border-radius:50%;flex:none;display:grid;place-items:center;background:conic-gradient(#f7802e 0 25%,#d64545 25% 50%,#3fb36b 50% 75%,rgba(245,242,237,.15) 75%)}
+.ring span{width:226px;height:226px;border-radius:50%;background:#18232c;display:grid;place-items:center;font-size:130px;font-weight:700}
+.gtxt{font-size:32px;line-height:1.42;color:#cfd5da}.gtxt b{display:block;color:#f5f2ed;font-size:40px;margin-bottom:10px}
+
+/* 10 highlight */
+svg.hl{position:absolute;left:50%;top:50%;width:540px;height:540px;margin:-270px 0 0 -270px;fill:none;stroke:#f7802e;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+</style>
+</head>
+<body>
+<script src="inlagg.js"></script>
+<script>
+const d = DESIGNS.find((x) => x.id === new URLSearchParams(location.search).get("id")) || DESIGNS[0];
+const [w, h] = d.size;
+document.body.innerHTML = `<div class="cv${d.transparent ? " clear" : ""}" style="width:${w}px;height:${h}px">${d.html()}</div>`;
+</script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+[
+  {
+    "template": "foreefter",
+    "theme": "dark",
+    "photoMid": {
+      "src": "/marketing/annonser/_kalla/bilder/tak-montor-nock.webp",
+      "x": 40,
+      "y": 45,
+      "zoom": 100
+    },
+    "eyebrow": "Så gjorde vi",
+    "cta": "Kostnadsfri offert: binaafy.se →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "photo": {
+      "src": "/marketing/annonser/_kalla/bilder/tak-fore-rotskadad.webp",
+      "x": 50,
+      "y": 50,
+      "zoom": 100
+    },
+    "photo2": {
+      "src": "/marketing/annonser/_kalla/bilder/tak-falsad-plat.webp",
+      "x": 50,
+      "y": 40,
+      "zoom": 100
+    },
+    "beforeLabel": "Före",
+    "afterLabel": "Efter",
+    "items": "Rev det gamla, rötskadade taket\nLade nytt underlag\nFalsade plåten på plats, våd för våd",
+    "id": "fe2-plat-k",
+    "name": "Platttaket karusell",
+    "layout": "karusell",
+    "format": "4:5",
+    "hSize": 88,
+    "headline": "Så såg det ut *under det gamla taket.*",
+    "body": "…ett falsat plåttak, *klart.*",
+    "blind": false
+  },
+  {
+    "template": "foreefter",
+    "theme": "dark",
+    "photoMid": null,
+    "eyebrow": "Så gjorde vi",
+    "cta": "Kostnadsfri offert: binaafy.se →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "photo": {
+      "src": "/marketing/annonser/_kalla/bilder/tak-fore-rotskadad.webp",
+      "x": 50,
+      "y": 50,
+      "zoom": 100
+    },
+    "photo2": {
+      "src": "/marketing/annonser/_kalla/bilder/tak-falsad-plat.webp",
+      "x": 50,
+      "y": 40,
+      "zoom": 100
+    },
+    "beforeLabel": "Före",
+    "afterLabel": "Efter",
+    "items": "Rev det gamla, rötskadade taket\nLade nytt underlag\nFalsade plåten på plats, våd för våd",
+    "id": "fe2-plat-s",
+    "name": "Platttaket inlagg",
+    "layout": "stapel",
+    "format": "4:5",
+    "hSize": 96,
+    "headline": "Från rötskadat till *nytt plåttak.*",
+    "blind": false
+  },
+  {
+    "template": "foreefter",
+    "theme": "dark",
+    "photoMid": null,
+    "eyebrow": "Så gjorde vi",
+    "cta": "Kostnadsfri offert: binaafy.se →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "photo": {
+      "src": "/marketing/annonser/_kalla/bilder/tak-fore-rotskadad.webp",
+      "x": 50,
+      "y": 50,
+      "zoom": 100
+    },
+    "photo2": {
+      "src": "/marketing/annonser/_kalla/bilder/tak-falsad-plat.webp",
+      "x": 50,
+      "y": 40,
+      "zoom": 100
+    },
+    "beforeLabel": "Före",
+    "afterLabel": "Efter",
+    "items": "Rev det gamla, rötskadade taket\nLade nytt underlag\nFalsade plåten på plats, våd för våd",
+    "id": "fe2-plat-st",
+    "name": "Platttaket story",
+    "layout": "stapel",
+    "format": "9:16",
+    "hSize": 104,
+    "headline": "Från rötskadat till *nytt plåttak.*",
+    "blind": false
+  },
+  {
+    "template": "foreefter",
+    "theme": "dark",
+    "photoMid": null,
+    "eyebrow": "Kolla ditt tak efter",
+    "cta": "Kostnadsfri offert: binaafy.se →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "photo": {
+      "src": "/marketing/annonser/_kalla/bilder/tak-fore-rotskadad.webp",
+      "x": 50,
+      "y": 50,
+      "zoom": 100
+    },
+    "photo2": {
+      "src": "/marketing/annonser/_kalla/bilder/tak-falsad-plat.webp",
+      "x": 50,
+      "y": 40,
+      "zoom": 100
+    },
+    "beforeLabel": "Före",
+    "afterLabel": "Efter",
+    "items": "Fuktfläckar eller mögellukt på vinden\nMossa, sprickor eller lösa pannor\nTaket är över 30 år gammalt",
+    "id": "fe2-rota-k",
+    "name": "Rotskadan karusell",
+    "layout": "karusell",
+    "format": "4:5",
+    "hSize": 88,
+    "headline": "Så här kan det se ut *under pannorna.*",
+    "body": "…och samma tak i dag: *falsad plåt.*",
+    "blind": false
+  },
+  {
+    "template": "foreefter",
+    "theme": "dark",
+    "photoMid": null,
+    "eyebrow": "Kolla ditt tak efter",
+    "cta": "Kostnadsfri offert: binaafy.se →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "photo": {
+      "src": "/marketing/annonser/_kalla/bilder/tak-fore-rotskadad.webp",
+      "x": 50,
+      "y": 50,
+      "zoom": 100
+    },
+    "photo2": {
+      "src": "/marketing/annonser/_kalla/bilder/tak-falsad-plat.webp",
+      "x": 50,
+      "y": 40,
+      "zoom": 100
+    },
+    "beforeLabel": "Före",
+    "afterLabel": "Efter",
+    "items": "Fuktfläckar eller mögellukt på vinden\nMossa, sprickor eller lösa pannor\nTaket är över 30 år gammalt",
+    "id": "fe2-rota-s",
+    "name": "Rotskadan inlagg",
+    "layout": "stapel",
+    "format": "4:5",
+    "hSize": 92,
+    "headline": "Det du inte ser *är det som läcker.*",
+    "blind": false,
+    "body": "…och samma tak i dag: *falsad plåt.*"
+  },
+  {
+    "template": "foreefter",
+    "theme": "dark",
+    "photoMid": null,
+    "eyebrow": "Så gjorde vi",
+    "cta": "Kostnadsfri offert: binaafy.se →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "layout": "stapel",
+    "format": "9:16",
+    "photo": {
+      "src": "/marketing/annonser/_kalla/bilder/ute-efter-gang.webp",
+      "x": 50,
+      "y": 55,
+      "zoom": 100
+    },
+    "photo2": {
+      "src": "/marketing/annonser/_kalla/bilder/ute-fore-gang.webp",
+      "x": 50,
+      "y": 60,
+      "zoom": 100
+    },
+    "beforeLabel": "A",
+    "afterLabel": "B",
+    "hSize": 120,
+    "id": "fe2-gissa-gang",
+    "name": "Gissa gangen story",
+    "headline": "Vilken är *efter?*",
+    "blind": true
+  },
+  {
+    "template": "foreefter",
+    "theme": "dark",
+    "photoMid": null,
+    "eyebrow": "Så gjorde vi",
+    "cta": "Kostnadsfri offert: binaafy.se →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "layout": "stapel",
+    "format": "9:16",
+    "photo": {
+      "src": "/marketing/annonser/_kalla/bilder/ute-fore-sand.webp",
+      "x": 50,
+      "y": 55,
+      "zoom": 100
+    },
+    "photo2": {
+      "src": "/marketing/annonser/_kalla/bilder/ute-dack-skiffer.webp",
+      "x": 45,
+      "y": 60,
+      "zoom": 100
+    },
+    "beforeLabel": "A",
+    "afterLabel": "B",
+    "hSize": 120,
+    "id": "fe2-gissa-ute",
+    "name": "Gissa uteplatsen story",
+    "headline": "Vilken är *efter?*",
+    "blind": true
+  }
+]

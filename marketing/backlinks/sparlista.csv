@@ -1,0 +1,25 @@
+prioritet;sida;del;var_man_borjar;lanka_till;kostnad;status;profil_url;datum;anteckning
+1;Google Företagsprofil;bygg;https://business.google.com/;https://binaafy.se/;gratis;finns;https://maps.google.com/?cid=11268357212090190672;;Kolla tjänster, bilder, webbadress
+1;Bing Places;bygg;https://www.bingplaces.com/;https://binaafy.se/;gratis;;;;Importera från Google
+1;Apple Business Connect;bygg;https://businessconnect.apple.com/;https://binaafy.se/;gratis;;;;
+1;Hitta.se;bygg;https://www.hitta.se/ (sök Binaafy, gör anspråk);https://binaafy.se/;gratis;;;;
+1;Eniro;bygg;https://www.eniro.se/ (sök Binaafy, gör anspråk);https://binaafy.se/;gratis;;;;
+1;Allabolag;neutral;https://www.allabolag.se/;https://binaafy.se/;gratis;finns;https://www.allabolag.se/foretag/binaafy-ab/g%C3%B6teborg/byggm%C3%A4stare/2KJQF27I5YDDT;;Lägg till webbadress om fältet finns
+1;LinkedIn företagssida;neutral;https://www.linkedin.com/company/setup/new/;https://binaafy.se/;gratis;;;;
+1;Instagram;bygg;https://www.instagram.com/binaafy_ab/;https://binaafy.se/;gratis;finns;https://www.instagram.com/binaafy_ab/;;Webbadress i bio
+1;Facebook;bygg;https://www.facebook.com/profile.php?id=61596061529846;https://binaafy.se/;gratis;finns;https://www.facebook.com/profile.php?id=61596061529846;;Webbadress under Om
+2;Reco.se;bygg;https://www.reco.se/;https://binaafy.se/;gratis;;;;Be kunder lämna omdöme
+2;Offerta;bygg;https://www.offerta.se/;https://binaafy.se/;gratis profil;;;;
+2;Servicefinder;bygg;https://www.servicefinder.se/;https://binaafy.se/;gratis profil;;;;
+2;Mittanbud;bygg;https://mittanbud.se/;https://binaafy.se/;gratis profil;;;;
+2;Byggahus.se forum;bygg;https://www.byggahus.se/forum/;guider;gratis;;;;Svara på frågor, länka guider som fördjupning
+2;Clutch;mjukvara;https://clutch.co/;https://binaafy.se/mjukvara;gratis profil;;;;
+2;GoodFirms;mjukvara;https://www.goodfirms.co/;https://binaafy.se/mjukvara;gratis profil;;;;
+3;Leverantör/märke 1;bygg;(montörlista);https://binaafy.se/;gratis;;;;Mall 1
+3;Leverantör/märke 2;bygg;(montörlista);https://binaafy.se/;gratis;;;;Mall 1
+3;Underentreprenör el;bygg;(partnersida);https://binaafy.se/;gratis;;;;Mall 2
+3;Underentreprenör VVS;bygg;(partnersida);https://binaafy.se/;gratis;;;;Mall 2
+3;BRF-kund;bygg;(föreningens sida);https://binaafy.se/;gratis;;;;Mall 3
+3;Säker Vatten / BKR;bygg;https://www.sakervatten.se/;https://binaafy.se/;certifiering;;;;Bara om ni är auktoriserade
+4;Lokal förening (sponsring);bygg;(sponsorsida);https://binaafy.se/;sponsring;;;;Mall 4
+4;Lokalpress;bygg;(redaktionens tipsadress);guide;gratis;;;;Mall 5

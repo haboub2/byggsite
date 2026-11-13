@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Inlägg</title>
+<!-- Visar en sida av ett inlägg i full storlek. Används av rendera.js. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="poster.css">
+<style>html,body{margin:0;overflow:hidden;background:#18232c}</style>
+</head>
+<body>
+<script src="mallar.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+fetch("/__post/" + q.get("i")).then((r) => r.json()).then((p) => { document.body.innerHTML = renderPost(p)[Number(q.get("p"))].html; });
+</script>
+</body>
+</html>

@@ -39,7 +39,9 @@ export const servicesContent: Record<string, ServiceContent> = {
       },
     ],
     faq: [
+      { q: "Vad kostar det att renovera ett hus eller en lägenhet?", a: "Det beror på ytan, hur mycket som ska rivas och vilka material du väljer. Vi ger alltid ett fast pris efter ett kostnadsfritt hembesök, uppdelat på arbete och material, med ROT-avdraget redan draget." },
       { q: "Hur lång tid tar en totalrenovering?", a: "En lägenhet på 60–80 kvm tar oftast 6–10 veckor, ett helt hus 3–6 månader beroende på omfattning. Du får en exakt tidplan i offerten innan vi börjar." },
+      { q: "Får jag renovera min bostadsrätt hur jag vill?", a: "Ytskikt som golv, tapeter och målning bestämmer du själv över. Ändringar i bärande väggar, vatten och avlopp, el eller ventilation kräver styrelsens tillstånd enligt bostadsrättslagen. Vi tar fram underlaget som föreningen behöver. ROT-avdraget gäller även i bostadsrätt." },
       { q: "Kan jag bo kvar under renoveringen?", a: "Vid mindre ingrepp går det ofta bra, men vid en fullständig totalrenovering rekommenderar vi tillfälligt boende på annat håll — vi hjälper dig planera vilka delar av hemmet som påverkas när." },
       { q: "Behöver jag bygglov?", a: "Det beror på om planlösning eller bärande konstruktion ändras. Vi bedömer det redan vid platsbesöket och tar fram nödvändigt underlag om det behövs." },
       { q: "Ingår ritningar och design?", a: "Ja, vi hjälper till med planlösning och materialval som en del av offertprocessen, så att du vet exakt hur slutresultatet blir innan arbetet startar." },
@@ -71,10 +73,12 @@ export const servicesContent: Record<string, ServiceContent> = {
       },
     ],
     faq: [
-      { q: "Hur lång tid tar en badrumsrenovering?", a: "Ett normalstort badrum (5–8 kvm) tar vanligtvis 3–5 veckor från rivning till klart, inklusive torktider för tätskikt." },
+      { q: "Hur lång tid tar det att renovera ett badrum?", a: "Ett normalstort badrum (5–8 kvm) tar vanligtvis 3–5 veckor från rivning till klart, inklusive torktider för tätskikt." },
       { q: "Följer ni Säker Vatten och GVK?", a: "Ja, samtliga VVS-installationer görs enligt Säker Vatten och alla tätskikt enligt GVK:s branschregler, med den dokumentation som krävs." },
+      { q: "Hur kan man renovera badrum billigare?", a: "Det som sparar mest är att behålla placeringen av golvbrunn, toalett och dusch, så att avlopp och vatten inte behöver flyttas. Kakel i standardformat är billigare att köpa och att sätta än stora plattor, och ROT-avdraget sänker arbetskostnaden med 30 procent. I offerten ser du vad varje del kostar, så att du kan välja var pengarna gör mest nytta." },
+      { q: "Kakel eller våtrumsmatta — vad ska jag välja?", a: "Båda är godkända tätskikt när de läggs enligt branschreglerna. Våtrumsmatta är billigare och går snabbare, medan kakel och klinker tål mer och håller längre. Vi går igenom för- och nackdelar för just ditt badrum vid hembesöket." },
       { q: "Kan jag använda ROT-avdrag på badrummet?", a: "Ja, arbetskostnaden för badrumsrenovering är ROT-berättigad. Vi hjälper dig med uppgifterna och drar av direkt på fakturan." },
-      { q: "Vad kostar en badrumsrenovering?", a: "Priset beror på badrummets storlek, planlösning och vald inredning. Du får en specificerad offert med fast pris efter det kostnadsfria besöket — inga dolda kostnader." },
+      { q: "Hur mycket kostar det att renovera ett badrum?", a: "Priset beror på badrummets storlek, planlösning och vald inredning. Du får en specificerad offert med fast pris efter det kostnadsfria besöket — inga dolda kostnader." },
     ],
   },
 
@@ -103,7 +107,8 @@ export const servicesContent: Record<string, ServiceContent> = {
       },
     ],
     faq: [
-      { q: "Kan ni montera kök jag redan köpt?", a: "Ja, vi monterar kök från de flesta leverantörer, oavsett om du köpt det själv eller vill ha hjälp med hela processen inklusive inköp." },
+      { q: "Kan ni montera kök jag redan köpt?", a: "Ja, vi monterar kök från de flesta leverantörer, till exempel IKEA-kök, oavsett om du köpt det själv eller vill ha hjälp med hela processen inklusive inköp." },
+      { q: "Kan man renovera köket billigare?", a: "Ja, ofta genom att behålla stommarna och byta luckor, bänkskiva, beslag och vitvaror. Är stommarna i gott skick och planlösningen fungerar blir det betydligt billigare än ett helt nytt kök. Vi bedömer det vid hembesöket." },
       { q: "Hur länge är köket ur funktion?", a: "En normal köksrenovering tar 2–4 veckor. Vi planerar arbetet så att du har tillgång till kök och vatten så stor del av tiden som möjligt." },
       { q: "Ingår flytt av vatten och avlopp?", a: "Ja, om planlösningen kräver att diskbänk eller vitvaror flyttas drar vi om VVS enligt Säker Vatten som en del av offerten." },
       { q: "Vad kostar en köksrenovering?", a: "Priset styrs av köksstorlek, materialval och om planlösningen ändras. Du får en specificerad offert med fast pris efter platsbesöket." },
@@ -136,6 +141,7 @@ export const servicesContent: Record<string, ServiceContent> = {
     ],
     faq: [
       { q: "Behöver jag bygglov för en tillbyggnad?", a: "I de flesta fall ja, men mindre tillbyggnader kan omfattas av attefallsreglerna och kräva enbart en anmälan. Vi hjälper till att reda ut vad som gäller för just ditt hus." },
+      { q: "Behöver jag bygglov för att inreda vinden?", a: "Oftast inte, så länge husets utsida inte ändras och det inte blir en ny bostad. Takkupor, nya fönster i fasaden eller ändringar i bärande konstruktion kan däremot kräva bygglov eller anmälan. Vi kontrollerar vad som gäller i din kommun innan arbetet börjar." },
       { q: "Hur lång tid tar en tillbyggnad?", a: "Från bygglov till inflyttningsklart tar en normalstor tillbyggnad (20–30 kvm) vanligtvis 3–5 månader, inklusive handläggningstid hos kommunen." },
       { q: "Kan ni bygga på en befintlig grund eller altan?", a: "Det beror på grundens skick och dimensionering. Vi besiktigar alltid den befintliga konstruktionen innan vi bedömer om den kan återanvändas." },
       { q: "Ingår el och VVS i tillbyggnaden?", a: "Ja, vi kopplar in tillbyggnaden mot husets befintliga el- och VVS-system som en del av projektet, utfört av behöriga elinstallatörer och auktoriserade VVS-montörer som vi samordnar." },
@@ -168,6 +174,7 @@ export const servicesContent: Record<string, ServiceContent> = {
     ],
     faq: [
       { q: "Hur vet jag om taket behöver läggas om eller bara repareras?", a: "Vi gör en kostnadsfri takbesiktning och bedömer skicket på taktäcke, underlagstak och råspont innan vi rekommenderar reparation eller omläggning." },
+      { q: "Vad kostar det att byta tak?", a: "Priset per kvadratmeter styrs av material, takets lutning och hur mycket av underlaget som behöver bytas. Riktpriset står längre ned på sidan, och efter hembesöket får du ett fast pris med ROT-avdraget redan draget." },
       { q: "Hur lång tid tar en takomläggning?", a: "Ett normalstort villatak tar vanligtvis 1–2 veckor beroende på takyta, taktäckningsmaterial och väder." },
       { q: "Arbetar ni med akuta läckage?", a: "Ja, akuta läckage prioriterar vi och kan oftast göra en tillfällig tätning inom kort, följt av en permanent lösning." },
       { q: "Vilka taktäckningsmaterial jobbar ni med?", a: "Vi lägger tegel- och betongpannor, plåttak samt papptak, och hjälper dig välja material utifrån hustyp, budget och underhållsbehov." },
@@ -201,6 +208,7 @@ export const servicesContent: Record<string, ServiceContent> = {
     faq: [
       { q: "Vilket golv håller bäst i hallen?", a: "Klinker eller ett tåligt vinylgolv rekommenderas ofta för hallar med mycket slitage och fukt utifrån, men vi utgår alltid från dina önskemål och budget." },
       { q: "Kan ni lägga golv ovanpå befintligt golv?", a: "Ibland, om undergolvet är jämnt och i gott skick. Vi bedömer det vid platsbesöket — annars rivs det gamla golvet ut innan nytt läggs." },
+      { q: "Vad kostar det att lägga golv?", a: "Det beror på golvtyp, yta och hur mycket avjämning undergolvet behöver. Riktpriset står längre ned på sidan, och efter hembesöket får du ett fast pris med ROT-avdraget redan draget." },
       { q: "Hur lång tid tar en golvläggning?", a: "Ett normalstort rum tar 1–3 dagar beroende på material och om avjämning krävs, medan hela bostäder tar en till två veckor." },
       { q: "Installerar ni golvvärme?", a: "Ja, vi installerar vattenburen och elektrisk golvvärme både i våtutrymmen och i övriga rum vid renovering." },
     ],
@@ -234,6 +242,7 @@ export const servicesContent: Record<string, ServiceContent> = {
       { q: "Hur ofta behöver en fasad målas om?", a: "Beroende på material och väderexponering håller en fasadmålning normalt 8–15 år. Vi bedömer skicket vid besiktning och rekommenderar rätt tidpunkt." },
       { q: "Målar ni både invändigt och utvändigt?", a: "Ja, vi utför både inomhusmålning och utomhus fasadmålning samt putsarbeten." },
       { q: "Behöver jag flytta möbler innan ni målar?", a: "Vi hjälper gärna till att skydda golv och möbler, men uppskattar om du kan flytta undan det mest ömtåliga i förväg." },
+      { q: "Vad kostar det att anlita en målare?", a: "Priset styrs av ytan, underlagets skick och hur många strykningar som krävs. Riktpriset står längre ned på sidan, och efter hembesöket får du ett fast pris med ROT-avdraget redan draget." },
       { q: "Hur lång tid tar en ommålning av ett rum?", a: "Ett normalstort rum tar 1–2 dagar inklusive förberedelse, beroende på underlagets skick och antal strykningar." },
     ],
   },
@@ -416,32 +425,32 @@ export const serviceExtras: Record<string, ServiceExtras> = {
  *  and a concrete reason to click. Titles stay under ~50 chars (" | Binaafy" is appended), descriptions under ~155. */
 export const serviceSeo: Record<string, { title: string; description: string }> = {
   totalrenovering: {
-    title: "Totalrenovering i Göteborg — fast pris, ROT",
-    description: "Totalrenovering av hus och lägenhet i Göteborg och Västsverige. Ett team från rivning till slutstäd, fast pris och {garanti}.",
+    title: "Totalrenovering i Göteborg — renovera hus och lägenhet",
+    description: "Totalrenovering av hus, villa och lägenhet i Göteborg och Västsverige. Ett team från rivning till slutstäd, fast pris, ROT-avdrag och {garanti}.",
   },
   badrumsrenovering: {
-    title: "Badrumsrenovering i Göteborg — fast pris",
-    description: "Badrum i Göteborg med tätskikt enligt branschregler, kakel och golvvärme. Fast pris, ROT dras direkt på fakturan och {garanti}.",
+    title: "Badrumsrenovering i Göteborg — renovera badrum, fast pris",
+    description: "Vi renoverar badrum i Göteborg: tätskikt enligt branschregler, plattsättning och golvvärme. Fast pris, ROT dras direkt på fakturan och {garanti}.",
   },
   koksrenovering: {
-    title: "Köksrenovering i Göteborg — montage till el",
-    description: "Köksrenovering i Göteborg: montage av alla större köksmärken, el och VVS. Fast pris, ROT på fakturan, kostnadsfritt hembesök.",
+    title: "Köksrenovering i Göteborg — renovera kök, fast pris",
+    description: "Köksrenovering i Göteborg: vi bygger om och monterar kök från alla större märken, med el och VVS. Fast pris, ROT på fakturan, gratis hembesök.",
   },
   tillbyggnad: {
     title: "Tillbyggnad i Göteborg — nyckelfärdigt",
-    description: "Tillbyggnad eller inredd vind i Göteborg. Vi tar fram bygglovsunderlaget och bygger nyckelfärdigt, från grund till tak. Fast pris per etapp.",
+    description: "Bygga ut huset? Tillbyggnad eller vindsinredning i Göteborg. Vi tar fram bygglovsunderlaget och bygger nyckelfärdigt, från grund till tak. Fast pris per etapp.",
   },
   tak: {
-    title: "Takbyte i Göteborg — gratis takbesiktning",
-    description: "Takbyte och takomläggning i Göteborg: tegel, betong, plåt eller papp. Kostnadsfri takbesiktning, akuta läckage prioriteras. ROT på arbetet.",
+    title: "Byta tak i Göteborg — takbyte med gratis besiktning",
+    description: "Byta tak i Göteborg? Takläggare för takbyte och omläggning: tegel, betong, plåt eller papp. Gratis takbesiktning, akuta läckage prioriteras. ROT på arbetet.",
   },
   golv: {
-    title: "Golvläggning i Göteborg — fast pris, ROT",
-    description: "Golvläggning i Göteborg: trä, laminat, klinker och vinyl, med avjämning, fuktspärr och golvvärme. Fast pris och ROT direkt på fakturan.",
+    title: "Golvläggare i Göteborg — golvläggning, fast pris och ROT",
+    description: "Golvläggare i Göteborg: parkett, trägolv, laminat, klinker och vinyl, med avjämning, fuktspärr och golvvärme. Fast pris och ROT direkt på fakturan.",
   },
   maleri: {
     title: "Målare i Göteborg — inne, fasad och puts",
-    description: "Målare i Göteborg för rum, fasad och puts. Ordentligt underarbete och förstklassiga färgsystem. Kostnadsfritt hembesök och ROT på arbetet.",
+    description: "Målerifirma i Göteborg för målning inomhus, fasadmålning och puts. Ordentligt underarbete och förstklassiga färgsystem. Gratis hembesök och ROT.",
   },
   projektledning: {
     title: "Byggprojektledning i Göteborg",

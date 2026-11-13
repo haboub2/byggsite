@@ -7,7 +7,9 @@ import { softwareAreas } from "@/lib/software-content";
 import { HONEYPOT } from "@/lib/schema";
 import { track } from "@/lib/track";
 
-type Variant = "offert" | "kontakt" | "brief";
+/** "snabb" is the short Bygg quote form on the home page: it posts to the
+ *  same endpoint as "offert", without the project-type, budget and start fields. */
+type Variant = "offert" | "snabb" | "kontakt" | "brief";
 
 const CONFIG: Record<
   Variant,
@@ -18,6 +20,12 @@ const CONFIG: Record<
     submit: "Skicka offertförfrågan",
     success:
       "Tack! Vi har tagit emot din förfrågan och återkommer med en offert inom 24 timmar.",
+  },
+  snabb: {
+    endpoint: "/api/offert",
+    submit: "Skicka förfrågan",
+    success:
+      "Tack! Vi har tagit emot din förfrågan och ringer upp inom 24 timmar.",
   },
   kontakt: {
     endpoint: "/api/contact",
@@ -57,6 +65,11 @@ export default function LeadForm({
 
     if (!data.name?.trim() || !emailRe.test(data.email ?? "") || !data.message?.trim()) {
       setFeedback({ msg: "Fyll i namn, en giltig e-post och ett meddelande.", kind: "error" });
+      return;
+    }
+    // The short form promises a call back, so it needs a number to call.
+    if (variant === "snabb" && !data.phone?.trim()) {
+      setFeedback({ msg: "Fyll i ett telefonnummer så att vi kan ringa upp.", kind: "error" });
       return;
     }
     if (data.consent !== "on") {
@@ -111,6 +124,8 @@ export default function LeadForm({
         <label htmlFor="lf-website">Lämna tomt</label>
         <input id="lf-website" name={HONEYPOT} type="text" tabIndex={-1} autoComplete="off" />
       </div>
+      {/* The offert API needs a project type; the short form doesn't ask for one. */}
+      {variant === "snabb" && <input type="hidden" name="service" value="Snabbförfrågan (startsidan)" />}
       {variant === "brief" && (
         <div className="form-row">
           <div className="field">
@@ -206,9 +221,15 @@ export default function LeadForm({
 
       <div className="field">
         <label htmlFor="lf-message">
-          {variant === "kontakt" ? "Meddelande *" : "Projektbeskrivning *"}
+          {variant === "kontakt" ? "Meddelande *" : variant === "snabb" ? "Vad vill du ha gjort? *" : "Projektbeskrivning *"}
         </label>
-        <textarea id="lf-message" name="message" rows={4} required />
+        <textarea
+          id="lf-message"
+          name="message"
+          rows={variant === "snabb" ? 3 : 4}
+          placeholder={variant === "snabb" ? "Badrum i Mölndal, ca 6 m²" : undefined}
+          required
+        />
       </div>
 
       <label className="checkbox">

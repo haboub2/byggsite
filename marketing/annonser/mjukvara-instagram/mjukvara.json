@@ -1,0 +1,247 @@
+[
+  {
+    "template": "skarm",
+    "theme": "dark",
+    "format": "4:5",
+    "device": "bada",
+    "photo": {
+      "src": "/marketing/postverktyg/bilder/sajt-mjukvara-dator.png",
+      "x": 50,
+      "y": 0,
+      "zoom": 100
+    },
+    "photo2": {
+      "src": "/marketing/postverktyg/bilder/sajt-mjukvara-mobil.png",
+      "x": 50,
+      "y": 0,
+      "zoom": 100
+    },
+    "url": "binaafy.se/mjukvara",
+    "eyebrow": "Binaafy Software",
+    "hSize": 96,
+    "body": "Hemsidor, automation och system för företag. Samma team, samma noggrannhet.",
+    "logo": true,
+    "cta": "binaafy.se/mjukvara →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "mj-intro",
+    "name": "Mjukvara intro",
+    "headline": "Vi bygger också *i kod.*"
+  },
+  {
+    "template": "pris",
+    "theme": "light",
+    "format": "4:5",
+    "id": "mj-pris",
+    "name": "Mjukvara priser",
+    "eyebrow": "Hemsida till fast pris",
+    "headline": "Vad kostar en hemsida? *Här är svaret.*",
+    "hSize": 76,
+    "cards": "Start | 9 900 kr | Upp till 5 sidor · klar på ca 2 veckor\n!Företag | 17 900 kr | En sida per tjänst · klar på 2–3 veckor\nTillväxt | från 29 900 kr | 15+ sidor, unik design · klar på 3–5 veckor",
+    "note": "Exkl. moms · fast pris · koden är er · fakturering ~490 kr/mån~ *gratis första året*",
+    "logo": true,
+    "cta": "Beställ: binaafy.se →",
+    "pinned": false,
+    "captions": [
+      ""
+    ]
+  },
+  {
+    "template": "pris",
+    "logo": true,
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "eyebrow": "Erbjudande",
+    "headline": "Köp en hemsida. *Faktureringen bjuder vi på.*",
+    "cards": "Hemsida | från 9 900 kr | Fast pris · klar på ca 2 veckor · koden är er\n![Ingår gratis]Fakturering | ~490 kr/mån~ 0 kr | Första året: offert, faktura, ROT och påminnelser",
+    "note": "Priser exkl. moms · efter första året 490 kr/mån, ingen bindningstid",
+    "cta": "Beställ: binaafy.se →",
+    "id": "mj-erbjudande",
+    "name": "Mjukvara erbjudande",
+    "theme": "dark",
+    "format": "4:5",
+    "hSize": 104
+  },
+  {
+    "template": "pris",
+    "logo": true,
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "eyebrow": "Erbjudande",
+    "headline": "Köp en hemsida. *Faktureringen bjuder vi på.*",
+    "cards": "Hemsida | från 9 900 kr | Fast pris · klar på ca 2 veckor · koden är er\n![Ingår gratis]Fakturering | ~490 kr/mån~ 0 kr | Första året: offert, faktura, ROT och påminnelser",
+    "note": "Priser exkl. moms · efter första året 490 kr/mån, ingen bindningstid",
+    "cta": "Länk i bio →",
+    "id": "mj-erbjudande-story",
+    "name": "Mjukvara erbjudande story",
+    "theme": "dark",
+    "format": "9:16",
+    "hSize": 124
+  },
+  {
+    "template": "lista",
+    "theme": "light",
+    "format": "4:5",
+    "hSize": 76,
+    "logo": true,
+    "cta": "binaafy.se/mjukvara →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "mj-maste",
+    "name": "Mjukvara fem saker",
+    "eyebrow": "Spara till senare",
+    "headline": "Fem saker din hemsida *måste klara.*",
+    "items": "Ladda snabbt i mobilen\nSynas när kunderna googlar\nHa en tydlig knapp: ring eller begär offert\nGå att ändra utan att kunna kod\nVara er: kod, domän och innehåll"
+  },
+  {
+    "template": "skarm",
+    "theme": "dark",
+    "format": "4:5",
+    "device": "mobil",
+    "photo": null,
+    "photo2": {
+      "src": "/marketing/postverktyg/bilder/sajt-kop-hemsida-mobil.png",
+      "x": 50,
+      "y": 0,
+      "zoom": 100
+    },
+    "url": "binaafy.se",
+    "eyebrow": "",
+    "hSize": 80,
+    "body": "",
+    "logo": true,
+    "cta": "",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "mj-googlar",
+    "name": "Mjukvara googlar",
+    "headline": "Kunderna googlar er *innan de ringer.*"
+  },
+  {
+    "template": "lista",
+    "theme": "dark",
+    "format": "4:5",
+    "hSize": 76,
+    "logo": true,
+    "cta": "Beställ: binaafy.se →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "mj-process",
+    "name": "Mjukvara sa gar det till",
+    "eyebrow": "Så går det till",
+    "headline": "Från beställning *till lansering.*",
+    "items": "Välj paket: två minuter, ingen betalning nu\nStartmöte: 30 minuter om era tjänster och kunder\nDesign: ni godkänner den innan vi bygger\nLansering: vi publicerar och anmäler sidan till Google"
+  },
+  {
+    "template": "skarm",
+    "theme": "dark",
+    "format": "4:5",
+    "device": "dator",
+    "photo": {
+      "src": "/marketing/postverktyg/bilder/sajt-fakturering-dator.png",
+      "x": 50,
+      "y": 0,
+      "zoom": 100
+    },
+    "photo2": null,
+    "url": "binaafy.se/fakturering",
+    "eyebrow": "Binaafy Fakturering",
+    "hSize": 80,
+    "body": "ROT, betalplaner och bankmatchning i samma verktyg. ~490 kr/mån~ *Gratis första året* när ni köper en hemsida.",
+    "logo": true,
+    "cta": "binaafy.se/fakturering →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "mj-faktura",
+    "name": "Mjukvara fakturering",
+    "headline": "Fakturerar du fortfarande *på kvällarna?*"
+  },
+  {
+    "template": "skarm",
+    "theme": "light",
+    "format": "4:5",
+    "device": "bada",
+    "photo": {
+      "src": "/marketing/postverktyg/bilder/sajt-start-dator.png",
+      "x": 50,
+      "y": 0,
+      "zoom": 100
+    },
+    "photo2": {
+      "src": "/marketing/postverktyg/bilder/sajt-start-mobil.png",
+      "x": 50,
+      "y": 0,
+      "zoom": 100
+    },
+    "url": "binaafy.se",
+    "eyebrow": "Bevis",
+    "hSize": 80,
+    "body": "binaafy.se är byggd och sköts av oss. Er hemsida bygger vi på samma sätt.",
+    "logo": true,
+    "cta": "",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "mj-sajten",
+    "name": "Mjukvara egen sajt",
+    "headline": "Sajten du hittade oss på? *Den byggde vi.*"
+  },
+  {
+    "template": "lista",
+    "theme": "light",
+    "format": "4:5",
+    "hSize": 76,
+    "logo": true,
+    "cta": "binaafy.se/mjukvara →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "mj-ager",
+    "name": "Mjukvara ni ager allt",
+    "eyebrow": "Ingen inlåsning",
+    "headline": "Ni betalar en gång. *Ni äger allt.*",
+    "items": "Koden – ta den vidare när ni vill\nDomänen – registrerad i ert namn\nTexter och bilder – ändra själva\nInga licensavgifter varje månad"
+  },
+  {
+    "template": "skarm",
+    "theme": "dark",
+    "format": "9:16",
+    "device": "mobil",
+    "photo": null,
+    "photo2": {
+      "src": "/marketing/postverktyg/bilder/sajt-kop-hemsida-mobil.png",
+      "x": 50,
+      "y": 0,
+      "zoom": 100
+    },
+    "url": "binaafy.se",
+    "eyebrow": "Binaafy Software",
+    "hSize": 96,
+    "body": "Från 9 900 kr. Fakturering ~490 kr/mån~ *gratis första året.*",
+    "logo": true,
+    "cta": "Länk i bio →",
+    "pinned": false,
+    "captions": [
+      ""
+    ],
+    "id": "mj-story",
+    "name": "Mjukvara story",
+    "headline": "Ny hemsida *på två veckor.*"
+  }
+]

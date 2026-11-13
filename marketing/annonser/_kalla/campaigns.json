@@ -1,0 +1,748 @@
+{
+ "CAMPAIGNS": [
+  {
+   "id": "bygg-tak",
+   "side": "bygg",
+   "theme": "dark",
+   "eyebrow": "Binaafy Bygg · Tak och plåt",
+   "hl": "Ett tak ska hålla <em>i decennier.</em>",
+   "body": "Vi river ner till råsponten, byter det som är skadat och bygger upp taket lager för lager.",
+   "chip": "ROT-avdrag 30 % på arbetet",
+   "cta": "Begär offert",
+   "link": "https://binaafy.se/bygg/offert"
+  },
+  {
+   "id": "bygg-takbyte",
+   "side": "bygg",
+   "theme": "dark",
+   "eyebrow": "Binaafy Bygg · Takbyte",
+   "hl": "Från rötskadad läkt <em>till nytt tak.</em>",
+   "body": "Så ser ett takbyte ut hos oss, steg för steg. ROT-avdraget drar vi direkt på fakturan.",
+   "chip": "Bilder från ett och samma jobb",
+   "cta": "Begär offert",
+   "link": "https://binaafy.se/bygg/offert"
+  },
+  {
+   "id": "bygg-badrum",
+   "side": "bygg",
+   "theme": "dark",
+   "eyebrow": "Binaafy Bygg · Badrum",
+   "hl": "Dags för ett <em>nytt badrum?</em>",
+   "body": "Tätskikt, kakel, VVS och inredning. Ett team och en kontaktperson från rivning till sista fogen.",
+   "chip": "Exempel: 27 000 kr i ROT-avdrag",
+   "cta": "Begär offert",
+   "link": "https://binaafy.se/bygg/offert"
+  },
+  {
+   "id": "bygg-kok",
+   "side": "bygg",
+   "theme": "dark",
+   "eyebrow": "Binaafy Bygg · Kök",
+   "hl": "Ett kök byggt för <em>hur ni lever.</em>",
+   "body": "Vi ritar, river och bygger. Snickerier, el och VVS, med en kontaktperson hela vägen.",
+   "chip": "ROT-avdrag 30 % på arbetet",
+   "cta": "Begär offert",
+   "link": "https://binaafy.se/bygg/offert"
+  },
+  {
+   "id": "bygg-uteplats",
+   "side": "bygg",
+   "theme": "dark",
+   "hook": "Före/efter på samma plats",
+   "eyebrow": "Binaafy Bygg · Uteplats",
+   "hl": "Från mossiga plattor <em>till skiffer och trädäck.</em>",
+   "body": "Gamla betongplattor ut, nytt underlag, skiffer i fritt mönster och ett nytt trädäck längs husväggen.",
+   "chip": "Eget jobb · samma gång före och efter",
+   "cta": "Begär offert",
+   "link": "https://binaafy.se/bygg/projekt/uteplats-skiffer-och-tradack"
+  },
+  {
+   "id": "bygg-maleri",
+   "side": "bygg",
+   "theme": "dark",
+   "hook": "Resultatet talar",
+   "eyebrow": "Binaafy Bygg · Måleri",
+   "hl": "Släta väggar. <em>Raka linjer.</em>",
+   "body": "Spackling, väggar, dörrar och snickerier. Vi lämnar lägenheten städad och klar att flytta in i.",
+   "chip": "ROT-avdrag 30 % på arbetet",
+   "cta": "Begär offert",
+   "link": "https://binaafy.se/bygg/offert"
+  },
+  {
+   "id": "software-pappersarbete",
+   "side": "software",
+   "theme": "light",
+   "eyebrow": "Binaafy Fakturering · För byggföretag",
+   "hl": "Bygg. <em>Inte pappersarbete.</em>",
+   "body": "Offert, faktura, ÄTA och ROT i ett system, gjort för hur ett bygge faktureras.",
+   "chip": "Från 1 490 kr/mån exkl. moms",
+   "cta": "Boka demo",
+   "link": "https://binaafy.se/fakturering#priser"
+  },
+  {
+   "id": "software-faktura",
+   "side": "software",
+   "theme": "light",
+   "eyebrow": "Binaafy Fakturering",
+   "hl": "Från offert till <em>betald faktura.</em>",
+   "body": "Delfakturor, ÄTA och ROT-avdrag räknas ut åt dig. Skicka direkt från mobilen.",
+   "chip": "Gjort för hur ett bygge faktureras",
+   "cta": "Se hur det funkar",
+   "link": "https://binaafy.se/fakturering"
+  },
+  {
+   "id": "software-hemsida",
+   "side": "software",
+   "theme": "light",
+   "eyebrow": "Binaafy · Hemsida + fakturering",
+   "hl": "Hemsidan klar på tre veckor. <em>Sedan sköter vi den.</em>",
+   "body": "Hemsida, offertformulär och fakturering. Ett pris, ett ansvar, ett nummer att ringa.",
+   "chip": "Drift, säkerhet och support ingår",
+   "cta": "Se paketen",
+   "link": "https://binaafy.se/fakturering#priser"
+  },
+  {
+   "id": "software-grundare",
+   "side": "software",
+   "theme": "light",
+   "eyebrow": "Binaafy · Grundarerbjudande",
+   "hl": "De fem första företagen <em>startar utan avgift.</em>",
+   "body": "0 kr i uppstart och 1 290 kr/mån för hemsida och fakturering. I gengäld visar vi er som referens.",
+   "chip": "Priser exkl. moms",
+   "cta": "Säkra en plats",
+   "link": "https://binaafy.se/fakturering#priser"
+  },
+  {
+   "id": "erbjudande-kvall",
+   "side": "erbjudande",
+   "theme": "dark",
+   "hook": "Fråga som träffar en smärta",
+   "eyebrow": "Binaafy Fakturering · För alla företag",
+   "hl": "Fakturerar du fortfarande <em>på kvällarna?</em>",
+   "body": "Offerten blir faktura med en knapp. OCR, Swish och påminnelser sköts av sig själva, så kvällen blir din igen.",
+   "chip": "490 kr/mån · ingen bindningstid",
+   "cta": "Kom igång",
+   "link": "https://binaafy.se/registrera"
+  },
+  {
+   "id": "erbjudande-16kr",
+   "side": "erbjudande",
+   "theme": "light",
+   "hook": "Specifikt tal och prisankare",
+   "eyebrow": "Binaafy Fakturering",
+   "hl": "Mindre än en kaffe <em>om dagen.</em>",
+   "body": "Fakturor med OCR och Swish, påminnelser, kundportal och bokföring i bakgrunden. Ingen bindningstid.",
+   "chip": "490 kr/mån exkl. moms",
+   "cta": "Kom igång",
+   "link": "https://binaafy.se/registrera"
+  },
+  {
+   "id": "erbjudande-fore-efter",
+   "side": "erbjudande",
+   "theme": "dark",
+   "hook": "Före/efter-kontrast",
+   "eyebrow": "Binaafy Fakturering · Före och efter",
+   "hl": "Word, Excel, banken och mejlen. <em>Nu ett system.</em>",
+   "body": "Offert, faktura, inbetalningar, påminnelser och underlag till revisorn på samma ställe.",
+   "chip": "490 kr/mån · ingen bindningstid",
+   "cta": "Se hur det funkar",
+   "link": "https://binaafy.se/fakturering"
+  },
+  {
+   "id": "erbjudande-obetalt",
+   "side": "erbjudande",
+   "theme": "light",
+   "hook": "Nyfikenhet och förlustaversion",
+   "eyebrow": "Binaafy Fakturering",
+   "hl": "Vem har inte <em>betalat än?</em>",
+   "body": "Binaafy prickar av inbetalningarna från bankens fil och påminner de som är sena, med avgift och dröjsmålsränta.",
+   "chip": "Sluta jaga dina egna pengar",
+   "cta": "Se hur det funkar",
+   "link": "https://binaafy.se/fakturering"
+  },
+  {
+   "id": "erbjudande-alla",
+   "side": "erbjudande",
+   "theme": "dark",
+   "hook": "Callout: målgruppen ser sig själv",
+   "eyebrow": "Binaafy · Hemsida + fakturering",
+   "hl": "Frisör, konsult eller städfirma? <em>Det funkar för er.</em>",
+   "body": "Vi bygger hemsidan, sätter upp faktureringen och sköter allt efteråt. Ni har ett nummer att ringa.",
+   "chip": "Från 1 490 kr/mån exkl. moms",
+   "cta": "Se paketen",
+   "link": "https://binaafy.se/fakturering#priser"
+  },
+  {
+   "id": "erbjudande-fem",
+   "side": "erbjudande",
+   "theme": "light",
+   "hook": "Äkta knapphet",
+   "eyebrow": "Binaafy · Grundarerbjudande",
+   "hl": "Fem platser. <em>Noll kronor i uppstart.</em>",
+   "body": "De fem första företagen får hemsida och fakturering för 1 290 kr/mån utan uppstartsavgift. I gengäld visar vi er som referens.",
+   "chip": "Priser exkl. moms",
+   "cta": "Säkra en plats",
+   "link": "https://binaafy.se/fakturering#priser"
+  },
+  {
+   "id": "tjanster-meny",
+   "side": "tjanster",
+   "theme": "dark",
+   "hook": "Två vägar: färdigt eller skräddarsytt",
+   "eyebrow": "Binaafy Software · Halmstad",
+   "hl": "Färdigt system eller byggt för er? <em>Vi gör båda.</em>",
+   "body": "Fakturering som är redo i dag. Hemsidor, appar och interna verktyg byggda efter hur ni jobbar, med fast pris per etapp.",
+   "chip": "Kod ni äger · vi sköter driften",
+   "cta": "Berätta om ert behov",
+   "link": "https://binaafy.se/mjukvara/brief"
+  },
+  {
+   "id": "tjanster-allt",
+   "side": "tjanster",
+   "theme": "dark",
+   "hook": "Smärtan i många leverantörer → en",
+   "eyebrow": "Binaafy Software · Allt på ett ställe",
+   "hl": "Fem leverantörer, fem inloggningar? <em>Eller en: vi.</em>",
+   "body": "Hemsida, app, fakturering, HR och integrationer. Vi bygger det, kopplar ihop det och sköter det. Ni har ett nummer att ringa.",
+   "chip": "Fast pris per etapp · kod ni äger",
+   "cta": "Berätta om ert behov",
+   "link": "https://binaafy.se/mjukvara/brief"
+  },
+  {
+   "id": "tjanster-excel",
+   "side": "tjanster",
+   "theme": "light",
+   "hook": "Igenkänning med humor",
+   "eyebrow": "Binaafy Software · Interna system",
+   "hl": "Drivs ert företag <em>i ett Excelark?</em>",
+   "body": "Vi bygger systemet som ersätter det: kundregister, schema, personal eller offert. Format efter er verksamhet, inte tvärtom.",
+   "chip": "Fast pris per etapp",
+   "cta": "Boka ett samtal",
+   "link": "https://binaafy.se/mjukvara/brief"
+  },
+  {
+   "id": "tjanster-app",
+   "side": "tjanster",
+   "theme": "dark",
+   "hook": "Drömmen + igenkänning i vardagen",
+   "eyebrow": "Binaafy Software · Appar",
+   "hl": "Appen ni har pratat om? <em>Vi bygger den.</em>",
+   "body": "Dagens jobb, tidrapport och faktura i fickan. För iPhone och Android, byggd efter hur ni jobbar.",
+   "chip": "Fast pris per etapp · kod ni äger",
+   "cta": "Berätta om er idé",
+   "link": "https://binaafy.se/mjukvara/brief"
+  },
+  {
+   "id": "tjanster-hemsida",
+   "side": "tjanster",
+   "theme": "light",
+   "hook": "Kundens beteende + egen sajt som bevis",
+   "eyebrow": "Binaafy Software · Hemsidor",
+   "hl": "Kunderna googlar er <em>innan de ringer.</em>",
+   "body": "Vi bygger hemsidor som laddar snabbt, syns på Google och som ni ändrar själva. Som binaafy.se, som vi byggt och sköter själva.",
+   "chip": "Hemsida + fakturering från 1 490 kr/mån",
+   "cta": "Se paketen",
+   "link": "https://binaafy.se/fakturering#priser"
+  },
+  {
+   "id": "tjanster-tio-timmar",
+   "side": "tjanster",
+   "theme": "light",
+   "hook": "Chockerande siffra med källa",
+   "eyebrow": "Binaafy Software",
+   "hl": "Så mycket administration <em>gör en företagare i veckan.</em>",
+   "body": "Vi bygger verktygen som tar tillbaka tiden: fakturor, offerter, schema och kundregister på ett ställe.",
+   "chip": "Fakturering från 490 kr/mån exkl. moms",
+   "cta": "Boka ett samtal",
+   "link": "https://binaafy.se/mjukvara/brief"
+  },
+  {
+   "id": "tjanster-flode",
+   "side": "tjanster",
+   "theme": "dark",
+   "hook": "Omformulera problemet",
+   "eyebrow": "Binaafy Software · Automation",
+   "hl": "Kopierar någon data för hand <em>varje vecka?</em>",
+   "body": "Det är ett automationsproblem, inte en personalfråga. Vi kopplar ihop era system så att det sker av sig självt.",
+   "chip": "Fast pris per integration",
+   "cta": "Boka ett samtal",
+   "link": "https://binaafy.se/mjukvara/brief"
+  },
+  {
+   "id": "paket-kvitto",
+   "side": "paket",
+   "theme": "light",
+   "hook": "Kvittot: värdet syns rad för rad",
+   "eyebrow": "Binaafy · Allt-i-ett-paketet",
+   "hl": "Hemsida för 1&nbsp;490 kr/mån. <em>Offert, faktura och HR på köpet.</em>",
+   "body": "Vi bygger och sköter hemsidan. Offertsystem, fakturering med OCR och Swish och HR ingår, så ni blir av med de fasta kostnaderna för separata program.",
+   "chip": "Exkl. moms · startavgift 4 900 kr · 12 mån",
+   "cta": "Se paketet",
+   "link": "https://binaafy.se/fakturering#priser"
+  },
+  {
+   "id": "paket-en-faktura",
+   "side": "paket",
+   "theme": "dark",
+   "hook": "Fyra leverantörer → en faktura",
+   "eyebrow": "Binaafy · Allt-i-ett-paketet",
+   "hl": "Fyra fakturor i månaden? <em>Nu en.</em>",
+   "body": "Webbyrå, webbhotell, faktureringsprogram och HR-system var för sig. Eller allt hos oss för 1 490 kr/mån.",
+   "chip": "Exkl. moms · startavgift 4 900 kr · 12 mån",
+   "cta": "Se paketet",
+   "link": "https://binaafy.se/fakturering#priser"
+  },
+  {
+   "id": "paket-forsta-aret",
+   "side": "paket",
+   "theme": "light",
+   "hook": "Hela årskostnaden öppet",
+   "eyebrow": "Binaafy · Allt-i-ett-paketet",
+   "hl": "Hemsida och alla verktyg. <em>Ett pris för hela året.</em>",
+   "body": "Startavgift och tolv månader: hemsida, drift, offert, fakturering och HR. Inga tillägg, inga timmar som tickar.",
+   "chip": "De fem första: 0 kr i startavgift",
+   "cta": "Se paketet",
+   "link": "https://binaafy.se/fakturering#priser"
+  },
+  {
+   "id": "paket-fastpris",
+   "side": "paket",
+   "theme": "light",
+   "hook": "Frågan alla ställer – med svaret",
+   "eyebrow": "Binaafy Software · Hemsidor",
+   "hl": "Vad kostar en hemsida? <em>Här är svaret.</em>",
+   "body": "Fem sidor för 9 900 kr just nu. Plus offert- och faktureringssystemet gratis i ett år: skicka offerter och fakturera med OCR och Swish, utan fasta månadskostnader.",
+   "chip": "Erbjudande · exkl. moms · koden är er",
+   "cta": "Välj storlek",
+   "link": "https://binaafy.se/mjukvara/brief"
+  },
+  {
+   "id": "paket-gratis-ar",
+   "side": "paket",
+   "theme": "light",
+   "hook": "Gratis på köpet – med värdet utskrivet",
+   "eyebrow": "Binaafy · Erbjudande",
+   "hl": "Köp hemsidan. <em>Få&nbsp;faktureringen gratis i&nbsp;ett&nbsp;år.</em>",
+   "body": "Skapa snygga offerter som blir faktura med en knapp när kunden säger ja, med OCR, Swish och automatiska påminnelser. Bli av med den fasta månadskostnaden för fakturaprogram: 0 kr i tolv månader.",
+   "chip": "Hemsida från 9 900 kr exkl. moms",
+   "cta": "Säkra erbjudandet",
+   "link": "https://binaafy.se/mjukvara/brief"
+  },
+  {
+   "id": "paket-fem-sidor",
+   "side": "paket",
+   "theme": "dark",
+   "hook": "Konkret erbjudande, inga reservationer",
+   "eyebrow": "Binaafy Software · Erbjudande",
+   "hl": "Fem sidor. 9&nbsp;900&nbsp;kr. <em>Fast pris.</em>",
+   "body": "Startsida, tjänster, om oss, referenser och kontakt. På köpet: offert- och faktureringssystem gratis i ett år, så ni slipper betala varje månad för fakturaprogram.",
+   "chip": "Erbjudande · exkl. moms · koden är er",
+   "cta": "Säkra priset",
+   "link": "https://binaafy.se/mjukvara/brief"
+  },
+  {
+   "id": "fordelar-portal",
+   "side": "fordelar",
+   "theme": "dark",
+   "hook": "Unik fördel: se bygget i realtid",
+   "eyebrow": "Binaafy Bygg · Kundportal",
+   "hl": "Följ ditt bygge <em>i realtid.</em>",
+   "body": "Tidplan, foton från varje dag, ändringar att godkänna och fakturor, samlat i din egen kundportal. Logga in med en kod, inget lösenord.",
+   "chip": "Ingår i alla våra projekt",
+   "cta": "Begär offert",
+   "link": "https://binaafy.se/bygg/offert"
+  },
+  {
+   "id": "fordelar-bygg",
+   "side": "fordelar",
+   "theme": "dark",
+   "hook": "Lista med skäl",
+   "eyebrow": "Binaafy Bygg · Därför oss",
+   "hl": "Sex skäl att välja <em>Binaafy Bygg.</em>",
+   "body": "Tak, plåt, måleri och uteplats i Halland, med full koll för dig från offert till sista fakturan.",
+   "chip": "ROT-avdrag 30 % på arbetet",
+   "cta": "Begär offert",
+   "link": "https://binaafy.se/bygg/offert"
+  },
+  {
+   "id": "fordelar-software",
+   "side": "fordelar",
+   "theme": "light",
+   "hook": "Lista med skäl",
+   "eyebrow": "Binaafy Software · Därför oss",
+   "hl": "Sex skäl att välja <em>Binaafy Software.</em>",
+   "body": "Hemsidor, appar och system till fast pris, plus offert- och faktureringssystem gratis i ett år när ni köper en hemsida.",
+   "chip": "Hemsida från 9 900 kr exkl. moms",
+   "cta": "Boka ett samtal",
+   "link": "https://binaafy.se/mjukvara/brief"
+  },
+  {
+   "id": "fordelar-verktyg",
+   "side": "fordelar",
+   "theme": "dark",
+   "hook": "Förklara verktygen + fasta kostnader",
+   "eyebrow": "Binaafy · Offert och fakturering",
+   "hl": "Sluta betala varje månad <em>för fakturaprogrammet.</em>",
+   "body": "Offerten skapas på några minuter och blir faktura med en knapp när kunden säger ja. OCR, Swish och påminnelser sköts av sig själva. Gratis i ett år med er nya hemsida.",
+   "chip": "0 kr i 12 månader · värde 5 880 kr",
+   "cta": "Se hur det funkar",
+   "link": "https://binaafy.se/fakturering"
+  },
+  {
+   "id": "rabatt-bygg",
+   "side": "rabatt",
+   "theme": "dark",
+   "hook": "Tidsbegränsad rabatt",
+   "eyebrow": "Binaafy Bygg · Erbjudande",
+   "hl": "10&nbsp;% rabatt <em>om du bestämmer dig före februari.</em>",
+   "body": "Signera din offert senast 31 januari 2027 så drar vi 10&nbsp;% på arbetet. Gäller tak, plåt, måleri och uteplats.",
+   "chip": "Gäller offerter signerade t.o.m. 31/1 2027",
+   "cta": "Begär offert",
+   "link": "https://binaafy.se/bygg/offert"
+  },
+  {
+   "id": "rabatt-software",
+   "side": "rabatt",
+   "theme": "light",
+   "hook": "Tidsbegränsad rabatt",
+   "eyebrow": "Binaafy Software · Erbjudande",
+   "hl": "Starta före februari. <em>Få 10&nbsp;% rabatt.</em>",
+   "body": "Hemsidor, appar och interna system: signera senast 31 januari 2027 så får ni 10&nbsp;% på projektpriset.",
+   "chip": "Kan inte kombineras med andra erbjudanden",
+   "cta": "Boka ett samtal",
+   "link": "https://binaafy.se/mjukvara/brief"
+  },
+  {
+   "id": "ig-intro",
+   "hook": "Presentation",
+   "eyebrow": "Binaafy Bygg · Halland",
+   "hl": "Hej Halland. <em>Vi bygger tak som håller.</em>",
+   "body": "Takbyten, plåt och renoveringar. Ett team och en kontaktperson från första besöket till sista skruven.",
+   "chip": "Följ oss för fler jobb",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-takbyte",
+   "hook": "Före/under/efter",
+   "eyebrow": "Binaafy Bygg · Takbyte",
+   "hl": "Takbyte, <em>steg för steg.</em>",
+   "body": "Rötskadat ut, nytt underlag in, falsad plåt på. Bilder från ett av våra egna jobb.",
+   "chip": "ROT-avdrag 30 % på arbetet",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-tecken",
+   "hook": "Lista att spara",
+   "eyebrow": "Binaafy Bygg · Tips",
+   "hl": "Fem tecken på att taket <em>behöver ses över.</em>",
+   "body": "Känner du igen ett av dem? Vi kommer ut, tittar och ger ett kostnadsfritt förslag.",
+   "chip": "Spara inlägget",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-rot",
+   "hook": "Räkneexempel",
+   "eyebrow": "Binaafy Bygg · ROT-avdrag",
+   "hl": "Så mycket drar <em>ROT-avdraget.</em>",
+   "body": "Avdraget görs direkt på fakturan. Du betalar resten, vi sköter ansökan hos Skatteverket.",
+   "chip": "Max 50 000 kr per person och år",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-process",
+   "hook": "Trygghet: så går det till",
+   "eyebrow": "Binaafy Bygg",
+   "hl": "Så går ett jobb till <em>hos oss.</em>",
+   "body": "Inga överraskningar. Du vet vad som händer, när det händer och vad det kostar.",
+   "chip": "Kostnadsfritt besök",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-falsad",
+   "hook": "Snyggt resultat",
+   "eyebrow": "Binaafy Bygg · Plåttak",
+   "hl": "Falsad plåt. <em>Raka linjer, tätt i decennier.</em>",
+   "body": "Ett plåttak från ett av våra jobb. Snyggt, tåligt och lätt att hålla efter.",
+   "chip": "Eget jobb",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-detalj",
+   "hook": "Hantverk i detalj",
+   "eyebrow": "Binaafy Bygg · Tegeltak",
+   "hl": "Det är detaljerna <em>som håller tätt.</em>",
+   "body": "Nock, vindskivor och genomföringar. Där de flesta läckor börjar, och där vi lägger mest tid.",
+   "chip": "Eget jobb",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-uteplats",
+   "hook": "Före/efter",
+   "eyebrow": "Binaafy Bygg · Uteplats",
+   "hl": "Samma gång. <em>Före och efter.</em>",
+   "body": "Mossiga betongplattor blev skiffer i fritt mönster. Nytt underlag, jämna fogar, nyspolat.",
+   "chip": "Eget jobb",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-tradack",
+   "hook": "Drömmen om sommaren",
+   "eyebrow": "Binaafy Bygg · Uteplats",
+   "hl": "Skiffer möter trä. <em>Klart till sommaren.</em>",
+   "body": "Ett nytt trädäck längs husväggen och skiffer runt planteringen. Planera nu, bygg innan säsongen.",
+   "chip": "Eget jobb",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-maleri",
+   "hook": "Inflyttningsklart",
+   "eyebrow": "Binaafy Bygg · Måleri",
+   "hl": "Klar att <em>flytta in i.</em>",
+   "body": "Väggar, dörrar och snickerier målade i hela lägenheten – och städat efteråt.",
+   "chip": "ROT-avdrag på arbetet",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-fasad",
+   "hook": "Utomhusmåleri",
+   "eyebrow": "Binaafy Bygg · Fasad",
+   "hl": "Ljus fasad. <em>Ny takfot.</em>",
+   "body": "Fasaden gjordes om från ställning, med ny inklädnad av takfoten och ny plåt runt fönstren.",
+   "chip": "Eget jobb",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-portal",
+   "hook": "Unik fördel",
+   "eyebrow": "Binaafy Bygg · Kundportal",
+   "hl": "Se ditt bygge <em>från jobbet.</em>",
+   "body": "Tidplan, dagens foton och ändringar att godkänna, i din egen kundportal. Du vet alltid var vi är.",
+   "chip": "Ingår i alla våra projekt",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-fordelar",
+   "hook": "Lista med skäl",
+   "eyebrow": "Binaafy Bygg · Därför oss",
+   "hl": "Sex skäl att välja <em>oss.</em>",
+   "body": "Från första besöket till sista fakturan, med full koll för dig hela vägen.",
+   "chip": "Spara inlägget",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-rabatt",
+   "hook": "Tidsbegränsad rabatt",
+   "eyebrow": "Binaafy Bygg · Erbjudande",
+   "hl": "10&nbsp;% rabatt <em>till och med januari.</em>",
+   "body": "Signera din offert senast 31 januari 2027 så drar vi 10&nbsp;% på arbetet.",
+   "chip": "Tak, plåt, måleri, uteplats",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-solceller",
+   "hook": "Nyfikenhet",
+   "eyebrow": "Binaafy Bygg · Solceller",
+   "hl": "Solceller på taket? <em>Börja med taket.</em>",
+   "body": "Paneler ska sitta i 25 år. Vi kollar att taket under håller lika länge och fäster panelerna tätt.",
+   "chip": "Eget jobb",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-nock",
+   "hook": "Hantverk",
+   "eyebrow": "Binaafy Bygg · Tegeltak",
+   "hl": "Raka rader. <em>Hela vägen upp.</em>",
+   "body": "Nya pannor och nockpannor som följer läkten exakt. Så ser ett tak ut när det är gjort ordentligt.",
+   "chip": "Eget jobb",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  },
+  {
+   "id": "ig-takfall",
+   "hook": "Säsong",
+   "eyebrow": "Binaafy Bygg · Inför vintern",
+   "hl": "Klarar taket <em>vinterns stormar?</em>",
+   "body": "Lösa pannor och slitna anslutningar syns först när det läcker. Vi tittar på ditt tak, kostnadsfritt.",
+   "chip": "Kostnadsfritt besök",
+   "side": "bygg-instagram",
+   "theme": "dark",
+   "cta": "Offert: binaafy.se",
+   "link": "https://binaafy.se/bygg/offert",
+   "formats": [
+    "flode-4x5",
+    "story-9x16"
+   ]
+  }
+ ],
+ "FORMATS": [
+  {
+   "id": "flode-4x5",
+   "label": "Instagram/Facebook flöde 1080×1350",
+   "w": 1080,
+   "h": 1350,
+   "kind": "portrait",
+   "vis": 0.5,
+   "hl": 7.4,
+   "body": 2.85,
+   "pad": 6
+  },
+  {
+   "id": "kvadrat-1x1",
+   "label": "Flöde + Google Display 1080×1080",
+   "w": 1080,
+   "h": 1080,
+   "kind": "portrait",
+   "vis": 0.5,
+   "hl": 7,
+   "body": 2.8,
+   "pad": 6,
+   "noBody": true
+  },
+  {
+   "id": "story-9x16",
+   "label": "Stories/Reels 1080×1920",
+   "w": 1080,
+   "h": 1920,
+   "kind": "story",
+   "vis": 0.47,
+   "hl": 9.4,
+   "body": 3.6,
+   "pad": 7.5
+  },
+  {
+   "id": "liggande-1200x628",
+   "label": "Google Display / Facebook länk 1200×628",
+   "w": 1200,
+   "h": 628,
+   "kind": "landscape",
+   "hl": 4.5,
+   "body": 1.8,
+   "pad": 4.2
+  },
+  {
+   "id": "affisch-a3",
+   "label": "Tryck A3",
+   "mm": [
+    297,
+    420
+   ],
+   "kind": "portrait",
+   "vis": 0.52,
+   "hl": 7.6,
+   "body": 2.7,
+   "pad": 7,
+   "print": true
+  }
+ ]
+}

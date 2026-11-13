@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Mjukvaruaffischer</title>
+<!-- Visar en affisch från design.js: design.html?id=hemsida-inlagg. Används av rendera.js. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="../../_kalla/affisch.css">
+<style>
+.sw{position:absolute;inset:0;display:flex;flex-direction:column}
+.sw-top{position:relative;display:flex;justify-content:space-between;align-items:center;padding:54px 64px 0}
+.sw-head{position:relative;padding:44px 64px 0}
+.sw-head .sub{max-width:900px}
+.stage{position:relative;flex:1;min-height:0}
+.note{position:absolute;font-size:58px;text-shadow:0 2px 0 rgba(255,255,255,.85),0 6px 20px rgba(0,0,0,.4);white-space:nowrap}
+.arrow{position:absolute;font-size:150px;color:#f7802e;transform:rotate(-8deg)}
+.chips{position:relative;display:flex;gap:12px;flex-wrap:wrap;padding:0 64px;list-style:none}
+.chips li{font-size:24px;font-weight:700;padding:12px 18px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.18);border-radius:999px}
+.chips li:before{content:"✓ ";color:#f7802e}
+.sw .p-foot{position:relative}
+/* faktura */
+.faktura{position:absolute;left:70px;top:40px;width:560px;padding:40px 44px 34px;transform:rotate(-3deg);border-top:10px solid #f7802e}
+.f-head{display:flex;justify-content:space-between;align-items:center}.f-head img{height:34px}
+.f-head div{text-align:right}.f-head b{display:block;font-size:28px}.f-head span{font-size:16px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#7a8590}
+.f-to{margin:24px 0 10px;font-size:22px;color:#4b5763}
+.f-row{display:flex;align-items:baseline;gap:12px;font-size:24px;padding:9px 0}
+.f-row i{flex:1;border-bottom:3px dotted #c9c3b8;transform:translateY(-5px)}
+.f-sum{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding-top:16px;border-top:3px solid #1e2c37}
+.f-sum span{font-size:24px;font-weight:700}.f-sum b{font-size:48px;font-weight:800;letter-spacing:-.03em}
+.f-pay{display:flex;justify-content:space-between;margin-top:14px;font-size:19px;color:#4b5763;font-weight:600}
+.f-stamp{position:absolute;left:24px;bottom:-34px;border:6px solid #1e8e3e;color:#1e8e3e;font-size:46px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:6px 20px;border-radius:10px;transform:rotate(-14deg);opacity:.85}
+/* excel och system */
+.sheet{position:absolute;left:60px;top:50px;width:470px;transform:rotate(-4deg);padding:0 0 10px}
+.s-bar{background:#1d6f42;color:#fff;font-size:17px;font-weight:600;padding:10px 14px}
+.sheet table{border-collapse:collapse;width:100%;font-size:20px}
+.sheet th{background:#eef1f4;color:#4b5763;font-weight:700;text-align:left;padding:8px 10px;border:1px solid #d6dbe0}
+.sheet td{padding:10px;border:1px solid #e1e5e9;height:44px;font-family:Consolas,monospace;font-size:18px}
+.sheet td.warn{background:#fff1a8;color:#b3261e;font-weight:700}
+.app{position:absolute;right:60px;top:90px;width:400px;padding:30px 30px 20px;border-radius:24px;transform:rotate(3deg)}
+.a-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.a-h .logo{height:32px}
+.a-h span{font-size:18px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#7a8590}
+.a-row{display:flex;align-items:center;gap:16px;font-size:28px;font-weight:700;padding:14px 0;border-bottom:2px solid #ece6da}
+.a-row i{font-style:normal;font-size:30px}.a-row em{margin-left:auto;color:#1e8e3e}
+/* storlekar */
+.a3 .stage{flex-basis:auto}.a3 .h{font-size:104px}
+.story .sw-top{padding-top:200px}.story .h{font-size:104px}.story .stage{flex:0 0 760px}
+.story .p-foot{padding-bottom:240px;margin-top:auto}.story .chips{margin-top:20px}
+.stage-in{position:absolute;left:0;top:0;width:1080px;height:760px;transform-origin:50% 0}
+.sw:not(.a3):not(.story) .stage-in{transform:scale(.78)}
+.tag s{color:rgba(24,35,44,.55);text-decoration-color:#18232c;font-size:.7em}
+</style>
+</head>
+<body>
+<script src="design.js"></script>
+<script>
+const d = DESIGNS.find((x) => x.id === new URLSearchParams(location.search).get("id")) || DESIGNS[0];
+document.body.innerHTML = `<div class="cv" style="width:${d.size[0]}px;height:${d.size[1]}px">${d.html()}</div>`;
+</script>
+</body>
+</html>

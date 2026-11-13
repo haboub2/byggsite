@@ -209,6 +209,15 @@ a.lhero-line:hover .lhero-go { opacity: 1; transform: none; }
 .lhero-go svg { width: 14px; height: 14px; }
 .lhero-lead { margin-top: 28px; max-width: 46ch; font-size: clamp(16px, 1.4vw, 18px); line-height: 1.7; color: var(--on-dark-2); }
 .lhero-actions { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; margin-top: 32px; }
+.lhero-trust {
+  display: flex; flex-wrap: wrap; gap: 10px 22px;
+  margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line-dark);
+  font-size: 13.5px; color: var(--on-dark-2);
+}
+.lhero-trust li { display: inline-flex; align-items: center; gap: 8px; }
+.lhero-trust svg { width: 15px; height: 15px; color: var(--orange); flex-shrink: 0; }
+.lhero-trust a { border-bottom: 1px solid var(--line-dark-strong); }
+.lhero-trust a:hover { color: var(--on-dark); }
 .lhero-media { position: relative; }
 @media (hover: none), (max-width: 900px) {
   .lhero-go { position: static; display: flex; margin-top: 8px; opacity: 1; transform: none; color: var(--orange); }

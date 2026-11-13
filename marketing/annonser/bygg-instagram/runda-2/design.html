@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Bygg runda 2</title>
+<!-- Visar ett inlägg från design.js: design.html?id=bygg-takpris. Används av rendera.js. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow:hidden;background:#18232c}
+.cv{position:relative;overflow:hidden;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+em{font-style:normal;color:#f7802e}
+.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.shade{position:absolute;inset:0}
+.shade.top{background:linear-gradient(180deg,rgba(14,20,26,.85) 0%,rgba(14,20,26,.35) 32%,rgba(14,20,26,.1) 55%,rgba(14,20,26,.55) 100%)}
+.shade.bottom{background:linear-gradient(180deg,rgba(14,20,26,.15) 0%,rgba(14,20,26,.05) 35%,rgba(14,20,26,.8) 70%,rgba(14,20,26,.95) 100%)}
+.shade.left{background:linear-gradient(90deg,rgba(14,20,26,.85) 0%,rgba(14,20,26,.4) 50%,rgba(14,20,26,.15) 100%),linear-gradient(0deg,rgba(14,20,26,.6),transparent 30%)}
+.shade.full{background:linear-gradient(180deg,rgba(14,20,26,.8),rgba(14,20,26,.45) 40%,rgba(14,20,26,.85))}
+.head{position:absolute;left:72px;right:72px;top:72px}
+.kick{display:inline-block;font-size:22px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;background:#f7802e;color:#18232c;padding:9px 16px}
+.h{font-size:92px;font-weight:800;line-height:1;letter-spacing:-.04em;margin-top:22px;text-shadow:0 4px 30px rgba(0,0,0,.35)}
+.sub{font-size:32px;line-height:1.4;color:#e6e9ec;margin-top:20px}
+.hand{position:absolute;font-family:'Caveat',cursive;font-size:56px;font-weight:700;line-height:.95;color:#f7802e;text-shadow:0 2px 0 rgba(255,255,255,.9),0 6px 20px rgba(0,0,0,.35);white-space:nowrap}
+.cta{position:absolute;left:72px;right:72px;bottom:56px;display:flex;justify-content:space-between;align-items:center;gap:20px;background:rgba(255,255,255,.95);color:#18232c;font-size:26px;font-weight:600;padding:20px 28px;border-left:8px solid #f7802e}
+.cta b{font-weight:800;white-space:nowrap}
+.logo{height:46px;display:block}
+.pill{background:#f7802e;color:#18232c;font-size:26px;font-weight:700;padding:14px 24px}
+
+/* papper */
+.paper{position:relative;background:#fdfbf6;color:#1e2c37;box-shadow:0 2px 0 rgba(0,0,0,.05),0 30px 60px rgba(0,0,0,.45),0 8px 18px rgba(0,0,0,.25)}
+.paper:before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(30,44,55,.025) 0 2px,transparent 2px 6px)}
+
+/* offert */
+.offert-wrap{position:absolute;left:150px;top:400px;width:720px}
+.offert{width:720px;padding:46px 50px 40px;transform:rotate(-2.5deg);border-top:10px solid #f7802e}
+.o-head{display:flex;justify-content:space-between;align-items:center}
+.o-head .logo{height:40px}
+.o-head div{text-align:right}.o-head b{display:block;font-size:30px;letter-spacing:-.01em}
+.o-head span{font-size:18px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#7a8590}
+.o-title{margin:34px 0 18px;font-size:30px;font-weight:700}
+.o-row{display:flex;align-items:baseline;gap:14px;font-size:28px;padding:12px 0}
+.o-row i{flex:1;border-bottom:3px dotted #c9c3b8;transform:translateY(-6px)}
+.o-row b{font-variant-numeric:tabular-nums}
+.o-row.rot{color:#b8560f;font-weight:600}
+.o-sum{display:flex;justify-content:space-between;align-items:baseline;margin-top:16px;padding-top:20px;border-top:3px solid #1e2c37}
+.o-sum span{font-size:28px;font-weight:700}.o-sum b{font-size:60px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.o-foot{margin-top:10px;font-size:20px;color:#7a8590}
+.stamp{position:absolute;right:-90px;bottom:-96px;width:170px;height:170px;border:5px solid #d9541e;border-radius:50%;display:grid;place-items:center;text-align:center;
+  font-size:22px;font-weight:800;line-height:1.15;letter-spacing:.06em;text-transform:uppercase;color:#d9541e;transform:rotate(14deg);opacity:.88;background:rgba(253,251,246,.55)}
+
+/* kalender */
+.cal-wrap{position:absolute;right:90px;top:90px;width:470px}
+.cal{width:470px;padding:30px 34px 34px;transform:rotate(3deg);border-top:44px solid #d9541e}
+.cal-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px}
+.cal-h b{font-size:40px;letter-spacing:-.02em}.cal-h span{font-size:24px;color:#7a8590;font-weight:600}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center}
+.cal-g em{font-size:18px;font-weight:700;color:#7a8590;font-style:normal}
+.cal-g span{font-size:24px;font-weight:600;padding:8px 0;position:relative}
+.cal-g span:first-of-type{grid-column-start:1}
+.cal-g span.on{color:#d9541e;font-weight:800}
+.cal-g span.on:after{content:"";position:absolute;inset:-4px 2px;border:4px solid #d9541e;border-radius:50% 45% 52% 48%;transform:rotate(-8deg)}
+.foot-txt{position:absolute;left:72px;right:72px;bottom:70px}
+.foot-txt .row{display:flex;justify-content:space-between;align-items:center;margin-top:34px}
+
+/* block */
+.block-wrap{position:absolute;right:70px;bottom:120px;width:540px}
+.block{width:540px;padding:70px 40px 36px;transform:rotate(2.5deg);background:#fffdf3}
+.clip{position:absolute;left:50%;top:-26px;width:200px;height:60px;margin-left:-100px;background:linear-gradient(#9aa4ad,#6e7983);border-radius:10px;box-shadow:0 6px 12px rgba(0,0,0,.3)}
+.b-h{font-family:'Caveat',cursive;font-size:60px;font-weight:700;color:#1e2c37;margin-bottom:10px}
+.b-row{display:flex;gap:18px;align-items:baseline;padding:16px 0;border-bottom:2px solid #e6dfcf;font-size:28px;font-weight:600}
+.b-row i{font-style:normal;font-family:'Caveat',cursive;font-size:48px;color:#d9541e;line-height:.6}
+.corner{position:absolute;left:72px;bottom:70px;display:flex;align-items:center;gap:20px;font-size:26px;font-weight:700}
+
+/* omdöme */
+.review{position:absolute;left:150px;right:150px;top:760px;padding:56px 54px;border-radius:24px;transform:rotate(-2deg)}
+.stars{display:flex;gap:16px;justify-content:center}.stars i{font-style:normal;font-size:96px;color:#f7a21a}
+.r-line{height:20px;border-radius:10px;background:#ece6da;margin-top:40px}.r-line.short{width:60%;margin-top:18px}
+.r-btn{margin-top:44px;background:#18232c;color:#fff;text-align:center;font-size:32px;font-weight:700;padding:24px;border-radius:14px}
+
+/* affisch med alla tjänster: höjden fördelas så att samma layout fungerar i A3, 4:5 och story */
+.af{position:absolute;inset:0;display:flex;flex-direction:column;background:#18232c}
+.af-hero{position:relative;flex:0 0 36%;overflow:hidden}
+.af-shade{background:linear-gradient(180deg,rgba(14,20,26,.55),rgba(14,20,26,.1) 40%,rgba(14,20,26,.85))}
+.af-top{position:absolute;left:5.5%;right:5.5%;top:5%;display:flex;justify-content:space-between;align-items:center}
+.af-top .logo{height:52px}
+.af-h{position:absolute;left:5.5%;right:5.5%;bottom:6%}
+.af-h .h{font-size:96px;margin-top:0}.af-h .sub{font-size:30px;margin-top:14px;max-width:900px}
+.af-grid{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;padding:8px}
+.tile{position:relative;overflow:hidden;background:#26343f}
+.tile:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(14,20,26,.9))}
+.tile-txt{position:absolute;z-index:2;left:22px;right:18px;bottom:20px}
+.tile-txt b{display:block;font-size:34px;font-weight:800;letter-spacing:-.02em}
+.tile-txt span{display:block;margin-top:4px;font-size:20px;color:#dfe3e7}
+.tile:nth-child(1) .tile-txt b,.tile:nth-child(5) .tile-txt b{color:#f7802e}
+.af-aven{text-align:center;font-size:24px;font-weight:600;color:#cfd5da;padding:14px 20px 4px;letter-spacing:.02em}
+.af-foot{display:flex;align-items:center;justify-content:space-between;gap:30px;padding:22px 5.5% 34px}
+.badges{display:flex;flex-direction:column;gap:10px}.badges span{font-size:24px;font-weight:700}
+.contact{display:flex;align-items:center;gap:24px;background:#fdfbf6;color:#18232c;padding:18px 18px 18px 28px;border-left:8px solid #f7802e}
+.contact small{display:block;font-size:18px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#7a8590}
+.contact b{display:block;font-size:44px;font-weight:800;letter-spacing:-.02em}
+.contact span{display:block;font-size:22px;font-weight:600}
+.contact .qr{width:130px;height:130px}
+.af--story .af-hero{flex-basis:34%;padding-top:0}.af--story .af-top{top:12%}
+.af--story .af-foot{padding-bottom:250px}
+.af--story .badges span{font-size:26px}
+</style>
+</head>
+<body>
+<script src="design.js"></script>
+<script>
+const d = DESIGNS.find((x) => x.id === new URLSearchParams(location.search).get("id")) || DESIGNS[0];
+document.body.innerHTML = `<div class="cv" style="width:${d.size[0]}px;height:${d.size[1]}px">${d.html()}</div>`;
+</script>
+</body>
+</html>
